@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：IoC 与 DI](01-IoC与DI.md) | [🏠 返回目录](../README.md) | [下一篇：AOP 面向切面编程 ➡️](03-AOP面向切面编程.md)
+
+<!-- nav-end -->
+
 # Bean 生命周期
 
 ---
@@ -108,3 +115,10 @@ public class PrototypeBean {
 > 两者都在属性注入完成后执行，执行顺序：`@PostConstruct` 先于 `init-method`。`@PostConstruct` 是 JSR-250 标准注解，`init-method` 是 Spring XML 配置方式，推荐使用 `@PostConstruct`。
 
 **一句话口诀**：实例化 → 注入 → Aware → BPP前 → 初始化 → BPP后（AOP代理）→ 使用 → 销毁。
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：IoC 与 DI](01-IoC与DI.md) | [🏠 返回目录](../README.md) | [下一篇：AOP 面向切面编程 ➡️](03-AOP面向切面编程.md)
+
+<!-- nav-end -->

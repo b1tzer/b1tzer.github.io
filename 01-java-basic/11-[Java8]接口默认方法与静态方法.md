@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：新日期 API](10-[Java8]新日期API.md) | [🏠 返回目录](../README.md) | [下一篇：Java 9-17 新特性 ➡️](12-[Java9-17]新特性.md)
+
+<!-- nav-end -->
+
 # 接口默认方法与静态方法
 
 ---
@@ -174,3 +181,10 @@ public interface DataProcessor {
 }
 // ⚠️ 注意：私有方法是 Java 9 特性，Java 8 不支持
 ```
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：新日期 API](10-[Java8]新日期API.md) | [🏠 返回目录](../README.md) | [下一篇：Java 9-17 新特性 ➡️](12-[Java9-17]新特性.md)
+
+<!-- nav-end -->

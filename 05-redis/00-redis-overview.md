@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：VACUUM 机制](../04-postgresql/07-VACUUM机制.md) | [🏠 返回目录](../README.md) | [下一篇：数据结构与底层编码 ➡️](01-数据结构与底层编码.md)
+
+<!-- nav-end -->
+
 # Redis 缓存设计与高可用
 
 > 本目录将 Redis 核心知识点拆分为独立文件，便于按需学习和复习。
@@ -81,3 +88,10 @@ flowchart LR
 | 大 Key | 存储几 MB 的 Value | 拆分大 Key，或使用 Hash 分片存储 |
 | 热 Key | 单个 Key 承受所有流量 | 本地缓存 + Redis 多副本分散热点 |
 | 跨 Slot | Cluster 模式下 mget 多个 Key | 使用哈希标签 `{}` 确保相关 Key 在同一 Slot |
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：VACUUM 机制](../04-postgresql/07-VACUUM机制.md) | [🏠 返回目录](../README.md) | [下一篇：数据结构与底层编码 ➡️](01-数据结构与底层编码.md)
+
+<!-- nav-end -->

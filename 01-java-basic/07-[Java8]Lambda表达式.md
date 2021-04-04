@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：AQS 与 CAS](06-AQS与CAS.md) | [🏠 返回目录](../README.md) | [下一篇：Stream 流式编程 ➡️](08-[Java8]Stream流式编程.md)
+
+<!-- nav-end -->
+
 # Lambda 表达式
 
 ---
@@ -203,3 +210,10 @@ public class OrderService {
 
 // ✅ 注意及时取消订阅，或使用弱引用
 ```
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：AQS 与 CAS](06-AQS与CAS.md) | [🏠 返回目录](../README.md) | [下一篇：Stream 流式编程 ➡️](08-[Java8]Stream流式编程.md)
+
+<!-- nav-end -->

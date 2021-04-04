@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：PostgreSQL 概览](00-postgresql-overview.md) | [🏠 返回目录](../README.md) | [下一篇：MVCC 原理与表膨胀 ➡️](02-MVCC原理与表膨胀.md)
+
+<!-- nav-end -->
+
 # PostgreSQL vs MySQL 全面对比
 
 > **核心问题**：什么时候选 PostgreSQL？什么时候选 MySQL？两者核心差异是什么？
@@ -65,3 +72,10 @@ MySQL 在某些场景下力不从心，PostgreSQL 针对这些场景做了专项
 **Q：什么时候选 PostgreSQL，什么时候选 MySQL？**
 
 > 需要 JSON 存储查询、复杂分析（窗口函数/CTE）、地理信息（PostGIS）、严格 SQL 标准 → 选 PG；高并发简单读写、团队熟悉 MySQL、需要成熟生态 → 选 MySQL。
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：PostgreSQL 概览](00-postgresql-overview.md) | [🏠 返回目录](../README.md) | [下一篇：MVCC 原理与表膨胀 ➡️](02-MVCC原理与表膨胀.md)
+
+<!-- nav-end -->

@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：循环依赖与三级缓存](07-循环依赖与三级缓存.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 概览 ➡️](../03-mysql/00-mysql-overview.md)
+
+<!-- nav-end -->
+
 # Spring 实战应用型面试题
 
 > 以下是面试中容易"卡住"的实战问题，考察对 Spring 原理的真实理解深度。
@@ -376,3 +383,10 @@ public class DynamicBeanRegistrar implements ApplicationContextAware {
     }
 }
 ```
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：循环依赖与三级缓存](07-循环依赖与三级缓存.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 概览 ➡️](../03-mysql/00-mysql-overview.md)
+
+<!-- nav-end -->

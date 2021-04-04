@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：锁机制与死锁](06-锁机制与死锁.md) | [🏠 返回目录](../README.md) | [下一篇：实战问题与避坑指南 ➡️](08-实战问题与避坑指南.md)
+
+<!-- nav-end -->
+
 # EXPLAIN 与性能优化
 
 > **核心问题**：如何用 EXPLAIN 分析 SQL 性能？有哪些常见的 SQL 优化手段？
@@ -164,3 +171,10 @@ SHOW VARIABLES LIKE 'slow_query_log_file';
 **Q：Extra 中出现 Using filesort 怎么优化？**
 
 > `Using filesort` 说明排序无法利用索引，需要额外排序。优化方法：将 ORDER BY 的列加入联合索引，且索引列顺序与 ORDER BY 顺序一致。
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：锁机制与死锁](06-锁机制与死锁.md) | [🏠 返回目录](../README.md) | [下一篇：实战问题与避坑指南 ➡️](08-实战问题与避坑指南.md)
+
+<!-- nav-end -->

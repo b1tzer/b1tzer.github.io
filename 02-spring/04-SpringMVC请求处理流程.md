@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：AOP 面向切面编程](03-AOP面向切面编程.md) | [🏠 返回目录](../README.md) | [下一篇：SpringBoot 自动配置原理 ➡️](05-SpringBoot自动配置原理.md)
+
+<!-- nav-end -->
+
 # Spring MVC 请求处理流程
 
 ---
@@ -97,3 +104,10 @@ public class ApiController {
 > 过滤器是 Servlet 规范，拦截所有请求，无法访问 Spring Bean；拦截器是 Spring MVC 扩展点，只拦截 DispatcherServlet 处理的请求，可以访问 Spring Bean 和 Handler 信息，更适合业务拦截逻辑。
 
 **一句话口诀**：DispatcherServlet 是总调度，HandlerMapping 找处理器，HandlerAdapter 适配调用，ViewResolver 解析视图，拦截器在 Handler 前后插入逻辑。
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：AOP 面向切面编程](03-AOP面向切面编程.md) | [🏠 返回目录](../README.md) | [下一篇：SpringBoot 自动配置原理 ➡️](05-SpringBoot自动配置原理.md)
+
+<!-- nav-end -->

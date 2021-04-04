@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：Mapping 映射设计](04-Mapping映射设计.md) | [🏠 返回目录](../README.md) | [下一篇：集群架构与分片机制 ➡️](06-集群架构与分片机制.md)
+
+<!-- nav-end -->
+
 # ES 查询 DSL：核心查询类型
 
 ---
@@ -59,3 +66,10 @@ flowchart TD
 > - `query`：计算相关性得分（_score），结果不缓存，适合全文检索
 > - `filter`：不计算得分，结果可缓存（Filter Cache），性能更高，适合精确过滤
 > - 最佳实践：全文检索用 `must`（query context），条件过滤用 `filter`（filter context）
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：Mapping 映射设计](04-Mapping映射设计.md) | [🏠 返回目录](../README.md) | [下一篇：集群架构与分片机制 ➡️](06-集群架构与分片机制.md)
+
+<!-- nav-end -->

@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：实战问题与避坑指南](../03-mysql/08-实战问题与避坑指南.md) | [🏠 返回目录](../README.md) | [下一篇：PG 与 MySQL 对比 ➡️](01-PG与MySQL对比.md)
+
+<!-- nav-end -->
+
 # PostgreSQL 核心特性与选型
 
 > **学习目标**：从"会写 SQL"升级到"理解 PG 核心原理 → 能做技术选型 → 能排查表膨胀等运维问题"
@@ -195,3 +202,10 @@ SELECT * FROM org_tree ORDER BY level;
 | 窗口函数排名不符合预期 | 混淆 RANK 和 DENSE_RANK | 明确业务需要跳跃排名还是密集排名 |
 | 递归 CTE 死循环 | 数据中存在循环引用 | 添加深度限制 `WHERE level < 10` |
 | 长事务阻塞 VACUUM | 事务未及时提交 | 监控 `pg_stat_activity`，及时终止长事务 |
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：实战问题与避坑指南](../03-mysql/08-实战问题与避坑指南.md) | [🏠 返回目录](../README.md) | [下一篇：PG 与 MySQL 对比 ➡️](01-PG与MySQL对比.md)
+
+<!-- nav-end -->

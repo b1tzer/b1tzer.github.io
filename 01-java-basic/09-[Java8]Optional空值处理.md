@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：Stream 流式编程](08-[Java8]Stream流式编程.md) | [🏠 返回目录](../README.md) | [下一篇：新日期 API ➡️](10-[Java8]新日期API.md)
+
+<!-- nav-end -->
+
 # Optional
 
 ---
@@ -174,3 +181,10 @@ User result = user.orElse(createDefaultUser()); // createDefaultUser() 每次都
 // ✅ 正确：用 orElseGet，只在为空时才执行
 User result = user.orElseGet(() -> createDefaultUser()); // 只在 user 为空时执行
 ```
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：Stream 流式编程](08-[Java8]Stream流式编程.md) | [🏠 返回目录](../README.md) | [下一篇：新日期 API ➡️](10-[Java8]新日期API.md)
+
+<!-- nav-end -->

@@ -1,3 +1,10 @@
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：Java 9-17 新特性](../01-java-basic/12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI ➡️](01-IoC与DI.md)
+
+<!-- nav-end -->
+
 # Spring / Spring Boot 核心原理
 
 ---
@@ -164,3 +171,10 @@ flowchart TB
 6. **多数据源问题**：事务管理器和数据源不匹配
 
 > 📄 完整解析及代码示例见：[08-Spring实战应用题.md](./08-Spring实战应用题.md)
+
+<!-- nav-start -->
+---
+
+[⬅️ 上一篇：Java 9-17 新特性](../01-java-basic/12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI ➡️](01-IoC与DI.md)
+
+<!-- nav-end -->
