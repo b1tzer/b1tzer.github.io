@@ -1,0 +1,63 @@
+# ===== 操作系统 =====
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ===== 编辑器 / IDE =====
+# VSCode
+.vscode/
+*.code-workspace
+
+# JetBrains (IDEA / WebStorm 等)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim / Neovim
+*.swp
+*.swo
+*.un~
+Session.vim
+
+# Emacs
+\#*\#
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ===== 临时 / 构建产物 =====
+*.log
+*.tmp
+*.bak
+*.orig
+*.rej
+
+# ===== 工具生成文件 =====
+# Node（如果用 docsify / vitepress 等预览工具）
+node_modules/
+dist/
+.cache/
+
+# Python（如果用脚本处理文档）
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+.venv/
+
+# ===== 项目内部 =====
+# CodeBuddy 计划文件（不纳入版本管理）
+.codebuddy/
