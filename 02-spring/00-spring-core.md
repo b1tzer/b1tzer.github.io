@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：Java 9-17 新特性](../01-java-basic/12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI ➡️](01-IoC与DI.md)
+[⬅️ 上一篇：Java 9-17 关键新特性](../01-java-basic/12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI —— 控制反转与依赖注入 ➡️](01-IoC与DI.md)
 
 <!-- nav-end -->
 
@@ -173,8 +174,9 @@ flowchart TB
 > 📄 完整解析及代码示例见：[08-Spring实战应用题.md](./08-Spring实战应用题.md)
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：Java 9-17 新特性](../01-java-basic/12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI ➡️](01-IoC与DI.md)
+[⬅️ 上一篇：Java 9-17 关键新特性](../01-java-basic/12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI —— 控制反转与依赖注入 ➡️](01-IoC与DI.md)
 
 <!-- nav-end -->

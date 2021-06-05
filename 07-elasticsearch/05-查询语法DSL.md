@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：Mapping 映射设计](04-Mapping映射设计.md) | [🏠 返回目录](../README.md) | [下一篇：集群架构与分片机制 ➡️](06-集群架构与分片机制.md)
+[⬅️ 上一篇：ES Mapping 设计：字段类型决定查询能力](04-Mapping映射设计.md) | [🏠 返回目录](../README.md) | [下一篇：ES 集群架构与分片机制 ➡️](06-集群架构与分片机制.md)
 
 <!-- nav-end -->
 
@@ -68,8 +69,9 @@ flowchart TD
 > - 最佳实践：全文检索用 `must`（query context），条件过滤用 `filter`（filter context）
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：Mapping 映射设计](04-Mapping映射设计.md) | [🏠 返回目录](../README.md) | [下一篇：集群架构与分片机制 ➡️](06-集群架构与分片机制.md)
+[⬅️ 上一篇：ES Mapping 设计：字段类型决定查询能力](04-Mapping映射设计.md) | [🏠 返回目录](../README.md) | [下一篇：ES 集群架构与分片机制 ➡️](06-集群架构与分片机制.md)
 
 <!-- nav-end -->

@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：Optional 空值处理](09-[Java8]Optional空值处理.md) | [🏠 返回目录](../README.md) | [下一篇：接口默认方法与静态方法 ➡️](11-[Java8]接口默认方法与静态方法.md)
+[⬅️ 上一篇：Optional](09-[Java8]Optional空值处理.md) | [🏠 返回目录](../README.md) | [下一篇：接口默认方法与静态方法 ➡️](11-[Java8]接口默认方法与静态方法.md)
 
 <!-- nav-end -->
 
@@ -169,8 +170,9 @@ ZonedDateTime next = dt.plusHours(1); // 夏令时切换，实际跳过了一小
 ```
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：Optional 空值处理](09-[Java8]Optional空值处理.md) | [🏠 返回目录](../README.md) | [下一篇：接口默认方法与静态方法 ➡️](11-[Java8]接口默认方法与静态方法.md)
+[⬅️ 上一篇：Optional](09-[Java8]Optional空值处理.md) | [🏠 返回目录](../README.md) | [下一篇：接口默认方法与静态方法 ➡️](11-[Java8]接口默认方法与静态方法.md)
 
 <!-- nav-end -->

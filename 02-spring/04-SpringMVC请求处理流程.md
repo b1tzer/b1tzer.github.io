@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：AOP 面向切面编程](03-AOP面向切面编程.md) | [🏠 返回目录](../README.md) | [下一篇：SpringBoot 自动配置原理 ➡️](05-SpringBoot自动配置原理.md)
+[⬅️ 上一篇：AOP —— 面向切面编程](03-AOP面向切面编程.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Boot 自动配置原理 ➡️](05-SpringBoot自动配置原理.md)
 
 <!-- nav-end -->
 
@@ -106,8 +107,9 @@ public class ApiController {
 **一句话口诀**：DispatcherServlet 是总调度，HandlerMapping 找处理器，HandlerAdapter 适配调用，ViewResolver 解析视图，拦截器在 Handler 前后插入逻辑。
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：AOP 面向切面编程](03-AOP面向切面编程.md) | [🏠 返回目录](../README.md) | [下一篇：SpringBoot 自动配置原理 ➡️](05-SpringBoot自动配置原理.md)
+[⬅️ 上一篇：AOP —— 面向切面编程](03-AOP面向切面编程.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Boot 自动配置原理 ➡️](05-SpringBoot自动配置原理.md)
 
 <!-- nav-end -->

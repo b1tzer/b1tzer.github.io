@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：PG 与 MySQL 对比](01-PG与MySQL对比.md) | [🏠 返回目录](../README.md) | [下一篇：索引类型详解 ➡️](03-索引类型详解.md)
+[⬅️ 上一篇：PostgreSQL vs MySQL 全面对比](01-PG与MySQL对比.md) | [🏠 返回目录](../README.md) | [下一篇：索引类型详解 ➡️](03-索引类型详解.md)
 
 <!-- nav-end -->
 
@@ -122,8 +123,9 @@ ORDER BY n_dead_tup DESC;
 > PG 将旧版本行存储在堆表中，读操作无需回溯 Undo Log，读性能更稳定，但需要 VACUUM 定期清理，有表膨胀风险；MySQL 使用 Undo Log 存储旧版本，事务提交后自动回收，无表膨胀问题，但长事务下需要回溯较长的 Undo Log 链。
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：PG 与 MySQL 对比](01-PG与MySQL对比.md) | [🏠 返回目录](../README.md) | [下一篇：索引类型详解 ➡️](03-索引类型详解.md)
+[⬅️ 上一篇：PostgreSQL vs MySQL 全面对比](01-PG与MySQL对比.md) | [🏠 返回目录](../README.md) | [下一篇：索引类型详解 ➡️](03-索引类型详解.md)
 
 <!-- nav-end -->

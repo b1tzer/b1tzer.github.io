@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：实战问题与避坑指南](../03-mysql/08-实战问题与避坑指南.md) | [🏠 返回目录](../README.md) | [下一篇：PG 与 MySQL 对比 ➡️](01-PG与MySQL对比.md)
+[⬅️ 上一篇：MySQL 实战问题与避坑指南](../03-mysql/08-实战问题与避坑指南.md) | [🏠 返回目录](../README.md) | [下一篇：PostgreSQL vs MySQL 全面对比 ➡️](01-PG与MySQL对比.md)
 
 <!-- nav-end -->
 
@@ -204,8 +205,9 @@ SELECT * FROM org_tree ORDER BY level;
 | 长事务阻塞 VACUUM | 事务未及时提交 | 监控 `pg_stat_activity`，及时终止长事务 |
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：实战问题与避坑指南](../03-mysql/08-实战问题与避坑指南.md) | [🏠 返回目录](../README.md) | [下一篇：PG 与 MySQL 对比 ➡️](01-PG与MySQL对比.md)
+[⬅️ 上一篇：MySQL 实战问题与避坑指南](../03-mysql/08-实战问题与避坑指南.md) | [🏠 返回目录](../README.md) | [下一篇：PostgreSQL vs MySQL 全面对比 ➡️](01-PG与MySQL对比.md)
 
 <!-- nav-end -->

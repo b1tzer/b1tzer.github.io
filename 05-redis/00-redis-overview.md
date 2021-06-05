@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：VACUUM 机制](../04-postgresql/07-VACUUM机制.md) | [🏠 返回目录](../README.md) | [下一篇：数据结构与底层编码 ➡️](01-数据结构与底层编码.md)
+[⬅️ 上一篇：VACUUM 机制](../04-postgresql/07-VACUUM机制.md) | [🏠 返回目录](../README.md) | [下一篇：Redis 数据结构与底层编码 ➡️](01-数据结构与底层编码.md)
 
 <!-- nav-end -->
 
@@ -90,8 +91,9 @@ flowchart LR
 | 跨 Slot | Cluster 模式下 mget 多个 Key | 使用哈希标签 `{}` 确保相关 Key 在同一 Slot |
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：VACUUM 机制](../04-postgresql/07-VACUUM机制.md) | [🏠 返回目录](../README.md) | [下一篇：数据结构与底层编码 ➡️](01-数据结构与底层编码.md)
+[⬅️ 上一篇：VACUUM 机制](../04-postgresql/07-VACUUM机制.md) | [🏠 返回目录](../README.md) | [下一篇：Redis 数据结构与底层编码 ➡️](01-数据结构与底层编码.md)
 
 <!-- nav-end -->

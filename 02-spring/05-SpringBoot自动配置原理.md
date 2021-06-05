@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：SpringMVC 请求处理流程](04-SpringMVC请求处理流程.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 事务管理 ➡️](06-Spring事务管理.md)
+[⬅️ 上一篇：Spring MVC 请求处理流程](04-SpringMVC请求处理流程.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 事务管理 ➡️](06-Spring事务管理.md)
 
 <!-- nav-end -->
 
@@ -108,8 +109,9 @@ public class MyDataSourceConfig {
 **一句话口诀**：`@EnableAutoConfiguration` 读配置列表，条件注解按需过滤，`@ConditionalOnMissingBean` 允许用户覆盖，这就是"约定优于配置"。
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：SpringMVC 请求处理流程](04-SpringMVC请求处理流程.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 事务管理 ➡️](06-Spring事务管理.md)
+[⬅️ 上一篇：Spring MVC 请求处理流程](04-SpringMVC请求处理流程.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 事务管理 ➡️](06-Spring事务管理.md)
 
 <!-- nav-end -->

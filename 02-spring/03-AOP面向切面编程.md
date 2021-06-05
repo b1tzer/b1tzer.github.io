@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：Bean 生命周期](02-Bean生命周期.md) | [🏠 返回目录](../README.md) | [下一篇：SpringMVC 请求处理流程 ➡️](04-SpringMVC请求处理流程.md)
+[⬅️ 上一篇：Bean 生命周期](02-Bean生命周期.md) | [🏠 返回目录](../README.md) | [下一篇：Spring MVC 请求处理流程 ➡️](04-SpringMVC请求处理流程.md)
 
 <!-- nav-end -->
 
@@ -141,8 +142,9 @@ public class OrderService {
 **一句话口诀**：AOP 靠代理拦截，`this` 调用绕过代理，CGLIB 生成子类，JDK 代理需要接口。
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：Bean 生命周期](02-Bean生命周期.md) | [🏠 返回目录](../README.md) | [下一篇：SpringMVC 请求处理流程 ➡️](04-SpringMVC请求处理流程.md)
+[⬅️ 上一篇：Bean 生命周期](02-Bean生命周期.md) | [🏠 返回目录](../README.md) | [下一篇：Spring MVC 请求处理流程 ➡️](04-SpringMVC请求处理流程.md)
 
 <!-- nav-end -->

@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：SpringBoot 自动配置原理](05-SpringBoot自动配置原理.md) | [🏠 返回目录](../README.md) | [下一篇：循环依赖与三级缓存 ➡️](07-循环依赖与三级缓存.md)
+[⬅️ 上一篇：Spring Boot 自动配置原理](05-SpringBoot自动配置原理.md) | [🏠 返回目录](../README.md) | [下一篇：循环依赖与三级缓存 ➡️](07-循环依赖与三级缓存.md)
 
 <!-- nav-end -->
 
@@ -129,8 +130,9 @@ public class OrderService {
 **一句话口诀**：事务是 AOP 的特例，`this` 调用不生效，异常要抛出，Checked 异常要加 `rollbackFor`，REQUIRED 共享事务，REQUIRES_NEW 独立事务。
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：SpringBoot 自动配置原理](05-SpringBoot自动配置原理.md) | [🏠 返回目录](../README.md) | [下一篇：循环依赖与三级缓存 ➡️](07-循环依赖与三级缓存.md)
+[⬅️ 上一篇：Spring Boot 自动配置原理](05-SpringBoot自动配置原理.md) | [🏠 返回目录](../README.md) | [下一篇：循环依赖与三级缓存 ➡️](07-循环依赖与三级缓存.md)
 
 <!-- nav-end -->

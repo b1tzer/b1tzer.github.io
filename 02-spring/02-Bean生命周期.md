@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：IoC 与 DI](01-IoC与DI.md) | [🏠 返回目录](../README.md) | [下一篇：AOP 面向切面编程 ➡️](03-AOP面向切面编程.md)
+[⬅️ 上一篇：IoC 与 DI —— 控制反转与依赖注入](01-IoC与DI.md) | [🏠 返回目录](../README.md) | [下一篇：AOP —— 面向切面编程 ➡️](03-AOP面向切面编程.md)
 
 <!-- nav-end -->
 
@@ -117,8 +118,9 @@ public class PrototypeBean {
 **一句话口诀**：实例化 → 注入 → Aware → BPP前 → 初始化 → BPP后（AOP代理）→ 使用 → 销毁。
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：IoC 与 DI](01-IoC与DI.md) | [🏠 返回目录](../README.md) | [下一篇：AOP 面向切面编程 ➡️](03-AOP面向切面编程.md)
+[⬅️ 上一篇：IoC 与 DI —— 控制反转与依赖注入](01-IoC与DI.md) | [🏠 返回目录](../README.md) | [下一篇：AOP —— 面向切面编程 ➡️](03-AOP面向切面编程.md)
 
 <!-- nav-end -->

@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：Spring 核心概览](00-spring-core.md) | [🏠 返回目录](../README.md) | [下一篇：Bean 生命周期 ➡️](02-Bean生命周期.md)
+[⬅️ 上一篇：Spring / Spring Boot 核心原理](00-spring-core.md) | [🏠 返回目录](../README.md) | [下一篇：Bean 生命周期 ➡️](02-Bean生命周期.md)
 
 <!-- nav-end -->
 
@@ -144,8 +145,9 @@ public class OrderService {
 **一句话口诀**：IoC 是"容器管对象"，DI 是"容器送依赖"，BeanFactory 是基础，ApplicationContext 是增强版。
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：Spring 核心概览](00-spring-core.md) | [🏠 返回目录](../README.md) | [下一篇：Bean 生命周期 ➡️](02-Bean生命周期.md)
+[⬅️ 上一篇：Spring / Spring Boot 核心原理](00-spring-core.md) | [🏠 返回目录](../README.md) | [下一篇：Bean 生命周期 ➡️](02-Bean生命周期.md)
 
 <!-- nav-end -->

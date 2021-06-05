@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：新日期 API](10-[Java8]新日期API.md) | [🏠 返回目录](../README.md) | [下一篇：Java 9-17 新特性 ➡️](12-[Java9-17]新特性.md)
+[⬅️ 上一篇：新日期 API](10-[Java8]新日期API.md) | [🏠 返回目录](../README.md) | [下一篇：Java 9-17 关键新特性 ➡️](12-[Java9-17]新特性.md)
 
 <!-- nav-end -->
 
@@ -183,8 +184,9 @@ public interface DataProcessor {
 ```
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：新日期 API](10-[Java8]新日期API.md) | [🏠 返回目录](../README.md) | [下一篇：Java 9-17 新特性 ➡️](12-[Java9-17]新特性.md)
+[⬅️ 上一篇：新日期 API](10-[Java8]新日期API.md) | [🏠 返回目录](../README.md) | [下一篇：Java 9-17 关键新特性 ➡️](12-[Java9-17]新特性.md)
 
 <!-- nav-end -->

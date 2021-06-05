@@ -1,7 +1,8 @@
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：AQS 与 CAS](06-AQS与CAS.md) | [🏠 返回目录](../README.md) | [下一篇：Stream 流式编程 ➡️](08-[Java8]Stream流式编程.md)
+[⬅️ 上一篇：AQS 与 CAS](06-AQS与CAS.md) | [🏠 返回目录](../README.md) | [下一篇：Stream API ➡️](08-[Java8]Stream流式编程.md)
 
 <!-- nav-end -->
 
@@ -212,8 +213,9 @@ public class OrderService {
 ```
 
 <!-- nav-start -->
+
 ---
 
-[⬅️ 上一篇：AQS 与 CAS](06-AQS与CAS.md) | [🏠 返回目录](../README.md) | [下一篇：Stream 流式编程 ➡️](08-[Java8]Stream流式编程.md)
+[⬅️ 上一篇：AQS 与 CAS](06-AQS与CAS.md) | [🏠 返回目录](../README.md) | [下一篇：Stream API ➡️](08-[Java8]Stream流式编程.md)
 
 <!-- nav-end -->
