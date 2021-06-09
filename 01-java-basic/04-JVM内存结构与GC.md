@@ -121,23 +121,18 @@ flowchart TD
 
 ### 3.4 G1 vs CMS 收集器
 
-```mermaid
-flowchart TD
-    subgraph CMS-Concurrent-Mark-Sweep
-        C1["初始标记(STW，快)"]
-        C2["并发标记(与业务线程并发)"]
-        C3["重新标记(STW，快)"]
-        C4["并发清除(与业务线程并发)"]
-        C1 --> C2 --> C3 --> C4
-    end
+**CMS（Concurrent Mark Sweep）**
 
-    subgraph G1-Garbage-First
-        GA["将堆划分为等大的 Region<br/>每个 Region 约 1-32MB"]
-        GB["每个 Region 可以是<br/>Eden/Survivor/Old/Humongous"]
-        GC["优先回收垃圾最多的 Region<br/>Garbage First 名字由来"]
-        GD["可设置最大停顿时间目标<br/>-XX:MaxGCPauseMillis=200"]
-        GA --> GB --> GC --> GD
-    end
+```mermaid
+flowchart LR
+    C1["初始标记(STW，快)"] --> C2["并发标记(与业务线程并发)"] --> C3["重新标记(STW，快)"] --> C4["并发清除(与业务线程并发)"]
+```
+
+**G1（Garbage First）**
+
+```mermaid
+flowchart LR
+    GA["将堆划分为等大的 Region<br/>每个 Region 约 1-32MB"] --> GB["每个 Region 可以是<br/>Eden/Survivor/Old/Humongous"] --> GC["优先回收垃圾最多的 Region<br/>Garbage First 名字由来"] --> GD["可设置最大停顿时间目标<br/>-XX:MaxGCPauseMillis=200"]
 ```
 
 | 对比项 | CMS | G1 |

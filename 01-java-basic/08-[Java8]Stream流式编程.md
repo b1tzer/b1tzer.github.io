@@ -39,10 +39,10 @@ List<String> result = names.stream()
 
 ```mermaid
 flowchart LR
-    A[数据源\nCollection/Array] --> B[中间操作\n惰性求值]
-    B --> C[终止操作\n触发执行]
+    A["数据源\nCollection/Array"] --> B["中间操作\n惰性求值"]
+    B --> C["终止操作\n触发执行"]
 
-    subgraph 中间操作(返回Stream，不立即执行)
+    subgraph 中间操作["中间操作 — 返回 Stream，不立即执行"]
         D[filter 过滤]
         E[map 转换]
         F[flatMap 扁平化]
@@ -52,7 +52,7 @@ flowchart LR
         J[peek 调试]
     end
 
-    subgraph 终止操作(返回结果，触发执行)
+    subgraph 终止操作["终止操作 — 返回结果，触发执行"]
         K[collect 收集]
         L[forEach 遍历]
         M[count 计数]
@@ -61,7 +61,6 @@ flowchart LR
         P[reduce 聚合]
     end
 ```
-
 > **关键原理：惰性求值**
 > 中间操作不会立即执行，只有遇到终止操作时才会触发整个流水线的执行。
 > **为什么这样设计**：惰性求值允许短路优化——如 `findFirst()` 找到第一个就停止，不需要处理所有元素；`limit(10)` 只处理前 10 个元素，后面的中间操作根本不执行。
