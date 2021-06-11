@@ -59,11 +59,11 @@
 
 ```mermaid
 flowchart LR
-    subgraph 线程共享-所有线程共用
+    subgraph sg1["线程共享 - 所有线程共用"]
         Heap["堆 Heap<br/>新生代: Eden + S0 + S1<br/>老年代: Old Gen<br/>GC 主要管理区域"]
         MetaSpace["元空间 MetaSpace<br/>类信息 / 方法信息<br/>运行时常量池 / 静态变量<br/>JDK8 替代永久代，使用本地内存"]
     end
-    subgraph 线程私有-每个线程独有
+    subgraph sg2["线程私有 - 每个线程独有"]
         Stack["虚拟机栈<br/>栈帧: 局部变量表 + 操作数栈 + 返回地址<br/>StackOverflowError"]
         NativeStack["本地方法栈<br/>Native 方法调用"]
         PC["程序计数器<br/>当前执行指令地址<br/>唯一不会 OOM 的区域"]
