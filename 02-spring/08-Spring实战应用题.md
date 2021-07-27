@@ -2,7 +2,7 @@
 
 ---
 
-[⬅️ 上一篇：循环依赖与三级缓存](07-循环依赖与三级缓存.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 索引、事务与性能优化 ➡️](../03-mysql/00-mysql-overview.md)
+[⬅️ 上一篇：循环依赖与三级缓存](07-循环依赖与三级缓存.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Security 认证与授权 ➡️](09-Spring-Security认证与授权.md)
 
 <!-- nav-end -->
 
@@ -389,6 +389,6 @@ public class DynamicBeanRegistrar implements ApplicationContextAware {
 
 ---
 
-[⬅️ 上一篇：循环依赖与三级缓存](07-循环依赖与三级缓存.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 索引、事务与性能优化 ➡️](../03-mysql/00-mysql-overview.md)
+[⬅️ 上一篇：循环依赖与三级缓存](07-循环依赖与三级缓存.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Security 认证与授权 ➡️](09-Spring-Security认证与授权.md)
 
 <!-- nav-end -->

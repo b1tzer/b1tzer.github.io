@@ -37,6 +37,10 @@
 | 06 | [Spring 事务管理](02-spring/06-Spring事务管理.md) |
 | 07 | [循环依赖与三级缓存](02-spring/07-循环依赖与三级缓存.md) |
 | 08 | [Spring 实战应用型面试题](02-spring/08-Spring实战应用题.md) |
+| 09 | [Spring Security 认证与授权](02-spring/09-Spring-Security认证与授权.md) |
+| 10 | [Spring Cloud 核心组件](02-spring/10-Spring-Cloud核心组件.md) |
+| 11 | [Spring 扩展点详解](02-spring/11-Spring扩展点详解.md) |
+| 12 | [Spring 常用注解全解](02-spring/12-Spring常用注解全解.md) |
 
 ### 🗄️ 3、Mysql
 
@@ -152,7 +156,7 @@
 ```
 Java Interview Guide
 ├── 01-java-basic                       ☕（13 篇）
-├── 02-spring                           🌱（9 篇）
+├── 02-spring                           🌱（13 篇）
 ├── 03-mysql                            🗄️（9 篇）
 ├── 04-postgresql                       🐘（8 篇）
 ├── 05-redis                            🔴（7 篇）
@@ -163,4 +167,4 @@ Java Interview Guide
 └── 10-project-experience               📄（7 篇）
 ```
 
-> 共 **89 篇**文章，每篇文章顶部和底部均有上一篇 / 下一篇导航，支持连续阅读。
+> 共 **93 篇**文章，每篇文章顶部和底部均有上一篇 / 下一篇导航，支持连续阅读。

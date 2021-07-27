@@ -58,6 +58,24 @@ mindmap
         循环依赖
             三级缓存
             构造器注入限制
+        Spring Security
+            过滤器链
+            JWT 认证
+            方法级权限
+        Spring Cloud
+            Eureka 注册中心
+            Gateway 网关
+            Feign 调用
+            Sentinel 熔断
+        扩展点
+            BeanPostProcessor
+            BeanFactoryPostProcessor
+            ApplicationListener
+        常用注解
+            @Conditional
+            @ConfigurationProperties
+            @Profile
+            @Import
 ```
 
 ---
@@ -103,6 +121,10 @@ flowchart TB
 | 6 | **事务管理** | 事务是 AOP 特例，`this` 调用不生效，异常要抛出，注意传播行为 | [06-Spring事务管理.md](./06-Spring事务管理.md) |
 | 7 | **循环依赖** | 三级缓存提前暴露半成品，构造器注入无法提前暴露所以不能解决 | [07-循环依赖与三级缓存.md](./07-循环依赖与三级缓存.md) |
 | 8 | **实战应用题** | 事务排查、长事务优化、AOP失效、Bean泄漏、动态注册等 12 道实战题 | [08-Spring实战应用题.md](./08-Spring实战应用题.md) |
+| 9 | **Spring Security** | 过滤器链拦截请求，JWT 无状态认证，方法级 `@PreAuthorize` 权限控制 | [09-Spring-Security认证与授权.md](./09-Spring-Security认证与授权.md) |
+| 10 | **Spring Cloud** | Eureka 服务发现 + Gateway 网关 + Feign 调用 + Sentinel 熔断，微服务必备 | [10-Spring-Cloud核心组件.md](./10-Spring-Cloud核心组件.md) |
+| 11 | **Spring 扩展点** | BPP 干预初始化，BFPP 修改 Bean 定义，ApplicationListener 监听事件 | [11-Spring扩展点详解.md](./11-Spring扩展点详解.md) |
+| 12 | **常用注解全解** | `@Conditional`、`@ConfigurationProperties`、`@Profile`、`@Import` 等高频注解 | [12-Spring常用注解全解.md](./12-Spring常用注解全解.md) |
 
 ---
 
