@@ -84,28 +84,34 @@ mindmap
 
 ```mermaid
 flowchart TB
-    subgraph Spring 生态
+    subgraph Spring Cloud 微服务层
+        SGW[Gateway 网关<br/>路由 / 鉴权 / 限流]
+        SEU[Eureka / Nacos<br/>服务注册与发现]
+        SFG[Feign<br/>声明式调用]
+        SST[Sentinel<br/>熔断降级]
+    end
+    subgraph Spring 应用层
         SB[Spring Boot<br/>自动配置 / 起步依赖]
-        SC[Spring Core<br/>IoC / DI / AOP]
+        SSC[Spring Security<br/>认证 / 授权 / JWT]
         SM[Spring MVC<br/>Web 请求处理]
         ST[Spring Transaction<br/>事务管理]
         SD[Spring Data<br/>JPA / Redis / MongoDB]
     end
-    SB --> SC
-    SM --> SC
-    ST --> SC
-    SD --> SC
+    subgraph Spring 核心层
+        SC[Spring Core<br/>IoC / DI / AOP]
+    end
     subgraph 底层支撑
         Reflect[Java 反射]
         Proxy[动态代理<br/>JDK / CGLIB]
         ANN[注解处理]
     end
-    SC --> Reflect
-    SC --> Proxy
-    SC --> ANN
+    SGW & SEU & SFG & SST --> SB
+    SB --> SSC & SM & ST & SD
+    SSC & SM & ST & SD --> SC
+    SC --> Reflect & Proxy & ANN
 ```
 
-> Spring Core 是一切的基础，IoC 容器依赖反射创建对象，AOP 依赖动态代理增强功能，Spring Boot 在 Spring 之上通过自动配置简化开发。
+> Spring Core 是一切的基础，IoC 容器依赖反射创建对象，AOP 依赖动态代理增强功能，Spring Boot 在 Spring 之上通过自动配置简化开发，Spring Cloud 在 Spring Boot 之上构建微服务体系。
 
 ---
 
@@ -130,6 +136,8 @@ flowchart TB
 
 ## 高频面试速查
 
+### 核心原理
+
 | 问题 | 关键答案 |
 |------|---------|
 | IoC 和 DI 的区别？ | IoC 是设计思想（控制权交给容器），DI 是具体实现方式（容器注入依赖） |
@@ -140,6 +148,19 @@ flowchart TB
 | 事务不回滚的原因？ | ① 同类调用 ② 异常被捕获未抛出 ③ 非 RuntimeException 未加 `rollbackFor` ④ 方法非 public |
 | 为什么默认用 CGLIB？ | JDK 代理要求实现接口，大量 Service 没有接口；CGLIB 生成子类无需接口，覆盖面更广 |
 | 循环依赖如何解决？ | 三级缓存提前暴露 `ObjectFactory`，支持 AOP 代理；构造器注入无法提前暴露，需用 `@Lazy` |
+
+### Security / Cloud / 扩展点
+
+| 问题 | 关键答案 |
+|------|---------|
+| 认证和授权的区别？ | 认证（Authentication）验证"你是谁"；授权（Authorization）验证"你能做什么" |
+| JWT 和 Session 的区别？ | Session 有状态，服务端存储，分布式需共享；JWT 无状态，信息在 Token 中，天然支持分布式 |
+| JWT Token 如何主动失效？ | Redis 黑名单（退出时写入 Token，TTL = 剩余有效期）；或 Token 版本号机制 |
+| Eureka 自我保护是什么？ | 短时间内大量心跳丢失时，停止剔除服务实例，防止网络抖动误删健康服务 |
+| 服务雪崩如何防止？ | 超时快速失败 + 熔断（错误率超阈值直接降级）+ 限流（控制入口流量）+ 隔离（独立线程池） |
+| BeanPostProcessor 和 BeanFactoryPostProcessor 的区别？ | BFPP 在 Bean 实例化前修改 BeanDefinition；BPP 在 Bean 初始化前后处理 Bean 对象（AOP 代理在这里生成） |
+| @ConditionalOnMissingBean 的作用？ | 容器中不存在指定 Bean 时才注册，是 Spring Boot 自动配置"用户优先"原则的核心 |
+| @Configuration 和 @Component 的区别？ | `@Configuration` 中的 `@Bean` 方法被 CGLIB 代理，方法间调用走容器保证单例；`@Component` 不代理，方法间调用是普通 Java 调用 |
 
 ---
 
@@ -153,6 +174,10 @@ flowchart TB
 | 循环依赖报错 | 构造器注入无法提前暴露引用 | 改为字段注入，或加 `@Lazy`，或重构解耦 |
 | 自动配置不生效 | 条件注解不满足（缺少依赖 / 已有自定义 Bean） | 检查类路径依赖，用 `--debug` 查看自动配置报告 |
 | `@PostConstruct` 中 NPE | 在构造器中使用了 `@Autowired` 字段 | 将初始化逻辑移到 `@PostConstruct` 方法中 |
+| JWT Token 失效后仍能访问 | Token 无法主动撤销，服务端只验证签名 | Redis 黑名单 + 退出时写入，或缩短有效期 |
+| Feign 调用超时报错 | 默认超时时间过短 / 下游服务响应慢 | 配置合理超时时间，加 Fallback 降级处理 |
+| Gateway 过滤器不生效 | 过滤器 Order 优先级设置错误 | 检查 `getOrder()` 返回值，数字越小优先级越高 |
+| `@Profile` 配置不生效 | `spring.profiles.active` 未正确设置 | 检查启动参数或 `application.yml` 中的 active 配置 |
 
 ---
 
@@ -160,7 +185,7 @@ flowchart TB
 
 > 以下是面试中容易"卡住"的实战问题，考察对 Spring 原理的真实理解深度。
 >
-> � 详见：[08-Spring实战应用题.md](./08-Spring实战应用题.md)
+> 📄 详见：[08-Spring实战应用题.md](./08-Spring实战应用题.md)
 
 ### 题目速览
 
