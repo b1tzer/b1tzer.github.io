@@ -10,6 +10,119 @@
 
 ---
 
+## Spring 是什么？
+
+Spring 是 Java 生态中**最主流的企业级应用开发框架**，由 Rod Johnson 于 2003 年创建，核心思想是通过 **IoC（控制反转）** 和 **AOP（面向切面编程）** 解耦应用组件，让开发者专注于业务逻辑而非基础设施。
+
+> 一句话：Spring 是"Java 企业开发的基础设施"，就像盖楼的钢筋框架，业务代码是砖块，Spring 把它们组装在一起。
+
+---
+
+## 发展历程
+
+```mermaid
+timeline
+    title Spring 发展历程
+    2003 : Spring 1.0
+         : Rod Johnson 发布
+         : 解决 EJB 过重问题
+         : IoC 容器 + AOP
+    2006 : Spring 2.0
+         : XML 配置简化
+         : AspectJ 支持
+    2009 : Spring 3.0
+         : Java 5+ 注解驱动
+         : @Configuration
+         : REST 支持
+    2013 : Spring 4.0
+         : Java 8 支持
+         : WebSocket
+         : Spring Boot 1.0 发布
+    2017 : Spring 5.0
+         : 响应式编程 WebFlux
+         : Kotlin 支持
+         : Spring Boot 2.0
+    2022 : Spring 6.0
+         : 要求 Java 17+
+         : GraalVM 原生镜像
+         : Spring Boot 3.0
+    2024 : Spring Boot 3.3+
+         : 虚拟线程支持
+         : AOT 编译优化
+```
+
+### 关键版本节点
+
+| 版本 | 时间 | 核心变化 | 最低 Java 要求 |
+|------|------|---------|--------------|
+| Spring 3.x | 2009 | 注解驱动开发成熟，`@Configuration`、`@ComponentScan` | Java 5 |
+| Spring 4.x | 2013 | Java 8 支持，条件注解 `@Conditional` | Java 6 |
+| **Spring Boot 1.x** | **2014** | **自动配置革命，约定优于配置，内嵌 Tomcat** | Java 6 |
+| Spring 5.x | 2017 | 响应式编程 WebFlux，Reactor 模型 | Java 8 |
+| **Spring Boot 2.x** | **2018** | **Spring 5 + 默认 CGLIB + Actuator 增强** | Java 8 |
+| Spring 6.x | 2022 | Jakarta EE 9+，GraalVM 原生镜像支持 | **Java 17** |
+| **Spring Boot 3.x** | **2022** | **Spring 6 + 虚拟线程 + AOT 编译** | **Java 17** |
+
+> 📌 **当前主流**：企业新项目普遍使用 **Spring Boot 3.x + Java 17/21**；存量项目多为 Spring Boot 2.x + Java 8/11。
+
+---
+
+## Spring 框架版图
+
+```mermaid
+flowchart TB
+    subgraph 微服务 / 云原生层
+        SCloud["Spring Cloud\nEureka · Gateway · Feign · Sentinel · Config"]
+        SCloudAlibaba["Spring Cloud Alibaba\nNacos · Sentinel · Seata · RocketMQ"]
+    end
+
+    subgraph 应用开发层
+        SBoot["Spring Boot\n自动配置 · 起步依赖 · 内嵌容器 · Actuator"]
+        SSecurity["Spring Security\n认证 · 授权 · OAuth2 · JWT"]
+        SBatch["Spring Batch\n批处理 · Job · Step · ItemReader"]
+        SIntegration["Spring Integration\n企业集成模式 · 消息通道"]
+    end
+
+    subgraph 数据访问层
+        SData["Spring Data\nJPA · Redis · MongoDB · Elasticsearch"]
+        STx["Spring Transaction\n声明式事务 · 编程式事务"]
+    end
+
+    subgraph Web 层
+        SMVC["Spring MVC\nDispatcherServlet · REST · 文件上传"]
+        SWebFlux["Spring WebFlux\n响应式 · Reactor · 非阻塞 IO"]
+    end
+
+    subgraph 核心基础层
+        SCore["Spring Core\nIoC 容器 · DI · Bean 生命周期"]
+        SAOP["Spring AOP\n动态代理 · 切面 · 切点"]
+        SContext["Spring Context\nApplicationContext · 事件 · 国际化"]
+    end
+
+    SCloud & SCloudAlibaba --> SBoot
+    SBoot --> SSecurity & SBatch & SIntegration
+    SBoot --> SData & STx
+    SBoot --> SMVC & SWebFlux
+    SSecurity & SBatch & SData & SMVC & SWebFlux --> SCore & SAOP & SContext
+```
+
+### 各模块定位速查
+
+| 模块 | 定位 | 典型使用场景 |
+|------|------|------------|
+| **Spring Core** | IoC 容器，所有模块的基础 | Bean 管理、依赖注入 |
+| **Spring AOP** | 面向切面，基于动态代理 | 日志、事务、权限切面 |
+| **Spring MVC** | Web 层，处理 HTTP 请求 | RESTful API 开发 |
+| **Spring WebFlux** | 响应式 Web，非阻塞 IO | 高并发、流式数据处理 |
+| **Spring Boot** | 自动配置，简化开发 | 所有 Spring 项目的启动器 |
+| **Spring Data** | 数据访问统一抽象 | JPA、Redis、MongoDB 操作 |
+| **Spring Security** | 安全框架，认证与授权 | 登录、权限控制、OAuth2 |
+| **Spring Batch** | 批处理框架 | 大数据量定时任务、ETL |
+| **Spring Cloud** | 微服务基础设施 | 服务注册、网关、熔断 |
+| **Spring Cloud Alibaba** | 阿里巴巴微服务套件 | Nacos、Sentinel、Seata |
+
+---
+
 ## 为什么要学 Spring 原理？
 
 不理解原理会导致的**线上问题**：
