@@ -42,6 +42,11 @@ mindmap
         异常处理
             Checked vs Unchecked
             最佳实践
+        注解
+            元注解 @Target @Retention
+            自定义注解
+            编译期 APT / 运行期反射 / AOP
+            能力边界与常见坑
 ```
 
 ---

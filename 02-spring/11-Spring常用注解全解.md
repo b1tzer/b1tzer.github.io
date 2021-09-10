@@ -2,7 +2,7 @@
 
 ---
 
-[⬅️ 上一篇：Spring 扩展点详解](11-Spring扩展点详解.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 索引、事务与性能优化 ➡️](../03-mysql/00-mysql-overview.md)
+[⬅️ 上一篇：Spring 扩展点详解](10-Spring扩展点详解.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 索引、事务与性能优化 ➡️](../03-mysql/00-mysql-overview.md)
 
 <!-- nav-end -->
 
@@ -211,7 +211,7 @@ public class MyImportSelector implements ImportSelector {
 public class AppConfig { }
 
 // 方式3：导入 ImportBeanDefinitionRegistrar（动态注册）
-// 见 11-Spring扩展点详解.md
+// 见 10-Spring扩展点详解.md
 ```
 
 **`@Import` 是 Spring Boot 自动配置的核心**：`@EnableAutoConfiguration` → `@Import(AutoConfigurationImportSelector.class)` → 读取 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` → 批量导入自动配置类。
@@ -322,6 +322,6 @@ private DataSource readDataSource;
 
 ---
 
-[⬅️ 上一篇：Spring 扩展点详解](11-Spring扩展点详解.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 索引、事务与性能优化 ➡️](../03-mysql/00-mysql-overview.md)
+[⬅️ 上一篇：Spring 扩展点详解](10-Spring扩展点详解.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 索引、事务与性能优化 ➡️](../03-mysql/00-mysql-overview.md)
 
 <!-- nav-end -->

@@ -23,6 +23,7 @@
 | 10 | [新日期 API](01-java-basic/10-[Java8]新日期API.md) |
 | 11 | [接口默认方法与静态方法](01-java-basic/11-[Java8]接口默认方法与静态方法.md) |
 | 12 | [Java 9-17 关键新特性](01-java-basic/12-[Java9-17]新特性.md) |
+| 13 | [注解（Annotation）](01-java-basic/13-注解（Annotation）.md) |
 
 ### 🌱 2、Spring
 
@@ -30,17 +31,16 @@
 |---|------|
 | 00 | [Spring / Spring Boot 核心原理](02-spring/00-spring-core.md) |
 | 01 | [IoC 与 DI —— 控制反转与依赖注入](02-spring/01-IoC与DI.md) |
-| 02 | [Bean 生命周期](02-spring/02-Bean生命周期.md) |
+| 02 | [Bean 生命周期与循环依赖](02-spring/02-Bean生命周期与循环依赖.md) |
 | 03 | [AOP —— 面向切面编程](02-spring/03-AOP面向切面编程.md) |
 | 04 | [Spring MVC 请求处理流程](02-spring/04-SpringMVC请求处理流程.md) |
 | 05 | [Spring Boot 自动配置原理](02-spring/05-SpringBoot自动配置原理.md) |
 | 06 | [Spring 事务管理](02-spring/06-Spring事务管理.md) |
-| 07 | [循环依赖与三级缓存](02-spring/07-循环依赖与三级缓存.md) |
-| 08 | [Spring 实战应用型面试题](02-spring/08-Spring实战应用题.md) |
-| 09 | [Spring Security 认证与授权](02-spring/09-Spring-Security认证与授权.md) |
-| 10 | [Spring Cloud 核心组件](02-spring/10-Spring-Cloud核心组件.md) |
-| 11 | [Spring 扩展点详解](02-spring/11-Spring扩展点详解.md) |
-| 12 | [Spring 常用注解全解](02-spring/12-Spring常用注解全解.md) |
+| 07 | [Spring 实战应用型面试题](02-spring/07-Spring实战应用题.md) |
+| 08 | [Spring Security 认证与授权](02-spring/08-Spring-Security认证与授权.md) |
+| 09 | [Spring Cloud 核心组件](02-spring/09-Spring-Cloud核心组件.md) |
+| 10 | [Spring 扩展点详解](02-spring/10-Spring扩展点详解.md) |
+| 11 | [Spring 常用注解全解](02-spring/11-Spring常用注解全解.md) |
 
 ### 🗄️ 3、Mysql
 
@@ -142,12 +142,13 @@
 | # | 文章 |
 |---|------|
 | 00 | [企业内部问答系统 — 项目概览](10-project-experience/00-项目概览.md) |
-| 01 | [功能设计与数据模型](10-project-experience/01-功能设计与数据模型.md) |
-| 02 | [搜索系统设计](10-project-experience/02-搜索系统设计.md) |
-| 03 | [热门统计系统](10-project-experience/03-热门统计系统.md) |
-| 04 | [权限与角色设计](10-project-experience/04-权限与角色设计.md) |
-| 05 | [Kafka 异步消息处理](10-project-experience/05-Kafka异步消息处理.md) |
-| 06 | [踩坑与解决方案](10-project-experience/06-踩坑与解决方案.md) |
+| 01 | [问答核心功能设计](10-project-experience/01-问答核心功能设计.md) |
+| 02 | [全文搜索系统](10-project-experience/02-全文搜索系统.md) |
+| 03 | [计数与热门排行](10-project-experience/03-计数与热门排行.md) |
+| 04 | [消息通知系统](10-project-experience/04-消息通知系统.md) |
+| 05 | [异步架构设计](10-project-experience/05-异步架构设计.md) |
+| 06 | [权限与安全设计](10-project-experience/06-权限与安全设计.md) |
+| 07 | [性能优化与踩坑](10-project-experience/07-性能优化与踩坑.md) |
 
 ---
 
@@ -155,8 +156,8 @@
 
 ```
 Java Interview Guide
-├── 01-java-basic                       ☕（13 篇）
-├── 02-spring                           🌱（13 篇）
+├── 01-java-basic                       ☕（14 篇）
+├── 02-spring                           🌱（12 篇）
 ├── 03-mysql                            🗄️（9 篇）
 ├── 04-postgresql                       🐘（8 篇）
 ├── 05-redis                            🔴（7 篇）
@@ -164,7 +165,7 @@ Java Interview Guide
 ├── 07-elasticsearch                    🔍（9 篇）
 ├── 08-design-pattern                   🏗️（11 篇）
 ├── 09-software-engineering             ⚙️（8 篇）
-└── 10-project-experience               📄（7 篇）
+└── 10-project-experience               📄（8 篇）
 ```
 
-> 共 **93 篇**文章，每篇文章顶部和底部均有上一篇 / 下一篇导航，支持连续阅读。
+> 共 **94 篇**文章，每篇文章顶部和底部均有上一篇 / 下一篇导航，支持连续阅读。

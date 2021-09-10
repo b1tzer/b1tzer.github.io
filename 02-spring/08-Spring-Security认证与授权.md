@@ -2,7 +2,7 @@
 
 ---
 
-[⬅️ 上一篇：Spring 实战应用型面试题](08-Spring实战应用题.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Cloud 核心组件 ➡️](10-Spring-Cloud核心组件.md)
+[⬅️ 上一篇：Spring 实战应用型面试题](07-Spring实战应用题.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Cloud 核心组件 ➡️](09-Spring-Cloud核心组件.md)
 
 <!-- nav-end -->
 
@@ -247,6 +247,6 @@ public List<Order> getOrders() { ... }
 
 ---
 
-[⬅️ 上一篇：Spring 实战应用型面试题](08-Spring实战应用题.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Cloud 核心组件 ➡️](10-Spring-Cloud核心组件.md)
+[⬅️ 上一篇：Spring 实战应用型面试题](07-Spring实战应用题.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Cloud 核心组件 ➡️](09-Spring-Cloud核心组件.md)
 
 <!-- nav-end -->

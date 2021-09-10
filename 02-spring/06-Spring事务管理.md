@@ -2,7 +2,7 @@
 
 ---
 
-[⬅️ 上一篇：Spring Boot 自动配置原理](05-SpringBoot自动配置原理.md) | [🏠 返回目录](../README.md) | [下一篇：循环依赖与三级缓存 ➡️](07-循环依赖与三级缓存.md)
+[⬅️ 上一篇：Spring Boot 自动配置原理](05-SpringBoot自动配置原理.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 实战应用型面试题 ➡️](07-Spring实战应用题.md)
 
 <!-- nav-end -->
 
@@ -133,6 +133,6 @@ public class OrderService {
 
 ---
 
-[⬅️ 上一篇：Spring Boot 自动配置原理](05-SpringBoot自动配置原理.md) | [🏠 返回目录](../README.md) | [下一篇：循环依赖与三级缓存 ➡️](07-循环依赖与三级缓存.md)
+[⬅️ 上一篇：Spring Boot 自动配置原理](05-SpringBoot自动配置原理.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 实战应用型面试题 ➡️](07-Spring实战应用题.md)
 
 <!-- nav-end -->

@@ -2,7 +2,7 @@
 
 ---
 
-[⬅️ 上一篇：Spring Cloud 核心组件](10-Spring-Cloud核心组件.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 常用注解全解 ➡️](12-Spring常用注解全解.md)
+[⬅️ 上一篇：Spring Cloud 核心组件](09-Spring-Cloud核心组件.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 常用注解全解 ➡️](11-Spring常用注解全解.md)
 
 <!-- nav-end -->
 
@@ -317,6 +317,6 @@ Bean 就绪，放入单例池
 
 ---
 
-[⬅️ 上一篇：Spring Cloud 核心组件](10-Spring-Cloud核心组件.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 常用注解全解 ➡️](12-Spring常用注解全解.md)
+[⬅️ 上一篇：Spring Cloud 核心组件](09-Spring-Cloud核心组件.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 常用注解全解 ➡️](11-Spring常用注解全解.md)
 
 <!-- nav-end -->

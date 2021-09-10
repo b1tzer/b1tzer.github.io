@@ -2,7 +2,7 @@
 
 ---
 
-[⬅️ 上一篇：Spring / Spring Boot 核心原理](00-spring-core.md) | [🏠 返回目录](../README.md) | [下一篇：Bean 生命周期 ➡️](02-Bean生命周期.md)
+[⬅️ 上一篇：Spring / Spring Boot 核心原理](00-spring-core.md) | [🏠 返回目录](../README.md) | [下一篇：Bean 生命周期与循环依赖 ➡️](02-Bean生命周期与循环依赖.md)
 
 <!-- nav-end -->
 
@@ -116,9 +116,49 @@ public class OrderService {
 
 > **为什么 Spring 官方推荐构造器注入**：构造器注入的依赖是 `final` 的，对象一旦创建依赖就不可变，天然线程安全；同时循环依赖会在启动时报错而非运行时 NPE，更早暴露问题。
 
+**实际开发中配合 Lombok 使用**：手写构造器繁琐，实际项目中通常用 Lombok 的 `@RequiredArgsConstructor` 自动生成：
+
+```java
+// 传统写法：手动写构造器，依赖多了很啰嗦
+@Service
+public class OrderService {
+    private final UserRepository userRepo;
+    private final PaymentService paymentService;
+
+    public OrderService(UserRepository userRepo, PaymentService paymentService) {
+        this.userRepo = userRepo;
+        this.paymentService = paymentService;
+    }
+}
+
+// Lombok 写法：@RequiredArgsConstructor 自动为所有 final 字段生成构造器
+@Service
+@RequiredArgsConstructor  // Lombok 注解，自动生成包含所有 final 字段的构造器
+public class OrderService {
+    private final UserRepository userRepo;       // final 字段 = 必须注入
+    private final PaymentService paymentService; // 新增依赖只需加一行，无需改构造器
+}
+```
+
+> 💡 **原理**：`@RequiredArgsConstructor` 会在编译期为所有 `final` 字段和 `@NonNull` 字段生成构造器。Spring 检测到类只有一个构造器时，会自动将其作为注入点，**无需再加 `@Autowired`**。这是目前实际项目中最推荐的写法。
+
 ---
 
 ## 6. BeanFactory vs ApplicationContext
+
+**BeanFactory** 是 Spring IoC 容器的**最顶层接口**，定义了容器最基本的能力：根据名称/类型获取 Bean、判断 Bean 是否存在、判断是否单例等。它是整个容器体系的根。
+
+**ApplicationContext** 是 BeanFactory 的**子接口**，在它的基础上扩展了更多企业级功能。我们平时说的"Spring 容器"，实际上指的就是 ApplicationContext，而不是 BeanFactory。
+
+```
+BeanFactory（根接口）
+└── ApplicationContext（扩展接口）
+    ├── ClassPathXmlApplicationContext   // 从类路径加载 XML 配置
+    ├── AnnotationConfigApplicationContext // 从注解配置加载（Spring Boot 底层用这个）
+    └── WebApplicationContext            // Web 环境专用
+```
+
+> 类比：BeanFactory 是"毛坯房"，只有基本结构；ApplicationContext 是"精装房"，配备了国际化、事件广播、AOP 等完整设施。实际开发中你几乎不会直接用 BeanFactory。
 
 | 对比项 | BeanFactory | ApplicationContext |
 |--------|------------|-------------------|
@@ -149,6 +189,6 @@ public class OrderService {
 
 ---
 
-[⬅️ 上一篇：Spring / Spring Boot 核心原理](00-spring-core.md) | [🏠 返回目录](../README.md) | [下一篇：Bean 生命周期 ➡️](02-Bean生命周期.md)
+[⬅️ 上一篇：Spring / Spring Boot 核心原理](00-spring-core.md) | [🏠 返回目录](../README.md) | [下一篇：Bean 生命周期与循环依赖 ➡️](02-Bean生命周期与循环依赖.md)
 
 <!-- nav-end -->

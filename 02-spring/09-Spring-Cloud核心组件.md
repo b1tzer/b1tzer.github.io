@@ -2,7 +2,7 @@
 
 ---
 
-[⬅️ 上一篇：Spring Security 认证与授权](09-Spring-Security认证与授权.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 扩展点详解 ➡️](11-Spring扩展点详解.md)
+[⬅️ 上一篇：Spring Security 认证与授权](08-Spring-Security认证与授权.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 扩展点详解 ➡️](10-Spring扩展点详解.md)
 
 <!-- nav-end -->
 
@@ -295,6 +295,6 @@ public UserVO getUserByIdBlock(Long id, BlockException e) {
 
 ---
 
-[⬅️ 上一篇：Spring Security 认证与授权](09-Spring-Security认证与授权.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 扩展点详解 ➡️](11-Spring扩展点详解.md)
+[⬅️ 上一篇：Spring Security 认证与授权](08-Spring-Security认证与授权.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 扩展点详解 ➡️](10-Spring扩展点详解.md)
 
 <!-- nav-end -->
