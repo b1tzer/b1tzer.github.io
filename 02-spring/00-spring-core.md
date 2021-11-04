@@ -2,7 +2,7 @@
 
 ---
 
-[⬅️ 上一篇：注解（Annotation）](../01-java-basic/13-注解（Annotation）.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI —— 控制反转与依赖注入 ➡️](01-IoC与DI.md)
+[⬅️ 上一篇：数据结构精讲（Java & Spring 生态视角）](../01-java-basic/14-数据结构精讲.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI —— 控制反转与依赖注入 ➡️](01-IoC与DI.md)
 
 <!-- nav-end -->
 
@@ -337,6 +337,6 @@ flowchart TB
 
 ---
 
-[⬅️ 上一篇：注解（Annotation）](../01-java-basic/13-注解（Annotation）.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI —— 控制反转与依赖注入 ➡️](01-IoC与DI.md)
+[⬅️ 上一篇：数据结构精讲（Java & Spring 生态视角）](../01-java-basic/14-数据结构精讲.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI —— 控制反转与依赖注入 ➡️](01-IoC与DI.md)
 
 <!-- nav-end -->

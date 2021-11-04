@@ -2,7 +2,7 @@
 
 ---
 
-[⬅️ 上一篇：Spring 扩展点详解](10-Spring扩展点详解.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 索引、事务与性能优化 ➡️](../03-mysql/00-mysql-overview.md)
+[⬅️ 上一篇：Spring 扩展点详解](10-Spring扩展点详解.md) | [🏠 返回目录](../README.md) | [下一篇：Feign 声明式 HTTP 客户端 ➡️](12-Feign声明式HTTP客户端.md)
 
 <!-- nav-end -->
 
@@ -322,6 +322,6 @@ private DataSource readDataSource;
 
 ---
 
-[⬅️ 上一篇：Spring 扩展点详解](10-Spring扩展点详解.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 索引、事务与性能优化 ➡️](../03-mysql/00-mysql-overview.md)
+[⬅️ 上一篇：Spring 扩展点详解](10-Spring扩展点详解.md) | [🏠 返回目录](../README.md) | [下一篇：Feign 声明式 HTTP 客户端 ➡️](12-Feign声明式HTTP客户端.md)
 
 <!-- nav-end -->

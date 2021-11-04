@@ -2,7 +2,7 @@
 
 ---
 
-[⬅️ 上一篇：Java 9-17 关键新特性](12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：Spring / Spring Boot 核心原理 ➡️](../02-spring/00-spring-core.md)
+[⬅️ 上一篇：Java 9-17 关键新特性](12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：数据结构精讲（Java & Spring 生态视角） ➡️](14-数据结构精讲.md)
 
 <!-- nav-end -->
 
@@ -485,6 +485,6 @@ self.saveOrder();  // 通过代理调用
 
 ---
 
-[⬅️ 上一篇：Java 9-17 关键新特性](12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：Spring / Spring Boot 核心原理 ➡️](../02-spring/00-spring-core.md)
+[⬅️ 上一篇：Java 9-17 关键新特性](12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：数据结构精讲（Java & Spring 生态视角） ➡️](14-数据结构精讲.md)
 
 <!-- nav-end -->
