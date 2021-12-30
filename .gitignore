@@ -58,6 +58,11 @@ __pycache__/
 .env
 .venv/
 
+# ===== Hexo 博客 =====
+public/
+.deploy_git/
+db.json
+
 # ===== 项目内部 =====
 # CodeBuddy 计划文件（不纳入版本管理）
 .codebuddy/

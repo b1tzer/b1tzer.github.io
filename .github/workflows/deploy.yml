@@ -1,0 +1,58 @@
+name: 🚀 Deploy Hexo Blog to GitHub Pages
+
+on:
+  push:
+    branches:
+      - blog   # 仅在 blog 分支推送时触发
+  workflow_dispatch:  # 支持手动触发
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 检出代码（包含完整 git 历史，用于获取文章提交时间）
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 获取完整历史，sync-posts.js 用 git log 获取文章日期
+
+      # 2. 设置 Node.js 环境（版本从 .nvmrc 读取）
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      # 3. 安装依赖
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. 同步文章内容（01-09 目录 → source/_posts/）
+      - name: Sync posts
+        run: npm run sync
+
+      # 5. 生成静态文件
+      - name: Generate static files
+        run: npx hexo generate
+
+      # 6. 将 public/ 推送到 b1tzer/b1tzer.github.io 仓库
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          # 使用 Personal Access Token（在仓库 Secrets 中配置 GH_TOKEN）
+          personal_token: ${{ secrets.GH_TOKEN }}
+          # 目标仓库
+          external_repository: b1tzer/b1tzer.github.io
+          # 目标分支
+          publish_branch: main
+          # 要发布的目录
+          publish_dir: ./public
+          # 提交信息
+          commit_message: "deploy: ${{ github.event.head_commit.message }}"
+          # 强制推送（覆盖目标仓库内容）
+          force_orphan: true
+          # 用户信息
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
