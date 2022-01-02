@@ -62,6 +62,8 @@ __pycache__/
 public/
 .deploy_git/
 db.json
+# source/_posts 由 sync-posts.js 自动生成，不纳入版本管理
+source/_posts/
 
 # ===== 项目内部 =====
 # CodeBuddy 计划文件（不纳入版本管理）
