@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "sync": "node scripts/sync-posts.js",
+    "sync": "node tools/sync-posts.js",
     "build": "hexo generate",
     "clean": "hexo clean",
     "deploy": "hexo deploy",

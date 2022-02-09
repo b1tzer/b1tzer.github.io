@@ -5,8 +5,8 @@ gen_nav.py — 自动为所有 Markdown 文章生成「上一篇 | 返回目录 
 并同步更新 README.md 目录
 
 用法：
-    python3 scripts/gen_nav.py          # 在项目根目录执行
-    python3 scripts/gen_nav.py --check  # 仅检查，不写入（CI 用）
+python3 tools/gen_nav.py          # 在项目根目录执行
+python3 tools/gen_nav.py --check  # 仅检查，不写入（CI 用）
 
 规则：
     - 章节目录：以 数字- 开头的一级子目录（如 01-java-basic）
@@ -21,7 +21,7 @@ import glob
 
 # ── 配置 ──────────────────────────────────────────────────────────────────────
 
-# 项目根目录（脚本相对位置：scripts/gen_nav.py）
+# 项目根目录（脚本相对位置：tools/gen_nav.py）
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 章节目录匹配规则（以数字开头的一级目录）
@@ -261,7 +261,7 @@ def main():
     print()
     if check_only:
         if changed > 0 or readme_changed:
-            print(f"❌ 有 {changed} 篇文章导航 + README 需要更新，请先运行 python3 scripts/gen_nav.py")
+print(f"❌ 有 {changed} 篇文章导航 + README 需要更新，请先运行 python3 tools/gen_nav.py")
             sys.exit(1)
         else:
             print("✅ 所有导航均为最新，无需更新")
