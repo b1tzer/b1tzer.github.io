@@ -1,0 +1,34 @@
+<script>
+// 修复 NexT 主题 Mermaid 渲染：支持 <pre class="mermaid"> 结构
+// NexT 内置脚本只处理 pre > .mermaid，此脚本补充处理 pre.mermaid
+(function() {
+  function fixMermaidPre() {
+    const preMermaidElements = document.querySelectorAll('pre.mermaid');
+    if (!preMermaidElements.length) return;
+
+    preMermaidElements.forEach(function(pre) {
+      // 将 <pre class="mermaid"> 替换为 <div class="mermaid">
+      const div = document.createElement('div');
+      div.className = 'mermaid';
+      div.textContent = pre.textContent;
+      pre.parentNode.replaceChild(div, pre);
+    });
+
+    // 如果 mermaid 已加载，直接运行
+    if (window.mermaid) {
+      mermaid.run();
+    }
+  }
+
+  // 在 page:loaded 事件后执行（NexT 内置脚本也监听此事件，稍后执行）
+  document.addEventListener('page:loaded', function() {
+    // 延迟执行，确保在 NexT 内置 Mermaid 脚本之后运行
+    setTimeout(fixMermaidPre, 100);
+  });
+
+  // 兜底：DOMContentLoaded 时也执行一次
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(fixMermaidPre, 500);
+  });
+})();
+</script>
