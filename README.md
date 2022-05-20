@@ -140,7 +140,7 @@
 | 06 | [CI/CD 持续集成与持续交付](09-software-engineering/06-CICD持续集成与交付.md) |
 | 07 | [系统设计方法论](09-software-engineering/07-系统设计方法论.md) |
 
-### 📄 10、Project Experience
+### 💼 10、Project Experience
 
 | # | 文章 |
 |---|------|
@@ -168,7 +168,7 @@ Java Interview Guide
 ├── 07-elasticsearch                    🔍（9 篇）
 ├── 08-design-pattern                   🏗️（11 篇）
 ├── 09-software-engineering             ⚙️（8 篇）
-└── 10-project-experience               📄（8 篇）
+└── 10-project-experience               💼（8 篇）
 ```
 
-> 共 **97 篇**文章，每篇文章顶部和底部均有上一篇 / 下一篇导航，支持连续阅读。
+> 共 **97 篇**文章，持续更新中。

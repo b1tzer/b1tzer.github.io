@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_nav.py — 自动为所有 Markdown 文章生成「上一篇 | 返回目录 | 下一篇」导航
-并同步更新 README.md 目录
+gen_nav.py — 将项目 Markdown 文章同步到 docs/ 目录，并自动更新 mkdocs.yml 的 nav 配置
 
 用法：
 python3 tools/gen_nav.py          # 在项目根目录执行
@@ -11,21 +10,40 @@ python3 tools/gen_nav.py --check  # 仅检查，不写入（CI 用）
 规则：
     - 章节目录：以 数字- 开头的一级子目录（如 01-java-basic）
     - 文章顺序：按文件名字典序排序（文件名前缀数字保证顺序）
-    - 导航块用 <!-- nav-start --> ... <!-- nav-end --> 包裹，可幂等重复执行
+    - 将 Markdown 文件复制到 docs/<章节目录>/ 下
+    - 自动更新 mkdocs.yml 中的 nav 配置
 """
 
 import os
 import re
 import sys
-import glob
+import shutil
+import yaml
 
 # ── 配置 ──────────────────────────────────────────────────────────────────────
 
 # 项目根目录（脚本相对位置：tools/gen_nav.py）
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# docs 目录
+DOCS_DIR = os.path.join(BASE, "docs")
+
+# mkdocs.yml 路径
+MKDOCS_YML = os.path.join(BASE, "mkdocs.yml")
+
 # 章节目录匹配规则（以数字开头的一级目录）
 CHAPTER_PATTERN = re.compile(r"^\d+-.+$")
+
+# ── 排除配置 ──────────────────────────────────────────────────────────────────
+# 排除整个章节目录（填写目录名，如 "10-project-experience"）
+EXCLUDE_DIRS: list[str] = [
+    "10-project-experience",
+]
+
+# 排除具体文章（填写 "目录名/文件名"，如 "01-java-basic/07-[Java8]Lambda表达式.md"）
+EXCLUDE_FILES: list[str] = [
+    # "01-java-basic/07-[Java8]Lambda表达式.md",
+]
 
 # 章节 emoji 映射（按目录名前缀匹配，找不到则用默认）
 CHAPTER_EMOJI = {
@@ -38,11 +56,9 @@ CHAPTER_EMOJI = {
     "07": "🔍",
     "08": "🏗️",
     "09": "⚙️",
+    "10": "💼",
 }
 DEFAULT_EMOJI = "📄"
-
-NAV_START = "<!-- nav-start -->"
-NAV_END   = "<!-- nav-end -->"
 
 # ── 工具函数 ──────────────────────────────────────────────────────────────────
 
@@ -62,7 +78,6 @@ def get_article_title(file_path: str) -> str:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
-                # 跳过导航块内的内容
                 stripped = line.strip()
                 if stripped.startswith("# "):
                     return stripped[2:].strip()
@@ -74,55 +89,24 @@ def get_article_title(file_path: str) -> str:
     return name
 
 
-def strip_nav(content: str) -> str:
-    """移除文件中已有的导航块（幂等）"""
-    pattern = re.escape(NAV_START) + r".*?" + re.escape(NAV_END)
-    content = re.sub(r"\n*" + pattern + r"\n*", "\n", content, flags=re.DOTALL)
-    return content.strip()
-
-
-def make_nav_block(prev_art, next_art, cur_dir: str) -> str:
-    """生成一个导航块字符串"""
-    parts = []
-
-    if prev_art:
-        rel = _rel_path(cur_dir, prev_art["dir"], prev_art["file"])
-        parts.append(f"[⬅️ 上一篇：{prev_art['title']}]({rel})")
-    else:
-        parts.append("⬅️ 上一篇：无")
-
-    parts.append("[🏠 返回目录](../README.md)")
-
-    if next_art:
-        rel = _rel_path(cur_dir, next_art["dir"], next_art["file"])
-        parts.append(f"[下一篇：{next_art['title']} ➡️]({rel})")
-    else:
-        parts.append("下一篇：无 ➡️")
-
-    nav_line = " | ".join(parts)
-    return f"{NAV_START}\n\n---\n\n{nav_line}\n\n{NAV_END}"
-
-
-def _rel_path(cur_dir: str, target_dir: str, target_file: str) -> str:
-    """计算相对路径"""
-    if cur_dir == target_dir:
-        return target_file
-    return f"../{target_dir}/{target_file}"
-
-
 # ── 核心逻辑 ──────────────────────────────────────────────────────────────────
 
 def collect_articles():
     """
     扫描项目目录，按章节目录名排序，章节内按文件名排序，
-    返回有序的文章列表。
+    返回有序的文章列表和章节元数据。
     """
     chapters = []
     for entry in sorted(os.listdir(BASE)):
         full = os.path.join(BASE, entry)
         if os.path.isdir(full) and CHAPTER_PATTERN.match(entry):
+            # 排除整个目录
+            if entry in EXCLUDE_DIRS:
+                print(f"  [排除目录] {entry}")
+                continue
             md_files = sorted(
-                f for f in os.listdir(full) if f.endswith(".md")
+                f for f in os.listdir(full)
+                if f.endswith(".md") and f"{entry}/{f}" not in EXCLUDE_FILES
             )
             if md_files:
                 chapters.append({"dir": entry, "files": md_files})
@@ -141,42 +125,73 @@ def collect_articles():
     return all_articles, chapters
 
 
-def update_article_nav(articles: list, check_only: bool = False) -> int:
-    """为每篇文章写入/更新导航块，返回修改文件数"""
+def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> int:
+    """将 Markdown 文件同步到 docs/ 目录，返回变更文件数"""
     changed = 0
-    for i, art in enumerate(articles):
-        prev_art = articles[i - 1] if i > 0 else None
-        next_art = articles[i + 1] if i < len(articles) - 1 else None
 
-        nav_block = make_nav_block(prev_art, next_art, art["dir"])
+    # 确保 docs 目录存在
+    if not check_only:
+        os.makedirs(DOCS_DIR, exist_ok=True)
 
-        with open(art["path"], "r", encoding="utf-8") as f:
-            original = f.read()
+    # 同步每个章节目录
+    for ch in chapters_meta:
+        ch_dir = ch["dir"]
+        dest_dir = os.path.join(DOCS_DIR, ch_dir)
+        if not check_only:
+            os.makedirs(dest_dir, exist_ok=True)
 
-        body = strip_nav(original)
-        new_content = nav_block + "\n\n" + body + "\n\n" + nav_block + "\n"
+        for fname in ch["files"]:
+            src = os.path.join(BASE, ch_dir, fname)
+            dst = os.path.join(dest_dir, fname)
 
-        if new_content != original:
+            # 读取源文件内容
+            with open(src, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            # 将旧的 ../README.md 链接替换为 MkDocs 的 ../index.md
+            content = content.replace("../README.md", "../index.md")
+
+            # 检查目标文件是否需要更新
+            if os.path.exists(dst):
+                with open(dst, "r", encoding="utf-8") as f:
+                    old_content = f.read()
+                if old_content == content:
+                    continue
+
             changed += 1
             if not check_only:
-                with open(art["path"], "w", encoding="utf-8") as f:
-                    f.write(new_content)
-                print(f"  [更新] {art['dir']}/{art['file']}")
+                with open(dst, "w", encoding="utf-8") as f:
+                    f.write(content)
+                print(f"  [同步] {ch_dir}/{fname}")
             else:
-                print(f"  [需更新] {art['dir']}/{art['file']}")
+                print(f"  [需同步] {ch_dir}/{fname}")
+
+    # 同步 README.md 为 docs/index.md
+    readme_src = os.path.join(BASE, "README.md")
+    readme_dst = os.path.join(DOCS_DIR, "index.md")
+    if os.path.exists(readme_src):
+        with open(readme_src, "r", encoding="utf-8") as f:
+            readme_content = f.read()
+        if not os.path.exists(readme_dst) or open(readme_dst).read() != readme_content:
+            changed += 1
+            if not check_only:
+                with open(readme_dst, "w", encoding="utf-8") as f:
+                    f.write(readme_content)
+                print(f"  [同步] README.md → docs/index.md")
 
     return changed
 
 
-def update_readme(articles: list, chapters_meta: list, check_only: bool = False) -> bool:
-    """重新生成 README.md 的目录部分"""
-    readme_path = os.path.join(BASE, "README.md")
+def update_mkdocs_nav(articles: list, chapters_meta: list, check_only: bool = False) -> bool:
+    """更新 mkdocs.yml 中的 nav 配置"""
 
-    # 构建目录内容
-    toc_lines = []
-    chapter_map = {ch["dir"]: ch["files"] for ch in chapters_meta}
+    # 读取现有 mkdocs.yml（保留注释用原始文本处理）
+    with open(MKDOCS_YML, "r", encoding="utf-8") as f:
+        content = f.read()
 
-    # 按章节分组
+    # 构建 nav 结构
+    nav = [{"首页": "index.md"}]
+
     chapter_articles = {}
     for art in articles:
         chapter_articles.setdefault(art["dir"], []).append(art)
@@ -185,7 +200,55 @@ def update_readme(articles: list, chapters_meta: list, check_only: bool = False)
         arts = chapter_articles[ch_dir]
         emoji = get_emoji(ch_dir)
         ch_title = get_chapter_title(ch_dir)
-        # 章节序号
+        num = ch_dir.split("-")[0].lstrip("0") or "0"
+        section_title = f"{emoji} {num}、{ch_title}"
+
+        section_items = []
+        for art in arts:
+            doc_path = f"{ch_dir}/{art['file']}"
+            section_items.append({art["title"]: doc_path})
+
+        nav.append({section_title: section_items})
+
+    # 生成 nav YAML 文本
+    nav_yaml = yaml.dump({"nav": nav}, allow_unicode=True, default_flow_style=False, sort_keys=False)
+    nav_text = nav_yaml  # 只取 nav 部分
+
+    # 用正则替换 mkdocs.yml 中的 nav 块（从 "nav:" 到文件末尾或下一个顶级 key）
+    nav_pattern = re.compile(r'^nav:.*?(?=^\w|\Z)', re.MULTILINE | re.DOTALL)
+
+    if nav_pattern.search(content):
+        new_content = nav_pattern.sub(nav_text, content)
+    else:
+        # 如果没有 nav 块，追加到末尾
+        new_content = content.rstrip() + "\n\n" + nav_text
+
+    if new_content == content:
+        return False
+
+    if not check_only:
+        with open(MKDOCS_YML, "w", encoding="utf-8") as f:
+            f.write(new_content)
+        print(f"  [更新] mkdocs.yml nav 配置")
+    else:
+        print(f"  [需更新] mkdocs.yml nav 配置")
+    return True
+
+
+def update_readme(articles: list, chapters_meta: list, check_only: bool = False) -> bool:
+    """重新生成 README.md 的目录部分"""
+    readme_path = os.path.join(BASE, "README.md")
+
+    # 构建目录内容
+    toc_lines = []
+    chapter_articles = {}
+    for art in articles:
+        chapter_articles.setdefault(art["dir"], []).append(art)
+
+    for ch_dir in sorted(chapter_articles.keys()):
+        arts = chapter_articles[ch_dir]
+        emoji = get_emoji(ch_dir)
+        ch_title = get_chapter_title(ch_dir)
         num = ch_dir.split("-")[0].lstrip("0") or "0"
         toc_lines.append(f"\n### {emoji} {num}、{ch_title}\n")
         toc_lines.append("| # | 文章 |")
@@ -225,7 +288,7 @@ Java Interview Guide
 {tree_content}
 ```
 
-> 共 **{total} 篇**文章，每篇文章顶部和底部均有上一篇 / 下一篇导航，支持连续阅读。
+> 共 **{total} 篇**文章，持续更新中。
 """
 
     if os.path.exists(readme_path):
@@ -252,24 +315,29 @@ def main():
     articles, chapters_meta = collect_articles()
     print(f"   共发现 {len(articles)} 篇文章，{len(chapters_meta)} 个章节\n")
 
-    print("📝 更新文章导航...")
-    changed = update_article_nav(articles, check_only)
+    print("📁 同步文章到 docs/ 目录...")
+    sync_changed = sync_docs(articles, chapters_meta, check_only)
+
+    print("\n🧭 更新 mkdocs.yml 导航...")
+    nav_changed = update_mkdocs_nav(articles, chapters_meta, check_only)
 
     print("\n📖 更新 README 目录...")
     readme_changed = update_readme(articles, chapters_meta, check_only)
 
     print()
     if check_only:
-        if changed > 0 or readme_changed:
-print(f"❌ 有 {changed} 篇文章导航 + README 需要更新，请先运行 python3 tools/gen_nav.py")
+        if sync_changed > 0 or nav_changed or readme_changed:
+            print(f"❌ 有内容需要更新，请先运行 python3 tools/gen_nav.py")
             sys.exit(1)
         else:
-            print("✅ 所有导航均为最新，无需更新")
+            print("✅ 所有内容均为最新，无需更新")
     else:
-        if changed == 0 and not readme_changed:
-            print("✅ 所有导航均为最新，无需更新")
+        if sync_changed == 0 and not nav_changed and not readme_changed:
+            print("✅ 所有内容均为最新，无需更新")
         else:
-            print(f"✅ 完成！更新了 {changed} 篇文章导航" + ("，并更新了 README" if readme_changed else ""))
+            print(f"✅ 完成！同步了 {sync_changed} 个文件" +
+                  ("，更新了 mkdocs.yml 导航" if nav_changed else "") +
+                  ("，更新了 README" if readme_changed else ""))
 
 
 if __name__ == "__main__":

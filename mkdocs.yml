@@ -1,0 +1,192 @@
+site_name: Java Interview Guide
+site_description: 一份系统化的 Java 后端面试知识库，覆盖核心基础、框架原理、数据库、缓存、消息队列、搜索引擎、设计模式与软件工程
+site_author: b1tzer
+site_url: https://b1tzer.github.io/
+
+repo_name: java-interview
+repo_url: https://github.com/b1tzer/java-interview
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 切换到深色模式
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 切换到浅色模式
+  font:
+    text: Noto Sans SC
+    code: JetBrains Mono
+  features:
+    - navigation.tabs          # 顶部标签导航
+    - navigation.tabs.sticky   # 标签固定
+    - navigation.sections      # 展开章节
+    - navigation.expand        # 默认展开
+    - navigation.top           # 返回顶部按钮
+    - navigation.indexes       # 章节索引页
+    - search.highlight         # 搜索高亮
+    - search.suggest           # 搜索建议
+    - content.code.copy        # 代码复制按钮
+    - content.code.annotate    # 代码注释
+    - toc.follow               # 目录跟随滚动
+
+plugins:
+  - search:
+      lang: zh
+  - minify:
+      minify_html: true
+
+markdown_extensions:
+  - admonition                 # 提示框（note/warning/tip 等）
+  - pymdownx.details           # 折叠块
+  - pymdownx.superfences:      # 代码围栏（支持 mermaid）
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:        # 代码高亮
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite      # 行内代码高亮
+  - pymdownx.tabbed:           # 标签页
+      alternate_style: true
+  - pymdownx.tasklist:         # 任务列表
+      custom_checkbox: true
+  - pymdownx.emoji:            # emoji 支持
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables                     # 表格
+  - toc:                       # 目录
+      permalink: true
+      title: 本页目录
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/b1tzer
+
+extra_javascript:
+  - https://unpkg.com/mermaid@10/dist/mermaid.min.js
+
+nav:
+- 首页: index.md
+- ☕ 1、Java Basic:
+  - Java 基础知识与 JVM 原理: 01-java-basic/00-Java基础与JVM概览.md
+  - 面向对象（OOP）: 01-java-basic/01-面向对象.md
+  - 集合框架（Collections Framework）: 01-java-basic/02-集合框架.md
+  - 并发编程（Concurrent Programming）: 01-java-basic/03-并发编程.md
+  - JVM 内存结构与 GC: 01-java-basic/04-JVM内存结构与GC.md
+  - 异常处理（Exception Handling）: 01-java-basic/05-异常处理.md
+  - AQS 与 CAS: 01-java-basic/06-AQS与CAS.md
+  - Lambda 表达式: 01-java-basic/07-[Java8]Lambda表达式.md
+  - Stream API: 01-java-basic/08-[Java8]Stream流式编程.md
+  - Optional: 01-java-basic/09-[Java8]Optional空值处理.md
+  - 新日期 API: 01-java-basic/10-[Java8]新日期API.md
+  - 接口默认方法与静态方法: 01-java-basic/11-[Java8]接口默认方法与静态方法.md
+  - Java 9-17 关键新特性: 01-java-basic/12-[Java9-17]新特性.md
+  - 注解（Annotation）: 01-java-basic/13-注解（Annotation）.md
+  - 数据结构精讲（Java & Spring 生态视角）: 01-java-basic/14-数据结构精讲.md
+- 🌱 2、Spring:
+  - Spring / Spring Boot 核心原理: 02-spring/00-spring-core.md
+  - IoC 与 DI —— 控制反转与依赖注入: 02-spring/01-IoC与DI.md
+  - Bean 生命周期与循环依赖: 02-spring/02-Bean生命周期与循环依赖.md
+  - AOP —— 面向切面编程: 02-spring/03-AOP面向切面编程.md
+  - Spring MVC 请求处理流程: 02-spring/04-SpringMVC请求处理流程.md
+  - Spring Boot 自动配置原理: 02-spring/05-SpringBoot自动配置原理.md
+  - Spring 事务管理: 02-spring/06-Spring事务管理.md
+  - Spring 实战应用型面试题: 02-spring/07-Spring实战应用题.md
+  - Spring Security 认证与授权: 02-spring/08-Spring-Security认证与授权.md
+  - Spring Cloud 核心组件: 02-spring/09-Spring-Cloud核心组件.md
+  - Spring 扩展点详解: 02-spring/10-Spring扩展点详解.md
+  - Spring 常用注解全解: 02-spring/11-Spring常用注解全解.md
+  - Feign 声明式 HTTP 客户端: 02-spring/12-Feign声明式HTTP客户端.md
+  - gRPC 详解: 02-spring/13-gRPC详解.md
+- 🗄️ 3、Mysql:
+  - MySQL 索引、事务与性能优化: 03-mysql/00-mysql-overview.md
+  - 索引原理与 B+ 树: 03-mysql/01-索引原理与B+树.md
+  - 聚簇索引与覆盖索引: 03-mysql/02-聚簇索引与覆盖索引.md
+  - 联合索引与索引失效: 03-mysql/03-联合索引与索引失效.md
+  - 事务与 ACID: 03-mysql/04-事务与ACID.md
+  - MVCC 与隔离级别: 03-mysql/05-MVCC与隔离级别.md
+  - 锁机制与死锁: 03-mysql/06-锁机制与死锁.md
+  - EXPLAIN 与性能优化: 03-mysql/07-EXPLAIN与性能优化.md
+  - MySQL 实战问题与避坑指南: 03-mysql/08-实战问题与避坑指南.md
+- 🐘 4、Postgresql:
+  - PostgreSQL 核心特性与选型: 04-postgresql/00-postgresql-overview.md
+  - PostgreSQL vs MySQL 全面对比: 04-postgresql/01-PG与MySQL对比.md
+  - MVCC 原理与表膨胀: 04-postgresql/02-MVCC原理与表膨胀.md
+  - 索引类型详解: 04-postgresql/03-索引类型详解.md
+  - 窗口函数: 04-postgresql/04-窗口函数.md
+  - CTE 与递归查询: 04-postgresql/05-CTE与递归查询.md
+  - 物化视图: 04-postgresql/06-物化视图.md
+  - VACUUM 机制: 04-postgresql/07-VACUUM机制.md
+- 🔴 5、Redis:
+  - Redis 缓存设计与高可用: 05-redis/00-redis-overview.md
+  - Redis 数据结构与底层编码: 05-redis/01-数据结构与底层编码.md
+  - Redis 持久化机制：RDB 与 AOF: 05-redis/02-持久化机制RDB与AOF.md
+  - Redis 缓存三大问题：穿透、击穿、雪崩: 05-redis/03-缓存三大问题.md
+  - Redis 高可用架构：主从、哨兵、集群: 05-redis/04-高可用架构.md
+  - Redis 分布式锁: 05-redis/05-分布式锁.md
+  - Redis 应用型问题: 05-redis/06-应用型问题.md
+- 📨 6、Kafka:
+  - Kafka 基础概念: 06-kafka/01-基础概念.md
+  - Kafka 整体架构: 06-kafka/02-整体架构.md
+  - Kafka 消息可靠性：如何保证消息不丢失？: 06-kafka/03-消息可靠性.md
+  - Kafka 消费者组与 Rebalance: 06-kafka/04-消费者组与Rebalance.md
+  - Kafka 高吞吐原理: 06-kafka/05-高吞吐原理.md
+  - 消息队列选型对比: 06-kafka/06-消息队列选型.md
+  - Kafka 工作中常见问题与解决: 06-kafka/07-常见问题与解决.md
+  - Kafka 面试高频问题（实战详解）: 06-kafka/08-面试高频问题.md
+- 🔍 7、Elasticsearch:
+  - Elasticsearch 搜索引擎核心复习: 07-elasticsearch/00-elasticsearch概览.md
+  - ES 引入：它解决了什么问题？: 07-elasticsearch/01-引入与背景.md
+  - ES 核心概念：与关系型数据库的对应关系: 07-elasticsearch/02-核心概念.md
+  - ES 倒排索引：为何擅长全文检索: 07-elasticsearch/03-倒排索引.md
+  - ES Mapping 设计：字段类型决定查询能力: 07-elasticsearch/04-Mapping映射设计.md
+  - ES 查询 DSL：核心查询类型: 07-elasticsearch/05-查询语法DSL.md
+  - ES 集群架构与分片机制: 07-elasticsearch/06-集群架构与分片机制.md
+  - ES 性能优化: 07-elasticsearch/07-性能优化.md
+  - ES 数据一致性：MySQL 与 ES 同步方案: 07-elasticsearch/08-数据一致性.md
+- 🏗️ 8、Design Pattern:
+  - 设计模式总览: 08-design-pattern/00-设计模式总览.md
+  - 单例模式（Singleton Pattern）: 08-design-pattern/01-单例模式.md
+  - 工厂方法模式 & 抽象工厂模式: 08-design-pattern/02-工厂方法与抽象工厂模式.md
+  - 建造者模式（Builder Pattern）: 08-design-pattern/03-建造者模式.md
+  - 代理模式（Proxy Pattern）: 08-design-pattern/04-代理模式.md
+  - 装饰器模式（Decorator Pattern）: 08-design-pattern/05-装饰器模式.md
+  - 适配器模式（Adapter Pattern）: 08-design-pattern/06-适配器模式.md
+  - 策略模式（Strategy Pattern）: 08-design-pattern/07-策略模式.md
+  - 观察者模式（Observer Pattern）: 08-design-pattern/08-观察者模式.md
+  - 模板方法模式（Template Method Pattern）: 08-design-pattern/09-模板方法模式.md
+  - 责任链模式（Chain of Responsibility Pattern）: 08-design-pattern/10-责任链模式.md
+- ⚙️ 9、Software Engineering:
+  - 软件工程核心知识复习: 09-software-engineering/00-软件工程概览.md
+  - SOLID 原则: 09-software-engineering/01-SOLID原则.md
+  - 软件架构演进: 09-software-engineering/02-软件架构演进.md
+  - DDD 领域驱动设计: 09-software-engineering/03-DDD领域驱动设计.md
+  - CAP 理论与 BASE 理论: 09-software-engineering/04-CAP理论与BASE理论.md
+  - 代码质量与重构: 09-software-engineering/05-代码质量与重构.md
+  - CI/CD 持续集成与持续交付: 09-software-engineering/06-CICD持续集成与交付.md
+  - 系统设计方法论: 09-software-engineering/07-系统设计方法论.md
+- 💼 10、Project Experience:
+  - 企业内部问答系统 — 项目概览: 10-project-experience/00-项目概览.md
+  - 问答核心功能设计: 10-project-experience/01-问答核心功能设计.md
+  - 全文搜索系统: 10-project-experience/02-全文搜索系统.md
+  - 计数与热门排行: 10-project-experience/03-计数与热门排行.md
+  - 消息通知系统: 10-project-experience/04-消息通知系统.md
+  - 异步架构设计: 10-project-experience/05-异步架构设计.md
+  - 权限与安全设计: 10-project-experience/06-权限与安全设计.md
+  - 性能优化与踩坑: 10-project-experience/07-性能优化与踩坑.md
