@@ -3,7 +3,7 @@ name: 🚀 Deploy MkDocs to GitHub Pages
 on:
   push:
     branches:
-      - main   # 在 main 分支推送时触发
+      - blog   # 在 blog 分支推送时触发
   workflow_dispatch:  # 支持手动触发
 
 jobs:
