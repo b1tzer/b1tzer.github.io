@@ -140,6 +140,19 @@
 | 06 | [CI/CD 持续集成与持续交付](09-software-engineering/06-CICD持续集成与交付.md) |
 | 07 | [系统设计方法论](09-software-engineering/07-系统设计方法论.md) |
 
+### 💼 10、Project Experience
+
+| # | 文章 |
+|---|------|
+| 00 | [企业内部问答系统 — 项目概览](10-project-experience/00-项目概览.md) |
+| 01 | [问答核心功能设计](10-project-experience/01-问答核心功能设计.md) |
+| 02 | [全文搜索系统](10-project-experience/02-全文搜索系统.md) |
+| 03 | [计数与热门排行](10-project-experience/03-计数与热门排行.md) |
+| 04 | [消息通知系统](10-project-experience/04-消息通知系统.md) |
+| 05 | [异步架构设计](10-project-experience/05-异步架构设计.md) |
+| 06 | [权限与安全设计](10-project-experience/06-权限与安全设计.md) |
+| 07 | [性能优化与踩坑](10-project-experience/07-性能优化与踩坑.md) |
+
 ---
 
 ## 🗺️ 知识体系总览
@@ -154,7 +167,8 @@ Java Interview Guide
 ├── 06-kafka                            📨（8 篇）
 ├── 07-elasticsearch                    🔍（9 篇）
 ├── 08-design-pattern                   🏗️（11 篇）
-└── 09-software-engineering             ⚙️（8 篇）
+├── 09-software-engineering             ⚙️（8 篇）
+└── 10-project-experience               💼（8 篇）
 ```
 
-> 共 **89 篇**文章，持续更新中。
+> 共 **97 篇**文章，持续更新中。
