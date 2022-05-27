@@ -37,6 +37,7 @@ CHAPTER_PATTERN = re.compile(r"^\d+-.+$")
 # ── 排除配置 ──────────────────────────────────────────────────────────────────
 # 排除整个章节目录（填写目录名，如 "10-project-experience"）
 EXCLUDE_DIRS: list[str] = [
+    "10-project-experience"
 ]
 
 # 排除具体文章（填写 "目录名/文件名"，如 "01-java-basic/07-[Java8]Lambda表达式.md"）
