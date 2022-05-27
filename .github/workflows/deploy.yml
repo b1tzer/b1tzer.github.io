@@ -10,6 +10,8 @@ jobs:
   build-and-deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       # 1. 检出代码
@@ -27,7 +29,7 @@ jobs:
       # 3. 安装 MkDocs 及依赖
       - name: Install MkDocs dependencies
         run: |
-          pip install mkdocs-material \
+          pip install "mkdocs-material>=9.0,<10.0" \
                       mkdocs-minify-plugin \
                       pymdown-extensions
 
