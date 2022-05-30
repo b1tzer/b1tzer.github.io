@@ -1,0 +1,112 @@
+/* ── 自然风格背景 ─────────────────────────────────────────────── */
+
+/* 浅色模式：清新森林/自然背景 */
+[data-md-color-scheme="default"] .md-main {
+  background-image: url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=80&auto=format&fit=crop');
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+}
+
+/* 深色模式：夜晚森林背景 */
+[data-md-color-scheme="slate"] .md-main {
+  background-image: url('https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80&auto=format&fit=crop');
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+}
+
+/* ── 内容区半透明遮罩 ─────────────────────────────────────────── */
+
+/* 浅色模式内容区 */
+[data-md-color-scheme="default"] .md-content__inner {
+  background: rgba(255, 255, 255, 0.90);
+  border-radius: 12px;
+  padding: 1.8rem 2rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(4px);
+}
+
+/* 深色模式内容区 */
+[data-md-color-scheme="slate"] .md-content__inner {
+  background: rgba(22, 27, 34, 0.90);
+  border-radius: 12px;
+  padding: 1.8rem 2rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.30);
+  backdrop-filter: blur(4px);
+}
+
+/* ── 侧边栏半透明 ─────────────────────────────────────────────── */
+
+[data-md-color-scheme="default"] .md-sidebar__scrollwrap {
+  background: rgba(248, 250, 248, 0.85);
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+}
+
+[data-md-color-scheme="slate"] .md-sidebar__scrollwrap {
+  background: rgba(22, 27, 34, 0.85);
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+}
+
+/* ── 顶部导航栏 ───────────────────────────────────────────────── */
+
+[data-md-color-scheme="default"] .md-header {
+  background: rgba(56, 142, 60, 0.92) !important;
+  backdrop-filter: blur(8px);
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background: rgba(27, 94, 32, 0.92) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* ── 代码块美化 ───────────────────────────────────────────────── */
+
+.md-typeset pre {
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10);
+}
+
+/* ── 标题装饰 ─────────────────────────────────────────────────── */
+
+.md-typeset h1 {
+  border-bottom: 3px solid #4caf50;
+  padding-bottom: 0.4rem;
+}
+
+.md-typeset h2 {
+  border-left: 4px solid #81c784;
+  padding-left: 0.8rem;
+}
+
+/* ── 链接颜色自然绿 ───────────────────────────────────────────── */
+
+[data-md-color-scheme="default"] .md-typeset a {
+  color: #2e7d32;
+}
+
+[data-md-color-scheme="default"] .md-typeset a:hover {
+  color: #1b5e20;
+}
+
+/* ── 滚动条美化 ───────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(76, 175, 80, 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 142, 60, 0.8);
+}

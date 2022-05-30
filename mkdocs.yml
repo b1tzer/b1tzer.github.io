@@ -13,16 +13,16 @@ site_dir: site
 theme:
   name: material
   language: zh
-  palette:
+    palette:
     - scheme: default
-      primary: indigo
-      accent: indigo
+      primary: green
+      accent: light green
       toggle:
         icon: material/brightness-7
         name: 切换到深色模式
     - scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: green
+      accent: light green
       toggle:
         icon: material/brightness-4
         name: 切换到浅色模式
@@ -41,10 +41,14 @@ theme:
     - content.code.copy        # 代码复制按钮
     - content.code.annotate    # 代码注释
     - toc.follow               # 目录跟随滚动
+    - header.autohide          # 滚动时自动隐藏顶栏
+    - navigation.footer        # 底部上一篇/下一篇导航
+    - content.tooltips         # 链接悬停提示
 
 plugins:
   - search:
       lang: zh
+  - glightbox
   - minify:
       minify_html: true
 
@@ -72,6 +76,9 @@ markdown_extensions:
   - toc:                       # 目录
       permalink: true
       title: 本页目录
+
+extra_css:
+  - stylesheets/extra.css
 
 extra:
   social:
@@ -181,12 +188,3 @@ nav:
   - 代码质量与重构: 09-software-engineering/05-代码质量与重构.md
   - CI/CD 持续集成与持续交付: 09-software-engineering/06-CICD持续集成与交付.md
   - 系统设计方法论: 09-software-engineering/07-系统设计方法论.md
-- 💼 10、Project Experience:
-  - 企业内部问答系统 — 项目概览: 10-project-experience/00-项目概览.md
-  - 问答核心功能设计: 10-project-experience/01-问答核心功能设计.md
-  - 全文搜索系统: 10-project-experience/02-全文搜索系统.md
-  - 计数与热门排行: 10-project-experience/03-计数与热门排行.md
-  - 消息通知系统: 10-project-experience/04-消息通知系统.md
-  - 异步架构设计: 10-project-experience/05-异步架构设计.md
-  - 权限与安全设计: 10-project-experience/06-权限与安全设计.md
-  - 性能优化与踩坑: 10-project-experience/07-性能优化与踩坑.md
