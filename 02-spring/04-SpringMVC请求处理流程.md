@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：AOP —— 面向切面编程](03-AOP面向切面编程.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Boot 自动配置原理 ➡️](05-SpringBoot自动配置原理.md)
-
-<!-- nav-end -->
-
 # Spring MVC 请求处理流程
 
 ---
@@ -478,11 +470,3 @@ public class JacksonConfig {
 > `@RestController` = `@Controller` + `@ResponseBody`。`@ResponseBody` 使 `HandlerAdapter` 跳过 `ViewResolver`，将返回值交由 `HttpMessageConverter` 处理。默认使用 `MappingJackson2HttpMessageConverter`，通过 Jackson `ObjectMapper` 将对象序列化为 JSON 写入响应体。具体选用哪个 Converter 由请求的 `Accept` 头与返回值类型共同决定。使用时需注意：字段需有 getter 才会被序列化；返回 `String` 类型时走 `StringHttpMessageConverter` 而非 Jackson；双向关联对象需用 `@JsonIgnore` 等注解断开循环引用；日期默认序列化为时间戳，需通过 `@JsonFormat` 或全局 `ObjectMapper` 配置格式。
 
 **一句话口诀**：DispatcherServlet 是总调度，HandlerMapping 找处理器（同时组装拦截器链），拦截器 preHandle 正序执行，HandlerAdapter 适配调用，postHandle 反序执行，ViewResolver 解析视图，afterCompletion 反序清理。
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：AOP —— 面向切面编程](03-AOP面向切面编程.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Boot 自动配置原理 ➡️](05-SpringBoot自动配置原理.md)
-
-<!-- nav-end -->

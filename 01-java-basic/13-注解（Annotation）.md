@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Java 9-17 关键新特性](12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：数据结构精讲（Java & Spring 生态视角） ➡️](14-数据结构精讲.md)
-
-<!-- nav-end -->
-
 # 注解（Annotation）
 
 > **学习目标**：搞清楚注解是什么、能做什么、不能做什么，以及在 Spring/AOP 场景下注解是如何工作的。
@@ -480,11 +472,3 @@ self.saveOrder();  // 通过代理调用
 - `@Repository`：Spring 会将持久层抛出的原生异常（如 JDBC 异常）转换为 Spring 的 `DataAccessException`
 - `@Controller`：配合 Spring MVC 的请求映射机制
 - `@Service`：纯语义，无额外功能，但表达了"这是业务层"的意图，便于团队理解和 AOP 切点定义
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Java 9-17 关键新特性](12-[Java9-17]新特性.md) | [🏠 返回目录](../README.md) | [下一篇：数据结构精讲（Java & Spring 生态视角） ➡️](14-数据结构精讲.md)
-
-<!-- nav-end -->

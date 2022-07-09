@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring 常用注解全解](11-Spring常用注解全解.md) | [🏠 返回目录](../README.md) | [下一篇：gRPC 详解 ➡️](13-gRPC详解.md)
-
-<!-- nav-end -->
-
 # Feign 声明式 HTTP 客户端
 
 ---
@@ -349,11 +341,3 @@ public class FeignOkHttpConfig {
 
 **Q6：Fallback 和 FallbackFactory 的区别？**
 > `Fallback` 只能返回默认值，无法获取触发降级的异常信息；`FallbackFactory` 的 `create(Throwable cause)` 方法可以拿到异常，方便打日志排查问题。**生产环境推荐用 `FallbackFactory`**。
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring 常用注解全解](11-Spring常用注解全解.md) | [🏠 返回目录](../README.md) | [下一篇：gRPC 详解 ➡️](13-gRPC详解.md)
-
-<!-- nav-end -->

@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Feign 声明式 HTTP 客户端](12-Feign声明式HTTP客户端.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 索引、事务与性能优化 ➡️](../03-mysql/00-mysql-overview.md)
-
-<!-- nav-end -->
-
 # gRPC 详解
 
 ## 一、什么是 gRPC？
@@ -403,11 +395,3 @@ grpc:
 
 > - Java 技术栈为主、国内团队 → 优先考虑 **Dubbo**（生态成熟、文档丰富）
 > - 多语言混合、云原生/K8s 环境 → 优先考虑 **gRPC**（跨语言强、CNCF 标准）
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Feign 声明式 HTTP 客户端](12-Feign声明式HTTP客户端.md) | [🏠 返回目录](../README.md) | [下一篇：MySQL 索引、事务与性能优化 ➡️](../03-mysql/00-mysql-overview.md)
-
-<!-- nav-end -->

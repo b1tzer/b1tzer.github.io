@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring 扩展点详解](10-Spring扩展点详解.md) | [🏠 返回目录](../README.md) | [下一篇：Feign 声明式 HTTP 客户端 ➡️](12-Feign声明式HTTP客户端.md)
-
-<!-- nav-end -->
-
 # Spring 常用注解全解
 
 ---
@@ -317,11 +309,3 @@ private DataSource readDataSource;
 
 **Q5：如何让 Spring Boot 的自动配置不生效？**
 > ① 自定义同类型的 Bean（利用 `@ConditionalOnMissingBean`）；② 在 `@SpringBootApplication` 上排除：`@SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})`；③ 配置文件中设置 `spring.autoconfigure.exclude=...`。
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring 扩展点详解](10-Spring扩展点详解.md) | [🏠 返回目录](../README.md) | [下一篇：Feign 声明式 HTTP 客户端 ➡️](12-Feign声明式HTTP客户端.md)
-
-<!-- nav-end -->

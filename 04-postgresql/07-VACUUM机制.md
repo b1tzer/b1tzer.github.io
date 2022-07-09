@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：物化视图](06-物化视图.md) | [🏠 返回目录](../README.md) | [下一篇：Redis 缓存设计与高可用 ➡️](../05-redis/00-redis-overview.md)
-
-<!-- nav-end -->
-
 # VACUUM 机制
 
 > **核心问题**：为什么 PostgreSQL 需要 VACUUM？VACUUM 和 VACUUM FULL 有什么区别？
@@ -137,11 +129,3 @@ flowchart LR
 **Q：为什么长事务会导致表膨胀？**
 
 > VACUUM 不能清理比最老活跃事务更新的 Dead Tuple，因为长事务可能需要读取这些旧版本数据（MVCC 保证）。长事务运行期间，所有新产生的 Dead Tuple 都无法被清理，导致表膨胀。
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：物化视图](06-物化视图.md) | [🏠 返回目录](../README.md) | [下一篇：Redis 缓存设计与高可用 ➡️](../05-redis/00-redis-overview.md)
-
-<!-- nav-end -->

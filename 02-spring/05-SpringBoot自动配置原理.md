@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring MVC 请求处理流程](04-SpringMVC请求处理流程.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 事务管理 ➡️](06-Spring事务管理.md)
-
-<!-- nav-end -->
-
 # Spring Boot 自动配置原理
 
 ---
@@ -107,11 +99,3 @@ public class MyDataSourceConfig {
 > 启动时加 `--debug` 参数，查看 Conditions Evaluation Report，找到对应的自动配置类，查看哪个条件注解不满足（如缺少依赖、已有自定义 Bean 等）。
 
 **一句话口诀**：`@EnableAutoConfiguration` 读配置列表，条件注解按需过滤，`@ConditionalOnMissingBean` 允许用户覆盖，这就是"约定优于配置"。
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring MVC 请求处理流程](04-SpringMVC请求处理流程.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 事务管理 ➡️](06-Spring事务管理.md)
-
-<!-- nav-end -->
