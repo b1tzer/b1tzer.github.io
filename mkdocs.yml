@@ -15,14 +15,14 @@ theme:
   language: zh
   palette:
     - scheme: default
-      primary: green
-      accent: light green
+      primary: white
+      accent: teal
       toggle:
         icon: material/brightness-7
         name: 切换到深色模式
     - scheme: slate
-      primary: green
-      accent: light green
+      primary: black
+      accent: teal
       toggle:
         icon: material/brightness-4
         name: 切换到浅色模式
@@ -36,6 +36,8 @@ theme:
     - navigation.expand        # 默认展开
     - navigation.top           # 返回顶部按钮
     - navigation.indexes       # 章节索引页
+    - navigation.tracking      # 导航跟踪
+    - navigation.path          # 面包屑导航
     - search.highlight         # 搜索高亮
     - search.suggest           # 搜索建议
     - content.code.copy        # 代码复制按钮
