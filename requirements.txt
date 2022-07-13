@@ -1,0 +1,4 @@
+mkdocs-material>=9.0,<10.0
+mkdocs-minify-plugin
+mkdocs-glightbox
+pymdown-extensions
