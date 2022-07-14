@@ -223,10 +223,8 @@ def update_mkdocs_nav(articles: list, chapters_meta: list, check_only: bool = Fa
 
     for ch_dir in sorted(chapter_articles.keys()):
         arts = chapter_articles[ch_dir]
-        emoji = get_emoji(ch_dir)
         ch_title = get_chapter_title(ch_dir)
-        num = ch_dir.split("-")[0].lstrip("0") or "0"
-        section_title = f"{emoji} {num}、{ch_title}"
+        section_title = ch_title
 
         section_items = []
         for art in arts:
@@ -272,10 +270,8 @@ def update_readme(articles: list, chapters_meta: list, check_only: bool = False)
 
     for ch_dir in sorted(chapter_articles.keys()):
         arts = chapter_articles[ch_dir]
-        emoji = get_emoji(ch_dir)
         ch_title = get_chapter_title(ch_dir)
-        num = ch_dir.split("-")[0].lstrip("0") or "0"
-        toc_lines.append(f"\n### {emoji} {num}、{ch_title}\n")
+        toc_lines.append(f"\n### {ch_title}\n")
         toc_lines.append("| # | 文章 |")
         toc_lines.append("|---|------|")
         for art in arts:
@@ -289,8 +285,7 @@ def update_readme(articles: list, chapters_meta: list, check_only: bool = False)
     tree_lines = []
     for ch_dir in sorted(chapter_articles.keys()):
         count = len(chapter_articles[ch_dir])
-        emoji = get_emoji(ch_dir)
-        tree_lines.append(f"├── {ch_dir:<35} {emoji}（{count} 篇）")
+        tree_lines.append(f"├── {ch_dir:<35} （{count} 篇）")
     if tree_lines:
         tree_lines[-1] = tree_lines[-1].replace("├──", "└──")
     tree_content = "\n".join(tree_lines)
