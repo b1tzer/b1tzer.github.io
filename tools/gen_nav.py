@@ -191,19 +191,6 @@ def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> 
                         f.write(content)
                     print(f"  [同步] {static_dir}/{fname}")
 
-    # 同步 README.md 为 docs/index.md
-    readme_src = os.path.join(BASE, "README.md")
-    readme_dst = os.path.join(DOCS_DIR, "index.md")
-    if os.path.exists(readme_src):
-        with open(readme_src, "r", encoding="utf-8") as f:
-            readme_content = f.read()
-        if not os.path.exists(readme_dst) or open(readme_dst).read() != readme_content:
-            changed += 1
-            if not check_only:
-                with open(readme_dst, "w", encoding="utf-8") as f:
-                    f.write(readme_content)
-                print(f"  [同步] README.md → docs/index.md")
-
     return changed
 
 

@@ -3,8 +3,8 @@ site_description: 一份系统化的 Java 后端面试知识库，覆盖核心�
 site_author: b1tzer
 site_url: https://b1tzer.github.io/
 
-repo_name: java-interview
-repo_url: https://github.com/b1tzer/java-interview
+repo_name: java-interview-guide
+repo_url: https://github.com/b1tzer/java-interview-guide
 edit_uri: edit/main/docs/
 
 docs_dir: docs
