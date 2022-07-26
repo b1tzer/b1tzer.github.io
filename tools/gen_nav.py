@@ -191,6 +191,19 @@ def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> 
                         f.write(content)
                     print(f"  [同步] {static_dir}/{fname}")
 
+    # 同步自定义首页 homepage.md → docs/index.md
+    homepage_src = os.path.join(BASE, "homepage.md")
+    homepage_dst = os.path.join(DOCS_DIR, "index.md")
+    if os.path.exists(homepage_src):
+        with open(homepage_src, "r", encoding="utf-8") as f:
+            homepage_content = f.read()
+        if not os.path.exists(homepage_dst) or open(homepage_dst).read() != homepage_content:
+            changed += 1
+            if not check_only:
+                with open(homepage_dst, "w", encoding="utf-8") as f:
+                    f.write(homepage_content)
+                print(f"  [同步] homepage.md → docs/index.md")
+
     return changed
 
 
