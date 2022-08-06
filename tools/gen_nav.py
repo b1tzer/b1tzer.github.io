@@ -166,31 +166,7 @@ def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> 
             else:
                 print(f"  [需同步] {ch_dir}/{fname}")
 
-    # 同步静态资源目录（如 stylesheets/）到 docs/
-    for static_dir in ["stylesheets"]:
-        src_dir = os.path.join(BASE, static_dir)
-        dst_dir = os.path.join(DOCS_DIR, static_dir)
-        if os.path.isdir(src_dir):
-            if not check_only:
-                os.makedirs(dst_dir, exist_ok=True)
-            for fname in os.listdir(src_dir):
-                src_file = os.path.join(src_dir, fname)
-                dst_file = os.path.join(dst_dir, fname)
-                if not os.path.isfile(src_file):
-                    continue
-                with open(src_file, "r", encoding="utf-8") as f:
-                    content = f.read()
-                if os.path.exists(dst_file):
-                    with open(dst_file, "r", encoding="utf-8") as f:
-                        old_content = f.read()
-                    if old_content == content:
-                        continue
-                changed += 1
-                if not check_only:
-                    with open(dst_file, "w", encoding="utf-8") as f:
-                        f.write(content)
-                    print(f"  [同步] {static_dir}/{fname}")
-
+    # 同步自定义首页
     # 同步自定义首页 homepage.md → docs/index.md
     homepage_src = os.path.join(BASE, "homepage.md")
     homepage_dst = os.path.join(DOCS_DIR, "index.md")

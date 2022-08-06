@@ -11,48 +11,10 @@ docs_dir: docs
 site_dir: site
 
 theme:
-  name: material
-  language: zh
-  palette:
-    - scheme: default
-      primary: white
-      accent: teal
-      toggle:
-        icon: material/brightness-7
-        name: 切换到深色模式
-    - scheme: slate
-      primary: black
-      accent: teal
-      toggle:
-        icon: material/brightness-4
-        name: 切换到浅色模式
-  font:
-    text: Noto Sans SC
-    code: JetBrains Mono
-  features:
-    - navigation.tabs          # 顶部标签导航
-    - navigation.tabs.sticky   # 标签固定
-    - navigation.sections      # 展开章节
-    - navigation.expand        # 默认展开
-    - navigation.top           # 返回顶部按钮
-    - navigation.indexes       # 章节索引页
-    - navigation.tracking      # 导航跟踪
-    - navigation.path          # 面包屑导航
-    - search.highlight         # 搜索高亮
-    - search.suggest           # 搜索建议
-    - content.code.copy        # 代码复制按钮
-    - content.code.annotate    # 代码注释
-    - toc.follow               # 目录跟随滚动
-    - header.autohide          # 滚动时自动隐藏顶栏
-    - navigation.footer        # 底部上一篇/下一篇导航
-    - content.tooltips         # 链接悬停提示
+  name: mkdocs
 
 plugins:
-  - search:
-      lang: zh
-  - glightbox
-  - minify:
-      minify_html: true
+  - search
 
 markdown_extensions:
   - admonition                 # 提示框（note/warning/tip 等）
@@ -71,24 +33,12 @@ markdown_extensions:
       alternate_style: true
   - pymdownx.tasklist:         # 任务列表
       custom_checkbox: true
-  - pymdownx.emoji:            # emoji 支持
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - tables                     # 表格
   - toc:                       # 目录
       permalink: true
       title: 本页目录
 
-extra_css:
-  - stylesheets/extra.css
 
-extra:
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/b1tzer
-
-extra_javascript:
-  - https://unpkg.com/mermaid@10/dist/mermaid.min.js
 
 nav:
 - 首页: index.md
