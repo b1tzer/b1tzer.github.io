@@ -11,10 +11,20 @@ docs_dir: docs
 site_dir: site
 
 theme:
-  name: mkdocs
+  name: material
+  language: zh
+  palette:
+    scheme: default
+    primary: white
+    accent: indigo
+  features:
+    - navigation.top           # 返回顶部按钮
+    - search.highlight         # 搜索高亮
+    - content.code.copy        # 代码复制按钮
 
 plugins:
-  - search
+  - search:
+      lang: zh
 
 markdown_extensions:
   - admonition                 # 提示框（note/warning/tip 等）
