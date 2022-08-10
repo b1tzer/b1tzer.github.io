@@ -46,17 +46,20 @@ Session.vim
 *.rej
 
 # ===== 工具生成文件 =====
-# Node（如果用 docsify / vitepress 等预览工具）
-node_modules/
-dist/
-.cache/
-
-# Python（如果用脚本处理文档）
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
 .env
 .venv/
+
+# ===== MkDocs =====
+# docs/ 由 tools/gen_nav.py 自动同步生成，不纳入版本管理
+docs/
+# site/ 为构建产物，不纳入版本管理
+site/
+
+
 
 # ===== 项目内部 =====
 # CodeBuddy 计划文件（不纳入版本管理）

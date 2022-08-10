@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring Security 认证与授权](08-Spring-Security认证与授权.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 扩展点详解 ➡️](10-Spring扩展点详解.md)
-
-<!-- nav-end -->
-
 # Spring Cloud 核心组件
 
 ---
@@ -290,11 +282,3 @@ public UserVO getUserByIdBlock(Long id, BlockException e) {
 > 全局过滤器（`GlobalFilter`）对所有路由生效，适合做鉴权、日志、链路追踪等通用逻辑；局部过滤器（`GatewayFilter`）只对配置了该过滤器的路由生效，适合做特定路由的限流、重写路径等。
 
 **一句话总结**：Spring Cloud = Eureka（服务发现）+ Gateway（流量入口）+ Feign（服务调用）+ Sentinel（熔断限流）+ Config（配置管理）。
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring Security 认证与授权](08-Spring-Security认证与授权.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 扩展点详解 ➡️](10-Spring扩展点详解.md)
-
-<!-- nav-end -->

@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：数据结构精讲（Java & Spring 生态视角）](../01-java-basic/14-数据结构精讲.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI —— 控制反转与依赖注入 ➡️](01-IoC与DI.md)
-
-<!-- nav-end -->
-
 # Spring / Spring Boot 核心原理
 
 ---
@@ -332,11 +324,3 @@ flowchart TB
 6. **多数据源问题**：事务管理器和数据源不匹配
 
 > 📄 完整解析及代码示例见：[07-Spring实战应用题.md](./07-Spring实战应用题.md)
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：数据结构精讲（Java & Spring 生态视角）](../01-java-basic/14-数据结构精讲.md) | [🏠 返回目录](../README.md) | [下一篇：IoC 与 DI —— 控制反转与依赖注入 ➡️](01-IoC与DI.md)
-
-<!-- nav-end -->

@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring Cloud 核心组件](09-Spring-Cloud核心组件.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 常用注解全解 ➡️](11-Spring常用注解全解.md)
-
-<!-- nav-end -->
-
 # Spring 扩展点详解
 
 ---
@@ -312,11 +304,3 @@ Bean 就绪，放入单例池
 
 **Q4：Spring 事件机制有什么用？**
 > 实现业务解耦。例如订单创建后需要发通知、更新统计、记录日志，如果都写在 `createOrder` 方法里会很臃肿。通过发布 `OrderCreatedEvent`，各个监听器独立处理，互不耦合，还可以加 `@Async` 实现异步处理。
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring Cloud 核心组件](09-Spring-Cloud核心组件.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 常用注解全解 ➡️](11-Spring常用注解全解.md)
-
-<!-- nav-end -->

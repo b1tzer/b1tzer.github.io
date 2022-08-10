@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring 实战应用型面试题](07-Spring实战应用题.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Cloud 核心组件 ➡️](09-Spring-Cloud核心组件.md)
-
-<!-- nav-end -->
-
 # Spring Security 认证与授权
 
 ---
@@ -242,11 +234,3 @@ public List<Order> getOrders() { ... }
 > `@Secured` 只支持角色字符串（需加 `ROLE_` 前缀），功能简单；`@PreAuthorize` 支持 SpEL 表达式，可以写复杂逻辑（如 `#userId == authentication.principal`），更灵活，推荐使用。
 
 **一句话总结**：Spring Security = 过滤器链拦截请求 + `UserDetailsService` 加载用户 + `AuthenticationManager` 验证身份 + `AccessDecisionManager` 决策权限。
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring 实战应用型面试题](07-Spring实战应用题.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Cloud 核心组件 ➡️](09-Spring-Cloud核心组件.md)
-
-<!-- nav-end -->

@@ -1,0 +1,52 @@
+name: 🚀 Deploy MkDocs to GitHub Pages
+
+on:
+  push:
+    branches:
+      - blog   # 在 blog 分支推送时触发
+  workflow_dispatch:  # 支持手动触发
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      # 1. 检出代码
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      # 2. 设置 Python 环境
+      - name: Setup Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.11'
+
+      # 3. 安装 MkDocs 及依赖
+      - name: Install MkDocs dependencies
+        run: pip install -r requirements.txt
+
+      # 4. 同步文章到 docs/ 目录并生成导航
+      - name: Sync docs and generate nav
+        run: python3 tools/gen_nav.py
+
+      # 5. 构建静态站点
+      - name: Build MkDocs site
+        run: mkdocs build --strict
+
+      # 6. 将 site/ 推送到 b1tzer/b1tzer.github.io 仓库
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.GH_TOKEN }}
+          external_repository: b1tzer/b1tzer.github.io
+          publish_branch: main
+          publish_dir: ./site
+          commit_message: "deploy: ${{ github.event.head_commit.message }}"
+          force_orphan: true
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'

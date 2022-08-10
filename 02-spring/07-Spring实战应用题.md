@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring 事务管理](06-Spring事务管理.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Security 认证与授权 ➡️](08-Spring-Security认证与授权.md)
-
-<!-- nav-end -->
-
 # Spring 实战应用型面试题
 
 > 以下是面试中容易"卡住"的实战问题，考察对 Spring 原理的真实理解深度。
@@ -384,11 +376,3 @@ public class DynamicBeanRegistrar implements ApplicationContextAware {
     }
 }
 ```
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring 事务管理](06-Spring事务管理.md) | [🏠 返回目录](../README.md) | [下一篇：Spring Security 认证与授权 ➡️](08-Spring-Security认证与授权.md)
-
-<!-- nav-end -->

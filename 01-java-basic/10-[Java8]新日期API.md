@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Optional](09-[Java8]Optional空值处理.md) | [🏠 返回目录](../README.md) | [下一篇：接口默认方法与静态方法 ➡️](11-[Java8]接口默认方法与静态方法.md)
-
-<!-- nav-end -->
-
 # 新日期 API
 
 ---
@@ -168,11 +160,3 @@ ZonedDateTime next = dt.plusHours(1); // 夏令时切换，实际跳过了一小
 // mybatis-plus.configuration.default-enum-type-handler: ...
 // Spring Boot 2.x 默认支持 LocalDateTime，无需额外配置
 ```
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Optional](09-[Java8]Optional空值处理.md) | [🏠 返回目录](../README.md) | [下一篇：接口默认方法与静态方法 ➡️](11-[Java8]接口默认方法与静态方法.md)
-
-<!-- nav-end -->

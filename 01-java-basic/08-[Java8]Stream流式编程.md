@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Lambda 表达式](07-[Java8]Lambda表达式.md) | [🏠 返回目录](../README.md) | [下一篇：Optional ➡️](09-[Java8]Optional空值处理.md)
-
-<!-- nav-end -->
-
 # Stream API
 
 ---
@@ -188,11 +180,3 @@ list.stream()
 
 **Q：parallelStream 一定比 stream 快吗？**
 > 不一定。parallelStream 使用 ForkJoinPool 多线程执行，适合 CPU 密集型、数据量大的场景。如果任务本身很轻量或数据量小，线程切换的开销反而会使性能更差。
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Lambda 表达式](07-[Java8]Lambda表达式.md) | [🏠 返回目录](../README.md) | [下一篇：Optional ➡️](09-[Java8]Optional空值处理.md)
-
-<!-- nav-end -->

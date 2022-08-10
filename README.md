@@ -6,7 +6,7 @@
 
 ## 📚 目录
 
-### ☕ 1、Java Basic
+### Java Basic
 
 | # | 文章 |
 |---|------|
@@ -26,7 +26,7 @@
 | 13 | [注解（Annotation）](01-java-basic/13-注解（Annotation）.md) |
 | 14 | [数据结构精讲（Java & Spring 生态视角）](01-java-basic/14-数据结构精讲.md) |
 
-### 🌱 2、Spring
+### Spring
 
 | # | 文章 |
 |---|------|
@@ -45,7 +45,7 @@
 | 12 | [Feign 声明式 HTTP 客户端](02-spring/12-Feign声明式HTTP客户端.md) |
 | 13 | [gRPC 详解](02-spring/13-gRPC详解.md) |
 
-### 🗄️ 3、Mysql
+### Mysql
 
 | # | 文章 |
 |---|------|
@@ -59,7 +59,7 @@
 | 07 | [EXPLAIN 与性能优化](03-mysql/07-EXPLAIN与性能优化.md) |
 | 08 | [MySQL 实战问题与避坑指南](03-mysql/08-实战问题与避坑指南.md) |
 
-### 🐘 4、Postgresql
+### Postgresql
 
 | # | 文章 |
 |---|------|
@@ -72,7 +72,7 @@
 | 06 | [物化视图](04-postgresql/06-物化视图.md) |
 | 07 | [VACUUM 机制](04-postgresql/07-VACUUM机制.md) |
 
-### 🔴 5、Redis
+### Redis
 
 | # | 文章 |
 |---|------|
@@ -84,7 +84,7 @@
 | 05 | [Redis 分布式锁](05-redis/05-分布式锁.md) |
 | 06 | [Redis 应用型问题](05-redis/06-应用型问题.md) |
 
-### 📨 6、Kafka
+### Kafka
 
 | # | 文章 |
 |---|------|
@@ -97,7 +97,7 @@
 | 07 | [Kafka 工作中常见问题与解决](06-kafka/07-常见问题与解决.md) |
 | 08 | [Kafka 面试高频问题（实战详解）](06-kafka/08-面试高频问题.md) |
 
-### 🔍 7、Elasticsearch
+### Elasticsearch
 
 | # | 文章 |
 |---|------|
@@ -111,7 +111,7 @@
 | 07 | [ES 性能优化](07-elasticsearch/07-性能优化.md) |
 | 08 | [ES 数据一致性：MySQL 与 ES 同步方案](07-elasticsearch/08-数据一致性.md) |
 
-### 🏗️ 8、Design Pattern
+### Design Pattern
 
 | # | 文章 |
 |---|------|
@@ -127,7 +127,7 @@
 | 09 | [模板方法模式（Template Method Pattern）](08-design-pattern/09-模板方法模式.md) |
 | 10 | [责任链模式（Chain of Responsibility Pattern）](08-design-pattern/10-责任链模式.md) |
 
-### ⚙️ 9、Software Engineering
+### Software Engineering
 
 | # | 文章 |
 |---|------|
@@ -140,35 +140,21 @@
 | 06 | [CI/CD 持续集成与持续交付](09-software-engineering/06-CICD持续集成与交付.md) |
 | 07 | [系统设计方法论](09-software-engineering/07-系统设计方法论.md) |
 
-### 📄 10、Project Experience
-
-| # | 文章 |
-|---|------|
-| 00 | [企业内部问答系统 — 项目概览](10-project-experience/00-项目概览.md) |
-| 01 | [问答核心功能设计](10-project-experience/01-问答核心功能设计.md) |
-| 02 | [全文搜索系统](10-project-experience/02-全文搜索系统.md) |
-| 03 | [计数与热门排行](10-project-experience/03-计数与热门排行.md) |
-| 04 | [消息通知系统](10-project-experience/04-消息通知系统.md) |
-| 05 | [异步架构设计](10-project-experience/05-异步架构设计.md) |
-| 06 | [权限与安全设计](10-project-experience/06-权限与安全设计.md) |
-| 07 | [性能优化与踩坑](10-project-experience/07-性能优化与踩坑.md) |
-
 ---
 
 ## 🗺️ 知识体系总览
 
 ```
 Java Interview Guide
-├── 01-java-basic                       ☕（15 篇）
-├── 02-spring                           🌱（14 篇）
-├── 03-mysql                            🗄️（9 篇）
-├── 04-postgresql                       🐘（8 篇）
-├── 05-redis                            🔴（7 篇）
-├── 06-kafka                            📨（8 篇）
-├── 07-elasticsearch                    🔍（9 篇）
-├── 08-design-pattern                   🏗️（11 篇）
-├── 09-software-engineering             ⚙️（8 篇）
-└── 10-project-experience               📄（8 篇）
+├── 01-java-basic                       （15 篇）
+├── 02-spring                           （14 篇）
+├── 03-mysql                            （9 篇）
+├── 04-postgresql                       （8 篇）
+├── 05-redis                            （7 篇）
+├── 06-kafka                            （8 篇）
+├── 07-elasticsearch                    （9 篇）
+├── 08-design-pattern                   （11 篇）
+└── 09-software-engineering             （8 篇）
 ```
 
-> 共 **97 篇**文章，每篇文章顶部和底部均有上一篇 / 下一篇导航，支持连续阅读。
+> 共 **89 篇**文章，持续更新中。

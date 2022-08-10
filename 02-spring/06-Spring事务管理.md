@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring Boot 自动配置原理](05-SpringBoot自动配置原理.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 实战应用型面试题 ➡️](07-Spring实战应用题.md)
-
-<!-- nav-end -->
-
 # Spring 事务管理
 
 ---
@@ -128,11 +120,3 @@ public class OrderService {
 > 使用 `NESTED` 传播行为（嵌套事务），内层事务可以独立回滚而不影响外层；或者使用 `SavePoint` 手动设置保存点。
 
 **一句话口诀**：事务是 AOP 的特例，`this` 调用不生效，异常要抛出，Checked 异常要加 `rollbackFor`，REQUIRED 共享事务，REQUIRES_NEW 独立事务。
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Spring Boot 自动配置原理](05-SpringBoot自动配置原理.md) | [🏠 返回目录](../README.md) | [下一篇：Spring 实战应用型面试题 ➡️](07-Spring实战应用题.md)
-
-<!-- nav-end -->

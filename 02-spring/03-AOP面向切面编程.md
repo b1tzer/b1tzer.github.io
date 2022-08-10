@@ -1,11 +1,3 @@
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md) | [🏠 返回目录](../README.md) | [下一篇：Spring MVC 请求处理流程 ➡️](04-SpringMVC请求处理流程.md)
-
-<!-- nav-end -->
-
 # AOP —— 面向切面编程
 
 ---
@@ -168,11 +160,3 @@ public class OrderService {
 > 按以下顺序排查：① 是否同类内部调用（`this.method()`）；② 方法是否是 `public`；③ 类是否被 Spring 管理（是否有 `@Component` 等注解）；④ 切点表达式是否正确匹配。
 
 **一句话口诀**：AOP 靠代理拦截，`this` 调用绕过代理，CGLIB 生成子类，JDK 代理需要接口。
-
-<!-- nav-start -->
-
----
-
-[⬅️ 上一篇：Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md) | [🏠 返回目录](../README.md) | [下一篇：Spring MVC 请求处理流程 ➡️](04-SpringMVC请求处理流程.md)
-
-<!-- nav-end -->
