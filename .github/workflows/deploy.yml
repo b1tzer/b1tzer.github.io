@@ -3,7 +3,9 @@ name: 🚀 Deploy MkDocs to GitHub Pages
 on:
   push:
     branches:
-      - main   # 在 main 分支推送时触发
+      - main   # 在 main 分支有推送时触发（blog 合入 main 后触发）
+    paths-ignore:
+      - '.github/**'  # 忽略 CI 配置本身的变更
   workflow_dispatch:  # 支持手动触发
 
 jobs:
