@@ -28,6 +28,9 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # docs 目录
 DOCS_DIR = os.path.join(BASE, "docs")
 
+# 源内容目录
+CONTENT_DIR = os.path.join(BASE, "source")
+
 # mkdocs.yml 路径
 MKDOCS_YML = os.path.join(BASE, "mkdocs.yml")
 
@@ -45,27 +48,7 @@ EXCLUDE_FILES: list[str] = [
     # "01-java-basic/07-[Java8]Lambda表达式.md",
 ]
 
-# 章节 emoji 映射（按目录名前缀匹配，找不到则用默认）
-CHAPTER_EMOJI = {
-    "01": "☕",
-    "02": "🌱",
-    "03": "🗄️",
-    "04": "🐘",
-    "05": "🔴",
-    "06": "📨",
-    "07": "🔍",
-    "08": "🏗️",
-    "09": "⚙️",
-    "10": "💼",
-}
-DEFAULT_EMOJI = "📄"
-
 # ── 工具函数 ──────────────────────────────────────────────────────────────────
-
-def get_emoji(dir_name: str) -> str:
-    prefix = dir_name.split("-")[0]
-    return CHAPTER_EMOJI.get(prefix, DEFAULT_EMOJI)
-
 
 def get_chapter_title(dir_name: str) -> str:
     """从目录名提取章节标题，如 01-java-basic → Java Basic"""
@@ -97,8 +80,10 @@ def collect_articles():
     返回有序的文章列表和章节元数据。
     """
     chapters = []
-    for entry in sorted(os.listdir(BASE)):
-        full = os.path.join(BASE, entry)
+    if not os.path.exists(CONTENT_DIR):
+        return [], []
+    for entry in sorted(os.listdir(CONTENT_DIR)):
+        full = os.path.join(CONTENT_DIR, entry)
         if os.path.isdir(full) and CHAPTER_PATTERN.match(entry):
             # 排除整个目录
             if entry in EXCLUDE_DIRS:
@@ -114,7 +99,7 @@ def collect_articles():
     all_articles = []
     for ch in chapters:
         for fname in ch["files"]:
-            fpath = os.path.join(BASE, ch["dir"], fname)
+            fpath = os.path.join(CONTENT_DIR, ch["dir"], fname)
             title = get_article_title(fpath)
             all_articles.append({
                 "dir":   ch["dir"],
@@ -141,7 +126,7 @@ def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> 
             os.makedirs(dest_dir, exist_ok=True)
 
         for fname in ch["files"]:
-            src = os.path.join(BASE, ch_dir, fname)
+            src = os.path.join(CONTENT_DIR, ch_dir, fname)
             dst = os.path.join(dest_dir, fname)
 
             # 读取源文件内容
@@ -179,6 +164,19 @@ def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> 
                 with open(homepage_dst, "w", encoding="utf-8") as f:
                     f.write(homepage_content)
                 print(f"  [同步] homepage.md → docs/index.md")
+
+    # 同步 admin 文件夹（CMS）到 docs/admin
+    admin_src = os.path.join(BASE, "admin")
+    admin_dst = os.path.join(DOCS_DIR, "admin")
+    if os.path.exists(admin_src):
+        if not check_only:
+            # 删除旧的 admin 文件夹（如果存在）
+            if os.path.exists(admin_dst):
+                shutil.rmtree(admin_dst)
+            # 复制新的 admin 文件夹
+            shutil.copytree(admin_src, admin_dst)
+            print(f"  [同步] admin/ → docs/admin/")
+        changed += 1
 
     return changed
 

@@ -40,13 +40,12 @@ jobs:
       - name: Build MkDocs site
         run: mkdocs build --strict
 
-      # 6. 将 site/ 推送到 b1tzer/b1tzer.github.io 仓库
+      # 6. 部署到 GitHub Pages (使用 gh-pages 分支)
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
-          personal_token: ${{ secrets.GH_TOKEN }}
-          external_repository: b1tzer/b1tzer.github.io
-          publish_branch: main
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
           publish_dir: ./site
           commit_message: "deploy: ${{ github.event.head_commit.message }}"
           force_orphan: true

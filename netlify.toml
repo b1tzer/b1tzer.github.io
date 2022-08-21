@@ -1,0 +1,65 @@
+[build]
+# 构建命令：安装依赖 → 生成 docs → 构建静态站点
+command = "pip install -r requirements.txt && python3 tools/gen_nav.py && mkdocs build"
+
+# 发布目录（构建输出）
+publish = "site"
+
+# 构建环境变量
+environment = { PYTHON_VERSION = "3.11" }
+
+[build.environment]
+# Python 无缓冲输出，便于日志查看
+PYTHONUNBUFFERED = "1"
+
+# 路由重写规则 - 确保 CMS 访问正常
+# 如果访问 /admin 直接返回 admin/index.html
+[[redirects]]
+from = "/admin"
+to = "/admin/index.html"
+status = 200
+force = false
+
+# 所有 /admin/* 子路由也指向 admin/index.html（SPA 路由）
+[[redirects]]
+from = "/admin/*"
+to = "/admin/index.html"
+status = 200
+force = false
+
+# HTTP 安全头配置
+[[headers]]
+for = "/*"
+
+[headers.values]
+# 允许 Netlify Identity 脚本
+X-Content-Type-Options = "nosniff"
+X-Frame-Options = "SAMEORIGIN"
+X-XSS-Protection = "1; mode=block"
+# CSP 政策：允许 Netlify 域名的脚本
+Content-Security-Policy = "default-src 'self'; script-src 'self' https://identity.netlify.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self' https://api.netlify.com; frame-ancestors 'none'"
+
+# CMS 资源（禁用缓存，保证实时更新）
+[[headers]]
+for = "/admin/*"
+
+[headers.values]
+Cache-Control = "public, max-age=0, must-revalidate"
+
+# 静态资源缓存（长期缓存）
+[[headers]]
+for = "/images/*"
+
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+# 构建上下文配置（分支特定构建）
+[context.main]
+command = "pip install -r requirements.txt && python3 tools/gen_nav.py && mkdocs build"
+
+[context.main.environment]
+SITE_URL = "https://b1tzer.github.io/java-interview-guide"
+
+# 预发布环境（PR preview）
+[context.deploy-preview]
+command = "pip install -r requirements.txt && python3 tools/gen_nav.py && mkdocs build"
