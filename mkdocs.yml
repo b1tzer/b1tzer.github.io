@@ -23,6 +23,9 @@ theme:
     - content.code.copy        # 代码复制按钮
 
 plugins:
+  - awesome-pages:
+      filename: .pages
+      sort_type: natural  # 自然排序，支持数字前缀
   - search:
       lang: zh
 
@@ -47,8 +50,6 @@ markdown_extensions:
   - toc:                       # 目录
       permalink: true
       title: 本页目录
-
-
 
 nav:
 - 首页: index.md

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_nav.py — 将项目 Markdown 文章同步到 docs/ 目录，并自动更新 mkdocs.yml 的 nav 配置
+gen_nav.py — 将项目 Markdown 文章同步到 docs/ 目录（导航由 awesome-pages 插件自动生成）
 
 用法：
 python3 tools/gen_nav.py          # 在项目根目录执行
@@ -11,7 +11,7 @@ python3 tools/gen_nav.py --check  # 仅检查，不写入（CI 用）
     - 章节目录：以 数字- 开头的一级子目录（如 01-java-basic）
     - 文章顺序：按文件名字典序排序（文件名前缀数字保证顺序）
     - 将 Markdown 文件复制到 docs/<章节目录>/ 下
-    - 自动更新 mkdocs.yml 中的 nav 配置
+    - 导航配置由 mkdocs-awesome-pages-plugin 自动生成
 """
 
 import os
@@ -181,57 +181,6 @@ def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> 
     return changed
 
 
-def update_mkdocs_nav(articles: list, chapters_meta: list, check_only: bool = False) -> bool:
-    """更新 mkdocs.yml 中的 nav 配置"""
-
-    # 读取现有 mkdocs.yml（保留注释用原始文本处理）
-    with open(MKDOCS_YML, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    # 构建 nav 结构
-    nav = [{"首页": "index.md"}]
-
-    chapter_articles = {}
-    for art in articles:
-        chapter_articles.setdefault(art["dir"], []).append(art)
-
-    for ch_dir in sorted(chapter_articles.keys()):
-        arts = chapter_articles[ch_dir]
-        ch_title = get_chapter_title(ch_dir)
-        section_title = ch_title
-
-        section_items = []
-        for art in arts:
-            doc_path = f"{ch_dir}/{art['file']}"
-            section_items.append({art["title"]: doc_path})
-
-        nav.append({section_title: section_items})
-
-    # 生成 nav YAML 文本
-    nav_yaml = yaml.dump({"nav": nav}, allow_unicode=True, default_flow_style=False, sort_keys=False)
-    nav_text = nav_yaml  # 只取 nav 部分
-
-    # 用正则替换 mkdocs.yml 中的 nav 块（从 "nav:" 到文件末尾或下一个顶级 key）
-    nav_pattern = re.compile(r'^nav:.*?(?=^\w|\Z)', re.MULTILINE | re.DOTALL)
-
-    if nav_pattern.search(content):
-        new_content = nav_pattern.sub(nav_text, content)
-    else:
-        # 如果没有 nav 块，追加到末尾
-        new_content = content.rstrip() + "\n\n" + nav_text
-
-    if new_content == content:
-        return False
-
-    if not check_only:
-        with open(MKDOCS_YML, "w", encoding="utf-8") as f:
-            f.write(new_content)
-        print(f"  [更新] mkdocs.yml nav 配置")
-    else:
-        print(f"  [需更新] mkdocs.yml nav 配置")
-    return True
-
-
 def update_readme(articles: list, chapters_meta: list, check_only: bool = False) -> bool:
     """重新生成 README.md 的目录部分"""
     readme_path = os.path.join(BASE, "README.md")
@@ -312,25 +261,21 @@ def main():
     print("📁 同步文章到 docs/ 目录...")
     sync_changed = sync_docs(articles, chapters_meta, check_only)
 
-    print("\n🧭 更新 mkdocs.yml 导航...")
-    nav_changed = update_mkdocs_nav(articles, chapters_meta, check_only)
-
     print("\n📖 更新 README 目录...")
     readme_changed = update_readme(articles, chapters_meta, check_only)
 
     print()
     if check_only:
-        if sync_changed > 0 or nav_changed or readme_changed:
+        if sync_changed > 0 or readme_changed:
             print(f"❌ 有内容需要更新，请先运行 python3 tools/gen_nav.py")
             sys.exit(1)
         else:
             print("✅ 所有内容均为最新，无需更新")
     else:
-        if sync_changed == 0 and not nav_changed and not readme_changed:
+        if sync_changed == 0 and not readme_changed:
             print("✅ 所有内容均为最新，无需更新")
         else:
             print(f"✅ 完成！同步了 {sync_changed} 个文件" +
-                  ("，更新了 mkdocs.yml 导航" if nav_changed else "") +
                   ("，更新了 README" if readme_changed else ""))
 
 
