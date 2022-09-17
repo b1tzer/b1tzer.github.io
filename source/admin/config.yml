@@ -1,0 +1,173 @@
+backend:
+  name: github
+  repo: b1tzer/java-interview-guide
+  branch: main
+  # Netlify Git Gateway 会自动处理认证
+  # 无需配置 OAuth App 凭证，Netlify Identity 负责认证
+
+# 媒体库配置
+media_folder: "docs/images"
+public_folder: "/images"
+
+# 发布功能配置
+publish_mode: editorial_workflow  # 草稿 → 待审 → 发布流程
+
+# CMS 显示配置
+site_url: https://b1tzer.github.io/java-interview-guide
+display_url: https://b1tzer.github.io/java-interview-guide
+logo_url: https://github.com/b1tzer.png
+
+# 集合配置
+collections:
+  - name: "java-basic"
+    label: "☕ Java 基础"
+    folder: "01-java-basic"
+    create: true
+    extension: "md"
+    format: "frontmatter"
+    slug: "{{slug}}"
+    fields:
+      - label: "标题"
+        name: "title"
+        widget: "string"
+        required: true
+      - label: "内容"
+        name: "body"
+        widget: "markdown"
+        modes: ["rich_text", "raw"]
+
+  - name: "spring"
+    label: "🍃 Spring 框架"
+    folder: "02-spring"
+    create: true
+    extension: "md"
+    format: "frontmatter"
+    slug: "{{slug}}"
+    fields:
+      - label: "标题"
+        name: "title"
+        widget: "string"
+        required: true
+      - label: "内容"
+        name: "body"
+        widget: "markdown"
+        modes: ["rich_text", "raw"]
+
+  - name: "mysql"
+    label: "🗄️ MySQL 数据库"
+    folder: "03-mysql"
+    create: true
+    extension: "md"
+    format: "frontmatter"
+    slug: "{{slug}}"
+    fields:
+      - label: "标题"
+        name: "title"
+        widget: "string"
+        required: true
+      - label: "内容"
+        name: "body"
+        widget: "markdown"
+        modes: ["rich_text", "raw"]
+
+  - name: "postgresql"
+    label: "🐘 PostgreSQL"
+    folder: "04-postgresql"
+    create: true
+    extension: "md"
+    format: "frontmatter"
+    slug: "{{slug}}"
+    fields:
+      - label: "标题"
+        name: "title"
+        widget: "string"
+        required: true
+      - label: "内容"
+        name: "body"
+        widget: "markdown"
+        modes: ["rich_text", "raw"]
+
+  - name: "redis"
+    label: "⚡ Redis 缓存"
+    folder: "05-redis"
+    create: true
+    extension: "md"
+    format: "frontmatter"
+    slug: "{{slug}}"
+    fields:
+      - label: "标题"
+        name: "title"
+        widget: "string"
+        required: true
+      - label: "内容"
+        name: "body"
+        widget: "markdown"
+        modes: ["rich_text", "raw"]
+
+  - name: "kafka"
+    label: "📨 Kafka 消息队列"
+    folder: "06-kafka"
+    create: true
+    extension: "md"
+    format: "frontmatter"
+    slug: "{{slug}}"
+    fields:
+      - label: "标题"
+        name: "title"
+        widget: "string"
+        required: true
+      - label: "内容"
+        name: "body"
+        widget: "markdown"
+        modes: ["rich_text", "raw"]
+
+  - name: "elasticsearch"
+    label: "🔍 Elasticsearch"
+    folder: "07-elasticsearch"
+    create: true
+    extension: "md"
+    format: "frontmatter"
+    slug: "{{slug}}"
+    fields:
+      - label: "标题"
+        name: "title"
+        widget: "string"
+        required: true
+      - label: "内容"
+        name: "body"
+        widget: "markdown"
+        modes: ["rich_text", "raw"]
+
+  - name: "design-pattern"
+    label: "🎨 设计模式"
+    folder: "08-design-pattern"
+    create: true
+    extension: "md"
+    format: "frontmatter"
+    slug: "{{slug}}"
+    fields:
+      - label: "标题"
+        name: "title"
+        widget: "string"
+        required: true
+      - label: "内容"
+        name: "body"
+        widget: "markdown"
+        modes: ["rich_text", "raw"]
+
+  - name: "software-engineering"
+    label: "🏗️ 软件工程"
+    folder: "09-software-engineering"
+    create: true
+    extension: "md"
+    format: "frontmatter"
+    slug: "{{slug}}"
+    fields:
+      - label: "标题"
+        name: "title"
+        widget: "string"
+        required: true
+      - label: "内容"
+        name: "body"
+        widget: "markdown"
+        modes: ["rich_text", "raw"]

@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_nav.py — 将项目 Markdown 文章同步到 docs/ 目录（导航由 awesome-pages 插件自动生成）
+gen_nav.py — 同步 CMS admin 文件并更新 README（导航由 awesome-pages 插件自动生成）
 
 用法：
 python3 tools/gen_nav.py          # 在项目根目录执行
 python3 tools/gen_nav.py --check  # 仅检查，不写入（CI 用）
 
-规则：
-    - 章节目录：以 数字- 开头的一级子目录（如 01-java-basic）
-    - 文章顺序：按文件名字典序排序（文件名前缀数字保证顺序）
-    - 将 Markdown 文件复制到 docs/<章节目录>/ 下
+功能：
+    - 同步 admin/ 文件夹到 source/admin（CMS）
+    - 更新 README.md 的目录部分
     - 导航配置由 mkdocs-awesome-pages-plugin 自动生成
 """
 
@@ -25,8 +24,8 @@ import yaml
 # 项目根目录（脚本相对位置：tools/gen_nav.py）
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# docs 目录
-DOCS_DIR = os.path.join(BASE, "docs")
+# docs 目录（现在直接是 source/）
+DOCS_DIR = os.path.join(BASE, "source")
 
 # 源内容目录
 CONTENT_DIR = os.path.join(BASE, "source")
@@ -111,48 +110,10 @@ def collect_articles():
 
 
 def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> int:
-    """将 Markdown 文件同步到 docs/ 目录，返回变更文件数"""
+    """同步 admin 文件夹和首页到 source/ 目录，返回变更文件数"""
     changed = 0
 
-    # 确保 docs 目录存在
-    if not check_only:
-        os.makedirs(DOCS_DIR, exist_ok=True)
-
-    # 同步每个章节目录
-    for ch in chapters_meta:
-        ch_dir = ch["dir"]
-        dest_dir = os.path.join(DOCS_DIR, ch_dir)
-        if not check_only:
-            os.makedirs(dest_dir, exist_ok=True)
-
-        for fname in ch["files"]:
-            src = os.path.join(CONTENT_DIR, ch_dir, fname)
-            dst = os.path.join(dest_dir, fname)
-
-            # 读取源文件内容
-            with open(src, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            # 将旧的 ../README.md 链接替换为 MkDocs 的 ../index.md
-            content = content.replace("../README.md", "../index.md")
-
-            # 检查目标文件是否需要更新
-            if os.path.exists(dst):
-                with open(dst, "r", encoding="utf-8") as f:
-                    old_content = f.read()
-                if old_content == content:
-                    continue
-
-            changed += 1
-            if not check_only:
-                with open(dst, "w", encoding="utf-8") as f:
-                    f.write(content)
-                print(f"  [同步] {ch_dir}/{fname}")
-            else:
-                print(f"  [需同步] {ch_dir}/{fname}")
-
-    # 同步自定义首页
-    # 同步自定义首页 homepage.md → docs/index.md
+    # 同步自定义首页 homepage.md → source/index.md
     homepage_src = os.path.join(BASE, "homepage.md")
     homepage_dst = os.path.join(DOCS_DIR, "index.md")
     if os.path.exists(homepage_src):
@@ -163,9 +124,9 @@ def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> 
             if not check_only:
                 with open(homepage_dst, "w", encoding="utf-8") as f:
                     f.write(homepage_content)
-                print(f"  [同步] homepage.md → docs/index.md")
+                print(f"  [同步] homepage.md → source/index.md")
 
-    # 同步 admin 文件夹（CMS）到 docs/admin
+    # 同步 admin 文件夹（CMS）到 source/admin
     admin_src = os.path.join(BASE, "admin")
     admin_dst = os.path.join(DOCS_DIR, "admin")
     if os.path.exists(admin_src):
@@ -175,7 +136,7 @@ def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> 
                 shutil.rmtree(admin_dst)
             # 复制新的 admin 文件夹
             shutil.copytree(admin_src, admin_dst)
-            print(f"  [同步] admin/ → docs/admin/")
+            print(f"  [同步] admin/ → source/admin/")
         changed += 1
 
     return changed
@@ -258,7 +219,7 @@ def main():
     articles, chapters_meta = collect_articles()
     print(f"   共发现 {len(articles)} 篇文章，{len(chapters_meta)} 个章节\n")
 
-    print("📁 同步文章到 docs/ 目录...")
+    print("📁 同步 admin 和首页到 source/ 目录...")
     sync_changed = sync_docs(articles, chapters_meta, check_only)
 
     print("\n📖 更新 README 目录...")

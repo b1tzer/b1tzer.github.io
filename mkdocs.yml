@@ -7,7 +7,7 @@ repo_name: java-interview-guide
 repo_url: https://github.com/b1tzer/java-interview-guide
 edit_uri: edit/main/source/
 
-docs_dir: docs
+docs_dir: source
 site_dir: site
 
 theme:

@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CMS - Java 面试指南编辑系统</title>
+    <script defer src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+                "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+                sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .netlify-identity-container {
+            position: absolute;
+            top: 0;
+            right: 0;
+            z-index: 10000;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Decap CMS -->
+    <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+
+    <script>
+        // 处理 Netlify Identity 事件
+        if (window.netlifyIdentity) {
+            window.netlifyIdentity.on("init", user => {
+                if (!user) {
+                    // 未登录重定向到登录
+                    window.netlifyIdentity.on("login", () => {
+                        document.location.href = "/admin/";
+                    });
+                }
+            });
+
+            // 登录/登出后刷新页面
+            window.netlifyIdentity.on("logout", () => {
+                document.location.href = "/";
+            });
+        }
+    </script>
+</body>
+
+</html>
