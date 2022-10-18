@@ -24,11 +24,11 @@ import yaml
 # 项目根目录（脚本相对位置：tools/gen_nav.py）
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# docs 目录（现在直接是 source/）
-DOCS_DIR = os.path.join(BASE, "source")
+# docs 目录
+DOCS_DIR = os.path.join(BASE, "docs")
 
 # 源内容目录
-CONTENT_DIR = os.path.join(BASE, "source")
+CONTENT_DIR = os.path.join(BASE, "docs")
 
 # mkdocs.yml 路径
 MKDOCS_YML = os.path.join(BASE, "mkdocs.yml")
@@ -110,7 +110,7 @@ def collect_articles():
 
 
 def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> int:
-    """同步 admin 文件夹和首页到 source/ 目录，返回变更文件数"""
+    """同步 admin 文件夹和首页到 docs/ 目录，返回变更文件数"""
     changed = 0
 
     # 同步自定义首页 homepage.md → source/index.md
@@ -124,9 +124,9 @@ def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> 
             if not check_only:
                 with open(homepage_dst, "w", encoding="utf-8") as f:
                     f.write(homepage_content)
-                print(f"  [同步] homepage.md → source/index.md")
+                print(f"  [同步] homepage.md → docs/index.md")
 
-    # 同步 admin 文件夹（CMS）到 source/admin
+    # 同步 admin 文件夹（CMS）到 docs/admin
     admin_src = os.path.join(BASE, "admin")
     admin_dst = os.path.join(DOCS_DIR, "admin")
     if os.path.exists(admin_src):
@@ -136,7 +136,7 @@ def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> 
                 shutil.rmtree(admin_dst)
             # 复制新的 admin 文件夹
             shutil.copytree(admin_src, admin_dst)
-            print(f"  [同步] admin/ → source/admin/")
+            print(f"  [同步] admin/ → docs/admin/")
         changed += 1
 
     return changed
@@ -219,7 +219,7 @@ def main():
     articles, chapters_meta = collect_articles()
     print(f"   共发现 {len(articles)} 篇文章，{len(chapters_meta)} 个章节\n")
 
-    print("📁 同步 admin 和首页到 source/ 目录...")
+    print("📁 同步 admin 和首页到 docs/ 目录...")
     sync_changed = sync_docs(articles, chapters_meta, check_only)
 
     print("\n📖 更新 README 目录...")

@@ -5,9 +5,9 @@ site_url: https://b1tzer.github.io/
 
 repo_name: java-interview-guide
 repo_url: https://github.com/b1tzer/java-interview-guide
-edit_uri: edit/main/source/
+edit_uri: edit/main/docs/
 
-docs_dir: source
+docs_dir: docs
 site_dir: site
 
 theme:
@@ -23,9 +23,9 @@ theme:
     - content.code.copy        # 代码复制按钮
 
 plugins:
-  - awesome-pages:
-      filename: .pages
-      sort_type: natural  # 自然排序，支持数字前缀
+  # - awesome-pages:
+  #     filename: .pages
+  #     sort_type: natural  # 自然排序，支持数字前缀
   - search:
       lang: zh
 
