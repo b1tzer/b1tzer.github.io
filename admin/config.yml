@@ -1,9 +1,5 @@
 backend:
-  name: github
-  repo: b1tzer/java-interview-guide
-  branch: main
-  # Netlify Git Gateway 会自动处理认证
-  # 无需配置 OAuth App 凭证，Netlify Identity 负责认证
+  name: git-gateway
 
 # 媒体库配置
 media_folder: "docs/images"
