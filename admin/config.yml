@@ -9,8 +9,8 @@ public_folder: "/images"
 publish_mode: editorial_workflow  # 草稿 → 待审 → 发布流程
 
 # CMS 显示配置
-site_url: https://b1tzer.github.io/java-interview-guide
-display_url: https://b1tzer.github.io/java-interview-guide
+site_url: https://java-interview-guide.netlify.app
+display_url: https://java-interview-guide.netlify.app
 logo_url: https://github.com/b1tzer.png
 
 # 集合配置
