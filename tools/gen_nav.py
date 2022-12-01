@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_nav.py — 同步 CMS admin 文件并更新 README（导航由 awesome-pages 插件自动生成）
+gen_nav.py — 更新 README（导航由 awesome-pages 插件自动生成）
 
 用法：
 python3 tools/gen_nav.py          # 在项目根目录执行
 python3 tools/gen_nav.py --check  # 仅检查，不写入（CI 用）
 
 功能：
-    - 同步 admin/ 文件夹到 source/admin（CMS）
     - 更新 README.md 的目录部分
     - 导航配置由 mkdocs-awesome-pages-plugin 自动生成
 """
@@ -110,7 +109,7 @@ def collect_articles():
 
 
 def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> int:
-    """同步 admin 文件夹和首页到 docs/ 目录，返回变更文件数"""
+    """同步首页到 docs/ 目录，返回变更文件数"""
     changed = 0
 
     # 同步自定义首页 homepage.md → source/index.md
@@ -125,20 +124,6 @@ def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> 
                 with open(homepage_dst, "w", encoding="utf-8") as f:
                     f.write(homepage_content)
                 print(f"  [同步] homepage.md → docs/index.md")
-
-    # 同步 admin 文件夹（CMS）到 docs/admin
-    admin_src = os.path.join(BASE, "admin")
-    admin_dst = os.path.join(DOCS_DIR, "admin")
-    if os.path.exists(admin_src):
-        if not check_only:
-            # 删除旧的 admin 文件夹（如果存在）
-            if os.path.exists(admin_dst):
-                shutil.rmtree(admin_dst)
-            # 复制新的 admin 文件夹
-            shutil.copytree(admin_src, admin_dst)
-            print(f"  [同步] admin/ → docs/admin/")
-        changed += 1
-
     return changed
 
 
@@ -219,7 +204,7 @@ def main():
     articles, chapters_meta = collect_articles()
     print(f"   共发现 {len(articles)} 篇文章，{len(chapters_meta)} 个章节\n")
 
-    print("📁 同步 admin 和首页到 docs/ 目录...")
+    print("📁 同步首页到 docs/ 目录...")
     sync_changed = sync_docs(articles, chapters_meta, check_only)
 
     print("\n📖 更新 README 目录...")
