@@ -35,14 +35,16 @@ X-Content-Type-Options = "nosniff"
 X-Frame-Options = "SAMEORIGIN"
 X-XSS-Protection = "1; mode=block"
 # CSP 政策：允许 Netlify 域名的脚本
-Content-Security-Policy = "default-src 'self'; script-src 'self' https://identity.netlify.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self' https://api.netlify.com; frame-ancestors 'none'"
 
 # CMS 资源（禁用缓存，保证实时更新）
 [[headers]]
 for = "/admin/*"
-
 [headers.values]
+# 1. 缓存控制
 Cache-Control = "public, max-age=0, must-revalidate"
+# 2. 内容安全策略 (CSP)
+# 注意：这里显式允许了所有必要的 Netlify 域名
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://identity.netlify.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.netlify.com https://identity.netlify.com wss:; font-src 'self' https:; frame-ancestors 'self';"
 
 # 静态资源缓存（长期缓存）
 [[headers]]
@@ -50,6 +52,13 @@ for = "/images/*"
 
 [headers.values]
 Cache-Control = "public, max-age=31536000, immutable"
+
+# ███████ 静态资源缓存 ███████
+[[headers]]
+for = "/admin/assets/*.js"
+[headers.values]
+# 针对 CMS 自身的 JS 文件，可以适当缓存
+Cache-Control = "public, max-age=3600"
 
 # 构建上下文配置（分支特定构建）
 [context.main]
