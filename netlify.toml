@@ -9,6 +9,7 @@ publish = "site"
 PYTHON_VERSION = "3.11"
 # Python 无缓冲输出，便于日志查看
 PYTHONUNBUFFERED = "1"
+GIT_DEFAULT_BRANCH = "main"
 
 # 路由重写规则 - 确保 CMS 访问正常
 # 如果访问 /admin 直接返回 admin/index.html
