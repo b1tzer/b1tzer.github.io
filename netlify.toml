@@ -46,7 +46,7 @@ for = "/admin/*"
 Cache-Control = "public, max-age=0, must-revalidate"
 # 2. 内容安全策略 (CSP)
 # 注意：这里显式允许了所有必要的 Netlify 域名
-Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://identity.netlify.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.netlify.com https://identity.netlify.com wss:; font-src 'self' https:; frame-ancestors 'self';"
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.netlify.com https://identity.netlify.com https://api.github.com wss:;"
 
 # 静态资源缓存（长期缓存）
 [[headers]]
