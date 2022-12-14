@@ -1,5 +1,6 @@
 backend:
   name: git-gateway
+  branch: main
 
 # 媒体库配置
 media_folder: "docs/images"
