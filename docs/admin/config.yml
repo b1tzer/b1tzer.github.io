@@ -18,7 +18,7 @@ logo_url: https://github.com/b1tzer.png
 collections:
   - name: "java-basic"
     label: "☕ Java 基础"
-    folder: "01-java-basic"
+    folder: "docs/01-java-basic"
     create: true
     extension: "md"
     format: "frontmatter"
@@ -35,7 +35,7 @@ collections:
 
   - name: "spring"
     label: "🍃 Spring 框架"
-    folder: "02-spring"
+    folder: "docs/02-spring"
     create: true
     extension: "md"
     format: "frontmatter"
@@ -52,7 +52,7 @@ collections:
 
   - name: "mysql"
     label: "🗄️ MySQL 数据库"
-    folder: "03-mysql"
+    folder: "docs/03-mysql"
     create: true
     extension: "md"
     format: "frontmatter"
@@ -69,7 +69,7 @@ collections:
 
   - name: "postgresql"
     label: "🐘 PostgreSQL"
-    folder: "04-postgresql"
+    folder: "docs/04-postgresql"
     create: true
     extension: "md"
     format: "frontmatter"
@@ -86,7 +86,7 @@ collections:
 
   - name: "redis"
     label: "⚡ Redis 缓存"
-    folder: "05-redis"
+    folder: "docs/05-redis"
     create: true
     extension: "md"
     format: "frontmatter"
@@ -103,7 +103,7 @@ collections:
 
   - name: "kafka"
     label: "📨 Kafka 消息队列"
-    folder: "06-kafka"
+    folder: "docs/06-kafka"
     create: true
     extension: "md"
     format: "frontmatter"
@@ -120,7 +120,7 @@ collections:
 
   - name: "elasticsearch"
     label: "🔍 Elasticsearch"
-    folder: "07-elasticsearch"
+    folder: "docs/07-elasticsearch"
     create: true
     extension: "md"
     format: "frontmatter"
@@ -137,7 +137,7 @@ collections:
 
   - name: "design-pattern"
     label: "🎨 设计模式"
-    folder: "08-design-pattern"
+    folder: "docs/08-design-pattern"
     create: true
     extension: "md"
     format: "frontmatter"
@@ -154,7 +154,7 @@ collections:
 
   - name: "software-engineering"
     label: "🏗️ 软件工程"
-    folder: "09-software-engineering"
+    folder: "docs/09-software-engineering"
     create: true
     extension: "md"
     format: "frontmatter"
