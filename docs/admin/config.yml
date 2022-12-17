@@ -7,7 +7,7 @@ media_folder: "docs/images"
 public_folder: "/images"
 
 # 发布功能配置
-publish_mode: editorial_workflow  # 草稿 → 待审 → 发布流程
+publish_mode: editorial_workflow # 草稿 → 待审 → 发布流程
 
 # CMS 显示配置
 site_url: https://java-interview-guide.netlify.app
@@ -21,7 +21,7 @@ collections:
     folder: "docs/01-java-basic"
     create: true
     extension: "md"
-    format: "frontmatter"
+    # format: "frontmatter"
     slug: "{{slug}}"
     fields:
       - label: "标题"
@@ -38,7 +38,7 @@ collections:
     folder: "docs/02-spring"
     create: true
     extension: "md"
-    format: "frontmatter"
+    # format: "frontmatter"
     slug: "{{slug}}"
     fields:
       - label: "标题"
@@ -55,7 +55,7 @@ collections:
     folder: "docs/03-mysql"
     create: true
     extension: "md"
-    format: "frontmatter"
+    # format: "frontmatter"
     slug: "{{slug}}"
     fields:
       - label: "标题"
@@ -72,7 +72,7 @@ collections:
     folder: "docs/04-postgresql"
     create: true
     extension: "md"
-    format: "frontmatter"
+    # format: "frontmatter"
     slug: "{{slug}}"
     fields:
       - label: "标题"
@@ -89,7 +89,7 @@ collections:
     folder: "docs/05-redis"
     create: true
     extension: "md"
-    format: "frontmatter"
+    # format: "frontmatter"
     slug: "{{slug}}"
     fields:
       - label: "标题"
@@ -106,7 +106,7 @@ collections:
     folder: "docs/06-kafka"
     create: true
     extension: "md"
-    format: "frontmatter"
+    # format: "frontmatter"
     slug: "{{slug}}"
     fields:
       - label: "标题"
@@ -123,7 +123,7 @@ collections:
     folder: "docs/07-elasticsearch"
     create: true
     extension: "md"
-    format: "frontmatter"
+    # format: "frontmatter"
     slug: "{{slug}}"
     fields:
       - label: "标题"
@@ -140,7 +140,7 @@ collections:
     folder: "docs/08-design-pattern"
     create: true
     extension: "md"
-    format: "frontmatter"
+    # format: "frontmatter"
     slug: "{{slug}}"
     fields:
       - label: "标题"
@@ -157,7 +157,7 @@ collections:
     folder: "docs/09-software-engineering"
     create: true
     extension: "md"
-    format: "frontmatter"
+    # format: "frontmatter"
     slug: "{{slug}}"
     fields:
       - label: "标题"
