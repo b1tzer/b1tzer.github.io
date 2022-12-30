@@ -1,3 +1,7 @@
+---
+title: CAP 理论与 BASE 理论
+---
+
 # CAP 理论与 BASE 理论
 
 ---

@@ -1,3 +1,7 @@
+---
+title: Spring Boot 自动配置原理
+---
+
 # Spring Boot 自动配置原理
 
 ---

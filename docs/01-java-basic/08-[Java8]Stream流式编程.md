@@ -1,3 +1,7 @@
+---
+title: Stream API
+---
+
 # Stream API
 
 ---

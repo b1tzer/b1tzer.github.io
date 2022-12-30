@@ -1,3 +1,7 @@
+---
+title: Lambda 表达式
+---
+
 # Lambda 表达式
 
 ---

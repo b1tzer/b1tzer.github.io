@@ -1,3 +1,7 @@
+---
+title: Kafka 消费者组与 Rebalance
+---
+
 # Kafka 消费者组与 Rebalance
 
 ---

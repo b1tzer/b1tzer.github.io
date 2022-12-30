@@ -1,3 +1,7 @@
+---
+title: Redis 持久化机制：RDB 与 AOF
+---
+
 # Redis 持久化机制：RDB 与 AOF
 
 ---

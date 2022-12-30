@@ -1,3 +1,7 @@
+---
+title: PostgreSQL vs MySQL 全面对比
+---
+
 # PostgreSQL vs MySQL 全面对比
 
 > **核心问题**：什么时候选 PostgreSQL？什么时候选 MySQL？两者核心差异是什么？

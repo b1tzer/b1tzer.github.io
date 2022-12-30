@@ -1,3 +1,7 @@
+---
+title: VACUUM 机制
+---
+
 # VACUUM 机制
 
 > **核心问题**：为什么 PostgreSQL 需要 VACUUM？VACUUM 和 VACUUM FULL 有什么区别？

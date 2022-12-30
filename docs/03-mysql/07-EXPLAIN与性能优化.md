@@ -1,3 +1,7 @@
+---
+title: EXPLAIN 与性能优化
+---
+
 # EXPLAIN 与性能优化
 
 > **核心问题**：如何用 EXPLAIN 分析 SQL 性能？有哪些常见的 SQL 优化手段？
