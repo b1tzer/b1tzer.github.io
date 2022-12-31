@@ -1,7 +1,3 @@
----
-title: Java Interview Guide
----
-
 # Java Interview Guide
 
 > 一份系统化的 Java 后端面试知识库，覆盖核心基础、框架原理、数据库、缓存、消息队列、搜索引擎、设计模式与软件工程。

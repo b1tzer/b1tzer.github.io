@@ -55,13 +55,25 @@ def get_chapter_title(dir_name: str) -> str:
 
 
 def get_article_title(file_path: str) -> str:
-    """读取 md 文件第一个 # 标题，找不到则用文件名"""
+    """读取 md 文件的标题，优先从 frontmatter 中读取，其次读取第一个 # 标题，找不到则用文件名"""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            for line in f:
-                stripped = line.strip()
-                if stripped.startswith("# "):
-                    return stripped[2:].strip()
+            content = f.read()
+        
+        # 优先从 frontmatter 中读取 title
+        if content.startswith('---'):
+            lines = content.split('\n')
+            for line in lines[1:]:
+                if line.strip() == '---':
+                    break
+                if line.strip().startswith('title:'):
+                    return line.split(':', 1)[1].strip()
+        
+        # 从第一个 # 标题读取
+        for line in content.split('\n'):
+            stripped = line.strip()
+            if stripped.startswith("# "):
+                return stripped[2:].strip()
     except Exception:
         pass
     # fallback：去掉数字前缀和扩展名
@@ -72,7 +84,91 @@ def get_article_title(file_path: str) -> str:
 
 # ── 核心逻辑 ──────────────────────────────────────────────────────────────────
 
-def collect_articles():
+def add_frontmatter(file_path: str, expected_title: str, check_only: bool = False) -> bool:
+    """
+    为文件添加 frontmatter 部分，如果已有则检查是否一致
+    返回是否有变更
+    """
+    # 读取文件内容
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # 检查是否已经有 frontmatter
+    if content.startswith('---'):
+        # 提取现有 frontmatter 中的 title
+        lines = content.split('\n')
+        title_line = None
+        for line in lines[1:]:
+            if line.strip() == '---':
+                break
+            if line.strip().startswith('title:'):
+                title_line = line.strip()
+                break
+        
+        if title_line:
+            # 解析现有 title
+            existing_title = title_line.split(':', 1)[1].strip()
+            if existing_title == expected_title:
+                # title 一致，无需修改
+                return False
+            else:
+                # title 不一致，需要更新
+                if check_only:
+                    print(f"  [需更新] {file_path} (frontmatter title 不一致)")
+                    return True
+                else:
+                    # 更新 frontmatter 中的 title
+                    new_lines = []
+                    in_frontmatter = True
+                    for line in lines:
+                        if in_frontmatter:
+                            if line.strip().startswith('title:'):
+                                new_lines.append(f"title: {expected_title}")
+                            else:
+                                new_lines.append(line)
+                            if line.strip() == '---' and len(new_lines) > 1:
+                                in_frontmatter = False
+                        else:
+                            new_lines.append(line)
+                    new_content = '\n'.join(new_lines)
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(new_content)
+                    print(f"  [更新] {file_path} (frontmatter title)")
+                    return True
+        else:
+            # 有 frontmatter 但没有 title，需要添加
+            if check_only:
+                print(f"  [需更新] {file_path} (frontmatter 缺少 title)")
+                return True
+            else:
+                # 在 frontmatter 中添加 title
+                lines = content.split('\n')
+                new_lines = []
+                for i, line in enumerate(lines):
+                    new_lines.append(line)
+                    if i == 0 and line.strip() == '---':
+                        new_lines.append(f"title: {expected_title}")
+                new_content = '\n'.join(new_lines)
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(new_content)
+                print(f"  [更新] {file_path} (添加 frontmatter title)")
+                return True
+    else:
+        # 没有 frontmatter，需要添加
+        if check_only:
+            print(f"  [需更新] {file_path} (缺少 frontmatter)")
+            return True
+        else:
+            # 添加 frontmatter
+            frontmatter = f'---\ntitle: {expected_title}\n---\n\n'
+            new_content = frontmatter + content
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            print(f"  [添加] {file_path} (frontmatter)")
+            return True
+
+
+def collect_articles(check_only: bool = False):
     """
     扫描项目目录，按章节目录名排序，章节内按文件名排序，
     返回有序的文章列表和章节元数据。
@@ -210,19 +306,31 @@ def main():
     print("\n📖 更新 README 目录...")
     readme_changed = update_readme(articles, chapters_meta, check_only)
 
+    print("\n📄 处理 frontmatter...")
+    frontmatter_changed = 0
+    for article in articles:
+        if add_frontmatter(article["path"], article["title"], check_only):
+            frontmatter_changed += 1
+
     print()
     if check_only:
-        if sync_changed > 0 or readme_changed:
+        if sync_changed > 0 or readme_changed or frontmatter_changed > 0:
             print(f"❌ 有内容需要更新，请先运行 python3 tools/gen_nav.py")
             sys.exit(1)
         else:
             print("✅ 所有内容均为最新，无需更新")
     else:
-        if sync_changed == 0 and not readme_changed:
+        if sync_changed == 0 and not readme_changed and frontmatter_changed == 0:
             print("✅ 所有内容均为最新，无需更新")
         else:
-            print(f"✅ 完成！同步了 {sync_changed} 个文件" +
-                  ("，更新了 README" if readme_changed else ""))
+            message = f"✅ 完成！"
+            if sync_changed > 0:
+                message += f" 同步了 {sync_changed} 个文件"
+            if readme_changed:
+                message += "，更新了 README"
+            if frontmatter_changed > 0:
+                message += f"，处理了 {frontmatter_changed} 个 frontmatter"
+            print(message)
 
 
 if __name__ == "__main__":
