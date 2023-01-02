@@ -22,6 +22,21 @@ theme:
     - search.highlight         # 搜索高亮
     - content.code.copy        # 代码复制按钮
 
+extra:
+  analytics:
+    provider: google
+    property: G-ZV6SVQFCWW  # 替换为你的 Google Analytics 跟踪 ID
+    feedback:
+      title: 你觉得这篇文章有帮助吗？
+      ratings:
+        - icon: material/emoticon-happy-outline
+          name: 有帮助
+          data: 1
+          note: 感谢你的反馈！
+        - icon: material/emoticon-sad-outline
+          name: 没用
+          data: 0
+          note: 我们会努力改进。
 plugins:
   # - awesome-pages:
   #     filename: .pages
