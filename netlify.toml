@@ -67,7 +67,7 @@ Cache-Control = "public, max-age=3600"
 command = "pip install -r requirements.txt && python3 tools/gen_nav.py && mkdocs build"
 
 [context.main.environment]
-SITE_URL = "https://b1tzer.github.io/java-interview-guide"
+SITE_URL = "https://tech.xpro.wang"
 
 # 预发布环境（PR preview）
 [context.deploy-preview]

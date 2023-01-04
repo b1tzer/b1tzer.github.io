@@ -110,3 +110,51 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(56, 142, 60, 0.8);
 }
+
+/* ── 反馈组件样式调整 ───────────────────────────────────────── */
+
+/* 反馈标题文字大小和间距 */
+.md-feedback__title {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  margin-bottom: 1rem !important;
+  color: var(--md-default-fg-color) !important;
+}
+
+/* 反馈按钮容器间距 */
+.md-feedback__rate {
+  margin-top: 0.8rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+/* 反馈按钮样式 */
+.md-feedback__rate button {
+  margin: 0 0.5rem 0.5rem 0 !important;
+  padding: 0.6rem 1.2rem !important;
+  border-radius: 6px !important;
+  font-size: 0.9rem !important;
+}
+
+/* 浅色模式反馈按钮 */
+[data-md-color-scheme="default"] .md-feedback__rate button {
+  background: rgba(76, 175, 80, 0.1) !important;
+  border: 1px solid rgba(76, 175, 80, 0.3) !important;
+  color: #2e7d32 !important;
+}
+
+[data-md-color-scheme="default"] .md-feedback__rate button:hover {
+  background: rgba(76, 175, 80, 0.2) !important;
+  border-color: #4caf50 !important;
+}
+
+/* 深色模式反馈按钮 */
+[data-md-color-scheme="slate"] .md-feedback__rate button {
+  background: rgba(129, 199, 132, 0.1) !important;
+  border: 1px solid rgba(129, 199, 132, 0.3) !important;
+  color: #81c784 !important;
+}
+
+[data-md-color-scheme="slate"] .md-feedback__rate button:hover {
+  background: rgba(129, 199, 132, 0.2) !important;
+  border-color: #81c784 !important;
+}
