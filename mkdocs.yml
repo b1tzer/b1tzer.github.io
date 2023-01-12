@@ -118,6 +118,7 @@ nav:
   - 锁机制与死锁: 03-mysql/06-锁机制与死锁.md
   - EXPLAIN 与性能优化: 03-mysql/07-EXPLAIN与性能优化.md
   - MySQL 实战问题与避坑指南: 03-mysql/08-实战问题与避坑指南.md
+  - 分库分表与分布式架构: 03-mysql/09-分库分表与分布式架构.md
 - Postgresql:
   - PostgreSQL 核心特性与选型: 04-postgresql/00-postgresql-overview.md
   - PostgreSQL vs MySQL 全面对比: 04-postgresql/01-PG与MySQL对比.md
