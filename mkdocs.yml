@@ -1,10 +1,10 @@
-site_name: Java 面试指南 | Java Interview Guide
-site_description: 一份系统化的 Java 后端面试知识库，覆盖核心基础、框架原理、数据库、缓存、消息队列、搜索引擎、设计模式与软件工程
+site_name: The Stack
+site_description: 系统化的 Java 后端技术分析，覆盖核心基础、框架原理、数据库、缓存、消息队列、搜索引擎、设计模式与软件工程
 site_author: b1tzer
 site_url: https://tech.xpro.wang/
 
-repo_name: java-interview-guide
-repo_url: https://github.com/b1tzer/java-interview-guide
+repo_name: the-stack
+repo_url: https://github.com/b1tzer/the-stack
 edit_uri: edit/main/docs/
 
 docs_dir: docs
