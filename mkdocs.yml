@@ -76,7 +76,7 @@ markdown_extensions:
       title: 本页目录
 
 nav:
-- 首页: index.md
+- Home: index.md
 - Java Basic:
   - Java 基础知识与 JVM 原理: 01-java-basic/00-Java基础与JVM概览.md
   - 面向对象（OOP）: 01-java-basic/01-面向对象.md
