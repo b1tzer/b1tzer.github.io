@@ -29,9 +29,6 @@ DOCS_DIR = os.path.join(BASE, "docs")
 # 源内容目录
 CONTENT_DIR = os.path.join(BASE, "docs")
 
-# mkdocs.yml 路径
-MKDOCS_YML = os.path.join(BASE, "mkdocs.yml")
-
 # 章节目录匹配规则（以数字开头的一级目录）
 CHAPTER_PATTERN = re.compile(r"^\d+-.+$")
 
@@ -204,25 +201,6 @@ def collect_articles(check_only: bool = False):
     return all_articles, chapters
 
 
-def sync_docs(articles: list, chapters_meta: list, check_only: bool = False) -> int:
-    """同步首页到 docs/ 目录，返回变更文件数"""
-    changed = 0
-
-    # 同步自定义首页 homepage.md → source/index.md
-    homepage_src = os.path.join(BASE, "homepage.md")
-    homepage_dst = os.path.join(DOCS_DIR, "index.md")
-    if os.path.exists(homepage_src):
-        with open(homepage_src, "r", encoding="utf-8") as f:
-            homepage_content = f.read()
-        if not os.path.exists(homepage_dst) or open(homepage_dst).read() != homepage_content:
-            changed += 1
-            if not check_only:
-                with open(homepage_dst, "w", encoding="utf-8") as f:
-                    f.write(homepage_content)
-                print(f"  [同步] homepage.md → docs/index.md")
-    return changed
-
-
 def update_readme(articles: list, chapters_meta: list, check_only: bool = False) -> bool:
     """重新生成 README.md 的目录部分"""
     readme_path = os.path.join(BASE, "README.md")
@@ -299,9 +277,6 @@ def main():
     print("🔍 扫描文章...")
     articles, chapters_meta = collect_articles()
     print(f"   共发现 {len(articles)} 篇文章，{len(chapters_meta)} 个章节\n")
-
-    print("📁 同步首页到 docs/ 目录...")
-    sync_changed = sync_docs(articles, chapters_meta, check_only)
 
     print("\n📖 更新 README 目录...")
     readme_changed = update_readme(articles, chapters_meta, check_only)

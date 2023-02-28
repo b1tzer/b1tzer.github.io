@@ -1,6 +1,6 @@
-# Java Interview Guide
+# The Stack
 
-> 一份系统化的 Java 后端面试知识库，覆盖核心基础、框架原理、数据库、缓存、消息队列、搜索引擎、设计模式与软件工程。
+> 🎯 一份深度技术解析与实战沉淀
 
 共 **89 篇文章**，**9 个章节**，持续更新中。
 
@@ -10,6 +10,7 @@
 
 | 章节 | 内容简介 | 文章数 |
 |------|----------|--------|
+| [Env](00-Env/个人windows开发环境搭建.md) | 个人windows开发环境搭建、命令行工具优化 | 2 篇 |
 | [Java Basic](01-java-basic/00-Java基础与JVM概览.md) | 面向对象、集合框架、并发编程、JVM、Java 8-17 新特性 | 15 篇 |
 | [Spring](02-spring/00-spring-core.md) | IoC/DI、AOP、Bean 生命周期、Spring Boot、Spring Cloud | 14 篇 |
 | [MySQL](03-mysql/00-mysql-overview.md) | 索引原理、事务 ACID、MVCC、锁机制、性能优化 | 9 篇 |

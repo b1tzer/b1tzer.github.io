@@ -1,160 +1,94 @@
 # The Stack
 
-> 🎯 一份深度技术解析与实战沉淀
+> 🎯 一份深度技术解析与实战沉淀的知识库
+
+## 📖 项目简介
+
+The Stack 是一个综合性的技术知识库，旨在为开发者提供全面、深入的技术解析和实战经验。我们致力于通过系统化的知识体系，帮助开发者快速掌握核心技术栈，提升技术能力。[部署站点](https://thestack.xpro.wang)
+
+### 项目目的
+
+- **知识系统化**：将分散的技术知识点整合成完整的知识体系
+- **深度解析**：深入剖析技术原理和实现细节
+- **实战指导**：提供实际项目中的最佳实践和解决方案
+- **持续更新**：跟进技术发展，不断补充新内容
+
+## 🛠️ 技术栈
+
+本项目涉及的核心技术领域包括：
+
+| 技术领域 | 内容 |
+|---------|------|
+| **开发工具** | WSL 环境配置、命令行工具优化、开发环境搭建 |
+| **Java 基础** | Java 8+ 新特性、并发编程、JVM 原理、集合框架 |
+| **Spring 生态** | Spring Boot、Spring MVC、Spring Security、Spring Cloud |
+| **数据库** | MySQL 索引与优化、PostgreSQL 高级特性、事务与并发控制 |
+| **缓存** | Redis 缓存设计、高可用架构、分布式锁 |
+| **消息队列** | Kafka 原理与实践、消息可靠性保障 |
+| **搜索引擎** | Elasticsearch 核心原理、性能优化、数据同步 |
+| **设计模式** | 常用设计模式的实现与应用场景 |
+| **软件工程** | SOLID 原则、DDD 领域驱动设计、系统架构设计 |
+
+## 🚀 部署流程
+
+本项目是一个静态文档库，部署非常简单：
+
+### 1. 本地部署
+
+1. **克隆项目**
+   ```bash
+   git clone https://github.com/b1tzer/the-stack.git
+   cd the-stack
+   ```
+
+2. **安装依赖**（可选，用于本地预览）
+   ```bash
+   # 安装 MkDocs 或其他文档工具
+   pip install mkdocs
+   # 或使用 VSCode 的 Markdown 预览功能
+   ```
+
+3. **本地预览**
+   ```bash
+   # 使用 MkDocs
+   mkdocs serve
+   # 或直接在 VSCode 中打开 Markdown 文件预览
+   ```
+
+### 2. 线上部署
+
+本项目可以部署到任何支持静态网站的平台：
+
+#### GitHub Pages
+1. 在 GitHub 仓库中启用 GitHub Pages
+2. 选择 `main` 分支作为源
+3. 访问 `https://b1tzer.github.io/the-stack`
+
+#### Netlify
+1. 连接 GitHub 仓库到 Netlify
+2. 配置构建命令（如果需要）
+3. 部署完成后访问生成的 URL
+
+## 📚 内容导航
+[内容导航](docs/index.md)
+
+## 🌟 特色
+
+- **深度解析**：不仅介绍技术用法，更深入剖析底层原理
+- **实战导向**：结合实际项目经验，提供可落地的解决方案
+- **体系完整**：覆盖从开发环境到架构设计的全链路知识
+- **持续更新**：跟进技术发展，不断补充新内容
+- **易于导航**：清晰的目录结构，方便快速定位所需内容
+
+## 📄 许可证
+
+本项目采用 [MIT License](LICENSE) 开源协议。
+
+## 📞 联系方式
+
+- **GitHub**：[https://github.com/b1tzer/the-stack](https://github.com/b1tzer/the-stack)
+- **Email**：bltzer@outlook.com
 
 ---
 
-## 📚 目录
-
-### Java Basic
-
-| # | 文章 |
-|---|------|
-| 00 | [Java 基础知识与 JVM 原理](01-java-basic/00-Java基础与JVM概览.md) |
-| 01 | [面向对象（OOP）](01-java-basic/01-面向对象.md) |
-| 02 | [集合框架（Collections Framework）](01-java-basic/02-集合框架.md) |
-| 03 | [并发编程（Concurrent Programming）](01-java-basic/03-并发编程.md) |
-| 04 | [JVM 内存结构与 GC](01-java-basic/04-JVM内存结构与GC.md) |
-| 05 | [异常处理（Exception Handling）](01-java-basic/05-异常处理.md) |
-| 06 | [AQS 与 CAS](01-java-basic/06-AQS与CAS.md) |
-| 07 | [Lambda 表达式](01-java-basic/07-[Java8]Lambda表达式.md) |
-| 08 | [Stream API](01-java-basic/08-[Java8]Stream流式编程.md) |
-| 09 | [Optional](01-java-basic/09-[Java8]Optional空值处理.md) |
-| 10 | [新日期 API](01-java-basic/10-[Java8]新日期API.md) |
-| 11 | [接口默认方法与静态方法](01-java-basic/11-[Java8]接口默认方法与静态方法.md) |
-| 12 | [Java 9-17 关键新特性](01-java-basic/12-[Java9-17]新特性.md) |
-| 13 | [注解（Annotation）](01-java-basic/13-注解（Annotation）.md) |
-| 14 | [数据结构精讲（Java & Spring 生态视角）](01-java-basic/14-数据结构精讲.md) |
-
-### Spring
-
-| # | 文章 |
-|---|------|
-| 00 | [Spring / Spring Boot 核心原理](02-spring/00-spring-core.md) |
-| 01 | [IoC 与 DI —— 控制反转与依赖注入](02-spring/01-IoC与DI.md) |
-| 02 | [Bean 生命周期与循环依赖](02-spring/02-Bean生命周期与循环依赖.md) |
-| 03 | [AOP —— 面向切面编程](02-spring/03-AOP面向切面编程.md) |
-| 04 | [Spring MVC 请求处理流程](02-spring/04-SpringMVC请求处理流程.md) |
-| 05 | [Spring Boot 自动配置原理](02-spring/05-SpringBoot自动配置原理.md) |
-| 06 | [Spring 事务管理](02-spring/06-Spring事务管理.md) |
-| 07 | [Spring 实战应用型面试题](02-spring/07-Spring实战应用题.md) |
-| 08 | [Spring Security 认证与授权](02-spring/08-Spring-Security认证与授权.md) |
-| 09 | [Spring Cloud 核心组件](02-spring/09-Spring-Cloud核心组件.md) |
-| 10 | [Spring 扩展点详解](02-spring/10-Spring扩展点详解.md) |
-| 11 | [Spring 常用注解全解](02-spring/11-Spring常用注解全解.md) |
-| 12 | [Feign 声明式 HTTP 客户端](02-spring/12-Feign声明式HTTP客户端.md) |
-| 13 | [gRPC 详解](02-spring/13-gRPC详解.md) |
-
-### Mysql
-
-| # | 文章 |
-|---|------|
-| 00 | [MySQL 索引、事务与性能优化](03-mysql/00-mysql-overview.md) |
-| 01 | [索引原理与 B+ 树](03-mysql/01-索引原理与B+树.md) |
-| 02 | [聚簇索引与覆盖索引](03-mysql/02-聚簇索引与覆盖索引.md) |
-| 03 | [联合索引与索引失效](03-mysql/03-联合索引与索引失效.md) |
-| 04 | [事务与 ACID](03-mysql/04-事务与ACID.md) |
-| 05 | [MVCC 与隔离级别](03-mysql/05-MVCC与隔离级别.md) |
-| 06 | [锁机制与死锁](03-mysql/06-锁机制与死锁.md) |
-| 07 | [EXPLAIN 与性能优化](03-mysql/07-EXPLAIN与性能优化.md) |
-| 08 | [MySQL 实战问题与避坑指南](03-mysql/08-实战问题与避坑指南.md) |
-
-### Postgresql
-
-| # | 文章 |
-|---|------|
-| 00 | [PostgreSQL 核心特性与选型](04-postgresql/00-postgresql-overview.md) |
-| 01 | [PostgreSQL vs MySQL 全面对比](04-postgresql/01-PG与MySQL对比.md) |
-| 02 | [MVCC 原理与表膨胀](04-postgresql/02-MVCC原理与表膨胀.md) |
-| 03 | [索引类型详解](04-postgresql/03-索引类型详解.md) |
-| 04 | [窗口函数](04-postgresql/04-窗口函数.md) |
-| 05 | [CTE 与递归查询](04-postgresql/05-CTE与递归查询.md) |
-| 06 | [物化视图](04-postgresql/06-物化视图.md) |
-| 07 | [VACUUM 机制](04-postgresql/07-VACUUM机制.md) |
-
-### Redis
-
-| # | 文章 |
-|---|------|
-| 00 | [Redis 缓存设计与高可用](05-redis/00-redis-overview.md) |
-| 01 | [Redis 数据结构与底层编码](05-redis/01-数据结构与底层编码.md) |
-| 02 | [Redis 持久化机制：RDB 与 AOF](05-redis/02-持久化机制RDB与AOF.md) |
-| 03 | [Redis 缓存三大问题：穿透、击穿、雪崩](05-redis/03-缓存三大问题.md) |
-| 04 | [Redis 高可用架构：主从、哨兵、集群](05-redis/04-高可用架构.md) |
-| 05 | [Redis 分布式锁](05-redis/05-分布式锁.md) |
-| 06 | [Redis 应用型问题](05-redis/06-应用型问题.md) |
-
-### Kafka
-
-| # | 文章 |
-|---|------|
-| 01 | [Kafka 基础概念](06-kafka/01-基础概念.md) |
-| 02 | [Kafka 整体架构](06-kafka/02-整体架构.md) |
-| 03 | [Kafka 消息可靠性：如何保证消息不丢失？](06-kafka/03-消息可靠性.md) |
-| 04 | [Kafka 消费者组与 Rebalance](06-kafka/04-消费者组与Rebalance.md) |
-| 05 | [Kafka 高吞吐原理](06-kafka/05-高吞吐原理.md) |
-| 06 | [消息队列选型对比](06-kafka/06-消息队列选型.md) |
-| 07 | [Kafka 工作中常见问题与解决](06-kafka/07-常见问题与解决.md) |
-| 08 | [Kafka 面试高频问题（实战详解）](06-kafka/08-面试高频问题.md) |
-
-### Elasticsearch
-
-| # | 文章 |
-|---|------|
-| 00 | [Elasticsearch 搜索引擎核心复习](07-elasticsearch/00-elasticsearch概览.md) |
-| 01 | [ES 引入：它解决了什么问题？](07-elasticsearch/01-引入与背景.md) |
-| 02 | [ES 核心概念：与关系型数据库的对应关系](07-elasticsearch/02-核心概念.md) |
-| 03 | [ES 倒排索引：为何擅长全文检索](07-elasticsearch/03-倒排索引.md) |
-| 04 | [ES Mapping 设计：字段类型决定查询能力](07-elasticsearch/04-Mapping映射设计.md) |
-| 05 | [ES 查询 DSL：核心查询类型](07-elasticsearch/05-查询语法DSL.md) |
-| 06 | [ES 集群架构与分片机制](07-elasticsearch/06-集群架构与分片机制.md) |
-| 07 | [ES 性能优化](07-elasticsearch/07-性能优化.md) |
-| 08 | [ES 数据一致性：MySQL 与 ES 同步方案](07-elasticsearch/08-数据一致性.md) |
-
-### Design Pattern
-
-| # | 文章 |
-|---|------|
-| 00 | [设计模式总览](08-design-pattern/00-设计模式总览.md) |
-| 01 | [单例模式（Singleton Pattern）](08-design-pattern/01-单例模式.md) |
-| 02 | [工厂方法模式 & 抽象工厂模式](08-design-pattern/02-工厂方法与抽象工厂模式.md) |
-| 03 | [建造者模式（Builder Pattern）](08-design-pattern/03-建造者模式.md) |
-| 04 | [代理模式（Proxy Pattern）](08-design-pattern/04-代理模式.md) |
-| 05 | [装饰器模式（Decorator Pattern）](08-design-pattern/05-装饰器模式.md) |
-| 06 | [适配器模式（Adapter Pattern）](08-design-pattern/06-适配器模式.md) |
-| 07 | [策略模式（Strategy Pattern）](08-design-pattern/07-策略模式.md) |
-| 08 | [观察者模式（Observer Pattern）](08-design-pattern/08-观察者模式.md) |
-| 09 | [模板方法模式（Template Method Pattern）](08-design-pattern/09-模板方法模式.md) |
-| 10 | [责任链模式（Chain of Responsibility Pattern）](08-design-pattern/10-责任链模式.md) |
-
-### Software Engineering
-
-| # | 文章 |
-|---|------|
-| 00 | [软件工程核心知识复习](09-software-engineering/00-软件工程概览.md) |
-| 01 | [SOLID 原则](09-software-engineering/01-SOLID原则.md) |
-| 02 | [软件架构演进](09-software-engineering/02-软件架构演进.md) |
-| 03 | [DDD 领域驱动设计](09-software-engineering/03-DDD领域驱动设计.md) |
-| 04 | [CAP 理论与 BASE 理论](09-software-engineering/04-CAP理论与BASE理论.md) |
-| 05 | [代码质量与重构](09-software-engineering/05-代码质量与重构.md) |
-| 06 | [CI/CD 持续集成与持续交付](09-software-engineering/06-CICD持续集成与交付.md) |
-| 07 | [系统设计方法论](09-software-engineering/07-系统设计方法论.md) |
-
----
-
-## 🗺️ 知识体系总览
-
-```
-Java Interview Guide
-├── 01-java-basic                       （15 篇）
-├── 02-spring                           （14 篇）
-├── 03-mysql                            （9 篇）
-├── 04-postgresql                       （8 篇）
-├── 05-redis                            （7 篇）
-├── 06-kafka                            （8 篇）
-├── 07-elasticsearch                    （9 篇）
-├── 08-design-pattern                   （11 篇）
-└── 09-software-engineering             （8 篇）
-```
-
-> 共 **89 篇**文章，持续更新中。
+> 🎉 感谢您的关注与支持！让我们一起构建更美好的技术生态。
