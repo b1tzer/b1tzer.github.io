@@ -58,7 +58,7 @@ flowchart TD
 
 ---
 
-## 面试题：ES 的 query 和 filter 有什么区别？
+## 问题：ES 的 query 和 filter 有什么区别？
 
 > - `query`：计算相关性得分（_score），结果不缓存，适合全文检索
 > - `filter`：不计算得分，结果可缓存（Filter Cache），性能更高，适合精确过滤

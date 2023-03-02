@@ -55,7 +55,7 @@ Instant fromOld = oldDate.toInstant();      // 旧转新
 
 ---
 
-## 4. 面试高频问题
+## 4. 常见问题
 
 **Q：LocalDate、LocalDateTime、ZonedDateTime 有什么区别？**
 > `LocalDate` 只有日期，适合生日、节假日等场景；`LocalDateTime` 有日期和时间但无时区，适合单时区系统；`ZonedDateTime` 包含时区信息，适合跨时区的国际化应用。

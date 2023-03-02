@@ -453,7 +453,7 @@ public class JacksonConfig {
 
 ---
 
-## 9. 面试高频问题
+## 9. 常见问题
 
 **Q1：Spring MVC 的请求处理流程？**
 > ① 请求到达 DispatcherServlet → ② HandlerMapping 找到 Handler → ③ 执行拦截器 preHandle → ④ HandlerAdapter 调用 Controller → ⑤ 返回 ModelAndView → ⑥ 执行拦截器 postHandle → ⑦ ViewResolver 解析视图（REST 接口跳过）→ ⑧ 渲染响应。

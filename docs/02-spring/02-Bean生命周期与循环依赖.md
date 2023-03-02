@@ -850,7 +850,7 @@ flowchart TD
 
 ---
 
-## 8. 面试高频问题
+## 8. 常见问题
 
 **Q：Spring Bean 的生命周期是什么？**
 > ① 实例化（反射调用构造器）→ ② 属性注入（@Autowired）→ ③ Aware 回调 → ④ BeanPostProcessor before → ⑤ 初始化（@PostConstruct / afterPropertiesSet / init-method）→ ⑥ BeanPostProcessor after（**AOP 代理在此创建**）→ ⑦ 使用中 → ⑧ 销毁（@PreDestroy / destroy-method）

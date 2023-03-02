@@ -1,8 +1,8 @@
 ---
-title: Spring 实战应用型面试题
+title: Spring 实战应用题
 ---
 
-# Spring 实战应用型面试题
+# Spring 实战应用型问题
 
 > 以下是面试中容易"卡住"的实战问题，考察对 Spring 原理的真实理解深度。
 

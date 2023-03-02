@@ -124,7 +124,7 @@ flowchart LR
 
 ---
 
-## 面试高频问题
+## 常见问题
 
 **Q：什么是 VACUUM？VACUUM 和 VACUUM FULL 有什么区别？**
 

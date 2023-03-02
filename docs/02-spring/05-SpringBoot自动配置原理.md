@@ -91,7 +91,7 @@ public class MyDataSourceConfig {
 
 ---
 
-## 7. 面试高频问题
+## 7. 常见问题
 
 **Q1：Spring Boot 自动配置的原理是什么？**
 > `@SpringBootApplication` 包含 `@EnableAutoConfiguration`，它通过 `AutoConfigurationImportSelector` 读取 `spring.factories`（或 Spring Boot 3.x 的 imports 文件）中的自动配置类列表，再通过 `@ConditionalOnClass`、`@ConditionalOnMissingBean` 等条件注解过滤，只加载满足条件的配置类。

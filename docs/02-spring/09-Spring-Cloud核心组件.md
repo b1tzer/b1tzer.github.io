@@ -268,7 +268,7 @@ public UserVO getUserByIdBlock(Long id, BlockException e) {
 
 ---
 
-## 7. 面试高频问题
+## 7. 常见问题
 
 **Q1：Eureka 和 Nacos 的区别？**
 > Eureka 是 AP 模型（可用性优先），服务注册信息可能短暂不一致，有自我保护机制；Nacos 同时支持 AP 和 CP 模式可切换，还集成了配置中心功能，功能更丰富，是目前更主流的选择。

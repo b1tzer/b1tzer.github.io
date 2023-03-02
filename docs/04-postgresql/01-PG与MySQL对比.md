@@ -60,7 +60,7 @@ MySQL 在某些场景下力不从心，PostgreSQL 针对这些场景做了专项
 
 ---
 
-## 面试高频问题
+## 常见问题
 
 **Q：PostgreSQL 和 MySQL 最核心的区别是什么？**
 

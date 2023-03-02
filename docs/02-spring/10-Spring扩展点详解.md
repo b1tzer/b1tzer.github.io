@@ -295,7 +295,7 @@ Bean 就绪，放入单例池
 
 ---
 
-## 9. 面试高频问题
+## 9. 常见问题
 
 **Q1：BeanFactoryPostProcessor 和 BeanPostProcessor 的区别？**
 > `BeanFactoryPostProcessor` 在 Bean **实例化之前**执行，操作的是 `BeanDefinition`（Bean 的元数据），可以修改 Bean 的配置；`BeanPostProcessor` 在 Bean **初始化前后**执行，操作的是已经实例化的 Bean 对象，可以对 Bean 进行包装（如生成 AOP 代理）。

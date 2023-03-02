@@ -122,7 +122,7 @@ public class OrderService {
 
 ---
 
-## 面试高频问题
+## 常见问题
 
 **Q：ACID 四大特性分别是什么？InnoDB 如何实现？**
 

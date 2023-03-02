@@ -148,7 +148,7 @@ public class OrderService {
 
 ---
 
-## 7. 面试高频问题
+## 7. 常见问题
 
 **Q1：Spring AOP 和 AspectJ 的区别？**
 > Spring AOP 是**运行时代理**（JDK/CGLIB），只能拦截 Spring 容器管理的 Bean 的方法调用；AspectJ 是**编译时/加载时织入**，功能更强大，可以拦截任意代码（包括构造器、字段访问），但需要特殊编译器。Spring AOP 已能满足大多数业务需求。

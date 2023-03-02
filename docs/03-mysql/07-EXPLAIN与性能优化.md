@@ -155,7 +155,7 @@ SHOW VARIABLES LIKE 'slow_query_log_file';
 
 ---
 
-## 面试高频问题
+## 常见问题
 
 **Q：EXPLAIN 中最重要的字段是什么？type=ALL 意味着什么？**
 

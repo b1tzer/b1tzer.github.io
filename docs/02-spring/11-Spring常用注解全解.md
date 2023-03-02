@@ -297,7 +297,7 @@ private DataSource readDataSource;
 
 ---
 
-## 9. 面试高频问题
+## 9. 常见问题
 
 **Q1：@Autowired 和 @Resource 的区别？**
 > `@Autowired` 是 Spring 注解，**按类型**注入，有多个同类型 Bean 时配合 `@Qualifier` 指定名称；`@Resource` 是 JDK 注解（JSR-250），**先按名称**注入，找不到再按类型，不依赖 Spring 框架。推荐用 `@Autowired` + `@Qualifier`，语义更清晰。

@@ -103,7 +103,7 @@ list.forEach(item -> count.incrementAndGet());
 
 ---
 
-## 6. 面试高频问题
+## 6. 常见问题
 
 **Q：Lambda 表达式能访问外部变量吗？**
 > 可以，但外部变量必须是 **effectively final**（事实上不可变）。原因：Lambda 可能在不同线程中执行，如果允许修改外部变量会有并发问题；Lambda 捕获的是变量的副本（值），而非引用，所以要求变量不可变。

@@ -112,7 +112,7 @@ public class OrderService {
 
 ---
 
-## 6. 面试高频问题
+## 6. 常见问题
 
 **Q1：@Transactional 事务不生效的原因有哪些？**
 > ① 方法非 public（CGLIB 无法重写）；② 同类内部调用（`this` 绕过代理）；③ 异常被捕获未重新抛出；④ 异常类型不是 RuntimeException（需加 `rollbackFor`）；⑤ 类未被 Spring 管理（手动 new）。

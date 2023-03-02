@@ -326,7 +326,7 @@ public class FeignOkHttpConfig {
 
 ---
 
-## 9. 面试高频问题
+## 9. 常见问题
 
 **Q1：Feign 的底层原理是什么？**
 > Feign 基于 **JDK 动态代理**实现。Spring 启动时扫描 `@FeignClient` 注解，为每个接口生成代理对象注入 Spring 容器。调用接口方法时，代理拦截调用，解析方法上的注解（`@GetMapping` 等）构建 HTTP 请求，通过 `LoadBalancerClient` 做负载均衡选择实例，最终用底层 HTTP 客户端发送请求，响应通过 `Decoder` 反序列化后返回。

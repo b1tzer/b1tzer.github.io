@@ -84,7 +84,7 @@ opt.ifPresent(val -> System.out.println(val));
 
 ---
 
-## 4. 面试高频问题
+## 4. 常见问题
 
 **Q：Optional 为什么不能用于方法参数？**
 > 如果方法参数是 `Optional<T>`，调用方可能传入 `Optional.empty()`，也可能传入 `null`（忘记包装），反而增加了处理复杂度。方法参数应该直接用 `@Nullable` 注解或重载方法来表达可选性。

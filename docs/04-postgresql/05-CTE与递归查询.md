@@ -163,7 +163,7 @@ WITH NOT MATERIALIZED cte AS (...) -- 允许内联优化
 
 ---
 
-## 面试高频问题
+## 常见问题
 
 **Q：CTE 和子查询有什么区别？什么时候用 CTE？**
 
