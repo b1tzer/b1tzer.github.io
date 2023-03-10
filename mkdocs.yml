@@ -148,7 +148,6 @@ nav:
   - Kafka 高吞吐原理: 06-kafka/05-高吞吐原理.md
   - 消息队列选型对比: 06-kafka/06-消息队列选型.md
   - Kafka 工作中常见问题与解决: 06-kafka/07-常见问题与解决.md
-  - Kafka 常见问题（实战详解）: 06-kafka/08-常见问题.md
 - Elasticsearch:
   - Elasticsearch 搜索引擎核心复习: 07-elasticsearch/00-elasticsearch概览.md
   - ES 引入：它解决了什么问题？: 07-elasticsearch/01-引入与背景.md
