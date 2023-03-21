@@ -54,7 +54,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pagess
+          publish_branch: gh-pages
           publish_dir: ./site
           commit_message: "deploy: ${{ github.event.head_commit.message }}"
           force_orphan: true
