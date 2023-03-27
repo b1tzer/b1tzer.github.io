@@ -33,13 +33,13 @@ PostgreSQL 的 MVCC 机制在 UPDATE/DELETE 时不立即删除旧版本行，而
 
 ```mermaid
 flowchart TD
-    A[执行 UPDATE 操作] --> B[旧版本行标记为 Dead Tuple\nxmax = 当前事务ID]
+    A[执行 UPDATE 操作] --> B[旧版本行标记为 Dead Tuple<br>xmax = 当前事务ID]
     B --> C[新版本行插入堆表]
     C --> D{是否执行 VACUUM?}
-    D -->|未执行| E[Dead Tuple 持续堆积\n表文件持续增大\n查询需扫描更多数据块]
-    D -->|执行 VACUUM| F[清理 Dead Tuple\n回收空间供新数据使用\n更新统计信息]
-    E --> G[表膨胀\n查询性能下降]
-    F --> H[表空间稳定\n查询性能正常]
+    D -->|未执行| E[Dead Tuple 持续堆积<br>表文件持续增大<br>查询需扫描更多数据块]
+    D -->|执行 VACUUM| F[清理 Dead Tuple<br>回收空间供新数据使用<br>更新统计信息]
+    E --> G[表膨胀<br>查询性能下降]
+    F --> H[表空间稳定<br>查询性能正常]
 ```
 
 ---
@@ -102,8 +102,8 @@ ORDER BY duration DESC;
 
 ```mermaid
 flowchart LR
-    LT["长事务（运行1小时）\n事务ID = 100"] -->|阻止清理| DT["Dead Tuple\n(xmax >= 100 的都不能清理)"]
-    DT --> BL["表膨胀\n大量 Dead Tuple 无法清理"]
+    LT["长事务（运行1小时）<br>事务ID = 100"] -->|阻止清理| DT["Dead Tuple<br>(xmax >= 100 的都不能清理)"]
+    DT --> BL["表膨胀<br>大量 Dead Tuple 无法清理"]
 ```
 
 **解决方案**：

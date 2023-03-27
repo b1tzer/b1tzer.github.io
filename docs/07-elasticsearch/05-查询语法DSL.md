@@ -11,17 +11,17 @@ title: ES 查询 DSL：核心查询类型
 ```mermaid
 flowchart TD
     subgraph "query context(计算相关性得分)"
-        QC["match / multi_match\n全文检索，计算 _score"]
+        QC["match / multi_match<br>全文检索，计算 _score"]
     end
 
     subgraph "filter context(不计分，可缓存)"
-        FC["term / terms\n精确匹配\nrange 范围查询\nexists 字段存在"]
+        FC["term / terms<br>精确匹配<br>range 范围查询<br>exists 字段存在"]
     end
 
-    Bool["bool 查询\n组合查询"] --> Must["must\n必须匹配(影响得分)"]
-    Bool --> Should["should\n应该匹配(影响得分)"]
-    Bool --> Filter["filter\n过滤(不影响得分，有缓存)"]
-    Bool --> MustNot["must_not\n必须不匹配"]
+    Bool["bool 查询<br>组合查询"] --> Must["must<br>必须匹配(影响得分)"]
+    Bool --> Should["should<br>应该匹配(影响得分)"]
+    Bool --> Filter["filter<br>过滤(不影响得分，有缓存)"]
+    Bool --> MustNot["must_not<br>必须不匹配"]
 
     Must --> QC
     Filter --> FC

@@ -32,11 +32,11 @@ title: Spring 事务管理
 
 ```mermaid
 flowchart TD
-    A[事务不生效] --> B["原因1: 方法非 public\n@Transactional 只对 public 方法生效\n原因：CGLIB 子类无法重写 private/protected 方法"]
-    A --> C["原因2: 同类内部调用\nthis.method 绕过代理\n原因：this 指向原始对象，不经过代理拦截器链"]
-    A --> D["原因3: 异常被捕获\ncatch 后未重新抛出\n原因：Spring 通过捕获异常来判断是否回滚，异常被吞掉则认为成功"]
-    A --> E["原因4: 异常类型不匹配\n默认只回滚 RuntimeException\n原因：Checked Exception 要求显式处理，Spring 认为你已处理好了"]
-    A --> F["原因5: 类未被 Spring 管理\n手动 new 的对象没有代理\n原因：AOP 代理只在 Spring 容器中的 Bean 上生效"]
+    A[事务不生效] --> B["原因1: 方法非 public<br>@Transactional 只对 public 方法生效<br>原因：CGLIB 子类无法重写 private/protected 方法"]
+    A --> C["原因2: 同类内部调用<br>this.method 绕过代理<br>原因：this 指向原始对象，不经过代理拦截器链"]
+    A --> D["原因3: 异常被捕获<br>catch 后未重新抛出<br>原因：Spring 通过捕获异常来判断是否回滚，异常被吞掉则认为成功"]
+    A --> E["原因4: 异常类型不匹配<br>默认只回滚 RuntimeException<br>原因：Checked Exception 要求显式处理，Spring 认为你已处理好了"]
+    A --> F["原因5: 类未被 Spring 管理<br>手动 new 的对象没有代理<br>原因：AOP 代理只在 Spring 容器中的 Bean 上生效"]
 ```
 
 ---

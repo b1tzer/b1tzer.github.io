@@ -12,15 +12,15 @@ Spring 的核心设计原则是**开闭原则**：对扩展开放，对修改关
 
 ```mermaid
 flowchart TD
-    Start["Spring 容器启动"] --> BFP["BeanFactoryPostProcessor\n修改 BeanDefinition（Bean 还未创建）"]
+    Start["Spring 容器启动"] --> BFP["BeanFactoryPostProcessor<br>修改 BeanDefinition（Bean 还未创建）"]
     BFP --> Instantiate["Bean 实例化（反射 new）"]
     Instantiate --> Inject["依赖注入（@Autowired）"]
-    Inject --> Aware["Aware 接口回调\n（BeanNameAware / ApplicationContextAware）"]
-    Aware --> BPP_Before["BeanPostProcessor.postProcessBeforeInitialization\n初始化前处理"]
-    BPP_Before --> Init["初始化\n（@PostConstruct / afterPropertiesSet / init-method）"]
-    Init --> BPP_After["BeanPostProcessor.postProcessAfterInitialization\n初始化后处理（AOP 代理在这里生成）"]
+    Inject --> Aware["Aware 接口回调<br>（BeanNameAware / ApplicationContextAware）"]
+    Aware --> BPP_Before["BeanPostProcessor.postProcessBeforeInitialization<br>初始化前处理"]
+    BPP_Before --> Init["初始化<br>（@PostConstruct / afterPropertiesSet / init-method）"]
+    Init --> BPP_After["BeanPostProcessor.postProcessAfterInitialization<br>初始化后处理（AOP 代理在这里生成）"]
     BPP_After --> Ready["Bean 就绪，放入容器"]
-    Ready --> Destroy["容器关闭：销毁\n（@PreDestroy / destroy-method）"]
+    Ready --> Destroy["容器关闭：销毁<br>（@PreDestroy / destroy-method）"]
 ```
 
 ---

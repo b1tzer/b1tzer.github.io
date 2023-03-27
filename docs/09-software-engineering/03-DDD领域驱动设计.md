@@ -54,16 +54,16 @@ public class Order {
 ```mermaid
 flowchart TB
     subgraph 战略设计
-        BC[限界上下文\nBounded Context\n业务边界划分]
-        UL[统一语言\nUbiquitous Language\n团队共同词汇]
+        BC[限界上下文<br>Bounded Context<br>业务边界划分]
+        UL[统一语言<br>Ubiquitous Language<br>团队共同词汇]
     end
 
     subgraph 战术设计
-        AR[聚合根\nAggregate Root\n一致性边界]
-        E[实体 Entity\n有唯一标识]
-        VO[值对象 Value Object\n无标识/不可变]
-        DE[领域事件\nDomain Event\n状态变化通知]
-        DS[领域服务\nDomain Service\n跨聚合业务]
+        AR[聚合根<br>Aggregate Root<br>一致性边界]
+        E[实体 Entity<br>有唯一标识]
+        VO[值对象 Value Object<br>无标识/不可变]
+        DE[领域事件<br>Domain Event<br>状态变化通知]
+        DS[领域服务<br>Domain Service<br>跨聚合业务]
     end
 
     BC --> AR

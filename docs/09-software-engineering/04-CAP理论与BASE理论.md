@@ -17,15 +17,15 @@ title: CAP 理论与 BASE 理论
 ```mermaid
 flowchart TD
     CAP((CAP 理论))
-    C[一致性 Consistency\n所有节点同一时刻\n看到相同数据]
-    A[可用性 Availability\n每个请求都能\n收到响应(不保证最新)]
-    P[分区容错性 Partition Tolerance\n网络分区时\n系统仍能运行]
+    C[一致性 Consistency<br>所有节点同一时刻<br>看到相同数据]
+    A[可用性 Availability<br>每个请求都能<br>收到响应(不保证最新)]
+    P[分区容错性 Partition Tolerance<br>网络分区时<br>系统仍能运行]
 
     CAP --> C
     CAP --> A
     CAP --> P
 
-    C -.->|三者只能\n同时满足两个| A
+    C -.->|三者只能<br>同时满足两个| A
     A -.-> P
     P -.-> C
 ```

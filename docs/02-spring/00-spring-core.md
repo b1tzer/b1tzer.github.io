@@ -68,31 +68,31 @@ timeline
 ```mermaid
 flowchart TB
     subgraph 微服务 / 云原生层
-        SCloud["Spring Cloud\nEureka · Gateway · Feign · Sentinel · Config"]
-        SCloudAlibaba["Spring Cloud Alibaba\nNacos · Sentinel · Seata · RocketMQ"]
+        SCloud["Spring Cloud<br>Eureka · Gateway · Feign · Sentinel · Config"]
+        SCloudAlibaba["Spring Cloud Alibaba<br>Nacos · Sentinel · Seata · RocketMQ"]
     end
 
     subgraph 应用开发层
-        SBoot["Spring Boot\n自动配置 · 起步依赖 · 内嵌容器 · Actuator"]
-        SSecurity["Spring Security\n认证 · 授权 · OAuth2 · JWT"]
-        SBatch["Spring Batch\n批处理 · Job · Step · ItemReader"]
-        SIntegration["Spring Integration\n企业集成模式 · 消息通道"]
+        SBoot["Spring Boot<br>自动配置 · 起步依赖 · 内嵌容器 · Actuator"]
+        SSecurity["Spring Security<br>认证 · 授权 · OAuth2 · JWT"]
+        SBatch["Spring Batch<br>批处理 · Job · Step · ItemReader"]
+        SIntegration["Spring Integration<br>企业集成模式 · 消息通道"]
     end
 
     subgraph 数据访问层
-        SData["Spring Data\nJPA · Redis · MongoDB · Elasticsearch"]
-        STx["Spring Transaction\n声明式事务 · 编程式事务"]
+        SData["Spring Data<br>JPA · Redis · MongoDB · Elasticsearch"]
+        STx["Spring Transaction<br>声明式事务 · 编程式事务"]
     end
 
     subgraph Web 层
-        SMVC["Spring MVC\nDispatcherServlet · REST · 文件上传"]
-        SWebFlux["Spring WebFlux\n响应式 · Reactor · 非阻塞 IO"]
+        SMVC["Spring MVC<br>DispatcherServlet · REST · 文件上传"]
+        SWebFlux["Spring WebFlux<br>响应式 · Reactor · 非阻塞 IO"]
     end
 
     subgraph 核心基础层
-        SCore["Spring Core\nIoC 容器 · DI · Bean 生命周期"]
-        SAOP["Spring AOP\n动态代理 · 切面 · 切点"]
-        SContext["Spring Context\nApplicationContext · 事件 · 国际化"]
+        SCore["Spring Core<br>IoC 容器 · DI · Bean 生命周期"]
+        SAOP["Spring AOP<br>动态代理 · 切面 · 切点"]
+        SContext["Spring Context<br>ApplicationContext · 事件 · 国际化"]
     end
 
     SCloud & SCloudAlibaba --> SBoot

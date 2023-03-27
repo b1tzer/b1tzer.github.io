@@ -235,13 +235,13 @@ public @interface RequiresPermission {
 ```mermaid
 flowchart TD
     A[注解] --> B{处理时机}
-    B --> C[编译期处理\nAnnotation Processor]
-    B --> D[运行期反射处理\nReflection]
-    B --> E[运行期 AOP 处理\nSpring AOP / AspectJ]
+    B --> C[编译期处理<br>Annotation Processor]
+    B --> D[运行期反射处理<br>Reflection]
+    B --> E[运行期 AOP 处理<br>Spring AOP / AspectJ]
 
-    C --> C1["@Override 检查方法是否真的覆盖\nLombok 生成 getter/setter 代码\nMapStruct 生成映射代码"]
-    D --> D1["手动 method.getAnnotation()\n框架初始化时扫描注解\n如 Spring 扫描 @Component"]
-    E --> E1["@Transactional 开启事务\n@PreAuthorize 权限校验\n@Cacheable 缓存处理"]
+    C --> C1["@Override 检查方法是否真的覆盖<br>Lombok 生成 getter/setter 代码<br>MapStruct 生成映射代码"]
+    D --> D1["手动 method.getAnnotation()<br>框架初始化时扫描注解<br>如 Spring 扫描 @Component"]
+    E --> E1["@Transactional 开启事务<br>@PreAuthorize 权限校验<br>@Cacheable 缓存处理"]
 ```
 
 ### 方式一：编译期注解处理器（APT）

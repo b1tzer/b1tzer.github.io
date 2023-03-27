@@ -34,12 +34,12 @@ public class Application {
 ```mermaid
 flowchart TD
     A["@EnableAutoConfiguration"] --> B["AutoConfigurationImportSelector"]
-    B --> C["读取 META-INF/spring.factories\n或 META-INF/spring/\nauto-configuration.imports(Spring Boot 3.x)"]
-    C --> D["加载所有 AutoConfiguration 类\n(Spring Boot 内置约 130+ 个)"]
+    B --> C["读取 META-INF/spring.factories<br>或 META-INF/spring/<br>auto-configuration.imports(Spring Boot 3.x)"]
+    C --> D["加载所有 AutoConfiguration 类<br>(Spring Boot 内置约 130+ 个)"]
     D --> E{"条件注解过滤"}
-    E -->|"@ConditionalOnClass\n类路径存在才生效"| F["生效的配置类"]
-    E -->|"@ConditionalOnMissingBean\n用户未自定义才生效"| F
-    E -->|"@ConditionalOnProperty\n配置项匹配才生效"| F
+    E -->|"@ConditionalOnClass<br>类路径存在才生效"| F["生效的配置类"]
+    E -->|"@ConditionalOnMissingBean<br>用户未自定义才生效"| F
+    E -->|"@ConditionalOnProperty<br>配置项匹配才生效"| F
     F --> G["注册 Bean 到容器"]
 ```
 

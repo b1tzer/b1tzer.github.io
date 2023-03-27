@@ -21,10 +21,10 @@ title: MVCC 与隔离级别
 ```mermaid
 flowchart LR
     subgraph 隔离级别从低到高
-        RU["读未提交\nRead Uncommitted"] -->|解决| D1["❌ 脏读仍存在"]
-        RC["读已提交\nRead Committed"] -->|解决| D2["✅ 脏读\n❌ 不可重复读仍存在"]
-        RR["可重复读\nRepeatable Read\n(MySQL默认)"] -->|解决| D3["✅ 脏读\n✅ 不可重复读\n⚠️ 幻读(MVCC部分解决)"]
-        S["串行化\nSerializable"] -->|解决| D4["✅ 全部解决\n❌ 性能最差"]
+        RU["读未提交<br>Read Uncommitted"] -->|解决| D1["❌ 脏读仍存在"]
+        RC["读已提交<br>Read Committed"] -->|解决| D2["✅ 脏读<br>❌ 不可重复读仍存在"]
+        RR["可重复读<br>Repeatable Read<br>(MySQL默认)"] -->|解决| D3["✅ 脏读<br>✅ 不可重复读<br>⚠️ 幻读(MVCC部分解决)"]
+        S["串行化<br>Serializable"] -->|解决| D4["✅ 全部解决<br>❌ 性能最差"]
     end
 ```
 
@@ -46,17 +46,17 @@ flowchart LR
 ```mermaid
 flowchart LR
     subgraph 每行数据的隐藏字段
-        Row["数据行\nname='Tom'"] --> TRX["trx_id\n创建该版本的事务ID"]
-        Row --> ROLL["roll_pointer\n指向 undo log 中的旧版本"]
+        Row["数据行<br>name='Tom'"] --> TRX["trx_id<br>创建该版本的事务ID"]
+        Row --> ROLL["roll_pointer<br>指向 undo log 中的旧版本"]
     end
 
     subgraph undo log 版本链
-        V3["版本3: name='Tom'\ntrx_id=100"] -->|roll_pointer| V2["版本2: name='Jerry'\ntrx_id=50"]
-        V2 -->|roll_pointer| V1["版本1: name='Alice'\ntrx_id=20"]
+        V3["版本3: name='Tom'<br>trx_id=100"] -->|roll_pointer| V2["版本2: name='Jerry'<br>trx_id=50"]
+        V2 -->|roll_pointer| V1["版本1: name='Alice'<br>trx_id=20"]
     end
 
     subgraph "Read View(快照)"
-        RV["Read View\n记录事务开始时\n活跃事务列表\n[80, 90, 95]"]
+        RV["Read View<br>记录事务开始时<br>活跃事务列表<br>[80, 90, 95]"]
     end
 ```
 

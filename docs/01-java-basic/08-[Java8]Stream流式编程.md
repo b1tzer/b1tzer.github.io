@@ -35,8 +35,8 @@ List<String> result = names.stream()
 
 ```mermaid
 flowchart LR
-    A["数据源\nCollection/Array"] --> B["中间操作\n惰性求值"]
-    B --> C["终止操作\n触发执行"]
+    A["数据源<br>Collection/Array"] --> B["中间操作<br>惰性求值"]
+    B --> C["终止操作<br>触发执行"]
 
     subgraph 中间操作["中间操作 — 返回 Stream，不立即执行"]
         D[filter 过滤]

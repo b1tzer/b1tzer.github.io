@@ -39,10 +39,10 @@ title: Redis 缓存设计与高可用
 ```mermaid
 flowchart LR
     Client[客户端] --> App[应用服务]
-    App -->|缓存命中| Redis[(Redis\n内存缓存)]
-    App -->|缓存未命中| MySQL[(MySQL\n持久化存储)]
+    App -->|缓存命中| Redis[(Redis<br>内存缓存)]
+    App -->|缓存未命中| MySQL[(MySQL<br>持久化存储)]
     MySQL -->|回写缓存| Redis
-    Redis -->|持久化| Disk[磁盘\nRDB/AOF]
+    Redis -->|持久化| Disk[磁盘<br>RDB/AOF]
 ```
 
 ---

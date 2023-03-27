@@ -20,15 +20,15 @@ MVCC（多版本并发控制）让**读操作不加锁**，通过保存数据的
 flowchart LR
     subgraph MySQL MVCC
         direction TB
-        M1[当前行数据\n最新版本] -->|UPDATE| M2[Undo Log\n旧版本链]
-        M2 --> M3[Read View\n判断可见性]
+        M1[当前行数据<br>最新版本] -->|UPDATE| M2[Undo Log<br>旧版本链]
+        M2 --> M3[Read View<br>判断可见性]
         M3 -->|回滚指针| M2
     end
 
     subgraph PostgreSQL MVCC
         direction TB
-        P1[堆表 Heap\n同时存储多个版本] --> P2[行头信息\nxmin / xmax]
-        P2 --> P3[快照 Snapshot\n判断可见性]
+        P1[堆表 Heap<br>同时存储多个版本] --> P2[行头信息<br>xmin / xmax]
+        P2 --> P3[快照 Snapshot<br>判断可见性]
         P3 -->|VACUUM 清理| P1
     end
 ```
@@ -67,13 +67,13 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A[执行 UPDATE 操作] --> B[旧版本行标记为 Dead Tuple\nxmax = 当前事务ID]
+    A[执行 UPDATE 操作] --> B[旧版本行标记为 Dead Tuple<br>xmax = 当前事务ID]
     B --> C[新版本行插入堆表]
     C --> D{是否执行 VACUUM?}
-    D -->|未执行| E[Dead Tuple 持续堆积\n表文件持续增大\n查询需扫描更多数据块]
-    D -->|执行 VACUUM| F[清理 Dead Tuple\n回收空间供新数据使用\n更新统计信息]
-    E --> G[表膨胀\n查询性能下降]
-    F --> H[表空间稳定\n查询性能正常]
+    D -->|未执行| E[Dead Tuple 持续堆积<br>表文件持续增大<br>查询需扫描更多数据块]
+    D -->|执行 VACUUM| F[清理 Dead Tuple<br>回收空间供新数据使用<br>更新统计信息]
+    E --> G[表膨胀<br>查询性能下降]
+    F --> H[表空间稳定<br>查询性能正常]
 ```
 
 **生活类比**：图书馆（数据库）里的书（数据行）被借走（删除/更新）后，书架上留下空位（Dead Tuple）。如果不定期整理（VACUUM），空位越来越多，找书（查询）时需要跳过大量空位，效率越来越低。

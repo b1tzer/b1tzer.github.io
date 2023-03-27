@@ -90,9 +90,9 @@ mindmap
 
 ```mermaid
 flowchart LR
-    BEGIN["BEGIN\n开启事务"] --> OPS["执行 SQL\n写 undo log\n写 redo log"]
-    OPS --> COMMIT["COMMIT\nredo log 刷盘\n事务提交"]
-    OPS --> ROLLBACK["ROLLBACK\n执行 undo log\n回滚所有操作"]
+    BEGIN["BEGIN<br>开启事务"] --> OPS["执行 SQL<br>写 undo log<br>写 redo log"]
+    OPS --> COMMIT["COMMIT<br>redo log 刷盘<br>事务提交"]
+    OPS --> ROLLBACK["ROLLBACK<br>执行 undo log<br>回滚所有操作"]
 ```
 
 ---

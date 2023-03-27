@@ -15,7 +15,7 @@ Spring Security 解决两个核心问题：
 
 ```mermaid
 flowchart LR
-    Request["HTTP 请求"] --> FilterChain["过滤器链\nSecurityFilterChain"]
+    Request["HTTP 请求"] --> FilterChain["过滤器链<br>SecurityFilterChain"]
     FilterChain --> Auth{认证通过?}
     Auth -->|否| Return401["返回 401 Unauthorized"]
     Auth -->|是| Authz{有权限?}
@@ -31,12 +31,12 @@ Spring Security 本质是一条 **Servlet 过滤器链**，请求必须通过所
 
 ```mermaid
 flowchart TD
-    Request["HTTP 请求"] --> F1["SecurityContextPersistenceFilter\n从 Session 恢复 SecurityContext"]
-    F1 --> F2["UsernamePasswordAuthenticationFilter\n处理表单登录（/login POST）"]
-    F2 --> F3["BasicAuthenticationFilter\n处理 HTTP Basic 认证"]
-    F3 --> F4["BearerTokenAuthenticationFilter\n处理 JWT Token（OAuth2 Resource Server）"]
-    F4 --> F5["ExceptionTranslationFilter\n捕获认证/授权异常，转换为 401/403"]
-    F5 --> F6["FilterSecurityInterceptor\n最终权限校验"]
+    Request["HTTP 请求"] --> F1["SecurityContextPersistenceFilter<br>从 Session 恢复 SecurityContext"]
+    F1 --> F2["UsernamePasswordAuthenticationFilter<br>处理表单登录（/login POST）"]
+    F2 --> F3["BasicAuthenticationFilter<br>处理 HTTP Basic 认证"]
+    F3 --> F4["BearerTokenAuthenticationFilter<br>处理 JWT Token（OAuth2 Resource Server）"]
+    F4 --> F5["ExceptionTranslationFilter<br>捕获认证/授权异常，转换为 401/403"]
+    F5 --> F6["FilterSecurityInterceptor<br>最终权限校验"]
     F6 --> Controller["Controller"]
 ```
 
@@ -111,11 +111,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 flowchart LR
     subgraph 登录阶段
         Login["POST /login"] --> Verify["验证用户名密码"]
-        Verify --> GenToken["生成 JWT Token\n包含 userId、roles、过期时间"]
+        Verify --> GenToken["生成 JWT Token<br>包含 userId、roles、过期时间"]
         GenToken --> Return["返回 Token 给客户端"]
     end
     subgraph 后续请求
-        Request["携带 Token\nAuthorization: Bearer xxx"] --> ParseToken["解析 Token\n验证签名和过期时间"]
+        Request["携带 Token<br>Authorization: Bearer xxx"] --> ParseToken["解析 Token<br>验证签名和过期时间"]
         ParseToken --> SetContext["写入 SecurityContextHolder"]
         SetContext --> Business["执行业务逻辑"]
     end

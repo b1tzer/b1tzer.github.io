@@ -25,7 +25,7 @@ title: Spring Cloud 核心组件
 
 ```mermaid
 flowchart TB
-    Client["客户端\n（浏览器/App）"] --> Gateway["API 网关\nSpring Cloud Gateway\n路由 / 鉴权 / 限流"]
+    Client["客户端<br>（浏览器/App）"] --> Gateway["API 网关<br>Spring Cloud Gateway<br>路由 / 鉴权 / 限流"]
 
     Gateway --> ServiceA["服务 A"]
     Gateway --> ServiceB["服务 B"]
@@ -34,9 +34,9 @@ flowchart TB
     ServiceA -->|Feign 调用| ServiceB
     ServiceB -->|Feign 调用| ServiceC
 
-    ServiceA & ServiceB & ServiceC -->|注册/发现| Eureka["注册中心\nEureka / Nacos"]
-    ServiceA & ServiceB & ServiceC -->|读取配置| Config["配置中心\nConfig / Nacos"]
-    ServiceA & ServiceB & ServiceC -->|熔断降级| Sentinel["熔断器\nSentinel"]
+    ServiceA & ServiceB & ServiceC -->|注册/发现| Eureka["注册中心<br>Eureka / Nacos"]
+    ServiceA & ServiceB & ServiceC -->|读取配置| Config["配置中心<br>Config / Nacos"]
+    ServiceA & ServiceB & ServiceC -->|熔断降级| Sentinel["熔断器<br>Sentinel"]
 
     Gateway -.->|注册/发现| Eureka
 ```
@@ -229,8 +229,8 @@ feign:
 
 ```mermaid
 flowchart LR
-    Normal["正常状态\nClosed"] -->|错误率超阈值| Open["熔断状态\nOpen\n直接返回降级结果"]
-    Open -->|等待熔断时间窗口| HalfOpen["半开状态\nHalf-Open\n放行少量请求探测"]
+    Normal["正常状态<br>Closed"] -->|错误率超阈值| Open["熔断状态<br>Open<br>直接返回降级结果"]
+    Open -->|等待熔断时间窗口| HalfOpen["半开状态<br>Half-Open<br>放行少量请求探测"]
     HalfOpen -->|探测成功| Normal
     HalfOpen -->|探测失败| Open
 ```

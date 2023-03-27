@@ -32,15 +32,15 @@ title: 事务与 ACID
 ```mermaid
 flowchart LR
     subgraph 写操作流程
-        T["事务开始"] --> UL["写 undo log\n记录逆操作\n用于回滚"]
-        UL --> RL["写 redo log\n记录变更\n用于崩溃恢复"]
-        RL --> BP["修改 Buffer Pool\n内存中的数据页"]
-        BP --> CM["事务提交\nredo log 刷盘"]
+        T["事务开始"] --> UL["写 undo log<br>记录逆操作<br>用于回滚"]
+        UL --> RL["写 redo log<br>记录变更<br>用于崩溃恢复"]
+        RL --> BP["修改 Buffer Pool<br>内存中的数据页"]
+        BP --> CM["事务提交<br>redo log 刷盘"]
     end
 
     subgraph 崩溃恢复
-        CR["数据库重启"] --> RR["重放 redo log\n恢复已提交事务"]
-        RR --> UR["回滚 undo log\n撤销未提交事务"]
+        CR["数据库重启"] --> RR["重放 redo log<br>恢复已提交事务"]
+        RR --> UR["回滚 undo log<br>撤销未提交事务"]
     end
 ```
 

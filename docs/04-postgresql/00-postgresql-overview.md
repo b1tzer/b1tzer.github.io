@@ -73,8 +73,8 @@ mindmap
 
 ```mermaid
 flowchart LR
-    UPDATE["执行 UPDATE"] --> OLD["旧行: xmax=当前事务ID\n(Dead Tuple)"]
-    UPDATE --> NEW["新行: xmin=当前事务ID\n(新版本)"]
+    UPDATE["执行 UPDATE"] --> OLD["旧行: xmax=当前事务ID<br>(Dead Tuple)"]
+    UPDATE --> NEW["新行: xmin=当前事务ID<br>(新版本)"]
     OLD -->|VACUUM 清理| CLEAN["空间回收"]
 ```
 

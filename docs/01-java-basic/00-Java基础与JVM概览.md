@@ -411,7 +411,7 @@ public class Singleton {
 flowchart TD
     A[面向对象基础]
     --> B[集合框架原理]
-    --> C["并发编程基础\nsynchronized / volatile"]
+    --> C["并发编程基础<br>synchronized / volatile"]
     --> D[线程池深入]
     --> E[AQS / ReentrantLock]
     --> F[JVM 内存模型]

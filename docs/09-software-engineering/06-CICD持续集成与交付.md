@@ -22,9 +22,9 @@ title: CI/CD 持续集成与持续交付
 
 ```mermaid
 flowchart LR
-    A[频繁提交\n小步快跑] -->|CI 自动验证| B[快速发现问题\n降低集成成本]
-    B -->|CD 自动部署| C[快速交付价值\n缩短反馈周期]
-    C -->|监控+回滚| D[降低发布风险\n快速恢复]
+    A[频繁提交<br>小步快跑] -->|CI 自动验证| B[快速发现问题<br>降低集成成本]
+    B -->|CD 自动部署| C[快速交付价值<br>缩短反馈周期]
+    C -->|监控+回滚| D[降低发布风险<br>快速恢复]
 ```
 
 ---
@@ -33,16 +33,16 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    DEV[开发者\n提交代码] --> GIT[Git 仓库\n代码托管]
-    GIT -->|触发 Webhook| CI[CI 流水线\nJenkins/GitLab CI]
-    CI --> BUILD[编译构建\nmvn package]
-    BUILD --> TEST[自动化测试\n单元+集成测试]
-    TEST --> SCAN[代码扫描\nSonarQube]
-    SCAN --> DOCKER[构建镜像\nDocker Build & Push]
-    DOCKER --> STAGING[部署测试环境\n自动]
-    STAGING --> REVIEW[人工验收\nQA 测试]
-    REVIEW -->|审批通过| PROD[部署生产环境\n蓝绿/金丝雀]
-    PROD --> MONITOR[监控告警\nPrometheus/Grafana]
+    DEV[开发者<br>提交代码] --> GIT[Git 仓库<br>代码托管]
+    GIT -->|触发 Webhook| CI[CI 流水线<br>Jenkins/GitLab CI]
+    CI --> BUILD[编译构建<br>mvn package]
+    BUILD --> TEST[自动化测试<br>单元+集成测试]
+    TEST --> SCAN[代码扫描<br>SonarQube]
+    SCAN --> DOCKER[构建镜像<br>Docker Build & Push]
+    DOCKER --> STAGING[部署测试环境<br>自动]
+    STAGING --> REVIEW[人工验收<br>QA 测试]
+    REVIEW -->|审批通过| PROD[部署生产环境<br>蓝绿/金丝雀]
+    PROD --> MONITOR[监控告警<br>Prometheus/Grafana]
     MONITOR -->|异常| ROLLBACK[自动/手动回滚]
 ```
 
@@ -67,8 +67,8 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    LB[负载均衡器] -->|当前流量 100%| BLUE[蓝环境\n旧版本 v1]
-    LB -.->|切换后 100%| GREEN[绿环境\n新版本 v2]
+    LB[负载均衡器] -->|当前流量 100%| BLUE[蓝环境<br>旧版本 v1]
+    LB -.->|切换后 100%| GREEN[绿环境<br>新版本 v2]
 
     subgraph 部署步骤
         S1[1. 部署新版本到绿环境]
@@ -96,10 +96,10 @@ flowchart TD
 ```mermaid
 flowchart LR
     USER[用户流量] --> LB[负载均衡器]
-    LB -->|95% 流量| OLD[旧版本集群\nv1]
-    LB -->|5% 流量| NEW[金丝雀节点\nv2]
-    NEW -->|观察指标正常| EXPAND[逐步扩大\n5%→20%→50%→100%]
-    NEW -->|发现问题| ROLLBACK[立即回滚\n将金丝雀节点切回 v1]
+    LB -->|95% 流量| OLD[旧版本集群<br>v1]
+    LB -->|5% 流量| NEW[金丝雀节点<br>v2]
+    NEW -->|观察指标正常| EXPAND[逐步扩大<br>5%→20%→50%→100%]
+    NEW -->|发现问题| ROLLBACK[立即回滚<br>将金丝雀节点切回 v1]
 ```
 
 | 维度 | 说明 |

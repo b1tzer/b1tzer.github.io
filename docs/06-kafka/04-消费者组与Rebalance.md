@@ -11,10 +11,10 @@ title: Kafka 消费者组与 Rebalance
 ```mermaid
 flowchart TD
     R["触发 Rebalance(分区重新分配)"]
-    R --> A["消费者加入组\n(新实例启动)"]
-    R --> B["消费者离开组\n(实例下线/崩溃)"]
-    R --> C["消费者心跳超时\n(session.timeout.ms 内未发心跳)"]
-    R --> D["Topic 分区数变化\n(增加分区)"]
+    R --> A["消费者加入组<br>(新实例启动)"]
+    R --> B["消费者离开组<br>(实例下线/崩溃)"]
+    R --> C["消费者心跳超时<br>(session.timeout.ms 内未发心跳)"]
+    R --> D["Topic 分区数变化<br>(增加分区)"]
 ```
 
 > **Rebalance 的代价**：Rebalance 期间，**整个消费者组停止消费**，直到重新分配完成。频繁 Rebalance 会导致消费停顿，是 Kafka 性能问题的常见原因。

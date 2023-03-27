@@ -43,12 +43,12 @@ Feign 本质上是一个**动态代理 + HTTP 客户端**的组合。
 
 ```mermaid
 flowchart TD
-    A["业务代码调用\nuserClient.getUserById(1L)"] --> B["JDK 动态代理\nFeignInvocationHandler"]
-    B --> C["方法元数据解析\n解析注解：URL、Method、参数"]
-    C --> D["请求模板构建\nRequestTemplate"]
-    D --> E["负载均衡\nLoadBalancer 选择实例"]
-    E --> F["HTTP 请求发送\nfeign.Client（默认 JDK HttpURLConnection）"]
-    F --> G["响应解码\nDecoder 反序列化为 Java 对象"]
+    A["业务代码调用<br>userClient.getUserById(1L)"] --> B["JDK 动态代理<br>FeignInvocationHandler"]
+    B --> C["方法元数据解析<br>解析注解：URL、Method、参数"]
+    C --> D["请求模板构建<br>RequestTemplate"]
+    D --> E["负载均衡<br>LoadBalancer 选择实例"]
+    E --> F["HTTP 请求发送<br>feign.Client（默认 JDK HttpURLConnection）"]
+    F --> G["响应解码<br>Decoder 反序列化为 Java 对象"]
     G --> H["返回结果给调用方"]
 ```
 
