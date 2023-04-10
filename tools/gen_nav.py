@@ -41,7 +41,52 @@ EXCLUDE_FILES: list[str] = [
     # "01-java-basic/07-[Java8]Lambda表达式.md",
 ]
 
+# ── 技术领域映射 ──────────────────────────────────────────────────────────────────
+# 技术领域到章节目录的映射
+TECH_TO_CHAPTERS = {
+    "开发工具": ["00-Env"],
+    "Java 基础": ["01-java-basic"],
+    "Spring 生态": ["02-spring"],
+    "数据库": ["03-mysql", "04-postgresql"],
+    "缓存": ["05-redis"],
+    "消息队列": ["06-kafka"],
+    "搜索引擎": ["07-elasticsearch"],
+    "设计模式": ["08-design-pattern"],
+    "软件工程": ["09-software-engineering"],
+}
+
 # ── 工具函数 ──────────────────────────────────────────────────────────────────
+
+
+def parse_readme_table() -> list[dict]:
+    """从README.md解析技术栈表格"""
+    readme_path = os.path.join(BASE, "README.md")
+    with open(readme_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    # 找到技术栈表格
+    lines = content.split("\n")
+    table_start = -1
+    for i, line in enumerate(lines):
+        if "| 技术领域 | 内容 |" in line:
+            table_start = i + 2  # 跳过表头和分隔线
+            break
+    
+    if table_start == -1:
+        return []
+    
+    table_data = []
+    for line in lines[table_start:]:
+        if not line.strip() or line.startswith("##"):
+            break
+        if "|" in line and not line.strip().startswith("|---"):
+            parts = [p.strip() for p in line.split("|")[1:-1]]
+            if len(parts) == 2:
+                domain = parts[0].replace("**", "").strip()
+                content = parts[1].strip()
+                table_data.append({"domain": domain, "content": content})
+    
+    return table_data
 
 
 def get_chapter_title(dir_name: str) -> str:
@@ -205,76 +250,81 @@ def collect_articles(check_only: bool = False):
             )
     return all_articles, chapters
 
-
-def update_readme(
-    articles: list, chapters_meta: list, check_only: bool = False
-) -> bool:
-    """重新生成 README.md 的目录部分"""
-    readme_path = os.path.join(BASE, "README.md")
-
-    # 构建目录内容
-    toc_lines = []
-    chapter_articles = {}
+def generate_index_md(articles: list, check_only: bool = False) -> bool:
+    """生成 docs/index.md"""
+    index_path = os.path.join(BASE, "docs", "index.md")
+    
+    # 解析README.md的技术栈表格
+    tech_stack = parse_readme_table()
+    
+    # 计算章节文档数量
+    chapter_counts = {}
     for art in articles:
-        chapter_articles.setdefault(art["dir"], []).append(art)
+        chapter_counts[art["dir"]] = chapter_counts.get(art["dir"], 0) + 1
+    
+    # 构建表格
+    table_lines = []
+    table_lines.append("| 技术领域 | 内容 | 文档数量 |")
+    table_lines.append("|---------|------|--------|")
+    
+    for item in tech_stack:
+        domain = item["domain"]
+        content = item["content"]
+        
+        # 计算文档数量
+        total_count = 0
+        first_link = ""
+        chapters = TECH_TO_CHAPTERS.get(domain, [])
+        for ch_dir in chapters:
+            count = chapter_counts.get(ch_dir, 0)
+            total_count += count
+            if not first_link and count > 0:
+                # 找到第一个文件
+                for art in articles:
+                    if art["dir"] == ch_dir:
+                        first_link = f"{ch_dir}/{art['file']}"
+                        break
+        
+        # 生成链接
+        if first_link:
+            link = f"[{domain}]({first_link})"
+        else:
+            link = domain
+        
+        table_lines.append(f"| {link} | {content} | {total_count} 篇 |")
+    
+    table_content = "\n".join(table_lines)
+    
+    index_content = f"""# The Stack
 
-    for ch_dir in sorted(chapter_articles.keys()):
-        arts = chapter_articles[ch_dir]
-        ch_title = get_chapter_title(ch_dir)
-        toc_lines.append(f"\n### {ch_title}\n")
-        toc_lines.append("| # | 文章 |")
-        toc_lines.append("|---|------|")
-        for art in arts:
-            idx = os.path.splitext(art["file"])[0].split("-")[0]
-            toc_lines.append(
-                f"| {idx} | [{art['title']}]({art['dir']}/{art['file']}) |"
-            )
+> 🎯 一份深度技术解析与实战沉淀的知识库
 
-    toc_content = "\n".join(toc_lines)
+## 🛠️ 技术栈
 
-    # 统计
-    total = len(articles)
-    tree_lines = []
-    for ch_dir in sorted(chapter_articles.keys()):
-        count = len(chapter_articles[ch_dir])
-        tree_lines.append(f"├── {ch_dir:<35} （{count} 篇）")
-    if tree_lines:
-        tree_lines[-1] = tree_lines[-1].replace("├──", "└──")
-    tree_content = "\n".join(tree_lines)
+本项目涉及的核心技术领域包括：
 
-    readme_content = f"""# Java Interview Guide
-
-> 🎯 一份系统化的 Java 后端面试知识库，覆盖核心基础、框架原理、数据库、缓存、消息队列、搜索引擎、设计模式与软件工程。
+{table_content}
 
 ---
 
-## 📚 目录
-{toc_content}
+## 📚 内容导航
 
----
-
-## 🗺️ 知识体系总览
-
-```
-Java Interview Guide
-{tree_content}
-```
-
-> 共 **{total} 篇**文章，持续更新中。
+<!-- 这里可以添加章节导航或个人感受等自定义内容 -->
+<!-- 脚本会自动更新上面的技术栈表格，下面内容保持不变 -->
 """
-
-    if os.path.exists(readme_path):
-        with open(readme_path, "r", encoding="utf-8") as f:
+    
+    if os.path.exists(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
             old = f.read()
-        if old == readme_content:
+        if old == index_content:
             return False
-
+    
     if not check_only:
-        with open(readme_path, "w", encoding="utf-8") as f:
-            f.write(readme_content)
-        print(f"  [更新] README.md")
+        with open(index_path, "w", encoding="utf-8") as f:
+            f.write(index_content)
+        print(f"  [更新] docs/index.md")
     else:
-        print(f"  [需更新] README.md")
+        print(f"  [需更新] docs/index.md")
     return True
 
 
@@ -288,10 +338,10 @@ def main():
     articles, chapters_meta = collect_articles()
     print(f"   共发现 {len(articles)} 篇文章，{len(chapters_meta)} 个章节\n")
 
-    print("\n📖 更新 README 目录...")
-    readme_changed = update_readme(articles, chapters_meta, check_only)
+    print("\n� 生成 docs/index.md...")
+    index_changed = generate_index_md(articles, check_only)
 
-    print("\n📄 处理 frontmatter...")
+    print("\n�📝 处理 frontmatter...")
     for article in articles:
         add_frontmatter(article["path"], article["title"], check_only)
     print("\n✅ 完成！")
