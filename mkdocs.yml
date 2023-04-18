@@ -79,7 +79,7 @@ markdown_extensions:
 nav:
 - Home: index.md
 - Env:
-  - 个人windows开发环境搭建: 00-Env/个人windows开发环境搭建.md
+  - 个人 Windows 开发环境搭建: 00-Env/个人windows开发环境搭建.md
   - 命令行工具优化: 00-Env/命令行工具优化.md
 - Java Basic:
   - Java 基础知识与 JVM 原理: 01-java-basic/00-Java基础与JVM概览.md
@@ -105,7 +105,7 @@ nav:
   - Spring MVC 请求处理流程: 02-spring/04-SpringMVC请求处理流程.md
   - Spring Boot 自动配置原理: 02-spring/05-SpringBoot自动配置原理.md
   - Spring 事务管理: 02-spring/06-Spring事务管理.md
-  - Spring 实战应用: 02-spring/07-Spring实战应用题.md
+  - Spring 实战应用题: 02-spring/07-Spring实战应用题.md
   - Spring Security 认证与授权: 02-spring/08-Spring-Security认证与授权.md
   - Spring Cloud 核心组件: 02-spring/09-Spring-Cloud核心组件.md
   - Spring 扩展点详解: 02-spring/10-Spring扩展点详解.md
@@ -114,15 +114,13 @@ nav:
   - gRPC 详解: 02-spring/13-gRPC详解.md
 - Mysql:
   - MySQL 索引、事务与性能优化: 03-mysql/00-mysql-overview.md
-  - 索引原理与 B+ 树: 03-mysql/01-索引原理与B+树.md
-  - 聚簇索引与覆盖索引: 03-mysql/02-聚簇索引与覆盖索引.md
-  - 联合索引与索引失效: 03-mysql/03-联合索引与索引失效.md
-  - 事务与 ACID: 03-mysql/04-事务与ACID.md
-  - MVCC 与隔离级别: 03-mysql/05-MVCC与隔离级别.md
-  - 锁机制与死锁: 03-mysql/06-锁机制与死锁.md
-  - EXPLAIN 与性能优化: 03-mysql/07-EXPLAIN与性能优化.md
-  - MySQL 实战问题与避坑指南: 03-mysql/08-实战问题与避坑指南.md
-  - 分库分表与分布式架构: 03-mysql/09-分库分表与分布式架构.md
+  - 索引详解: 03-mysql/01-索引详解.md
+  - 事务与 ACID: 03-mysql/02-事务与ACID.md
+  - MVCC 与隔离级别: 03-mysql/03-MVCC与隔离级别.md
+  - 锁机制与死锁: 03-mysql/04-锁机制与死锁.md
+  - EXPLAIN 与性能优化: 03-mysql/05-EXPLAIN与性能优化.md
+  - MySQL 实战问题与避坑指南: 03-mysql/06-实战问题与避坑指南.md
+  - 分库、分表与分片：分布式数据库架构详解: 03-mysql/07-分库分表与分布式架构.md
 - Postgresql:
   - PostgreSQL 核心特性与选型: 04-postgresql/00-postgresql-overview.md
   - PostgreSQL vs MySQL 全面对比: 04-postgresql/01-PG与MySQL对比.md

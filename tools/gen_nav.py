@@ -328,6 +328,63 @@ def generate_index_md(articles: list, check_only: bool = False) -> bool:
     return True
 
 
+def generate_mkdocs_nav(articles: list) -> list:
+    """生成MkDocs的nav结构"""
+    nav = [{"Home": "index.md"}]
+    
+    # 按章节分组
+    chapter_articles = {}
+    for art in articles:
+        chapter_articles.setdefault(art["dir"], []).append(art)
+    
+    for ch_dir in sorted(chapter_articles.keys()):
+        arts = chapter_articles[ch_dir]
+        ch_title = get_chapter_title(ch_dir)
+        
+        # 构建章节的子项列表
+        section = []
+        for art in arts:
+            # 每个子项都是一个字典：{标题: 路径}
+            section.append({art["title"]: f"{ch_dir}/{art['file']}"})
+        
+        nav.append({ch_title: section})
+    
+    return nav
+
+
+def update_mkdocs_yml(nav_data: list, check_only: bool = False) -> bool:
+    """更新mkdocs.yml的nav部分"""
+    mkdocs_path = os.path.join(BASE, "mkdocs.yml")
+    
+    # 读取现有内容
+    with open(mkdocs_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    # 生成nav的YAML字符串
+    import yaml
+    nav_yaml = yaml.dump(nav_data, default_flow_style=False, allow_unicode=True, indent=2)
+    # 清理格式
+    nav_yaml = nav_yaml.replace("'", "")  # 移除单引号
+    
+    # 查找并替换nav部分
+    import re
+    pattern = r'(nav:\n)(.*?)(\n\n|$)'
+    replacement = r'\1' + nav_yaml + r'\3'
+    
+    new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+    
+    if new_content == content:
+        return False
+    
+    if not check_only:
+        with open(mkdocs_path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+        print(f"  [更新] mkdocs.yml")
+    else:
+        print(f"  [需更新] mkdocs.yml")
+    return True
+
+
 # ── 入口 ──────────────────────────────────────────────────────────────────────
 
 
@@ -340,7 +397,9 @@ def main():
 
     print("\n� 生成 docs/index.md...")
     index_changed = generate_index_md(articles, check_only)
-
+    print("\n🔧 更新 mkdocs.yml nav...")
+    nav_data = generate_mkdocs_nav(articles)
+    mkdocs_changed = update_mkdocs_yml(nav_data, check_only)
     print("\n�📝 处理 frontmatter...")
     for article in articles:
         add_frontmatter(article["path"], article["title"], check_only)
