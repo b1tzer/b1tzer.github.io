@@ -112,7 +112,7 @@ nav:
   - Spring 常用注解全解: 02-spring/11-Spring常用注解全解.md
   - Feign 声明式 HTTP 客户端: 02-spring/12-Feign声明式HTTP客户端.md
   - gRPC 详解: 02-spring/13-gRPC详解.md
-- Mysql:
+- MySQL:
   - MySQL 索引、事务与性能优化: 03-mysql/00-mysql-overview.md
   - 索引详解: 03-mysql/01-索引详解.md
   - 事务与 ACID: 03-mysql/02-事务与ACID.md
@@ -121,7 +121,7 @@ nav:
   - EXPLAIN 与性能优化: 03-mysql/05-EXPLAIN与性能优化.md
   - MySQL 实战问题与避坑指南: 03-mysql/06-实战问题与避坑指南.md
   - 分库、分表与分片：分布式数据库架构详解: 03-mysql/07-分库分表与分布式架构.md
-- Postgresql:
+- PostgreSQL:
   - PostgreSQL 核心特性与选型: 04-postgresql/00-postgresql-overview.md
   - PostgreSQL vs MySQL 全面对比: 04-postgresql/01-PG与MySQL对比.md
   - MVCC 原理与表膨胀: 04-postgresql/02-MVCC原理与表膨胀.md
@@ -177,9 +177,4 @@ nav:
   - 代码质量与重构: 09-software-engineering/05-代码质量与重构.md
   - CI/CD 持续集成与持续交付: 09-software-engineering/06-CICD持续集成与交付.md
   - 系统设计方法论: 09-software-engineering/07-系统设计方法论.md
-
-
-
-
-
 

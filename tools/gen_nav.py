@@ -102,8 +102,19 @@ TEMPLATE_PATH = os.path.join(BASE, "tools", "index_template.md")
 # ── 工具函数 ──────────────────────────────────────────────────────────────────
 
 
+# 目录名 → 显示标题，直接从 README 表格的 domain 字段反查（模块加载时构建一次）
+_DIR_TO_TITLE: dict[str, str] = {
+    d: row["domain"]
+    for row in _parse_readme_rows()
+    for d in row["dirs"]
+}
+
+
 def get_chapter_title(dir_name: str) -> str:
-    """从目录名提取可读标题，如 01-java-basic → Java Basic"""
+    """从目录名获取可读标题，优先使用 README 表格中的 domain 名称。"""
+    if dir_name in _DIR_TO_TITLE:
+        return _DIR_TO_TITLE[dir_name]
+    # 兜底：去掉数字前缀后转 Title Case
     parts = dir_name.split("-", 1)
     return parts[1].replace("-", " ").title() if len(parts) > 1 else dir_name
 
