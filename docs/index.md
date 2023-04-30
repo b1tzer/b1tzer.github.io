@@ -11,7 +11,8 @@
 | [开发工具](00-Env/个人windows开发环境搭建.md) | WSL 环境配置、命令行工具优化、开发环境搭建 | 2 篇 |
 | [Java 基础](01-java-basic/00-Java基础与JVM概览.md) | Java 8+ 新特性、并发编程、JVM 原理、集合框架 | 15 篇 |
 | [Spring 生态](02-spring/00-spring-core.md) | Spring Boot、Spring MVC、Spring Security、Spring Cloud | 14 篇 |
-| [数据库](03-mysql/00-mysql-overview.md) | MySQL 索引与优化、PostgreSQL 高级特性、事务与并发控制 | 16 篇 |
+| [MySQL](03-mysql/00-mysql-overview.md) | MySQL 索引与优化、事务与并发控制 | 8 篇 |
+| [PostgreSQL](04-postgresql/00-postgresql-overview.md) | PostgreSQL 高级特性 | 8 篇 |
 | [缓存](05-redis/00-redis-overview.md) | Redis 缓存设计、高可用架构、分布式锁 | 7 篇 |
 | [消息队列](06-kafka/01-基础概念.md) | Kafka 原理与实践、消息可靠性保障 | 7 篇 |
 | [搜索引擎](07-elasticsearch/00-elasticsearch概览.md) | Elasticsearch 核心原理、性能优化、数据同步 | 9 篇 |

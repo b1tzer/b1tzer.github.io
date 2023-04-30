@@ -1,409 +1,357 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_nav.py — 更新 README（导航由 awesome-pages 插件自动生成）
+gen_nav.py — 自动维护 docs/index.md 与 mkdocs.yml nav
 
 用法：
-python3 tools/gen_nav.py          # 在项目根目录执行
-python3 tools/gen_nav.py --check  # 仅检查，不写入（CI 用）
+    python3 tools/gen_nav.py          # 在项目根目录执行
+    python3 tools/gen_nav.py --check  # 仅检查，不写入（CI 用）
 
 功能：
-    - 更新 README.md 的目录部分
-    - 导航配置由 mkdocs-awesome-pages-plugin 自动生成
+    - 从 README.md 技术栈表格读取领域→目录映射
+    - 生成 docs/index.md（技术栈总览 + 文档数量）
+    - 更新 mkdocs.yml 的 nav 部分
+    - 为每篇文章补全 frontmatter title
 """
 
 import os
 import re
 import sys
-import shutil
 import yaml
 
-# ── 配置 ──────────────────────────────────────────────────────────────────────
+# ── 路径配置 ──────────────────────────────────────────────────────────────────
 
-# 项目根目录（脚本相对位置：tools/gen_nav.py）
+# 项目根目录（脚本位置：tools/gen_nav.py）
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# docs 目录
 DOCS_DIR = os.path.join(BASE, "docs")
 
-# 源内容目录
-CONTENT_DIR = os.path.join(BASE, "docs")
+# ── 扫描配置 ──────────────────────────────────────────────────────────────────
 
-# 章节目录匹配规则（以数字开头的一级目录）
+# 章节目录匹配规则（以数字开头的一级目录，如 01-java-basic）
 CHAPTER_PATTERN = re.compile(r"^\d+-.+$")
 
-# ── 排除配置 ──────────────────────────────────────────────────────────────────
-# 排除整个章节目录（填写目录名，如 "10-project-experience"）
+# 排除整个章节目录（填写目录名）
 EXCLUDE_DIRS: list[str] = ["10-project-experience"]
 
-# 排除具体文章（填写 "目录名/文件名"，如 "01-java-basic/07-[Java8]Lambda表达式.md"）
+# 排除具体文章（填写 "目录名/文件名"）
 EXCLUDE_FILES: list[str] = [
     # "01-java-basic/07-[Java8]Lambda表达式.md",
 ]
 
-# ── 技术领域映射 ──────────────────────────────────────────────────────────────────
-# 技术领域到章节目录的映射
-TECH_TO_CHAPTERS = {
-    "开发工具": ["00-Env"],
-    "Java 基础": ["01-java-basic"],
-    "Spring 生态": ["02-spring"],
-    "数据库": ["03-mysql", "04-postgresql"],
-    "缓存": ["05-redis"],
-    "消息队列": ["06-kafka"],
-    "搜索引擎": ["07-elasticsearch"],
-    "设计模式": ["08-design-pattern"],
-    "软件工程": ["09-software-engineering"],
+# ── README 解析 ───────────────────────────────────────────────────────────────
+
+# 匹配技术领域列中隐藏的目录注释，格式：<!-- dir:目录名 -->
+_DIR_COMMENT = re.compile(r"<!--\s*dir:([\w,\-]+)\s*-->")
+
+
+def _parse_readme_rows() -> list[dict]:
+    """
+    解析 README.md 技术栈表格，返回每行结构化数据。
+
+    表格格式（两列，目录名藏在注释里）：
+        | 技术领域 <!-- dir:xxx --> | 内容 |
+
+    返回：[{"domain": str, "dirs": list[str], "content": str}, ...]
+    """
+    readme_path = os.path.join(BASE, "README.md")
+    with open(readme_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    # 定位表头行（跳过表头 + 分隔线，共 +2）
+    table_start = next(
+        (i + 2 for i, line in enumerate(lines)
+         if "| 技术领域 |" in line and "| 内容 |" in line),
+        -1,
+    )
+    if table_start == -1:
+        return []
+
+    rows = []
+    for line in lines[table_start:]:
+        stripped = line.strip()
+        # 遇到空行、标题行或非表格行时停止
+        if not stripped or not stripped.startswith("|") or stripped.startswith("|---"):
+            break
+        parts = [p.strip() for p in stripped.split("|")[1:-1]]
+        if len(parts) < 2:
+            continue
+
+        domain_cell, content = parts[0], parts[1]
+
+        # 提取目录名（支持逗号分隔多目录）
+        m = _DIR_COMMENT.search(domain_cell)
+        dirs = [d.strip() for d in m.group(1).split(",") if d.strip()] if m else []
+
+        # 清理 domain：去掉注释、链接语法、加粗符号
+        domain = re.sub(r"<!--.*?-->", "", domain_cell)
+        domain = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", domain)
+        domain = domain.replace("**", "").strip()
+
+        rows.append({"domain": domain, "dirs": dirs, "content": content})
+    return rows
+
+
+# 技术领域 → 目录列表，模块加载时解析一次
+TECH_TO_CHAPTERS: dict[str, list[str]] = {
+    row["domain"]: row["dirs"] for row in _parse_readme_rows()
 }
+
+# index.md 模板文件路径（用户可在此文件中自由编辑静态内容）
+TEMPLATE_PATH = os.path.join(BASE, "tools", "index_template.md")
 
 # ── 工具函数 ──────────────────────────────────────────────────────────────────
 
 
-def parse_readme_table() -> list[dict]:
-    """从README.md解析技术栈表格"""
-    readme_path = os.path.join(BASE, "README.md")
-    with open(readme_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    
-    # 找到技术栈表格
-    lines = content.split("\n")
-    table_start = -1
-    for i, line in enumerate(lines):
-        if "| 技术领域 | 内容 |" in line:
-            table_start = i + 2  # 跳过表头和分隔线
-            break
-    
-    if table_start == -1:
-        return []
-    
-    table_data = []
-    for line in lines[table_start:]:
-        if not line.strip() or line.startswith("##"):
-            break
-        if "|" in line and not line.strip().startswith("|---"):
-            parts = [p.strip() for p in line.split("|")[1:-1]]
-            if len(parts) == 2:
-                domain = parts[0].replace("**", "").strip()
-                content = parts[1].strip()
-                table_data.append({"domain": domain, "content": content})
-    
-    return table_data
-
-
 def get_chapter_title(dir_name: str) -> str:
-    """从目录名提取章节标题，如 01-java-basic → Java Basic"""
+    """从目录名提取可读标题，如 01-java-basic → Java Basic"""
     parts = dir_name.split("-", 1)
     return parts[1].replace("-", " ").title() if len(parts) > 1 else dir_name
 
 
 def get_article_title(file_path: str) -> str:
-    """读取 md 文件的标题，优先从 frontmatter 中读取，其次读取第一个 # 标题，找不到则用文件名"""
+    """
+    读取文章标题，优先级：
+      1. frontmatter 中的 title 字段
+      2. 正文第一个 # 标题
+      3. 文件名（去掉数字前缀和扩展名）
+    """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # 优先从 frontmatter 中读取 title
         if content.startswith("---"):
-            lines = content.split("\n")
-            for line in lines[1:]:
+            for line in content.split("\n")[1:]:
                 if line.strip() == "---":
                     break
                 if line.strip().startswith("title:"):
                     return line.split(":", 1)[1].strip()
 
-        # 从第一个 # 标题读取
         for line in content.split("\n"):
-            stripped = line.strip()
-            if stripped.startswith("# "):
-                return stripped[2:].strip()
+            if line.strip().startswith("# "):
+                return line.strip()[2:].strip()
     except Exception:
         pass
-    # fallback：去掉数字前缀和扩展名
+
     name = os.path.splitext(os.path.basename(file_path))[0]
-    name = re.sub(r"^\d+-?", "", name)
-    return name
+    return re.sub(r"^\d+-?", "", name)
 
 
 # ── 核心逻辑 ──────────────────────────────────────────────────────────────────
 
 
-def add_frontmatter(
-    file_path: str, expected_title: str, check_only: bool = False
-) -> bool:
+def collect_articles() -> tuple[list[dict], list[dict]]:
     """
-    为文件添加 frontmatter 部分，如果已有则检查是否一致
-    返回是否有变更
-    """
-    # 读取文件内容
-    with open(file_path, "r", encoding="utf-8") as f:
-        content = f.read()
+    扫描 DOCS_DIR，按目录名排序，目录内按文件名排序。
 
-    # 检查是否已经有 frontmatter
-    if content.startswith("---"):
-        # 提取现有 frontmatter 中的 title
-        lines = content.split("\n")
-        title_line = None
-        for line in lines[1:]:
-            if line.strip() == "---":
-                break
-            if line.strip().startswith("title:"):
-                title_line = line.strip()
-                break
-
-        if title_line:
-            # 解析现有 title
-            existing_title = title_line.split(":", 1)[1].strip()
-            if existing_title == expected_title:
-                # title 一致，无需修改
-                return False
-            else:
-                # title 不一致，需要更新
-                if check_only:
-                    print(f"  [需更新] {file_path} (frontmatter title 不一致)")
-                    return True
-                else:
-                    # 更新 frontmatter 中的 title
-                    new_lines = []
-                    in_frontmatter = True
-                    for line in lines:
-                        if in_frontmatter:
-                            if line.strip().startswith("title:"):
-                                new_lines.append(f"title: {expected_title}")
-                            else:
-                                new_lines.append(line)
-                            if line.strip() == "---" and len(new_lines) > 1:
-                                in_frontmatter = False
-                        else:
-                            new_lines.append(line)
-                    new_content = "\n".join(new_lines)
-                    with open(file_path, "w", encoding="utf-8") as f:
-                        f.write(new_content)
-                    print(f"  [更新] {file_path} (frontmatter title)")
-                    return True
-        else:
-            # 有 frontmatter 但没有 title，需要添加
-            if check_only:
-                print(f"  [需更新] {file_path} (frontmatter 缺少 title)")
-                return True
-            else:
-                # 在 frontmatter 中添加 title
-                lines = content.split("\n")
-                new_lines = []
-                for i, line in enumerate(lines):
-                    new_lines.append(line)
-                    if i == 0 and line.strip() == "---":
-                        new_lines.append(f"title: {expected_title}")
-                new_content = "\n".join(new_lines)
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(new_content)
-                print(f"  [更新] {file_path} (添加 frontmatter title)")
-                return True
-    else:
-        # 没有 frontmatter，需要添加
-        if check_only:
-            print(f"  [需更新] {file_path} (缺少 frontmatter)")
-            return True
-        else:
-            # 添加 frontmatter
-            frontmatter = f"---\ntitle: {expected_title}\n---\n\n"
-            new_content = frontmatter + content
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(new_content)
-            print(f"  [添加] {file_path} (frontmatter)")
-            return True
-
-
-def collect_articles(check_only: bool = False):
-    """
-    扫描项目目录，按章节目录名排序，章节内按文件名排序，
-    返回有序的文章列表和章节元数据。
+    返回：
+        articles  — 所有文章的列表，每项含 dir / file / title / path
+        chapters  — 章节元数据列表，每项含 dir / files
     """
     chapters = []
-    if not os.path.exists(CONTENT_DIR):
-        return [], []
-    for entry in sorted(os.listdir(CONTENT_DIR)):
-        full = os.path.join(CONTENT_DIR, entry)
-        if os.path.isdir(full) and CHAPTER_PATTERN.match(entry):
-            # 排除整个目录
-            if entry in EXCLUDE_DIRS:
-                print(f"  [排除目录] {entry}")
-                continue
-            md_files = sorted(
-                f
-                for f in os.listdir(full)
-                if f.endswith(".md") and f"{entry}/{f}" not in EXCLUDE_FILES
-            )
-            if md_files:
-                chapters.append({"dir": entry, "files": md_files})
+    for entry in sorted(os.listdir(DOCS_DIR)):
+        full = os.path.join(DOCS_DIR, entry)
+        if not (os.path.isdir(full) and CHAPTER_PATTERN.match(entry)):
+            continue
+        if entry in EXCLUDE_DIRS:
+            print(f"  [排除目录] {entry}")
+            continue
+        md_files = sorted(
+            f for f in os.listdir(full)
+            if f.endswith(".md") and f"{entry}/{f}" not in EXCLUDE_FILES
+        )
+        if md_files:
+            chapters.append({"dir": entry, "files": md_files})
 
-    all_articles = []
-    for ch in chapters:
-        for fname in ch["files"]:
-            fpath = os.path.join(CONTENT_DIR, ch["dir"], fname)
-            title = get_article_title(fpath)
-            all_articles.append(
-                {
-                    "dir": ch["dir"],
-                    "file": fname,
-                    "title": title,
-                    "path": fpath,
-                }
-            )
-    return all_articles, chapters
+    articles = [
+        {
+            "dir": ch["dir"],
+            "file": fname,
+            "title": get_article_title(os.path.join(DOCS_DIR, ch["dir"], fname)),
+            "path": os.path.join(DOCS_DIR, ch["dir"], fname),
+        }
+        for ch in chapters
+        for fname in ch["files"]
+    ]
+    return articles, chapters
 
-def generate_index_md(articles: list, check_only: bool = False) -> bool:
-    """生成 docs/index.md"""
-    index_path = os.path.join(BASE, "docs", "index.md")
-    
-    # 解析README.md的技术栈表格
-    tech_stack = parse_readme_table()
-    
-    # 计算章节文档数量
-    chapter_counts = {}
+
+def generate_index_md(articles: list[dict], check_only: bool = False) -> bool:
+    """
+    生成 docs/index.md。
+
+    读取 tools/index_template.md，将其中的 {{TECH_TABLE}} 占位符替换为
+    根据文章列表动态生成的技术栈表格。
+    """
+    index_path = os.path.join(DOCS_DIR, "index.md")
+
+    # 读取模板
+    with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
+        template = f.read()
+
+    # 预建索引：目录名 → 文档数量 / 第一篇文章路径
+    dir_count: dict[str, int] = {}
+    dir_first: dict[str, str] = {}
     for art in articles:
-        chapter_counts[art["dir"]] = chapter_counts.get(art["dir"], 0) + 1
-    
-    # 构建表格
-    table_lines = []
-    table_lines.append("| 技术领域 | 内容 | 文档数量 |")
-    table_lines.append("|---------|------|--------|")
-    
-    for item in tech_stack:
-        domain = item["domain"]
-        content = item["content"]
-        
-        # 计算文档数量
-        total_count = 0
-        first_link = ""
-        chapters = TECH_TO_CHAPTERS.get(domain, [])
-        for ch_dir in chapters:
-            count = chapter_counts.get(ch_dir, 0)
-            total_count += count
-            if not first_link and count > 0:
-                # 找到第一个文件
-                for art in articles:
-                    if art["dir"] == ch_dir:
-                        first_link = f"{ch_dir}/{art['file']}"
-                        break
-        
-        # 生成链接
-        if first_link:
-            link = f"[{domain}]({first_link})"
-        else:
-            link = domain
-        
-        table_lines.append(f"| {link} | {content} | {total_count} 篇 |")
-    
-    table_content = "\n".join(table_lines)
-    
-    index_content = f"""# The Stack
+        d = art["dir"]
+        dir_count[d] = dir_count.get(d, 0) + 1
+        if d not in dir_first:
+            dir_first[d] = f"{d}/{art['file']}"
 
-> 🎯 一份深度技术解析与实战沉淀的知识库
+    # 构建技术栈表格
+    rows = ["| 技术领域 | 内容 | 文档数量 |", "|---------|------|--------|"]
+    for row in _parse_readme_rows():
+        domain, content = row["domain"], row["content"]
+        total = sum(dir_count.get(d, 0) for d in row["dirs"])
+        first = next((dir_first[d] for d in row["dirs"] if d in dir_first), "")
+        link = f"[{domain}]({first})" if first else domain
+        rows.append(f"| {link} | {content} | {total} 篇 |")
 
-## 🛠️ 技术栈
+    # 替换占位符
+    index_content = template.replace("{{TECH_TABLE}}", "\n".join(rows))
 
-本项目涉及的核心技术领域包括：
-
-{table_content}
-
----
-
-## 📚 内容导航
-
-<!-- 这里可以添加章节导航或个人感受等自定义内容 -->
-<!-- 脚本会自动更新上面的技术栈表格，下面内容保持不变 -->
-"""
-    
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
-            old = f.read()
-        if old == index_content:
-            return False
-    
+            if f.read() == index_content:
+                return False
+
     if not check_only:
         with open(index_path, "w", encoding="utf-8") as f:
             f.write(index_content)
-        print(f"  [更新] docs/index.md")
+        print("  [更新] docs/index.md")
     else:
-        print(f"  [需更新] docs/index.md")
+        print("  [需更新] docs/index.md")
     return True
 
 
-def generate_mkdocs_nav(articles: list) -> list:
-    """生成MkDocs的nav结构"""
-    nav = [{"Home": "index.md"}]
-    
-    # 按章节分组
-    chapter_articles = {}
+def generate_mkdocs_nav(articles: list[dict]) -> list:
+    """根据文章列表生成 MkDocs nav 结构。"""
+    # 按目录分组，保持有序
+    chapter_articles: dict[str, list[dict]] = {}
     for art in articles:
         chapter_articles.setdefault(art["dir"], []).append(art)
-    
-    for ch_dir in sorted(chapter_articles.keys()):
-        arts = chapter_articles[ch_dir]
-        ch_title = get_chapter_title(ch_dir)
-        
-        # 构建章节的子项列表
-        section = []
-        for art in arts:
-            # 每个子项都是一个字典：{标题: 路径}
-            section.append({art["title"]: f"{ch_dir}/{art['file']}"})
-        
-        nav.append({ch_title: section})
-    
+
+    nav: list = [{"Home": "index.md"}]
+    for ch_dir in sorted(chapter_articles):
+        section = [
+            {art["title"]: f"{ch_dir}/{art['file']}"}
+            for art in chapter_articles[ch_dir]
+        ]
+        nav.append({get_chapter_title(ch_dir): section})
     return nav
 
 
 def update_mkdocs_yml(nav_data: list, check_only: bool = False) -> bool:
-    """更新mkdocs.yml的nav部分"""
+    """将 nav_data 写入 mkdocs.yml 的 nav 部分。"""
     mkdocs_path = os.path.join(BASE, "mkdocs.yml")
-    
-    # 读取现有内容
     with open(mkdocs_path, "r", encoding="utf-8") as f:
         content = f.read()
-    
-    # 生成nav的YAML字符串
-    import yaml
+
     nav_yaml = yaml.dump(nav_data, default_flow_style=False, allow_unicode=True, indent=2)
-    # 清理格式
-    nav_yaml = nav_yaml.replace("'", "")  # 移除单引号
-    
-    # 查找并替换nav部分
-    import re
-    pattern = r'(nav:\n)(.*?)(\n\n|$)'
-    replacement = r'\1' + nav_yaml + r'\3'
-    
-    new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
-    
+    nav_yaml = nav_yaml.replace("'", "")  # 移除 yaml.dump 产生的多余单引号
+
+    new_content = re.sub(
+        r"(nav:\n)(.*?)(\n\n|$)",
+        r"\g<1>" + nav_yaml + r"\g<3>",
+        content,
+        flags=re.DOTALL,
+    )
+
     if new_content == content:
         return False
-    
+
     if not check_only:
         with open(mkdocs_path, "w", encoding="utf-8") as f:
             f.write(new_content)
-        print(f"  [更新] mkdocs.yml")
+        print("  [更新] mkdocs.yml")
     else:
-        print(f"  [需更新] mkdocs.yml")
+        print("  [需更新] mkdocs.yml")
+    return True
+
+
+def add_frontmatter(file_path: str, expected_title: str, check_only: bool = False) -> bool:
+    """
+    确保文件拥有正确的 frontmatter title，返回是否发生变更。
+
+    处理三种情况：
+      1. 无 frontmatter       → 在文件头插入完整 frontmatter
+      2. 有 frontmatter 无 title → 在 frontmatter 第一行后插入 title
+      3. 有 frontmatter 有 title → 若与期望不符则更新
+    """
+    with open(file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # ── 情况 1：无 frontmatter ────────────────────────────────────────────────
+    if not content.startswith("---"):
+        if check_only:
+            print(f"  [需更新] {file_path} (缺少 frontmatter)")
+            return True
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(f"---\ntitle: {expected_title}\n---\n\n{content}")
+        print(f"  [添加] {file_path} (frontmatter)")
+        return True
+
+    # 解析现有 frontmatter
+    lines = content.split("\n")
+    existing_title: str | None = None
+    fm_end = -1
+    for i, line in enumerate(lines[1:], start=1):
+        if line.strip() == "---":
+            fm_end = i
+            break
+        if line.strip().startswith("title:"):
+            existing_title = line.split(":", 1)[1].strip()
+
+    # ── 情况 2：有 frontmatter 但缺少 title ──────────────────────────────────
+    if existing_title is None:
+        if check_only:
+            print(f"  [需更新] {file_path} (frontmatter 缺少 title)")
+            return True
+        lines.insert(1, f"title: {expected_title}")
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+        print(f"  [更新] {file_path} (添加 frontmatter title)")
+        return True
+
+    # ── 情况 3：title 已存在 ──────────────────────────────────────────────────
+    if existing_title == expected_title:
+        return False  # 无需修改
+
+    if check_only:
+        print(f"  [需更新] {file_path} (frontmatter title 不一致)")
+        return True
+
+    new_lines = [
+        f"title: {expected_title}" if line.strip().startswith("title:") else line
+        for line in lines
+    ]
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(new_lines))
+    print(f"  [更新] {file_path} (frontmatter title)")
     return True
 
 
 # ── 入口 ──────────────────────────────────────────────────────────────────────
 
 
-def main():
+def main() -> None:
     check_only = "--check" in sys.argv
 
     print("🔍 扫描文章...")
-    articles, chapters_meta = collect_articles()
-    print(f"   共发现 {len(articles)} 篇文章，{len(chapters_meta)} 个章节\n")
+    articles, chapters = collect_articles()
+    print(f"   共发现 {len(articles)} 篇文章，{len(chapters)} 个章节")
 
-    print("\n� 生成 docs/index.md...")
-    index_changed = generate_index_md(articles, check_only)
+    print("\n📄 生成 docs/index.md...")
+    generate_index_md(articles, check_only)
+
     print("\n🔧 更新 mkdocs.yml nav...")
-    nav_data = generate_mkdocs_nav(articles)
-    mkdocs_changed = update_mkdocs_yml(nav_data, check_only)
-    print("\n�📝 处理 frontmatter...")
+    update_mkdocs_yml(generate_mkdocs_nav(articles), check_only)
+
+    print("\n📝 处理 frontmatter...")
     for article in articles:
         add_frontmatter(article["path"], article["title"], check_only)
+
     print("\n✅ 完成！")
+
 
 if __name__ == "__main__":
     main()
