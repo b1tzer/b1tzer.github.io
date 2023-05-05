@@ -78,10 +78,10 @@ markdown_extensions:
 
 nav:
 - Home: index.md
-- Env:
+- 开发工具:
   - 个人 Windows 开发环境搭建: 00-Env/个人windows开发环境搭建.md
   - 命令行工具优化: 00-Env/命令行工具优化.md
-- Java Basic:
+- Java 基础:
   - Java 基础知识与 JVM 原理: 01-java-basic/00-Java基础与JVM概览.md
   - 面向对象（OOP）: 01-java-basic/01-面向对象.md
   - 集合框架（Collections Framework）: 01-java-basic/02-集合框架.md
@@ -97,7 +97,7 @@ nav:
   - Java 9-17 关键新特性: 01-java-basic/12-[Java9-17]新特性.md
   - 注解（Annotation）: 01-java-basic/13-注解（Annotation）.md
   - 数据结构精讲（Java & Spring 生态视角）: 01-java-basic/14-数据结构精讲.md
-- Spring:
+- Spring 生态:
   - Spring / Spring Boot 核心原理: 02-spring/00-spring-core.md
   - IoC 与 DI —— 控制反转与依赖注入: 02-spring/01-IoC与DI.md
   - Bean 生命周期与循环依赖: 02-spring/02-Bean生命周期与循环依赖.md
@@ -130,7 +130,7 @@ nav:
   - CTE 与递归查询: 04-postgresql/05-CTE与递归查询.md
   - 物化视图: 04-postgresql/06-物化视图.md
   - VACUUM 机制: 04-postgresql/07-VACUUM机制.md
-- Redis:
+- 缓存:
   - Redis 缓存设计与高可用: 05-redis/00-redis-overview.md
   - Redis 数据结构与底层编码: 05-redis/01-数据结构与底层编码.md
   - Redis 持久化机制：RDB 与 AOF: 05-redis/02-持久化机制RDB与AOF.md
@@ -138,7 +138,7 @@ nav:
   - Redis 高可用架构：主从、哨兵、集群: 05-redis/04-高可用架构.md
   - Redis 分布式锁: 05-redis/05-分布式锁.md
   - Redis 应用型问题: 05-redis/06-应用型问题.md
-- Kafka:
+- 消息队列:
   - Kafka 基础概念: 06-kafka/01-基础概念.md
   - Kafka 整体架构: 06-kafka/02-整体架构.md
   - Kafka 消息可靠性：如何保证消息不丢失？: 06-kafka/03-消息可靠性.md
@@ -146,7 +146,7 @@ nav:
   - Kafka 高吞吐原理: 06-kafka/05-高吞吐原理.md
   - 消息队列选型对比: 06-kafka/06-消息队列选型.md
   - Kafka 工作中常见问题与解决: 06-kafka/07-常见问题与解决.md
-- Elasticsearch:
+- 搜索引擎:
   - Elasticsearch 搜索引擎核心复习: 07-elasticsearch/00-elasticsearch概览.md
   - ES 引入：它解决了什么问题？: 07-elasticsearch/01-引入与背景.md
   - ES 核心概念：与关系型数据库的对应关系: 07-elasticsearch/02-核心概念.md
@@ -156,7 +156,7 @@ nav:
   - ES 集群架构与分片机制: 07-elasticsearch/06-集群架构与分片机制.md
   - ES 性能优化: 07-elasticsearch/07-性能优化.md
   - ES 数据一致性：MySQL 与 ES 同步方案: 07-elasticsearch/08-数据一致性.md
-- Design Pattern:
+- 设计模式:
   - 设计模式总览: 08-design-pattern/00-设计模式总览.md
   - 单例模式（Singleton Pattern）: 08-design-pattern/01-单例模式.md
   - 工厂方法模式 & 抽象工厂模式: 08-design-pattern/02-工厂方法与抽象工厂模式.md
@@ -168,7 +168,7 @@ nav:
   - 观察者模式（Observer Pattern）: 08-design-pattern/08-观察者模式.md
   - 模板方法模式（Template Method Pattern）: 08-design-pattern/09-模板方法模式.md
   - 责任链模式（Chain of Responsibility Pattern）: 08-design-pattern/10-责任链模式.md
-- Software Engineering:
+- 软件工程:
   - 软件工程核心知识复习: 09-software-engineering/00-软件工程概览.md
   - SOLID 原则: 09-software-engineering/01-SOLID原则.md
   - 软件架构演进: 09-software-engineering/02-软件架构演进.md
@@ -177,4 +177,5 @@ nav:
   - 代码质量与重构: 09-software-engineering/05-代码质量与重构.md
   - CI/CD 持续集成与持续交付: 09-software-engineering/06-CICD持续集成与交付.md
   - 系统设计方法论: 09-software-engineering/07-系统设计方法论.md
+
 
