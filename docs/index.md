@@ -8,7 +8,7 @@
 
 | 技术领域 | 内容 | 文档数量 |
 |---------|------|--------|
-| [开发工具](00-Env/个人windows开发环境搭建.md) | WSL 环境配置、命令行工具优化、开发环境搭建 | 2 篇 |
+| [环境搭建](00-Env/个人windows开发环境搭建.md) | WSL 环境配置、命令行工具优化、开发环境搭建 | 2 篇 |
 | [Java 基础](01-java-basic/00-Java基础与JVM概览.md) | Java 8+ 新特性、并发编程、JVM 原理、集合框架 | 15 篇 |
 | [Spring 生态](02-spring/00-spring-core.md) | Spring Boot、Spring MVC、Spring Security、Spring Cloud | 14 篇 |
 | [MySQL](03-mysql/00-mysql-overview.md) | MySQL 索引与优化、事务与并发控制 | 8 篇 |
