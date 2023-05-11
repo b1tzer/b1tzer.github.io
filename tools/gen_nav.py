@@ -258,14 +258,15 @@ def update_mkdocs_yml(nav_data: list, check_only: bool = False) -> bool:
         content = f.read()
 
     nav_yaml = yaml.dump(nav_data, default_flow_style=False, allow_unicode=True, indent=2)
-    nav_yaml = nav_yaml.replace("'", "")  # 移除 yaml.dump 产生的多余单引号
+    nav_yaml = nav_yaml.replace("'", "").rstrip("\n")  # 移除 yaml.dump 产生的多余单引号和末尾换行
 
+    # 将 nav: 之后的所有内容替换为新的 nav_yaml，末尾统一保留一个换行
     new_content = re.sub(
-        r"(nav:\n)(.*?)(\n\n|$)",
-        r"\g<1>" + nav_yaml + r"\g<3>",
+        r"(nav:\n).*",
+        r"\g<1>" + nav_yaml,
         content,
         flags=re.DOTALL,
-    )
+    ).rstrip("\n") + "\n"
 
     if new_content == content:
         return False
