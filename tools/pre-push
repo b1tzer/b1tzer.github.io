@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# pre-push hook：push 前自动运行 gen_nav.py，有变更则 amend 到最后一个 commit
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+echo "🔧 [pre-push] 运行 gen_nav.py..."
+python3 "$REPO_ROOT/tools/gen_nav.py"
+
+# 检查是否有变更
+CHANGED=$(git diff --name-only mkdocs.yml docs/index.md)
+if [ -z "$CHANGED" ]; then
+    echo "✅ [pre-push] 无变更，继续 push"
+    exit 0
+fi
+
+echo "📝 [pre-push] 检测到以下文件变更，自动 amend 到最后一个 commit："
+echo "$CHANGED" | sed 's/^/   /'
+
+git add mkdocs.yml docs/index.md
+git commit --amend --no-edit --no-verify
+
+echo "✅ [pre-push] amend 完成，继续 push"
