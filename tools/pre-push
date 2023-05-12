@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pre-push hook：push 前自动运行 gen_nav.py，有变更则 amend 到最后一个 commit
+# pre-push hook：push 前自动运行 gen_nav.py，有变更则新建一个独立 commit 一起推送
 set -e
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -14,10 +14,10 @@ if [ -z "$CHANGED" ]; then
     exit 0
 fi
 
-echo "📝 [pre-push] 检测到以下文件变更，自动 amend 到最后一个 commit："
+echo "📝 [pre-push] 检测到以下文件变更，自动新建 commit："
 echo "$CHANGED" | sed 's/^/   /'
 
 git add mkdocs.yml docs/index.md
-git commit --amend --no-edit --no-verify
+git commit --no-verify -m "chore: auto-update nav and index [skip ci]"
 
-echo "✅ [pre-push] amend 完成，继续 push"
+echo "✅ [pre-push] commit 完成，继续 push"
