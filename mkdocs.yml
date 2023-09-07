@@ -114,13 +114,19 @@ nav:
   - gRPC 详解: 02-spring/13-gRPC详解.md
 - MySQL:
   - MySQL 索引、事务与性能优化: 03-mysql/00-mysql-overview.md
-  - 索引详解: 03-mysql/01-索引详解.md
-  - 事务与 ACID: 03-mysql/02-事务与ACID.md
-  - MVCC 与隔离级别: 03-mysql/03-MVCC与隔离级别.md
-  - 锁机制与死锁: 03-mysql/04-锁机制与死锁.md
-  - EXPLAIN 与性能优化: 03-mysql/05-EXPLAIN与性能优化.md
-  - MySQL 实战问题与避坑指南: 03-mysql/06-实战问题与避坑指南.md
-  - 分库、分表与分片：分布式数据库架构详解: 03-mysql/07-分库分表与分布式架构.md
+  - 数据类型与表设计规范: 03-mysql/01-数据类型与表设计规范.md
+  - 索引详解: 03-mysql/02-索引详解.md
+  - SQL 执行原理与查询优化器: 03-mysql/03-SQL执行原理与查询优化器.md
+  - EXPLAIN 与性能优化: 03-mysql/04-EXPLAIN与性能优化.md
+  - 事务与 ACID: 03-mysql/05-事务与ACID.md
+  - MVCC 与隔离级别: 03-mysql/06-MVCC与隔离级别.md
+  - 锁机制与死锁: 03-mysql/07-锁机制与死锁.md
+  - InnoDB 存储引擎深度剖析: 03-mysql/08-InnoDB存储引擎深度剖析.md
+  - Binlog 与主从复制: 03-mysql/09-Binlog与主从复制.md
+  - 在线 DDL 与大表变更: 03-mysql/10-在线DDL与大表变更.md
+  - 高可用架构方案: 03-mysql/11-高可用架构方案.md
+  - 分库、分表与分片：分布式数据库架构详解: 03-mysql/12-分库分表与分布式架构.md
+  - MySQL 实战问题与避坑指南: 03-mysql/13-实战问题与避坑指南.md
 - PostgreSQL:
   - PostgreSQL 核心特性与选型: 04-postgresql/00-postgresql-overview.md
   - PostgreSQL vs MySQL 全面对比: 04-postgresql/01-PG与MySQL对比.md
@@ -138,6 +144,9 @@ nav:
   - Redis 高可用架构：主从、哨兵、集群: 05-redis/04-高可用架构.md
   - Redis 分布式锁: 05-redis/05-分布式锁.md
   - Redis 应用型问题: 05-redis/06-应用型问题.md
+  - Redis 内存管理与淘汰机制: 05-redis/07-内存管理与淘汰机制.md
+  - Redis 事务与 Lua 脚本: 05-redis/08-事务与Lua脚本.md
+  - Redis 单线程模型与网络 IO: 05-redis/09-单线程模型与网络IO.md
 - Kafka:
   - Kafka 基础概念: 06-kafka/01-基础概念.md
   - Kafka 整体架构: 06-kafka/02-整体架构.md
@@ -146,6 +155,12 @@ nav:
   - Kafka 高吞吐原理: 06-kafka/05-高吞吐原理.md
   - 消息队列选型对比: 06-kafka/06-消息队列选型.md
   - Kafka 工作中常见问题与解决: 06-kafka/07-常见问题与解决.md
+  - Kafka 存储机制与日志设计: 06-kafka/08-存储机制与日志设计.md
+  - Kafka 事务消息与 Exactly Once 语义: 06-kafka/09-事务消息与ExactlyOnce.md
+  - Kafka Controller 与 Leader 选举机制: 06-kafka/10-Controller与Leader选举.md
+  - KRaft 模式与去 ZooKeeper: 06-kafka/11-KRaft模式与去ZooKeeper.md
+  - 消费语义与位移管理: 06-kafka/12-消费语义与位移管理.md
+  - 生产者分区策略与消息顺序: 06-kafka/13-生产者分区策略与消息顺序.md
 - Elasticsearch:
   - Elasticsearch 搜索引擎核心复习: 07-elasticsearch/00-elasticsearch概览.md
   - ES 引入：它解决了什么问题？: 07-elasticsearch/01-引入与背景.md
