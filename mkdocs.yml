@@ -113,7 +113,7 @@ nav:
   - Feign 声明式 HTTP 客户端: 02-spring/12-Feign声明式HTTP客户端.md
   - gRPC 详解: 02-spring/13-gRPC详解.md
 - MySQL:
-  - MySQL 索引、事务与性能优化: 03-mysql/00-mysql-overview.md
+  - MySQL 核心知识体系概览: 03-mysql/00-mysql-overview.md
   - 数据类型与表设计规范: 03-mysql/01-数据类型与表设计规范.md
   - 索引详解: 03-mysql/02-索引详解.md
   - SQL 执行原理与查询优化器: 03-mysql/03-SQL执行原理与查询优化器.md
