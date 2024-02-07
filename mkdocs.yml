@@ -112,6 +112,17 @@ nav:
   - Spring 常用注解全解: 02-spring/11-Spring常用注解全解.md
   - Feign 声明式 HTTP 客户端: 02-spring/12-Feign声明式HTTP客户端.md
   - gRPC 详解: 02-spring/13-gRPC详解.md
+  - Spring 容器启动流程深度解析: 02-spring/14-Spring容器启动流程深度解析.md
+  - Spring 性能优化实战指南: 02-spring/15-Spring性能优化实战指南.md
+  - Spring 6 / Boot 3 新特性深度解析: 02-spring/16-Spring6-Boot3新特性深度解析.md
+  - 微服务架构深度实践: 02-spring/17-微服务架构深度实践.md
+  - Spring 源码阅读与调试技巧: 02-spring/18-Spring源码阅读与调试技巧.md
+  - 生产环境 Spring 应用运维: 02-spring/19-生产环境Spring应用运维.md
+  - Spring 测试框架深度使用: 02-spring/20-Spring测试框架深度使用.md
+  - Spring 安全架构深度解析: 02-spring/21-Spring安全架构深度解析.md
+  - Spring 数据访问高级技巧: 02-spring/22-Spring数据访问高级技巧.md
+  - Spring 响应式编程深度解析: 02-spring/23-Spring响应式编程深度解析.md
+  - Spring 消息驱动架构深度解析: 02-spring/24-Spring消息驱动架构深度解析.md
 - MySQL:
   - MySQL 核心知识体系概览: 03-mysql/00-mysql-overview.md
   - 数据类型与表设计规范: 03-mysql/01-数据类型与表设计规范.md
