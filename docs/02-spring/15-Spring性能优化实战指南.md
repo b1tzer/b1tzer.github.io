@@ -398,6 +398,132 @@ public class WebMvcConfig implements WebMvcConfigurer {
 }
 ```
 
+### 2. APM 集成
+
+APM（Application Performance Management）工具可以提供全链路追踪、性能分析和异常监控能力。
+
+#### SkyWalking 集成
+```java
+// 1. 添加依赖
+// pom.xml
+// <dependency>
+//     <groupId>org.apache.skywalking</groupId>
+//     <artifactId>apm-toolkit-trace</artifactId>
+//     <version>9.0.0</version>
+// </dependency>
+
+// 2. 自定义链路追踪
+import org.apache.skywalking.apm.toolkit.trace.Trace;
+import org.apache.skywalking.apm.toolkit.trace.Tag;
+import org.apache.skywalking.apm.toolkit.trace.Tags;
+
+@Service
+public class TracedOrderService {
+    
+    @Trace // 标记为追踪方法
+    @Tags({@Tag(key = "orderId", value = "arg[0]"),
+           @Tag(key = "userId", value = "arg[1]")})
+    public Order createOrder(String orderId, String userId) {
+        // 业务逻辑
+        return orderRepository.save(new Order(orderId, userId));
+    }
+    
+    @Trace
+    public void processPayment(String orderId, BigDecimal amount) {
+        // 支付处理逻辑
+        ActiveSpan.tag("payment.amount", amount.toString());
+        ActiveSpan.info("开始处理支付");
+        paymentGateway.charge(orderId, amount);
+    }
+}
+```
+
+#### Zipkin/Sleuth 集成
+```yaml
+# application.yml - Spring Cloud Sleuth + Zipkin 配置
+spring:
+  sleuth:
+    sampler:
+      probability: 1.0  # 采样率（生产环境建议 0.1）
+    propagation:
+      type: B3           # 传播格式
+    async:
+      enabled: true      # 异步追踪
+  zipkin:
+    base-url: http://zipkin-server:9411
+    sender:
+      type: kafka        # 使用 Kafka 异步发送（推荐生产环境）
+    kafka:
+      topic: zipkin
+
+# Micrometer Tracing（Spring Boot 3.x 推荐）
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://zipkin-server:9411/api/v2/spans
+```
+
+```java
+// Spring Boot 3.x 使用 Micrometer Tracing
+@Configuration
+public class TracingConfig {
+    
+    @Bean
+    public ObservationHandler<Observation.Context> observationTextPublisher() {
+        return new ObservationTextPublisher();
+    }
+}
+
+// 自定义 Observation（Spring Boot 3.x 新方式）
+@Service
+public class ObservedOrderService {
+    
+    private final ObservationRegistry observationRegistry;
+    
+    public ObservedOrderService(ObservationRegistry observationRegistry) {
+        this.observationRegistry = observationRegistry;
+    }
+    
+    public Order createOrder(OrderRequest request) {
+        return Observation.createNotStarted("order.create", observationRegistry)
+            .lowCardinalityKeyValue("order.type", request.getType())
+            .highCardinalityKeyValue("order.id", request.getId())
+            .observe(() -> {
+                // 业务逻辑
+                return doCreateOrder(request);
+            });
+    }
+}
+```
+
+#### Prometheus + Grafana 监控面板
+```java
+// 自定义 Prometheus 指标导出
+@Configuration
+public class PrometheusConfig {
+    
+    @Bean
+    public MeterRegistryCustomizer<PrometheusMeterRegistry> prometheusCustomizer() {
+        return registry -> {
+            registry.config()
+                .commonTags("application", "my-app")
+                .commonTags("region", "cn-east");
+        };
+    }
+    
+    // 自定义业务告警指标
+    @Bean
+    public Gauge activeOrdersGauge(MeterRegistry registry, OrderService orderService) {
+        return Gauge.builder("business.orders.active", orderService, OrderService::getActiveOrderCount)
+            .description("当前活跃订单数")
+            .register(registry);
+    }
+}
+```
+
 ## 内存优化
 
 ### 1. 内存泄漏排查与预防
@@ -548,9 +674,19 @@ public class MemoryAnalysisService {
 
 ### 2. GC 调优策略
 
-#### JVM 参数优化
+#### GC 算法对比与选型
+
+| 特性 | G1 GC | ZGC | Shenandoah |
+|------|-------|-----|------------|
+| **最低 JDK 版本** | JDK 9（默认） | JDK 15（生产就绪） | JDK 15（生产就绪） |
+| **最大暂停时间** | 数十~数百毫秒 | < 1ms（亚毫秒级） | < 10ms |
+| **堆大小适用范围** | 4GB ~ 64GB | 8MB ~ 16TB | 任意大小 |
+| **吞吐量** | 高 | 中高 | 中高 |
+| **内存开销** | 中（~10%） | 较高（~15%） | 较高（~15%） |
+| **适用场景** | 通用场景 | 超低延迟、大堆 | 低延迟、中大堆 |
+
 ```bash
-# 生产环境推荐配置
+# G1 GC 配置（通用推荐，4GB~64GB 堆）
 java -jar application.jar \
   -Xms2g -Xmx2g \
   -XX:+UseG1GC \
@@ -562,10 +698,124 @@ java -jar application.jar \
   -XX:MaxDirectMemorySize=512m \
   -XX:+HeapDumpOnOutOfMemoryError \
   -XX:HeapDumpPath=/tmp/heapdump.hprof \
-  -XX:+PrintGCDetails \
-  -XX:+PrintGCDateStamps \
-  -Xloggc:/tmp/gc.log
+  -Xlog:gc*:file=/tmp/gc.log:time,uptime,level,tags
+
+# ZGC 配置（超低延迟场景，JDK 17+）
+java -jar application.jar \
+  -Xms4g -Xmx4g \
+  -XX:+UseZGC \
+  -XX:+ZGenerational \
+  -XX:SoftMaxHeapSize=3g \
+  -XX:MaxMetaspaceSize=256m \
+  -XX:+HeapDumpOnOutOfMemoryError \
+  -XX:HeapDumpPath=/tmp/heapdump.hprof \
+  -Xlog:gc*:file=/tmp/gc.log:time,uptime,level,tags
+
+# Shenandoah 配置（低延迟场景）
+java -jar application.jar \
+  -Xms4g -Xmx4g \
+  -XX:+UseShenandoahGC \
+  -XX:ShenandoahGCHeuristics=adaptive \
+  -XX:MaxMetaspaceSize=256m \
+  -XX:+HeapDumpOnOutOfMemoryError \
+  -XX:HeapDumpPath=/tmp/heapdump.hprof \
+  -Xlog:gc*:file=/tmp/gc.log:time,uptime,level,tags
 ```
+
+#### GC 日志分析
+```java
+// GC 日志分析工具类
+@Component
+public class GCLogAnalyzer {
+    
+    private static final Logger logger = LoggerFactory.getLogger(GCLogAnalyzer.class);
+    
+    // 注册 GC 通知监听器
+    @PostConstruct
+    public void registerGCNotification() {
+        List<GarbageCollectorMXBean> gcBeans = ManagementFactory.getGarbageCollectorMXBeans();
+        
+        for (GarbageCollectorMXBean gcBean : gcBeans) {
+            if (gcBean instanceof NotificationEmitter) {
+                NotificationEmitter emitter = (NotificationEmitter) gcBean;
+                emitter.addNotificationListener((notification, handback) -> {
+                    if (notification.getType().equals(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION)) {
+                        GarbageCollectionNotificationInfo info = GarbageCollectionNotificationInfo
+                            .from((CompositeData) notification.getUserData());
+                        
+                        GcInfo gcInfo = info.getGcInfo();
+                        long duration = gcInfo.getDuration();
+                        String gcAction = info.getGcAction();
+                        String gcCause = info.getGcCause();
+                        
+                        // 记录 GC 事件
+                        if (duration > 200) {
+                            logger.warn("[GC 告警] 类型={}, 原因={}, 耗时={}ms, 动作={}",
+                                info.getGcName(), gcCause, duration, gcAction);
+                        } else {
+                            logger.debug("[GC 事件] 类型={}, 原因={}, 耗时={}ms",
+                                info.getGcName(), gcCause, duration);
+                        }
+                        
+                        // 分析内存变化
+                        Map<String, MemoryUsage> beforeGc = gcInfo.getMemoryUsageBeforeGc();
+                        Map<String, MemoryUsage> afterGc = gcInfo.getMemoryUsageAfterGc();
+                        
+                        for (Map.Entry<String, MemoryUsage> entry : afterGc.entrySet()) {
+                            MemoryUsage before = beforeGc.get(entry.getKey());
+                            MemoryUsage after = entry.getValue();
+                            if (before != null) {
+                                long freed = before.getUsed() - after.getUsed();
+                                if (freed > 0) {
+                                    logger.debug("  {} 释放: {}", entry.getKey(), formatBytes(freed));
+                                }
+                            }
+                        }
+                    }
+                }, null, null);
+            }
+        }
+    }
+    
+    private String formatBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(1024));
+        String pre = "KMGTPE".charAt(exp - 1) + "";
+        return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
+    }
+}
+```
+
+#### 常见 GC 问题排查思路
+
+```mermaid
+flowchart TD
+    A[GC 问题排查] --> B{频繁 Full GC?}
+    B -->|是| C{老年代占用高?}
+    C -->|是| D[可能存在内存泄漏]
+    D --> D1[jmap -histo 查看对象分布]
+    D --> D2[MAT 分析堆转储]
+    C -->|否| E[晋升过快]
+    E --> E1[增大年轻代 -Xmn]
+    E --> E2[调整晋升阈值 MaxTenuringThreshold]
+    
+    B -->|否| F{Young GC 耗时长?}
+    F -->|是| G[年轻代过大或存活对象多]
+    G --> G1[减小年轻代]
+    G --> G2[检查大对象分配]
+    
+    F -->|否| H{GC 暂停时间不稳定?}
+    H -->|是| I[考虑切换 GC 算法]
+    I --> I1[G1 → ZGC 降低延迟]
+    I --> I2[调整 MaxGCPauseMillis]
+```
+
+> **排查工具推荐**：
+> - `jstat -gcutil <pid> 1000`：实时查看 GC 统计
+> - `jmap -heap <pid>`：查看堆内存分布
+> - `jmap -histo:live <pid>`：查看存活对象统计
+> - **GCViewer / GCEasy**：可视化分析 GC 日志
+> - **Eclipse MAT**：分析堆转储文件
 
 #### GC 监控和调优
 ```java
@@ -609,6 +859,245 @@ public class GCMonitor {
     }
 }
 ```
+
+### 3. 对象池优化
+
+频繁创建和销毁重量级对象会增加 GC 压力，使用对象池可以有效复用对象。
+
+#### Apache Commons Pool 对象池
+```java
+// 1. 定义池化对象工厂
+public class HeavyObjectFactory extends BasePooledObjectFactory<HeavyObject> {
+    
+    @Override
+    public HeavyObject create() throws Exception {
+        // 创建重量级对象（如数据库连接、加密引擎等）
+        return new HeavyObject();
+    }
+    
+    @Override
+    public PooledObject<HeavyObject> wrap(HeavyObject obj) {
+        return new DefaultPooledObject<>(obj);
+    }
+    
+    @Override
+    public void destroyObject(PooledObject<HeavyObject> p) throws Exception {
+        p.getObject().close();
+    }
+    
+    @Override
+    public boolean validateObject(PooledObject<HeavyObject> p) {
+        return p.getObject().isValid();
+    }
+    
+    @Override
+    public void passivateObject(PooledObject<HeavyObject> p) throws Exception {
+        p.getObject().reset(); // 归还前重置状态
+    }
+}
+
+// 2. 配置对象池
+@Configuration
+public class ObjectPoolConfig {
+    
+    @Bean
+    public GenericObjectPool<HeavyObject> heavyObjectPool() {
+        GenericObjectPoolConfig<HeavyObject> config = new GenericObjectPoolConfig<>();
+        config.setMaxTotal(50);           // 最大对象数
+        config.setMaxIdle(20);            // 最大空闲对象数
+        config.setMinIdle(5);             // 最小空闲对象数
+        config.setMaxWaitMillis(5000);    // 最大等待时间
+        config.setTestOnBorrow(true);     // 借出时验证
+        config.setTestOnReturn(false);    // 归还时不验证
+        config.setTestWhileIdle(true);    // 空闲时验证
+        config.setTimeBetweenEvictionRunsMillis(30000); // 驱逐检查间隔
+        
+        return new GenericObjectPool<>(new HeavyObjectFactory(), config);
+    }
+}
+
+// 3. 使用对象池
+@Service
+public class PooledService {
+    
+    @Autowired
+    private GenericObjectPool<HeavyObject> objectPool;
+    
+    public String process(String data) {
+        HeavyObject obj = null;
+        try {
+            obj = objectPool.borrowObject(); // 从池中借出
+            return obj.process(data);
+        } catch (Exception e) {
+            throw new RuntimeException("对象池操作失败", e);
+        } finally {
+            if (obj != null) {
+                objectPool.returnObject(obj); // 归还到池中
+            }
+        }
+    }
+}
+```
+
+#### 轻量级自定义对象池
+```java
+// 基于 ConcurrentLinkedQueue 的简单对象池
+public class SimpleObjectPool<T> {
+    
+    private final ConcurrentLinkedQueue<T> pool;
+    private final Supplier<T> factory;
+    private final Consumer<T> resetter;
+    private final int maxSize;
+    private final AtomicInteger currentSize = new AtomicInteger(0);
+    
+    public SimpleObjectPool(Supplier<T> factory, Consumer<T> resetter, int maxSize) {
+        this.pool = new ConcurrentLinkedQueue<>();
+        this.factory = factory;
+        this.resetter = resetter;
+        this.maxSize = maxSize;
+    }
+    
+    public T borrow() {
+        T obj = pool.poll();
+        if (obj == null) {
+            obj = factory.get();
+            currentSize.incrementAndGet();
+        }
+        return obj;
+    }
+    
+    public void returnObject(T obj) {
+        if (currentSize.get() <= maxSize) {
+            resetter.accept(obj); // 重置对象状态
+            pool.offer(obj);
+        } else {
+            currentSize.decrementAndGet();
+        }
+    }
+    
+    public int getPoolSize() {
+        return pool.size();
+    }
+}
+
+// 使用示例：StringBuilder 对象池
+@Component
+public class StringBuilderPool {
+    
+    private final SimpleObjectPool<StringBuilder> pool = new SimpleObjectPool<>(
+        () -> new StringBuilder(256),
+        sb -> sb.setLength(0),  // 重置
+        100
+    );
+    
+    public String buildString(List<String> parts) {
+        StringBuilder sb = pool.borrow();
+        try {
+            for (String part : parts) {
+                sb.append(part);
+            }
+            return sb.toString();
+        } finally {
+            pool.returnObject(sb);
+        }
+    }
+}
+```
+
+### 4. 堆外内存管理
+
+堆外内存（Off-Heap Memory）不受 GC 管理，适合大数据量缓存和 I/O 密集场景。
+
+```java
+// DirectByteBuffer 堆外内存使用
+@Component
+public class OffHeapCacheManager {
+    
+    private static final Logger logger = LoggerFactory.getLogger(OffHeapCacheManager.class);
+    
+    private final ConcurrentHashMap<String, ByteBuffer> offHeapCache = new ConcurrentHashMap<>();
+    private final AtomicLong totalAllocated = new AtomicLong(0);
+    private final long maxOffHeapSize; // 最大堆外内存
+    
+    public OffHeapCacheManager(@Value("${cache.offheap.max-size:536870912}") long maxOffHeapSize) {
+        this.maxOffHeapSize = maxOffHeapSize; // 默认 512MB
+    }
+    
+    public void put(String key, byte[] data) {
+        if (totalAllocated.get() + data.length > maxOffHeapSize) {
+            logger.warn("堆外内存不足，执行清理");
+            evictOldest();
+        }
+        
+        ByteBuffer buffer = ByteBuffer.allocateDirect(data.length);
+        buffer.put(data);
+        buffer.flip();
+        
+        ByteBuffer old = offHeapCache.put(key, buffer);
+        if (old != null) {
+            totalAllocated.addAndGet(-old.capacity());
+            cleanDirectBuffer(old);
+        }
+        totalAllocated.addAndGet(data.length);
+    }
+    
+    public byte[] get(String key) {
+        ByteBuffer buffer = offHeapCache.get(key);
+        if (buffer == null) return null;
+        
+        byte[] data = new byte[buffer.remaining()];
+        buffer.duplicate().get(data);
+        return data;
+    }
+    
+    public void remove(String key) {
+        ByteBuffer buffer = offHeapCache.remove(key);
+        if (buffer != null) {
+            totalAllocated.addAndGet(-buffer.capacity());
+            cleanDirectBuffer(buffer);
+        }
+    }
+    
+    // 主动释放 DirectByteBuffer
+    private void cleanDirectBuffer(ByteBuffer buffer) {
+        if (buffer.isDirect()) {
+            try {
+                // 使用 Unsafe 或 Cleaner 主动释放
+                sun.misc.Cleaner cleaner = ((sun.nio.ch.DirectBuffer) buffer).cleaner();
+                if (cleaner != null) {
+                    cleaner.clean();
+                }
+            } catch (Exception e) {
+                logger.warn("释放堆外内存失败", e);
+            }
+        }
+    }
+    
+    private void evictOldest() {
+        // 简单的 LRU 驱逐策略
+        Iterator<Map.Entry<String, ByteBuffer>> it = offHeapCache.entrySet().iterator();
+        while (it.hasNext() && totalAllocated.get() > maxOffHeapSize * 0.8) {
+            Map.Entry<String, ByteBuffer> entry = it.next();
+            totalAllocated.addAndGet(-entry.getValue().capacity());
+            cleanDirectBuffer(entry.getValue());
+            it.remove();
+        }
+    }
+    
+    @PreDestroy
+    public void cleanup() {
+        offHeapCache.forEach((key, buffer) -> cleanDirectBuffer(buffer));
+        offHeapCache.clear();
+        logger.info("堆外内存已全部释放");
+    }
+}
+```
+
+> **堆外内存使用注意事项**：
+> - 通过 `-XX:MaxDirectMemorySize` 限制堆外内存上限
+> - 必须手动管理生命周期，避免内存泄漏
+> - 适合大块数据缓存（如图片、文件缓冲）
+> - 生产环境推荐使用成熟框架（如 Netty 的 PooledByteBufAllocator）
 
 ## 启动性能优化
 
@@ -761,6 +1250,92 @@ public class OptimizedApplication {
     </dependency>
 </dependencies>
 ```
+
+### 3. AOT 编译优化
+
+AOT（Ahead-of-Time）编译可以将 Spring 应用在构建时预处理，大幅减少启动时间。
+
+#### Spring AOT 配置（Spring Boot 3.x）
+```java
+// 1. Maven 配置
+// pom.xml
+// <plugin>
+//     <groupId>org.springframework.boot</groupId>
+//     <artifactId>spring-boot-maven-plugin</artifactId>
+//     <configuration>
+//         <image>
+//             <builder>paketobuildpacks/builder:tiny</builder>
+//         </image>
+//     </configuration>
+// </plugin>
+// <plugin>
+//     <groupId>org.graalvm.buildtools</groupId>
+//     <artifactId>native-maven-plugin</artifactId>
+// </plugin>
+
+// 2. AOT 运行时提示（Runtime Hints）
+@Configuration
+@ImportRuntimeHints(MyRuntimeHints.class)
+public class AotConfig {
+    // AOT 相关配置
+}
+
+public class MyRuntimeHints implements RuntimeHintsRegistrar {
+    
+    @Override
+    public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+        // 注册反射提示（AOT 编译时需要）
+        hints.reflection()
+            .registerType(User.class, MemberCategory.values())
+            .registerType(Order.class, MemberCategory.values());
+        
+        // 注册资源提示
+        hints.resources()
+            .registerPattern("config/*.properties")
+            .registerPattern("templates/*.html");
+        
+        // 注册序列化提示
+        hints.serialization()
+            .registerType(User.class)
+            .registerType(Order.class);
+        
+        // 注册代理提示
+        hints.proxies()
+            .registerJdkProxy(UserService.class);
+    }
+}
+
+// 3. 条件化 Bean 注册（AOT 友好）
+@Configuration
+public class AotFriendlyConfig {
+    
+    // 避免在 AOT 中使用动态 Bean 注册
+    // 使用 @Bean 替代 BeanFactoryPostProcessor 动态注册
+    @Bean
+    @ConditionalOnProperty(name = "feature.enabled", havingValue = "true")
+    public FeatureService featureService() {
+        return new FeatureService();
+    }
+}
+```
+
+#### GraalVM Native Image 构建
+```bash
+# 构建 Native Image
+mvn -Pnative native:compile
+
+# 运行 Native Image（启动时间通常 < 100ms）
+./target/my-application
+
+# Docker 构建 Native Image
+mvn -Pnative spring-boot:build-image
+```
+
+> **AOT/Native Image 注意事项**：
+> - 反射、动态代理、JNI 需要提前注册 Runtime Hints
+> - 部分第三方库可能不兼容 Native Image
+> - 构建时间较长，建议 CI/CD 环境构建
+> - 启动时间可从秒级降至毫秒级，内存占用减少 50%+
 
 #### 类路径扫描优化
 ```java
@@ -1177,6 +1752,106 @@ public class OptimizedUserRepository {
 }
 ```
 
+### 2. 分库分表策略
+
+#### ShardingSphere 集成
+```yaml
+# application.yml - ShardingSphere 分库分表配置
+spring:
+  shardingsphere:
+    datasource:
+      names: ds0,ds1
+      ds0:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        jdbc-url: jdbc:mysql://db0:3306/order_db
+        username: root
+        password: ${DB_PASSWORD}
+      ds1:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        jdbc-url: jdbc:mysql://db1:3306/order_db
+        username: root
+        password: ${DB_PASSWORD}
+    rules:
+      sharding:
+        tables:
+          t_order:
+            actual-data-nodes: ds$->{0..1}.t_order_$->{0..3}
+            database-strategy:
+              standard:
+                sharding-column: user_id
+                sharding-algorithm-name: db-mod
+            table-strategy:
+              standard:
+                sharding-column: order_id
+                sharding-algorithm-name: table-mod
+            key-generate-strategy:
+              column: order_id
+              key-generator-name: snowflake
+        sharding-algorithms:
+          db-mod:
+            type: MOD
+            props:
+              sharding-count: 2
+          table-mod:
+            type: MOD
+            props:
+              sharding-count: 4
+        key-generators:
+          snowflake:
+            type: SNOWFLAKE
+            props:
+              worker-id: 1
+    props:
+      sql-show: true
+```
+
+```java
+// 自定义分片算法
+public class OrderShardingAlgorithm implements StandardShardingAlgorithm<Long> {
+    
+    @Override
+    public String doSharding(Collection<String> availableTargetNames, 
+                             PreciseShardingValue<Long> shardingValue) {
+        long value = shardingValue.getValue();
+        String suffix = String.valueOf(value % availableTargetNames.size());
+        
+        for (String targetName : availableTargetNames) {
+            if (targetName.endsWith(suffix)) {
+                return targetName;
+            }
+        }
+        throw new IllegalArgumentException("无法找到分片目标: " + shardingValue);
+    }
+    
+    @Override
+    public Collection<String> doSharding(Collection<String> availableTargetNames,
+                                         RangeShardingValue<Long> shardingValue) {
+        // 范围查询时返回所有分片
+        return availableTargetNames;
+    }
+}
+
+// 分库分表下的分页查询优化
+@Repository
+public class ShardingOrderRepository {
+    
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+    
+    /**
+     * 分库分表下的深度分页优化
+     * 避免 LIMIT offset, size 在大偏移量时的性能问题
+     */
+    public List<Order> findOrdersByPage(Long lastOrderId, int pageSize) {
+        // 使用游标分页替代 OFFSET 分页
+        String sql = "SELECT * FROM t_order WHERE order_id > ? ORDER BY order_id ASC LIMIT ?";
+        return jdbcTemplate.query(sql, new OrderRowMapper(), lastOrderId, pageSize);
+    }
+}
+```
+
 ## 缓存优化
 
 ### 1. 多级缓存策略
@@ -1432,6 +2107,78 @@ public class BloomFilterConfig {
 }
 ```
 
+#### 缓存雪崩解决方案
+```java
+@Service
+public class CacheAvalancheSolution {
+    
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+    
+    @Autowired
+    private CacheManager localCacheManager;
+    
+    private final Random random = new Random();
+    
+    // 方案1：随机过期时间，避免大量 Key 同时失效
+    public void cacheWithRandomExpiry(String key, Object value, long baseExpireSeconds) {
+        // 在基础过期时间上增加随机偏移（±20%）
+        long randomOffset = (long) (baseExpireSeconds * 0.2 * (random.nextDouble() * 2 - 1));
+        long actualExpire = baseExpireSeconds + randomOffset;
+        
+        redisTemplate.opsForValue().set(key, value, actualExpire, TimeUnit.SECONDS);
+    }
+    
+    // 方案2：多级缓存降级
+    public <T> T getWithFallback(String key, Class<T> type, Supplier<T> dbLoader) {
+        // 第一级：本地缓存
+        Cache localCache = localCacheManager.getCache("local");
+        Cache.ValueWrapper localValue = localCache.get(key);
+        if (localValue != null) {
+            return type.cast(localValue.get());
+        }
+        
+        // 第二级：Redis 缓存
+        try {
+            Object redisValue = redisTemplate.opsForValue().get(key);
+            if (redisValue != null) {
+                localCache.put(key, redisValue); // 回写本地缓存
+                return type.cast(redisValue);
+            }
+        } catch (Exception e) {
+            // Redis 不可用时降级到本地缓存 + 数据库
+            logger.warn("Redis 不可用，降级处理", e);
+        }
+        
+        // 第三级：数据库查询
+        T dbValue = dbLoader.get();
+        if (dbValue != null) {
+            localCache.put(key, dbValue);
+            try {
+                cacheWithRandomExpiry(key, dbValue, 3600);
+            } catch (Exception ignored) {
+                // Redis 写入失败不影响业务
+            }
+        }
+        return dbValue;
+    }
+    
+    // 方案3：熔断降级（结合 Resilience4j）
+    @CircuitBreaker(name = "cacheService", fallbackMethod = "cacheFallback")
+    public Object getFromCache(String key) {
+        return redisTemplate.opsForValue().get(key);
+    }
+    
+    public Object cacheFallback(String key, Throwable t) {
+        logger.warn("缓存熔断降级，key={}", key);
+        // 返回本地缓存或默认值
+        Cache localCache = localCacheManager.getCache("local");
+        Cache.ValueWrapper value = localCache.get(key);
+        return value != null ? value.get() : null;
+    }
+}
+```
+
 #### 缓存击穿解决方案
 ```java
 @Service
@@ -1480,6 +2227,102 @@ public class CacheBreakdownSolution {
     
     private void releaseLock(String lockKey) {
         redisTemplate.delete(lockKey);
+    }
+}
+```
+
+### 3. 缓存预热策略
+
+```java
+@Component
+public class CacheWarmUpService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(CacheWarmUpService.class);
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private ProductRepository productRepository;
+    
+    @Autowired
+    private CacheManager cacheManager;
+    
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+    
+    // 方案1：应用启动时预热
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmUpOnStartup() {
+        logger.info("开始缓存预热...");
+        long start = System.currentTimeMillis();
+        
+        CompletableFuture.allOf(
+            CompletableFuture.runAsync(this::warmUpHotUsers),
+            CompletableFuture.runAsync(this::warmUpHotProducts),
+            CompletableFuture.runAsync(this::warmUpConfigData)
+        ).join();
+        
+        logger.info("缓存预热完成，耗时 {}ms", System.currentTimeMillis() - start);
+    }
+    
+    // 预热热点用户数据
+    private void warmUpHotUsers() {
+        List<User> hotUsers = userRepository.findTop1000ByOrderByLoginCountDesc();
+        Cache userCache = cacheManager.getCache("users");
+        
+        for (User user : hotUsers) {
+            userCache.put(user.getId(), user);
+        }
+        logger.info("用户缓存预热完成，共 {} 条", hotUsers.size());
+    }
+    
+    // 预热热门商品数据
+    private void warmUpHotProducts() {
+        List<Product> hotProducts = productRepository.findTop500ByOrderBySalesDesc();
+        Cache productCache = cacheManager.getCache("products");
+        
+        for (Product product : hotProducts) {
+            productCache.put(product.getId(), product);
+        }
+        logger.info("商品缓存预热完成，共 {} 条", hotProducts.size());
+    }
+    
+    // 预热配置数据
+    private void warmUpConfigData() {
+        // 系统配置、字典数据等
+        Map<String, String> configs = configRepository.findAllAsMap();
+        redisTemplate.opsForHash().putAll("sys:config", configs);
+        logger.info("配置缓存预热完成，共 {} 条", configs.size());
+    }
+    
+    // 方案2：定时刷新预热（保持缓存新鲜度）
+    @Scheduled(fixedRate = 300000) // 每5分钟
+    public void scheduledWarmUp() {
+        // 只刷新即将过期的热点数据
+        Set<String> expiringKeys = findExpiringKeys("users:*", 60); // 60秒内过期的
+        for (String key : expiringKeys) {
+            String id = key.split(":")[1];
+            User user = userRepository.findById(Long.parseLong(id)).orElse(null);
+            if (user != null) {
+                cacheManager.getCache("users").put(user.getId(), user);
+            }
+        }
+    }
+    
+    private Set<String> findExpiringKeys(String pattern, long thresholdSeconds) {
+        Set<String> keys = redisTemplate.keys(pattern);
+        Set<String> expiringKeys = new HashSet<>();
+        
+        if (keys != null) {
+            for (String key : keys) {
+                Long ttl = redisTemplate.getExpire(key, TimeUnit.SECONDS);
+                if (ttl != null && ttl > 0 && ttl < thresholdSeconds) {
+                    expiringKeys.add(key);
+                }
+            }
+        }
+        return expiringKeys;
     }
 }
 ```
@@ -1549,6 +2392,201 @@ public class OptimizedHttpService {
 }
 ```
 
+### 2. 序列化优化
+
+序列化性能直接影响网络传输效率和缓存存储效率。
+
+#### 序列化框架对比
+
+| 框架 | 序列化速度 | 体积 | 可读性 | 跨语言 | 适用场景 |
+|------|-----------|------|--------|--------|----------|
+| **JSON (Jackson)** | 中 | 大 | 高 | 是 | REST API、配置文件 |
+| **Protobuf** | 快 | 小 | 低 | 是 | gRPC、高性能通信 |
+| **Kryo** | 最快 | 最小 | 低 | 否 | Java 内部通信、缓存 |
+| **MessagePack** | 快 | 较小 | 低 | 是 | 跨语言高性能场景 |
+| **Hessian** | 中 | 中 | 低 | 是 | Dubbo 默认序列化 |
+
+```java
+// Jackson 性能优化配置
+@Configuration
+public class JacksonOptimizationConfig {
+    
+    @Bean
+    public ObjectMapper optimizedObjectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        
+        // 性能优化配置
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL); // 不序列化 null
+        
+        // 使用 AfterBurner 模块加速（基于字节码生成）
+        mapper.registerModule(new AfterburnerModule());
+        
+        // 日期格式
+        mapper.registerModule(new JavaTimeModule());
+        
+        return mapper;
+    }
+}
+
+// Protobuf 序列化配置（Spring MVC）
+@Configuration
+public class ProtobufConfig {
+    
+    @Bean
+    public ProtobufHttpMessageConverter protobufHttpMessageConverter() {
+        return new ProtobufHttpMessageConverter();
+    }
+    
+    // 支持 Protobuf 和 JSON 双格式
+    @Override
+    public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
+        converters.add(protobufHttpMessageConverter());
+        converters.add(new MappingJackson2HttpMessageConverter(optimizedObjectMapper()));
+    }
+}
+
+// Kryo 序列化工具（用于缓存存储）
+public class KryoSerializer {
+    
+    // 使用 ThreadLocal 保证线程安全
+    private static final ThreadLocal<Kryo> kryoThreadLocal = ThreadLocal.withInitial(() -> {
+        Kryo kryo = new Kryo();
+        kryo.setRegistrationRequired(false);
+        kryo.setReferences(true);
+        // 注册常用类以提升性能
+        kryo.register(User.class);
+        kryo.register(Order.class);
+        kryo.register(ArrayList.class);
+        kryo.register(HashMap.class);
+        return kryo;
+    });
+    
+    public static byte[] serialize(Object obj) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(256);
+        Output output = new Output(baos);
+        kryoThreadLocal.get().writeClassAndObject(output, obj);
+        output.flush();
+        return baos.toByteArray();
+    }
+    
+    @SuppressWarnings("unchecked")
+    public static <T> T deserialize(byte[] data) {
+        Input input = new Input(new ByteArrayInputStream(data));
+        return (T) kryoThreadLocal.get().readClassAndObject(input);
+    }
+}
+
+// Redis 使用 Kryo 序列化（替代 JDK 序列化，体积减少 50%+）
+@Configuration
+public class RedisKryoConfig {
+    
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(factory);
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new RedisSerializer<Object>() {
+            @Override
+            public byte[] serialize(Object obj) {
+                if (obj == null) return new byte[0];
+                return KryoSerializer.serialize(obj);
+            }
+            
+            @Override
+            public Object deserialize(byte[] bytes) {
+                if (bytes == null || bytes.length == 0) return null;
+                return KryoSerializer.deserialize(bytes);
+            }
+        });
+        return template;
+    }
+}
+```
+
+### 3. 压缩优化
+
+```java
+// HTTP 响应压缩配置
+// application.yml
+// server:
+//   compression:
+//     enabled: true
+//     mime-types: application/json,application/xml,text/html,text/plain,text/css,application/javascript
+//     min-response-size: 1024  # 超过 1KB 才压缩
+
+// 自定义 GZIP 压缩过滤器（更精细的控制）
+@Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class GzipCompressionFilter extends OncePerRequestFilter {
+    
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, 
+                                     HttpServletResponse response, 
+                                     FilterChain filterChain) throws ServletException, IOException {
+        String acceptEncoding = request.getHeader("Accept-Encoding");
+        
+        if (acceptEncoding != null && acceptEncoding.contains("gzip")) {
+            GzipResponseWrapper gzipResponse = new GzipResponseWrapper(response);
+            filterChain.doFilter(request, gzipResponse);
+            gzipResponse.finish();
+        } else {
+            filterChain.doFilter(request, response);
+        }
+    }
+    
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        // 静态资源和小响应不压缩
+        return uri.endsWith(".png") || uri.endsWith(".jpg") || uri.endsWith(".gif");
+    }
+}
+
+// 数据传输压缩工具
+@Component
+public class DataCompressor {
+    
+    // GZIP 压缩
+    public byte[] gzipCompress(byte[] data) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
+            gzipOut.write(data);
+        }
+        return baos.toByteArray();
+    }
+    
+    // GZIP 解压
+    public byte[] gzipDecompress(byte[] compressed) throws IOException {
+        ByteArrayInputStream bais = new ByteArrayInputStream(compressed);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (GZIPInputStream gzipIn = new GZIPInputStream(bais)) {
+            byte[] buffer = new byte[4096];
+            int len;
+            while ((len = gzipIn.read(buffer)) != -1) {
+                baos.write(buffer, 0, len);
+            }
+        }
+        return baos.toByteArray();
+    }
+    
+    // 缓存数据压缩存储（节省 Redis 内存）
+    public void cacheWithCompression(RedisTemplate<String, byte[]> redisTemplate,
+                                      String key, Object value, long expireSeconds) throws IOException {
+        byte[] serialized = KryoSerializer.serialize(value);
+        
+        // 超过 1KB 才压缩
+        if (serialized.length > 1024) {
+            byte[] compressed = gzipCompress(serialized);
+            redisTemplate.opsForValue().set("gz:" + key, compressed, expireSeconds, TimeUnit.SECONDS);
+        } else {
+            redisTemplate.opsForValue().set(key, serialized, expireSeconds, TimeUnit.SECONDS);
+        }
+    }
+}
+```
+
 ## 最佳实践总结
 
 ### 性能优化检查清单
@@ -1604,6 +2642,107 @@ flowchart TD
 | ⭐ | 网络优化 | 低 | 低 |
 
 ### 性能测试和监控
+
+#### JMH 基准测试
+
+JMH（Java Microbenchmark Harness）是 OpenJDK 官方的微基准测试框架，用于精确测量代码性能。
+
+```java
+// 1. 添加依赖
+// <dependency>
+//     <groupId>org.openjdk.jmh</groupId>
+//     <artifactId>jmh-core</artifactId>
+//     <version>1.37</version>
+//     <scope>test</scope>
+// </dependency>
+// <dependency>
+//     <groupId>org.openjdk.jmh</groupId>
+//     <artifactId>jmh-generator-annprocess</artifactId>
+//     <version>1.37</version>
+//     <scope>test</scope>
+// </dependency>
+
+// 2. 序列化性能基准测试
+@BenchmarkMode(Mode.Throughput)           // 测量吞吐量
+@OutputTimeUnit(TimeUnit.SECONDS)         // 输出单位
+@State(Scope.Benchmark)                   // 状态作用域
+@Warmup(iterations = 3, time = 1)         // 预热 3 轮
+@Measurement(iterations = 5, time = 1)    // 测量 5 轮
+@Fork(1)                                  // 1 个 JVM 进程
+public class SerializationBenchmark {
+    
+    private User testUser;
+    private ObjectMapper jackson;
+    private Kryo kryo;
+    
+    @Setup
+    public void setup() {
+        testUser = new User(1L, "张三", "zhangsan@example.com", 28);
+        jackson = new ObjectMapper();
+        kryo = new Kryo();
+        kryo.register(User.class);
+    }
+    
+    @Benchmark
+    public byte[] jacksonSerialize() throws Exception {
+        return jackson.writeValueAsBytes(testUser);
+    }
+    
+    @Benchmark
+    public byte[] kryoSerialize() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Output output = new Output(baos);
+        kryo.writeObject(output, testUser);
+        output.flush();
+        return baos.toByteArray();
+    }
+    
+    // 运行基准测试
+    public static void main(String[] args) throws Exception {
+        Options opt = new OptionsBuilder()
+            .include(SerializationBenchmark.class.getSimpleName())
+            .resultFormat(ResultFormatType.JSON)
+            .result("benchmark-result.json")
+            .build();
+        new Runner(opt).run();
+    }
+}
+
+// 3. Spring Bean 性能基准测试
+@BenchmarkMode({Mode.Throughput, Mode.AverageTime})
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@State(Scope.Benchmark)
+@Warmup(iterations = 3, time = 2)
+@Measurement(iterations = 5, time = 2)
+@Fork(1)
+public class ServiceBenchmark {
+    
+    private ConfigurableApplicationContext context;
+    private UserService userService;
+    
+    @Setup
+    public void setup() {
+        // 启动 Spring 上下文
+        context = SpringApplication.run(BenchmarkApplication.class);
+        userService = context.getBean(UserService.class);
+    }
+    
+    @TearDown
+    public void tearDown() {
+        context.close();
+    }
+    
+    @Benchmark
+    public User testGetUserById() {
+        return userService.getUserById(1L);
+    }
+    
+    @Benchmark
+    public List<User> testGetAllUsers() {
+        return userService.getAllUsers();
+    }
+}
+```
 
 #### 性能测试配置
 ```java
