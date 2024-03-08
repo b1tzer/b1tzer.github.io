@@ -99,30 +99,40 @@ nav:
   - 数据结构精讲（Java & Spring 生态视角）: 01-java-basic/14-数据结构精讲.md
 - Spring:
   - Spring / Spring Boot 核心原理: 02-spring/00-spring-core.md
-  - IoC 与 DI —— 控制反转与依赖注入: 02-spring/01-IoC与DI.md
-  - Bean 生命周期与循环依赖: 02-spring/02-Bean生命周期与循环依赖.md
-  - AOP —— 面向切面编程: 02-spring/03-AOP面向切面编程.md
-  - Spring MVC 请求处理流程: 02-spring/04-SpringMVC请求处理流程.md
-  - Spring Boot 自动配置原理: 02-spring/05-SpringBoot自动配置原理.md
-  - Spring 事务管理: 02-spring/06-Spring事务管理.md
-  - Spring 实战应用题: 02-spring/07-Spring实战应用题.md
-  - Spring Security 认证与授权: 02-spring/08-Spring-Security认证与授权.md
-  - Spring Cloud 核心组件: 02-spring/09-Spring-Cloud核心组件.md
-  - Spring 扩展点详解: 02-spring/10-Spring扩展点详解.md
-  - Spring 常用注解全解: 02-spring/11-Spring常用注解全解.md
-  - Feign 声明式 HTTP 客户端: 02-spring/12-Feign声明式HTTP客户端.md
-  - gRPC 详解: 02-spring/13-gRPC详解.md
-  - Spring 容器启动流程深度解析: 02-spring/14-Spring容器启动流程深度解析.md
-  - Spring 性能优化实战指南: 02-spring/15-Spring性能优化实战指南.md
-  - Spring 6 / Boot 3 新特性深度解析: 02-spring/16-Spring6-Boot3新特性深度解析.md
-  - 微服务架构深度实践: 02-spring/17-微服务架构深度实践.md
-  - Spring 源码阅读与调试技巧: 02-spring/18-Spring源码阅读与调试技巧.md
-  - 生产环境 Spring 应用运维: 02-spring/19-生产环境Spring应用运维.md
-  - Spring 测试框架深度使用: 02-spring/20-Spring测试框架深度使用.md
-  - Spring 安全架构深度解析: 02-spring/21-Spring安全架构深度解析.md
-  - Spring 数据访问高级技巧: 02-spring/22-Spring数据访问高级技巧.md
-  - Spring 响应式编程深度解析: 02-spring/23-Spring响应式编程深度解析.md
-  - Spring 消息驱动架构深度解析: 02-spring/24-Spring消息驱动架构深度解析.md
+  - 核心基础:
+    - IoC 与 DI —— 控制反转与依赖注入: 02-spring/01-核心基础/01-IoC与DI.md
+    - Bean 生命周期与循环依赖: 02-spring/01-核心基础/02-Bean生命周期与循环依赖.md
+    - AOP —— 面向切面编程: 02-spring/01-核心基础/03-AOP面向切面编程.md
+    - Spring 事务管理: 02-spring/01-核心基础/06-Spring事务管理.md
+    - Spring 常用注解全解: 02-spring/01-核心基础/11-Spring常用注解全解.md
+  - Web与通信:
+    - Spring MVC 请求处理流程: 02-spring/02-Web与通信/04-SpringMVC请求处理流程.md
+    - Feign 声明式 HTTP 客户端: 02-spring/02-Web与通信/12-Feign声明式HTTP客户端.md
+    - gRPC 详解: 02-spring/02-Web与通信/13-gRPC详解.md
+  - Boot与容器:
+    - Spring Boot 自动配置原理: 02-spring/03-Boot与容器/05-SpringBoot自动配置原理.md
+    - Spring 扩展点详解: 02-spring/03-Boot与容器/10-Spring扩展点详解.md
+    - Spring 容器启动流程深度解析: 02-spring/03-Boot与容器/14-Spring容器启动流程深度解析.md
+  - 微服务与安全:
+    - Spring Security 认证与授权: 02-spring/04-微服务与安全/08-Spring-Security认证与授权.md
+    - Spring Cloud 核心组件: 02-spring/04-微服务与安全/09-Spring-Cloud核心组件.md
+    - 微服务架构深度实践: 02-spring/04-微服务与安全/17-微服务架构深度实践.md
+    - Spring 安全架构深度解析: 02-spring/04-微服务与安全/21-Spring安全架构深度解析.md
+  - 数据与消息:
+    - Spring 数据访问高级技巧: 02-spring/05-数据与消息/22-Spring数据访问高级技巧.md
+    - Spring 响应式编程深度解析: 02-spring/05-数据与消息/23-Spring响应式编程深度解析.md
+    - Spring 消息驱动架构深度解析: 02-spring/05-数据与消息/24-Spring消息驱动架构深度解析.md
+  - 进阶与调优:
+    - Spring 监控与内存优化: 02-spring/06-进阶与调优/15a-监控与内存优化.md
+    - Spring 启动与并发性能优化: 02-spring/06-进阶与调优/15b-启动与并发优化.md
+    - Spring 数据库与缓存优化: 02-spring/06-进阶与调优/15c-数据库与缓存优化.md
+    - Spring 网络优化与最佳实践: 02-spring/06-进阶与调优/15d-网络优化与最佳实践.md
+    - Spring 6 / Boot 3 新特性深度解析: 02-spring/06-进阶与调优/16-Spring6-Boot3新特性深度解析.md
+    - Spring 源码阅读与调试技巧: 02-spring/06-进阶与调优/18-Spring源码阅读与调试技巧.md
+    - 生产环境 Spring 应用运维: 02-spring/06-进阶与调优/19-生产环境Spring应用运维.md
+  - 测试与实战:
+    - Spring 实战应用题: 02-spring/07-测试与实战/07-Spring实战应用题.md
+    - Spring 测试框架深度使用: 02-spring/07-测试与实战/20-Spring测试框架深度使用.md
 - MySQL:
   - MySQL 核心知识体系概览: 03-mysql/00-mysql-overview.md
   - 数据类型与表设计规范: 03-mysql/01-数据类型与表设计规范.md

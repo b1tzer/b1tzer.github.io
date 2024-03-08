@@ -150,13 +150,20 @@ def get_article_title(file_path: str) -> str:
 # ── 核心逻辑 ──────────────────────────────────────────────────────────────────
 
 
+def get_subdir_title(subdir_name: str) -> str:
+    """从子目录名获取可读标题，去掉数字前缀后返回。"""
+    parts = subdir_name.split("-", 1)
+    return parts[1] if len(parts) > 1 else subdir_name
+
+
 def collect_articles() -> tuple[list[dict], list[dict]]:
     """
     扫描 DOCS_DIR，按目录名排序，目录内按文件名排序。
+    支持章节目录下的子目录（二级分组）。
 
     返回：
-        articles  — 所有文章的列表，每项含 dir / file / title / path
-        chapters  — 章节元数据列表，每项含 dir / files
+        articles  — 所有文章的列表，每项含 dir / file / title / path / subdir(可选)
+        chapters  — 章节元数据列表，每项含 dir / files / subdirs
     """
     chapters = []
     for entry in sorted(os.listdir(DOCS_DIR)):
@@ -166,23 +173,52 @@ def collect_articles() -> tuple[list[dict], list[dict]]:
         if entry in EXCLUDE_DIRS:
             print(f"  [排除目录] {entry}")
             continue
+
+        # 收集章节根目录下的 .md 文件
         md_files = sorted(
             f for f in os.listdir(full)
-            if f.endswith(".md") and f"{entry}/{f}" not in EXCLUDE_FILES
+            if f.endswith(".md") and os.path.isfile(os.path.join(full, f))
+            and f"{entry}/{f}" not in EXCLUDE_FILES
         )
-        if md_files:
-            chapters.append({"dir": entry, "files": md_files})
 
-    articles = [
-        {
-            "dir": ch["dir"],
-            "file": fname,
-            "title": get_article_title(os.path.join(DOCS_DIR, ch["dir"], fname)),
-            "path": os.path.join(DOCS_DIR, ch["dir"], fname),
-        }
-        for ch in chapters
-        for fname in ch["files"]
-    ]
+        # 收集子目录（二级分组）
+        subdirs = []
+        for sub_entry in sorted(os.listdir(full)):
+            sub_full = os.path.join(full, sub_entry)
+            if not os.path.isdir(sub_full):
+                continue
+            sub_md_files = sorted(
+                f for f in os.listdir(sub_full)
+                if f.endswith(".md") and os.path.isfile(os.path.join(sub_full, f))
+                and f"{entry}/{sub_entry}/{f}" not in EXCLUDE_FILES
+            )
+            if sub_md_files:
+                subdirs.append({"name": sub_entry, "files": sub_md_files})
+
+        if md_files or subdirs:
+            chapters.append({"dir": entry, "files": md_files, "subdirs": subdirs})
+
+    # 构建文章列表（包含根目录文件和子目录文件）
+    articles = []
+    for ch in chapters:
+        for fname in ch["files"]:
+            articles.append({
+                "dir": ch["dir"],
+                "file": fname,
+                "title": get_article_title(os.path.join(DOCS_DIR, ch["dir"], fname)),
+                "path": os.path.join(DOCS_DIR, ch["dir"], fname),
+            })
+        for sub in ch.get("subdirs", []):
+            for fname in sub["files"]:
+                articles.append({
+                    "dir": ch["dir"],
+                    "subdir": sub["name"],
+                    "file": fname,
+                    "title": get_article_title(
+                        os.path.join(DOCS_DIR, ch["dir"], sub["name"], fname)
+                    ),
+                    "path": os.path.join(DOCS_DIR, ch["dir"], sub["name"], fname),
+                })
     return articles, chapters
 
 
@@ -206,7 +242,10 @@ def generate_index_md(articles: list[dict], check_only: bool = False) -> bool:
         d = art["dir"]
         dir_count[d] = dir_count.get(d, 0) + 1
         if d not in dir_first:
-            dir_first[d] = f"{d}/{art['file']}"
+            if "subdir" in art:
+                dir_first[d] = f"{d}/{art['subdir']}/{art['file']}"
+            else:
+                dir_first[d] = f"{d}/{art['file']}"
 
     # 构建技术栈表格
     rows = ["| 技术领域 | 内容 | 文档数量 |", "|---------|------|--------|"]
@@ -234,20 +273,43 @@ def generate_index_md(articles: list[dict], check_only: bool = False) -> bool:
     return True
 
 
-def generate_mkdocs_nav(articles: list[dict]) -> list:
-    """根据文章列表生成 MkDocs nav 结构。"""
-    # 按目录分组，保持有序
-    chapter_articles: dict[str, list[dict]] = {}
-    for art in articles:
-        chapter_articles.setdefault(art["dir"], []).append(art)
-
+def generate_mkdocs_nav(articles: list[dict], chapters: list[dict]) -> list:
+    """根据文章列表和章节结构生成 MkDocs nav 结构，支持子目录二级分组。"""
     nav: list = [{"Home": "index.md"}]
-    for ch_dir in sorted(chapter_articles):
-        section = [
-            {art["title"]: f"{ch_dir}/{art['file']}"}
-            for art in chapter_articles[ch_dir]
-        ]
-        nav.append({get_chapter_title(ch_dir): section})
+
+    for ch in chapters:
+        ch_dir = ch["dir"]
+        section: list = []
+
+        # 添加章节根目录下的文件
+        for fname in ch["files"]:
+            art = next(
+                (a for a in articles
+                 if a["dir"] == ch_dir and a.get("subdir") is None and a["file"] == fname),
+                None,
+            )
+            if art:
+                section.append({art["title"]: f"{ch_dir}/{fname}"})
+
+        # 添加子目录分组
+        for sub in ch.get("subdirs", []):
+            sub_section = []
+            for fname in sub["files"]:
+                art = next(
+                    (a for a in articles
+                     if a["dir"] == ch_dir and a.get("subdir") == sub["name"]
+                     and a["file"] == fname),
+                    None,
+                )
+                if art:
+                    sub_section.append(
+                        {art["title"]: f"{ch_dir}/{sub['name']}/{fname}"}
+                    )
+            if sub_section:
+                section.append({get_subdir_title(sub["name"]): sub_section})
+
+        if section:
+            nav.append({get_chapter_title(ch_dir): section})
     return nav
 
 
@@ -356,7 +418,7 @@ def main() -> None:
     generate_index_md(articles, check_only)
 
     print("\n🔧 更新 mkdocs.yml nav...")
-    update_mkdocs_yml(generate_mkdocs_nav(articles), check_only)
+    update_mkdocs_yml(generate_mkdocs_nav(articles, chapters), check_only)
 
     print("\n📝 处理 frontmatter...")
     for article in articles:

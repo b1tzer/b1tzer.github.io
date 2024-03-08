@@ -228,18 +228,30 @@ flowchart TB
 
 | # | 知识点 | 核心一句话 | 详细文档 |
 |---|--------|-----------|---------|
-| 1 | **IoC 与 DI** | IoC 是"容器管对象"，DI 是"容器送依赖"，推荐构造器注入 | [01-IoC与DI.md](./01-IoC与DI.md) |
-| 2 | **Bean 生命周期与循环依赖** | 实例化→注入→Aware→BPP前→初始化→BPP后（AOP代理）→使用→销毁；三级缓存解决循环依赖 | [02-Bean生命周期与循环依赖.md](./02-Bean生命周期与循环依赖.md) |
-| 3 | **AOP 面向切面** | 基于代理拦截，`this` 调用绕过代理，Spring Boot 2.x 后默认 CGLIB | [03-AOP面向切面编程.md](./03-AOP面向切面编程.md) |
-| 4 | **Spring MVC** | DispatcherServlet 总调度，HandlerMapping 找处理器，HandlerAdapter 适配调用 | [04-SpringMVC请求处理流程.md](./04-SpringMVC请求处理流程.md) |
-| 5 | **自动配置原理** | `@EnableAutoConfiguration` 读列表，条件注解按需过滤，允许用户覆盖 | [05-SpringBoot自动配置原理.md](./05-SpringBoot自动配置原理.md) |
-| 6 | **事务管理** | 事务是 AOP 特例，`this` 调用不生效，异常要抛出，注意传播行为 | [06-Spring事务管理.md](./06-Spring事务管理.md) |
-| 7 | ~~循环依赖（已合并至 Bean 生命周期）~~ | 已合并至 [02-Bean生命周期与循环依赖.md](./02-Bean生命周期与循环依赖.md) | —— |
-| 8 | **实战应用题** | 事务排查、长事务优化、AOP失效、Bean泄漏、动态注册等 12 道实战题 | [07-Spring实战应用题.md](./07-Spring实战应用题.md) |
-| 9 | **Spring Security** | 过滤器链拦截请求，JWT 无状态认证，方法级 `@PreAuthorize` 权限控制 | [08-Spring-Security认证与授权.md](./08-Spring-Security认证与授权.md) |
-| 10 | **Spring Cloud** | Eureka 服务发现 + Gateway 网关 + Feign 调用 + Sentinel 熔断，微服务必备 | [09-Spring-Cloud核心组件.md](./09-Spring-Cloud核心组件.md) |
-| 11 | **Spring 扩展点** | BPP 干预初始化，BFPP 修改 Bean 定义，ApplicationListener 监听事件 | [10-Spring扩展点详解.md](./10-Spring扩展点详解.md) |
-| 12 | **常用注解全解** | `@Conditional`、`@ConfigurationProperties`、`@Profile`、`@Import` 等高频注解 | [11-Spring常用注解全解.md](./11-Spring常用注解全解.md) |
+| 1 | **IoC 与 DI** | IoC 是"容器管对象"，DI 是"容器送依赖"，推荐构造器注入 | [01-IoC与DI.md](./01-核心基础/01-IoC与DI.md) |
+| 2 | **Bean 生命周期与循环依赖** | 实例化→注入→Aware→BPP前→初始化→BPP后（AOP代理）→使用→销毁；三级缓存解决循环依赖 | [02-Bean生命周期与循环依赖.md](./01-核心基础/02-Bean生命周期与循环依赖.md) |
+| 3 | **AOP 面向切面** | 基于代理拦截，`this` 调用绕过代理，Spring Boot 2.x 后默认 CGLIB | [03-AOP面向切面编程.md](./01-核心基础/03-AOP面向切面编程.md) |
+| 4 | **Spring MVC** | DispatcherServlet 总调度，HandlerMapping 找处理器，HandlerAdapter 适配调用 | [04-SpringMVC请求处理流程.md](./02-Web与通信/04-SpringMVC请求处理流程.md) |
+| 5 | **自动配置原理** | `@EnableAutoConfiguration` 读列表，条件注解按需过滤，允许用户覆盖 | [05-SpringBoot自动配置原理.md](./03-Boot与容器/05-SpringBoot自动配置原理.md) |
+| 6 | **事务管理** | 事务是 AOP 特例，`this` 调用不生效，异常要抛出，注意传播行为 | [06-Spring事务管理.md](./01-核心基础/06-Spring事务管理.md) |
+| 7 | **实战应用题** | 事务排查、长事务优化、AOP失效、Bean泄漏、动态注册等 12 道实战题 | [07-Spring实战应用题.md](./07-测试与实战/07-Spring实战应用题.md) |
+| 8 | **Spring Security** | 过滤器链拦截请求，JWT 无状态认证，方法级 `@PreAuthorize` 权限控制 | [08-Spring-Security认证与授权.md](./04-微服务与安全/08-Spring-Security认证与授权.md) |
+| 9 | **Spring Cloud** | Eureka 服务发现 + Gateway 网关 + Feign 调用 + Sentinel 熔断，微服务必备 | [09-Spring-Cloud核心组件.md](./04-微服务与安全/09-Spring-Cloud核心组件.md) |
+| 10 | **Spring 扩展点** | BPP 干预初始化，BFPP 修改 Bean 定义，ApplicationListener 监听事件 | [10-Spring扩展点详解.md](./03-Boot与容器/10-Spring扩展点详解.md) |
+| 11 | **常用注解全解** | `@Conditional`、`@ConfigurationProperties`、`@Profile`、`@Import` 等高频注解 | [11-Spring常用注解全解.md](./01-核心基础/11-Spring常用注解全解.md) |
+| 12 | **Feign 声明式 HTTP** | 声明式 HTTP 客户端，注解定义接口即可调用远程服务 | [12-Feign声明式HTTP客户端.md](./02-Web与通信/12-Feign声明式HTTP客户端.md) |
+| 13 | **gRPC 详解** | 高性能 RPC 框架，基于 Protobuf 序列化 + HTTP/2 传输 | [13-gRPC详解.md](./02-Web与通信/13-gRPC详解.md) |
+| 14 | **容器启动流程** | refresh() 12 步：BeanDefinition 加载→BPP 注册→单例实例化→事件发布 | [14-Spring容器启动流程深度解析.md](./03-Boot与容器/14-Spring容器启动流程深度解析.md) |
+| 15 | **性能优化** | 监控→内存→启动→并发→数据库→缓存→网络，全方位优化指南 | [15a-监控与内存优化.md](./06-进阶与调优/15a-监控与内存优化.md) |
+| 16 | **Spring 6 / Boot 3** | Java 17+、Jakarta EE、GraalVM Native Image、虚拟线程、AOT 编译 | [16-Spring6-Boot3新特性深度解析.md](./06-进阶与调优/16-Spring6-Boot3新特性深度解析.md) |
+| 17 | **微服务架构实践** | 服务拆分、通信、治理、部署的完整微服务落地方案 | [17-微服务架构深度实践.md](./04-微服务与安全/17-微服务架构深度实践.md) |
+| 18 | **源码阅读技巧** | 从入口到核心，掌握 Spring 源码阅读与调试的方法论 | [18-Spring源码阅读与调试技巧.md](./06-进阶与调优/18-Spring源码阅读与调试技巧.md) |
+| 19 | **生产环境运维** | Actuator 监控、日志管理、优雅停机、灰度发布等运维实践 | [19-生产环境Spring应用运维.md](./06-进阶与调优/19-生产环境Spring应用运维.md) |
+| 20 | **测试框架** | 单元测试、集成测试、MockMvc、TestContainers 等测试最佳实践 | [20-Spring测试框架深度使用.md](./07-测试与实战/20-Spring测试框架深度使用.md) |
+| 21 | **安全架构深度** | OAuth2、RBAC、ABAC、安全漏洞防护等企业级安全方案 | [21-Spring安全架构深度解析.md](./04-微服务与安全/21-Spring安全架构深度解析.md) |
+| 22 | **数据访问高级** | JPA 优化、多数据源、读写分离、MyBatis 高级用法 | [22-Spring数据访问高级技巧.md](./05-数据与消息/22-Spring数据访问高级技巧.md) |
+| 23 | **响应式编程** | WebFlux + Reactor，非阻塞 IO，适合高并发低延迟场景 | [23-Spring响应式编程深度解析.md](./05-数据与消息/23-Spring响应式编程深度解析.md) |
+| 24 | **消息驱动架构** | Spring Kafka/RabbitMQ 集成，事件驱动、CQRS、Saga 模式 | [24-Spring消息驱动架构深度解析.md](./05-数据与消息/24-Spring消息驱动架构深度解析.md) |
 
 ---
 
@@ -294,7 +306,7 @@ flowchart TB
 
 > 以下是面试中容易"卡住"的实战问题，考察对 Spring 原理的真实理解深度。
 >
-> 📄 详见：[07-Spring实战应用题.md](./07-Spring实战应用题.md)
+> 📄 详见：[07-Spring实战应用题.md](./07-测试与实战/07-Spring实战应用题.md)
 
 ### 题目速览
 
@@ -327,4 +339,4 @@ flowchart TB
 5. **数据库引擎不支持事务**：MySQL 的 MyISAM 引擎不支持事务，需用 InnoDB
 6. **多数据源问题**：事务管理器和数据源不匹配
 
-> 📄 完整解析及代码示例见：[07-Spring实战应用题.md](./07-Spring实战应用题.md)
+> 📄 完整解析及代码示例见：[07-Spring实战应用题.md](./07-测试与实战/07-Spring实战应用题.md)
