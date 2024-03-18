@@ -324,90 +324,17 @@ protected Object initializeBean(String beanName, Object bean, @Nullable RootBean
 }
 ```
 
-## 关键扩展点详解
+## 关键扩展点
 
-### 1. ApplicationContextInitializer
+容器启动过程中涉及多个扩展点，它们在不同阶段介入容器的初始化流程。各扩展点的详细用法和代码示例，参见 [Spring 扩展点详解](04-Spring扩展点详解.md)。
 
-在上下文刷新前执行，用于自定义上下文配置：
-
-```java
-public class CustomContextInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
-    @Override
-    public void initialize(ConfigurableApplicationContext applicationContext) {
-        // 自定义环境配置
-        ConfigurableEnvironment environment = applicationContext.getEnvironment();
-        environment.addActiveProfile("custom");
-        
-        // 添加自定义 PropertySource
-        Map<String, Object> customProperties = new HashMap<>();
-        customProperties.put("custom.property", "value");
-        environment.getPropertySources()
-            .addFirst(new MapPropertySource("customProperties", customProperties));
-    }
-}
-```
-
-**注册方式：**
-- `META-INF/spring.factories`:
-  ```
-  org.springframework.context.ApplicationContextInitializer=com.example.CustomContextInitializer
-  ```
-- SpringApplication.addInitializers()
-
-### 2. BeanDefinitionRegistryPostProcessor
-
-在 Bean 定义加载后、实例化前执行，用于修改 Bean 定义：
-
-```java
-@Component
-public class CustomBeanDefinitionPostProcessor implements BeanDefinitionRegistryPostProcessor {
-    
-    @Override
-    public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
-        // 动态注册 Bean 定义
-        GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
-        beanDefinition.setBeanClass(CustomService.class);
-        beanDefinition.setScope(BeanDefinition.SCOPE_SINGLETON);
-        registry.registerBeanDefinition("customService", beanDefinition);
-        
-        // 修改现有 Bean 定义
-        BeanDefinition existingDef = registry.getBeanDefinition("someBean");
-        existingDef.setInitMethodName("customInit");
-    }
-    
-    @Override
-    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
-        // 修改 BeanFactory 配置
-    }
-}
-```
-
-### 3. ImportSelector 和 ImportBeanDefinitionRegistrar
-
-用于动态导入配置：
-
-```java
-public class CustomImportSelector implements ImportSelector {
-    @Override
-    public String[] selectImports(AnnotationMetadata importingClassMetadata) {
-        // 根据条件动态返回要导入的配置类
-        if (isFeatureEnabled()) {
-            return new String[]{"com.example.FeatureConfig"};
-        }
-        return new String[0];
-    }
-}
-
-public class CustomImportBeanDefinitionRegistrar implements ImportBeanDefinitionRegistrar {
-    @Override
-    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, 
-                                      BeanDefinitionRegistry registry) {
-        // 直接注册 Bean 定义
-        RootBeanDefinition beanDefinition = new RootBeanDefinition(CustomBean.class);
-        registry.registerBeanDefinition("customBean", beanDefinition);
-    }
-}
-```
+| 扩展点 | 执行时机 | 作用 |
+|--------|---------|------|
+| `ApplicationContextInitializer` | 上下文刷新前 | 自定义上下文配置（添加 Profile、PropertySource） |
+| `BeanDefinitionRegistryPostProcessor` | Bean 定义加载后、实例化前 | 动态注册/修改 Bean 定义 |
+| `BeanFactoryPostProcessor` | Bean 定义加载后、实例化前 | 修改 Bean 定义（如解析占位符） |
+| `BeanPostProcessor` | 每个 Bean 初始化前后 | 增强 Bean（AOP 代理在此生成） |
+| `ImportSelector` / `ImportBeanDefinitionRegistrar` | 配置类解析阶段 | 动态导入配置类或注册 Bean |
 
 ## 启动性能优化技巧
 
@@ -493,28 +420,12 @@ spring:
 
 ### 3. 循环依赖检测
 
-Spring 默认支持字段注入的循环依赖，但构造器注入会报错：
+构造器注入的循环依赖会在启动时报错，可通过 `@Lazy` 解决。详细的循环依赖原理和三级缓存机制，参见 [Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md)。
 
 ```java
-// 会报错
+// 构造器循环依赖解决方案：@Lazy
 @Component
 public class ServiceA {
-    private final ServiceB serviceB;
-    public ServiceA(ServiceB serviceB) { this.serviceB = serviceB; }
-}
-
-@Component
-public class ServiceB {
-    private final ServiceA serviceA;
-    public ServiceB(ServiceA serviceA) { this.serviceA = serviceA; }
-}
-```
-
-**解决**：改用字段注入或使用 `@Lazy`：
-```java
-@Component
-public class ServiceA {
-    @Lazy
     private final ServiceB serviceB;
     public ServiceA(@Lazy ServiceB serviceB) { this.serviceB = serviceB; }
 }

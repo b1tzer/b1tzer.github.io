@@ -45,6 +45,7 @@ mindmap
       @PreDestroy
       @Lazy
       @Scope
+      @DependsOn
 ```
 
 ---
@@ -207,7 +208,7 @@ public class MyImportSelector implements ImportSelector {
 public class AppConfig { }
 
 // 方式3：导入 ImportBeanDefinitionRegistrar（动态注册）
-// 见 10-Spring扩展点详解.md
+// 见 04-Spring扩展点详解.md
 ```
 
 **`@Import` 是 Spring Boot 自动配置的核心**：`@EnableAutoConfiguration` → `@Import(AutoConfigurationImportSelector.class)` → 读取 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` → 批量导入自动配置类。
@@ -247,7 +248,34 @@ public class OrderService {
 
 ---
 
-## 7. @Lazy —— 延迟初始化
+## 7. @DependsOn —— 控制 Bean 创建顺序
+
+默认情况下，Spring 不保证 Bean 的创建顺序。如果某个 Bean 的初始化**依赖另一个 Bean 的副作用**（如 A 的 `@PostConstruct` 会初始化全局资源，B 需要该资源已就绪），但两者之间没有直接的字段依赖，可以用 `@DependsOn` 显式声明顺序：
+
+```java
+@Component
+public class DatabaseInitializer {
+    @PostConstruct
+    public void init() {
+        // 执行建表 SQL，初始化数据库结构
+    }
+}
+
+@Component
+@DependsOn("databaseInitializer") // 必须等 databaseInitializer 创建完才创建我
+public class OrderService {
+    @PostConstruct
+    public void init() {
+        // 此时可以安全地操作数据库，表结构已就绪
+    }
+}
+```
+
+> **注意**：`@DependsOn` 只控制**创建顺序**，不负责注入。销毁时顺序相反。也支持同时依赖多个 Bean：`@DependsOn({"a", "b"})`。
+
+---
+
+## 8. @Lazy —— 延迟初始化
 
 ```java
 // 类级别：整个类延迟初始化
@@ -274,7 +302,7 @@ public class ServiceA {
 
 ---
 
-## 8. @Primary 和 @Qualifier —— 解决注入歧义
+## 9. @Primary 和 @Qualifier —— 解决注入歧义
 
 ```java
 // 场景：有多个 DataSource Bean，注入时不知道用哪个
@@ -297,7 +325,7 @@ private DataSource readDataSource;
 
 ---
 
-## 9. 常见问题
+## 10. 常见问题
 
 **Q1：@Autowired 和 @Resource 的区别？**
 > `@Autowired` 是 Spring 注解，**按类型**注入，有多个同类型 Bean 时配合 `@Qualifier` 指定名称；`@Resource` 是 JDK 注解（JSR-250），**先按名称**注入，找不到再按类型，不依赖 Spring 框架。推荐用 `@Autowired` + `@Qualifier`，语义更清晰。
