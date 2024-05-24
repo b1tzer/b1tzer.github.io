@@ -64,14 +64,11 @@ mindmap
 | 04 | **JVM 内存结构与 GC** | 堆存对象、栈存帧、元空间存类信息；GC 分代收集，G1 是 JDK9+ 默认收集器 | [04-JVM内存结构与GC.md](./04-JVM内存结构与GC.md) |
 | 05 | **异常处理** | Checked 编译器强制处理、Unchecked 编程错误应修复代码；禁止空 catch 块 | [05-异常处理.md](./05-异常处理.md) |
 | 06 | **AQS 与 CAS** | AQS 是并发包核心框架，CAS 是无锁编程基础；ReentrantLock 比 synchronized 更灵活 | [06-AQS与CAS.md](./06-AQS与CAS.md) |
-| 07 | **Lambda 表达式** | 函数式编程基础，简化匿名内部类写法，配合函数式接口使用 | [07-Lambda表达式.md](./07-Lambda表达式.md) |
-| 08 | **Stream 流式编程** | 声明式数据处理管道，支持并行流，惰性求值提升性能 | [08-Stream流式编程.md](./08-Stream流式编程.md) |
-| 09 | **Optional 空值处理** | 优雅处理 null，避免 NullPointerException，链式调用替代 if-null 判断 | [09-Optional空值处理.md](./09-Optional空值处理.md) |
-| 10 | **新日期 API** | LocalDate/LocalTime/LocalDateTime 不可变线程安全，替代 Date/Calendar | [10-新日期API.md](./10-新日期API.md) |
-| 11 | **接口默认方法与静态方法** | Java 8 接口可包含默认实现，解决接口演进的兼容性问题 | [11-接口默认方法与静态方法.md](./11-接口默认方法与静态方法.md) |
-| 12 | **泛型** | 编译期类型检查，运行时类型擦除；通配符 `? extends` 读、`? super` 写 | [12-泛型.md](./12-泛型.md) |
-| 13 | **注解** | 元注解定义注解行为，自定义注解 + 反射/APT 实现框架功能 | [13-注解.md](./13-注解.md) |
-| 14 | **数据结构精讲** | 红黑树自平衡 O(log n)、B+树磁盘友好、跳表概率平衡、布隆过滤器判存在 | [14-数据结构精讲.md](./14-数据结构精讲.md) |
+| 07 | **[Java8] 函数式编程** | Lambda 表达式 + Stream 流式编程 + Optional 空值处理，函数式编程三大核心 | [07-[Java8]函数式编程.md](./07-[Java8]函数式编程.md) |
+| 08 | **[Java8] 其他新特性** | 新日期 API（java.time）+ 接口默认方法与静态方法 | [08-[Java8]其他新特性.md](./08-[Java8]其他新特性.md) |
+| 09 | **[Java9-17] 新特性** | var 局部变量推断、Record、Sealed Classes、Pattern Matching 等 | [09-[Java9-17]新特性.md](./09-[Java9-17]新特性.md) |
+| 10 | **注解** | 元注解定义注解行为，自定义注解 + 反射/APT 实现框架功能 | [10-注解（Annotation）.md](./10-注解（Annotation）.md) |
+| 11 | **数据结构精讲** | 红黑树自平衡 O(log n)、B+树磁盘友好、跳表概率平衡、布隆过滤器判存在 | [11-数据结构精讲.md](./11-数据结构精讲.md) |
 
 ---
 
