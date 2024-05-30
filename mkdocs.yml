@@ -90,8 +90,8 @@ nav:
   - JVM 内存结构与 GC: 01-java-basic/04-JVM内存结构与GC.md
   - 异常处理（Exception Handling）: 01-java-basic/05-异常处理.md
   - AQS 与 CAS: 01-java-basic/06-AQS与CAS.md
-  - "[Java8] 函数式编程（Lambda / Stream / Optional）": 01-java-basic/07-[Java8]函数式编程.md
-  - "[Java8] 其他新特性（日期API / 接口默认方法）": 01-java-basic/08-[Java8]其他新特性.md
+  - "[Java8] 函数式编程": 01-java-basic/07-[Java8]函数式编程.md
+  - "[Java8] 其他新特性": 01-java-basic/08-[Java8]其他新特性.md
   - Java 9-17 关键新特性: 01-java-basic/09-[Java9-17]新特性.md
   - 注解（Annotation）: 01-java-basic/10-注解（Annotation）.md
   - 数据结构精讲（Java & Spring 生态视角）: 01-java-basic/11-数据结构精讲.md
@@ -180,7 +180,7 @@ nav:
   - 消费语义与位移管理: 06-kafka/12-消费语义与位移管理.md
   - 生产者分区策略与消息顺序: 06-kafka/13-生产者分区策略与消息顺序.md
 - Elasticsearch:
-  - Elasticsearch 搜索引擎核心复习: 07-elasticsearch/00-elasticsearch概览.md
+  - Elasticsearch 搜索引擎核心: 07-elasticsearch/00-elasticsearch概览.md
   - ES 引入：它解决了什么问题？: 07-elasticsearch/01-引入与背景.md
   - ES 核心概念：与关系型数据库的对应关系: 07-elasticsearch/02-核心概念.md
   - ES 倒排索引：为何擅长全文检索: 07-elasticsearch/03-倒排索引.md
@@ -201,8 +201,11 @@ nav:
   - 观察者模式（Observer Pattern）: 08-design-pattern/08-观察者模式.md
   - 模板方法模式（Template Method Pattern）: 08-design-pattern/09-模板方法模式.md
   - 责任链模式（Chain of Responsibility Pattern）: 08-design-pattern/10-责任链模式.md
+  - 原型模式（Prototype Pattern）: 08-design-pattern/11-创建型补充-原型模式.md
+  - 结构型补充 — 外观、桥接、组合、享元模式: 08-design-pattern/12-结构型补充-外观桥接组合享元.md
+  - 行为型补充 — 命令、迭代器、中介者、备忘录、状态、访问者、解释器模式: 08-design-pattern/13-行为型补充-命令迭代器中介者等.md
 - 软件工程:
-  - 软件工程核心知识复习: 09-software-engineering/00-软件工程概览.md
+  - 软件工程核心知识: 09-software-engineering/00-软件工程概览.md
   - SOLID 原则: 09-software-engineering/01-SOLID原则.md
   - 软件架构演进: 09-software-engineering/02-软件架构演进.md
   - DDD 领域驱动设计: 09-software-engineering/03-DDD领域驱动设计.md
