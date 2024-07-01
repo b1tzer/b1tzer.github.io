@@ -4,6 +4,10 @@ title: Spring Cloud 核心组件
 
 # Spring Cloud 核心组件
 
+> **文档定位**：组件原理速查 — 聚焦各核心组件的工作原理、核心机制和配置方式。
+>
+> **深入阅读**：落地实践（分布式事务、服务网格、K8s 部署、可观测性）请参阅 → [微服务架构深度实践](./17-微服务架构深度实践.md)
+
 ---
 
 ## 1. 为什么需要 Spring Cloud？
@@ -286,3 +290,7 @@ public UserVO getUserByIdBlock(Long id, BlockException e) {
 > 全局过滤器（`GlobalFilter`）对所有路由生效，适合做鉴权、日志、链路追踪等通用逻辑；局部过滤器（`GatewayFilter`）只对配置了该过滤器的路由生效，适合做特定路由的限流、重写路径等。
 
 **一句话总结**：Spring Cloud = Eureka（服务发现）+ Gateway（流量入口）+ Feign（服务调用）+ Sentinel（熔断限流）+ Config（配置管理）。
+
+---
+
+> 📖 **延伸阅读**：掌握组件原理后，进入落地实践 → [微服务架构深度实践](./17-微服务架构深度实践.md)（分布式事务、Seata、服务网格、K8s 部署、可观测性）

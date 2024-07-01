@@ -107,26 +107,26 @@ nav:
     - Spring Boot 自动配置原理: 02-spring/01-核心基础/07-SpringBoot自动配置原理.md
     - Spring 常用注解全解: 02-spring/01-核心基础/08-Spring常用注解全解.md
   - Web与通信:
-    - Spring MVC 请求处理流程: 02-spring/02-Web与通信/04-SpringMVC请求处理流程.md
-    - Feign 声明式 HTTP 客户端: 02-spring/02-Web与通信/12-Feign声明式HTTP客户端.md
-    - gRPC 详解: 02-spring/02-Web与通信/13-gRPC详解.md
+    - Spring MVC 请求处理流程: 02-spring/02-Web与通信/01-SpringMVC请求处理流程.md
+    - Feign 声明式 HTTP 客户端: 02-spring/02-Web与通信/02-Feign声明式HTTP客户端.md
+    - gRPC 详解: 02-spring/02-Web与通信/03-gRPC详解.md
   - 微服务与安全:
-    - Spring Security 认证与授权: 02-spring/03-微服务与安全/08-Spring-Security认证与授权.md
-    - Spring Cloud 核心组件: 02-spring/03-微服务与安全/09-Spring-Cloud核心组件.md
-    - 微服务架构深度实践: 02-spring/03-微服务与安全/17-微服务架构深度实践.md
-    - Spring 安全架构深度解析: 02-spring/03-微服务与安全/21-Spring安全架构深度解析.md
+    - Spring Security 认证与授权: 02-spring/03-微服务与安全/01-Spring-Security认证与授权.md
+    - Spring Cloud 核心组件: 02-spring/03-微服务与安全/02-Spring-Cloud核心组件.md
+    - 微服务架构深度实践: 02-spring/03-微服务与安全/03-微服务架构深度实践.md
+    - Spring 安全架构深度解析: 02-spring/03-微服务与安全/04-Spring安全架构深度解析.md
   - 数据与消息:
-    - Spring 数据访问高级技巧: 02-spring/04-数据与消息/22-Spring数据访问高级技巧.md
-    - Spring 响应式编程深度解析: 02-spring/04-数据与消息/23-Spring响应式编程深度解析.md
-    - Spring 消息驱动架构深度解析: 02-spring/04-数据与消息/24-Spring消息驱动架构深度解析.md
+    - Spring 数据访问高级技巧: 02-spring/04-数据与消息/01-Spring数据访问高级技巧.md
+    - Spring 响应式编程深度解析: 02-spring/04-数据与消息/02-Spring响应式编程深度解析.md
+    - Spring 消息驱动架构深度解析: 02-spring/04-数据与消息/03-Spring消息驱动架构深度解析.md
   - 进阶与调优:
-    - Spring 监控与内存优化: 02-spring/05-进阶与调优/15a-监控与内存优化.md
-    - Spring 启动与并发性能优化: 02-spring/05-进阶与调优/15b-启动与并发优化.md
-    - Spring 数据库与缓存优化: 02-spring/05-进阶与调优/15c-数据库与缓存优化.md
-    - Spring 网络优化与最佳实践: 02-spring/05-进阶与调优/15d-网络优化与最佳实践.md
-    - Spring 6 / Boot 3 新特性深度解析: 02-spring/05-进阶与调优/16-Spring6-Boot3新特性深度解析.md
-    - Spring 源码阅读与调试技巧: 02-spring/05-进阶与调优/18-Spring源码阅读与调试技巧.md
-    - 生产环境 Spring 应用运维: 02-spring/05-进阶与调优/19-生产环境Spring应用运维.md
+    - Spring 监控与内存优化: 02-spring/05-进阶与调优/01a-监控与内存优化.md
+    - Spring 启动与并发性能优化: 02-spring/05-进阶与调优/01b-启动与并发优化.md
+    - Spring 数据库与缓存优化: 02-spring/05-进阶与调优/01c-数据库与缓存优化.md
+    - Spring 网络优化与最佳实践: 02-spring/05-进阶与调优/01d-网络优化与最佳实践.md
+    - Spring 6 / Boot 3 新特性深度解析: 02-spring/05-进阶与调优/02-Spring6-Boot3新特性深度解析.md
+    - Spring 源码阅读与调试技巧: 02-spring/05-进阶与调优/03-Spring源码阅读与调试技巧.md
+    - 生产环境 Spring 应用运维: 02-spring/05-进阶与调优/04-生产环境Spring应用运维.md
   - 测试与实战:
     - Spring 实战应用题: 02-spring/06-测试与实战/07-Spring实战应用题.md
     - Spring 测试框架深度使用: 02-spring/06-测试与实战/20-Spring测试框架深度使用.md

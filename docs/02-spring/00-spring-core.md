@@ -141,20 +141,20 @@ mindmap
 | 6 | **事务管理** | 事务是 AOP 特例，`this` 调用不生效，异常要抛出，注意传播行为 | [06-Spring事务管理.md](./01-核心基础/06-Spring事务管理.md) |
 | 7 | **自动配置原理** | `@EnableAutoConfiguration` 读列表，条件注解按需过滤，允许用户覆盖 | [07-SpringBoot自动配置原理.md](./01-核心基础/07-SpringBoot自动配置原理.md) |
 | 8 | **常用注解全解** | `@Conditional`、`@ConfigurationProperties`、`@Profile`、`@Import` 等高频注解 | [08-Spring常用注解全解.md](./01-核心基础/08-Spring常用注解全解.md) |
-| 9 | **Spring MVC** | DispatcherServlet 总调度，HandlerMapping 找处理器，HandlerAdapter 适配调用 | [04-SpringMVC请求处理流程.md](./02-Web与通信/04-SpringMVC请求处理流程.md) |
-| 10 | **Feign 声明式 HTTP** | 声明式 HTTP 客户端，注解定义接口即可调用远程服务 | [12-Feign声明式HTTP客户端.md](./02-Web与通信/12-Feign声明式HTTP客户端.md) |
-| 11 | **gRPC 详解** | 高性能 RPC 框架，基于 Protobuf 序列化 + HTTP/2 传输 | [13-gRPC详解.md](./02-Web与通信/13-gRPC详解.md) |
-| 12 | **Spring Security** | 过滤器链拦截请求，JWT 无状态认证，方法级权限控制 | [08-Spring-Security认证与授权.md](./03-微服务与安全/08-Spring-Security认证与授权.md) |
-| 13 | **Spring Cloud** | Eureka 服务发现 + Gateway 网关 + Feign 调用 + Sentinel 熔断 | [09-Spring-Cloud核心组件.md](./03-微服务与安全/09-Spring-Cloud核心组件.md) |
-| 14 | **微服务架构实践** | 服务拆分、通信、治理、部署的完整微服务落地方案 | [17-微服务架构深度实践.md](./03-微服务与安全/17-微服务架构深度实践.md) |
-| 15 | **安全架构深度** | OAuth2、RBAC、ABAC、安全漏洞防护等企业级安全方案 | [21-Spring安全架构深度解析.md](./03-微服务与安全/21-Spring安全架构深度解析.md) |
-| 16 | **数据访问高级** | JPA 优化、多数据源、读写分离、MyBatis 高级用法 | [22-Spring数据访问高级技巧.md](./04-数据与消息/22-Spring数据访问高级技巧.md) |
-| 17 | **响应式编程** | WebFlux + Reactor，非阻塞 IO，适合高并发低延迟场景 | [23-Spring响应式编程深度解析.md](./04-数据与消息/23-Spring响应式编程深度解析.md) |
-| 18 | **消息驱动架构** | Spring Kafka/RabbitMQ 集成，事件驱动、CQRS、Saga 模式 | [24-Spring消息驱动架构深度解析.md](./04-数据与消息/24-Spring消息驱动架构深度解析.md) |
-| 19 | **性能优化** | 监控→内存→启动→并发→数据库→缓存→网络，全方位优化指南 | [15a-监控与内存优化.md](./05-进阶与调优/15a-监控与内存优化.md) |
-| 20 | **Spring 6 / Boot 3** | Java 17+、Jakarta EE、GraalVM Native Image、虚拟线程、AOT 编译 | [16-Spring6-Boot3新特性深度解析.md](./05-进阶与调优/16-Spring6-Boot3新特性深度解析.md) |
-| 21 | **源码阅读技巧** | 从入口到核心，掌握 Spring 源码阅读与调试的方法论 | [18-Spring源码阅读与调试技巧.md](./05-进阶与调优/18-Spring源码阅读与调试技巧.md) |
-| 22 | **生产环境运维** | Actuator 监控、日志管理、优雅停机、灰度发布等运维实践 | [19-生产环境Spring应用运维.md](./05-进阶与调优/19-生产环境Spring应用运维.md) |
+| 9 | **Spring MVC** | DispatcherServlet 总调度，HandlerMapping 找处理器，HandlerAdapter 适配调用 | [01-SpringMVC请求处理流程.md](./02-Web与通信/01-SpringMVC请求处理流程.md) |
+| 10 | **Feign 声明式 HTTP** | 声明式 HTTP 客户端，注解定义接口即可调用远程服务 | [02-Feign声明式HTTP客户端.md](./02-Web与通信/02-Feign声明式HTTP客户端.md) |
+| 11 | **gRPC 详解** | 高性能 RPC 框架，基于 Protobuf 序列化 + HTTP/2 传输 | [03-gRPC详解.md](./02-Web与通信/03-gRPC详解.md) |
+| 12 | **Spring Security** | 过滤器链拦截请求，JWT 无状态认证，方法级权限控制 | [01-Spring-Security认证与授权.md](./03-微服务与安全/01-Spring-Security认证与授权.md) |
+| 13 | **Spring Cloud** | Eureka 服务发现 + Gateway 网关 + Feign 调用 + Sentinel 熔断 | [02-Spring-Cloud核心组件.md](./03-微服务与安全/02-Spring-Cloud核心组件.md) |
+| 14 | **微服务架构实践** | 服务拆分、通信、治理、部署的完整微服务落地方案 | [03-微服务架构深度实践.md](./03-微服务与安全/03-微服务架构深度实践.md) |
+| 15 | **安全架构深度** | OAuth2、RBAC、ABAC、安全漏洞防护等企业级安全方案 | [04-Spring安全架构深度解析.md](./03-微服务与安全/04-Spring安全架构深度解析.md) |
+| 16 | **数据访问高级** | JPA 优化、多数据源、读写分离、MyBatis 高级用法 | [01-Spring数据访问高级技巧.md](./04-数据与消息/01-Spring数据访问高级技巧.md) |
+| 17 | **响应式编程** | WebFlux + Reactor，非阻塞 IO，适合高并发低延迟场景 | [02-Spring响应式编程深度解析.md](./04-数据与消息/02-Spring响应式编程深度解析.md) |
+| 18 | **消息驱动架构** | Spring Kafka/RabbitMQ 集成，事件驱动、CQRS、Saga 模式 | [03-Spring消息驱动架构深度解析.md](./04-数据与消息/03-Spring消息驱动架构深度解析.md) |
+| 19 | **性能优化** | 监控→内存→启动→并发→数据库→缓存→网络，全方位优化指南 | [01a-监控与内存优化.md](./05-进阶与调优/01a-监控与内存优化.md) |
+| 20 | **Spring 6 / Boot 3** | Java 17+、Jakarta EE、GraalVM Native Image、虚拟线程、AOT 编译 | [02-Spring6-Boot3新特性深度解析.md](./05-进阶与调优/02-Spring6-Boot3新特性深度解析.md) |
+| 21 | **源码阅读技巧** | 从入口到核心，掌握 Spring 源码阅读与调试的方法论 | [03-Spring源码阅读与调试技巧.md](./05-进阶与调优/03-Spring源码阅读与调试技巧.md) |
+| 22 | **生产环境运维** | Actuator 监控、日志管理、优雅停机、灰度发布等运维实践 | [04-生产环境Spring应用运维.md](./05-进阶与调优/04-生产环境Spring应用运维.md) |
 | 23 | **测试框架** | 单元测试、集成测试、MockMvc、TestContainers 等测试最佳实践 | [20-Spring测试框架深度使用.md](./06-测试与实战/20-Spring测试框架深度使用.md) |
 | 24 | **实战应用题** | 事务排查、长事务优化、AOP失效、Bean泄漏等 12 道实战题 | [07-Spring实战应用题.md](./06-测试与实战/07-Spring实战应用题.md) |
 
@@ -169,6 +169,6 @@ mindmap
 | AOP 不生效怎么排查？为什么默认用 CGLIB？ | [AOP面向切面编程](./01-核心基础/05-AOP面向切面编程.md) |
 | 事务不回滚的原因？REQUIRED vs REQUIRES_NEW？ | [Spring事务管理](./01-核心基础/06-Spring事务管理.md) |
 | 自动配置原理？如何自定义 Starter？ | [SpringBoot自动配置原理](./01-核心基础/07-SpringBoot自动配置原理.md) |
-| 认证和授权的区别？JWT vs Session？ | [Spring-Security认证与授权](./03-微服务与安全/08-Spring-Security认证与授权.md) |
-| Eureka 自我保护是什么？服务雪崩如何防止？ | [Spring-Cloud核心组件](./03-微服务与安全/09-Spring-Cloud核心组件.md) |
+| 认证和授权的区别？JWT vs Session？ | [Spring-Security认证与授权](./03-微服务与安全/01-Spring-Security认证与授权.md) |
+| Eureka 自我保护是什么？服务雪崩如何防止？ | [Spring-Cloud核心组件](./03-微服务与安全/02-Spring-Cloud核心组件.md) |
 | 线上 OOM / Bean 泄漏怎么排查？ | [Spring实战应用题](./06-测试与实战/07-Spring实战应用题.md) |
