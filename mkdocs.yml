@@ -111,7 +111,7 @@ nav:
     - Feign 声明式 HTTP 客户端: 02-spring/02-Web与通信/02-Feign声明式HTTP客户端.md
     - gRPC 详解: 02-spring/02-Web与通信/03-gRPC详解.md
   - 微服务与安全:
-    - Spring Security 认证与授权: 02-spring/03-微服务与安全/01-Spring-Security认证与授权.md
+    - Spring Security 认证与授权（入门导读）: 02-spring/03-微服务与安全/01-Spring-Security认证与授权.md
     - Spring Cloud 核心组件: 02-spring/03-微服务与安全/02-Spring-Cloud核心组件.md
     - 微服务架构深度实践: 02-spring/03-微服务与安全/03-微服务架构深度实践.md
     - Spring 安全架构深度解析: 02-spring/03-微服务与安全/04-Spring安全架构深度解析.md
