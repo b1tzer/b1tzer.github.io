@@ -4,7 +4,7 @@ title: Spring Security 认证与授权（入门导读）
 
 # Spring Security 认证与授权
 
-> **定位**：本文是 Spring Security 的入门导读，帮助快速理解核心概念和整体架构。深入的代码实现、OAuth2 集成、安全最佳实践等内容请参阅 → [Spring 安全架构深度解析](./21-Spring安全架构深度解析.md)
+> **定位**：本文是 Spring Security 的入门导读，帮助快速理解核心概念和整体架构。深入的代码实现、OAuth2 集成、安全最佳实践等内容请参阅 → [Spring 安全架构深度解析](./04-Spring安全架构深度解析.md)
 
 ---
 
@@ -53,7 +53,7 @@ flowchart TD
 | `ExceptionTranslationFilter` | 捕获 `AuthenticationException`（→401）和 `AccessDeniedException`（→403） |
 | `FilterSecurityInterceptor` | 最终的权限决策，调用 `AccessDecisionManager` |
 
-> 📖 完整的 30+ 过滤器执行顺序和自定义过滤器实现 → [深度解析 - 安全过滤器链](./21-Spring安全架构深度解析.md#spring-security-核心架构)
+> 📖 完整的 30+ 过滤器执行顺序和自定义过滤器实现 → [深度解析 - 安全过滤器链](./04-Spring安全架构深度解析.md#spring-security-核心架构)
 
 ---
 
@@ -91,7 +91,7 @@ sequenceDiagram
 | `AuthenticationProvider` | 认证提供者 | 实际执行认证逻辑（密码校验等） |
 | `PasswordEncoder` | 密码编码器 | 推荐使用 `BCryptPasswordEncoder` |
 
-> 📖 自定义认证提供者、多因素认证（MFA）实现 → [深度解析 - 认证体系](./21-Spring安全架构深度解析.md#2-认证体系深度解析)
+> 📖 自定义认证提供者、多因素认证（MFA）实现 → [深度解析 - 认证体系](./04-Spring安全架构深度解析.md#2-认证体系深度解析)
 
 ---
 
@@ -119,7 +119,7 @@ flowchart LR
     end
 ```
 
-> 📖 JWT 过滤器实现、OAuth2 资源服务器配置、Token 刷新机制 → [深度解析 - OAuth2 深度集成](./21-Spring安全架构深度解析.md#oauth2-深度集成)
+> 📖 JWT 过滤器实现、OAuth2 资源服务器配置、Token 刷新机制 → [深度解析 - OAuth2 深度集成](./04-Spring安全架构深度解析.md#oauth2-深度集成)
 
 ---
 
@@ -142,7 +142,7 @@ flowchart LR
 public UserVO getUser(Long userId) { ... }
 ```
 
-> 📖 自定义权限评估器、动态权限管理、数据级授权实现 → [深度解析 - 授权体系](./21-Spring安全架构深度解析.md#授权体系深度解析)
+> 📖 自定义权限评估器、动态权限管理、数据级授权实现 → [深度解析 - 授权体系](./04-Spring安全架构深度解析.md#授权体系深度解析)
 
 ---
 
@@ -167,4 +167,4 @@ public UserVO getUser(Long userId) { ... }
 
 ## 深入阅读
 
-- 🔗 [Spring 安全架构深度解析](./21-Spring安全架构深度解析.md) — 自定义认证提供者、MFA、OAuth2 授权服务器/资源服务器、动态权限管理、密码安全、安全响应头等
+- 🔗 [Spring 安全架构深度解析](./04-Spring安全架构深度解析.md) — 自定义认证提供者、MFA、OAuth2 授权服务器/资源服务器、动态权限管理、密码安全、安全响应头等
