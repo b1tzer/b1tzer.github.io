@@ -134,17 +134,15 @@ nav:
   - MySQL 核心知识体系概览: 03-mysql/00-mysql-overview.md
   - 数据类型与表设计规范: 03-mysql/01-数据类型与表设计规范.md
   - 索引详解: 03-mysql/02-索引详解.md
-  - SQL 执行原理与查询优化器: 03-mysql/03-SQL执行原理与查询优化器.md
-  - EXPLAIN 与性能优化: 03-mysql/04-EXPLAIN与性能优化.md
-  - 事务与 ACID: 03-mysql/05-事务与ACID.md
-  - MVCC 与隔离级别: 03-mysql/06-MVCC与隔离级别.md
-  - 锁机制与死锁: 03-mysql/07-锁机制与死锁.md
-  - InnoDB 存储引擎深度剖析: 03-mysql/08-InnoDB存储引擎深度剖析.md
-  - Binlog 与主从复制: 03-mysql/09-Binlog与主从复制.md
-  - 在线 DDL 与大表变更: 03-mysql/10-在线DDL与大表变更.md
-  - 高可用架构方案: 03-mysql/11-高可用架构方案.md
-  - 分库、分表与分片：分布式数据库架构详解: 03-mysql/12-分库分表与分布式架构.md
-  - MySQL 实战问题与避坑指南: 03-mysql/13-实战问题与避坑指南.md
+  - SQL 执行与性能优化: 03-mysql/03-SQL执行与性能优化.md
+  - 事务与并发控制: 03-mysql/04-事务与并发控制.md
+  - 锁机制与死锁: 03-mysql/05-锁机制与死锁.md
+  - InnoDB 存储引擎深度剖析: 03-mysql/06-InnoDB存储引擎深度剖析.md
+  - Binlog 与主从复制: 03-mysql/07-Binlog与主从复制.md
+  - 在线 DDL 与大表变更: 03-mysql/08-在线DDL与大表变更.md
+  - 高可用架构方案: 03-mysql/09-高可用架构方案.md
+  - 分库、分表与分片：分布式数据库架构详解: 03-mysql/10-分库分表与分布式架构.md
+  - MySQL 实战问题与避坑指南: 03-mysql/11-实战问题与避坑指南.md
 - PostgreSQL:
   - PostgreSQL 核心特性与选型: 04-postgresql/00-postgresql-overview.md
   - PostgreSQL vs MySQL 全面对比: 04-postgresql/01-PG与MySQL对比.md
@@ -166,6 +164,7 @@ nav:
   - Redis 事务与 Lua 脚本: 05-redis/08-事务与Lua脚本.md
   - Redis 单线程模型与网络 IO: 05-redis/09-单线程模型与网络IO.md
 - Kafka:
+  - Kafka 消息队列核心知识体系: 06-kafka/00-kafka-overview.md
   - Kafka 基础概念: 06-kafka/01-基础概念.md
   - Kafka 整体架构: 06-kafka/02-整体架构.md
   - Kafka 消息可靠性：如何保证消息不丢失？: 06-kafka/03-消息可靠性.md
