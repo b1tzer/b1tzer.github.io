@@ -146,12 +146,14 @@ nav:
 - PostgreSQL:
   - PostgreSQL 核心特性与选型: 04-postgresql/00-postgresql-overview.md
   - PostgreSQL vs MySQL 全面对比: 04-postgresql/01-PG与MySQL对比.md
-  - MVCC 原理与表膨胀: 04-postgresql/02-MVCC原理与表膨胀.md
+  - MVCC 与 VACUUM 机制: 04-postgresql/02-MVCC与VACUUM机制.md
   - 索引类型详解: 04-postgresql/03-索引类型详解.md
   - 窗口函数: 04-postgresql/04-窗口函数.md
   - CTE 与递归查询: 04-postgresql/05-CTE与递归查询.md
   - 物化视图: 04-postgresql/06-物化视图.md
-  - VACUUM 机制: 04-postgresql/07-VACUUM机制.md
+  - 事务与锁机制: 04-postgresql/07-事务与锁机制.md
+  - 性能优化与调优: 04-postgresql/08-性能优化与调优.md
+  - JSONB 高级用法: 04-postgresql/09-JSONB高级用法.md
 - Redis:
   - Redis 缓存设计与高可用: 05-redis/00-redis-overview.md
   - Redis 数据结构与底层编码: 05-redis/01-数据结构与底层编码.md

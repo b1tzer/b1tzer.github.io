@@ -19,10 +19,12 @@ mindmap
             PG vs MySQL 核心差异
             JSON/GIS/窗口函数
             适用场景决策
-        MVCC 与表膨胀
+        MVCC 与 VACUUM
             xmin / xmax 隐藏字段
-            Dead Tuple 产生原因
-            与 MySQL Undo Log 的区别
+            Dead Tuple 与表膨胀
+            VACUUM vs VACUUM FULL
+            autovacuum 配置
+            长事务阻塞问题
         索引类型
             B-tree 通用索引
             GIN 多值字段/JSONB
@@ -33,10 +35,18 @@ mindmap
             CTE 公共表表达式
             递归 CTE 树形查询
             物化视图
-        VACUUM 机制
-            VACUUM vs VACUUM FULL
-            autovacuum 配置
-            长事务阻塞问题
+        事务与锁
+            隔离级别与 SSI
+            行锁/表锁/咨询锁
+            死锁检测
+        性能优化
+            EXPLAIN 分析
+            pg_stat_statements
+            索引优化与配置调优
+        JSONB
+            操作符与索引
+            GIN 索引优化
+            实战场景
 ```
 
 ---
@@ -84,7 +94,7 @@ flowchart LR
 | 旧版本清理 | VACUUM 主动清理 | 事务提交后自动回收 |
 | 表膨胀风险 | **有** | 无 |
 
-> 详细原理 → [02-MVCC原理与表膨胀.md](./02-MVCC原理与表膨胀.md)
+> 详细原理 → [02-MVCC与VACUUM机制.md](./02-MVCC与VACUUM机制.md)
 
 ---
 
@@ -171,7 +181,7 @@ SELECT * FROM org_tree ORDER BY level;
 
 > ⚠️ **工作中的坑**：长事务会阻止 VACUUM 清理旧版本，是表膨胀的主要原因。需监控 `pg_stat_activity` 及时终止长事务。
 
-> 详细说明 → [07-VACUUM机制.md](./07-VACUUM机制.md)
+> 详细说明 → [02-MVCC与VACUUM机制.md](./02-MVCC与VACUUM机制.md)
 
 ---
 
@@ -199,3 +209,61 @@ SELECT * FROM org_tree ORDER BY level;
 | 窗口函数排名不符合预期 | 混淆 RANK 和 DENSE_RANK | 明确业务需要跳跃排名还是密集排名 |
 | 递归 CTE 死循环 | 数据中存在循环引用 | 添加深度限制 `WHERE level < 10` |
 | 长事务阻塞 VACUUM | 事务未及时提交 | 监控 `pg_stat_activity`，及时终止长事务 |
+
+---
+
+## 六、事务与锁机制
+
+### 为什么要了解 PG 的锁机制？
+
+PG 的锁机制比 MySQL 更细粒度（8 种表锁、4 种行锁），且提供了独特的咨询锁（Advisory Lock）。理解这些差异能帮助你在 PG 中写出更高效的并发代码。
+
+### 核心差异
+
+| 对比项 | PostgreSQL | MySQL |
+|--------|-----------|-------|
+| 默认隔离级别 | Read Committed | Repeatable Read |
+| Serializable 实现 | SSI（乐观，性能好） | 加锁（悲观，性能差） |
+| 行锁类型 | 4 种（FOR UPDATE/SHARE/NO KEY UPDATE/KEY SHARE） | 2 种（排他锁/共享锁） |
+| 咨询锁 | ✅ 支持 | ❌ 不支持 |
+| SKIP LOCKED | ✅ 支持（任务队列利器） | MySQL 8.0+ 支持 |
+
+> 详细说明 → [07-事务与锁机制.md](./07-事务与锁机制.md)
+
+---
+
+## 七、性能优化与调优
+
+### 为什么要掌握 PG 的性能分析工具？
+
+PG 提供了 `pg_stat_statements`、`auto_explain`、部分索引等强大的性能分析和优化工具，掌握这些工具能帮助你快速定位和解决性能瓶颈。
+
+### 核心工具
+
+| 工具 | 用途 | 使用场景 |
+|------|------|----------|
+| `EXPLAIN ANALYZE` | 分析单条 SQL 的执行计划 | 定位具体 SQL 的性能瓶颈 |
+| `pg_stat_statements` | 统计所有 SQL 的执行情况 | 找到最耗时、最频繁的 SQL |
+| `auto_explain` | 自动记录慢查询的执行计划 | 生产环境慢查询分析 |
+| 部分索引 | 只对部分数据建索引 | 数据分布不均匀的场景 |
+
+> 详细说明 → [08-性能优化与调优.md](./08-性能优化与调优.md)
+
+---
+
+## 八、JSONB 高级用法
+
+### 为什么 JSONB 是 PG 的核心优势？
+
+PG 的 JSONB 是二进制存储，支持 GIN 索引，查询性能远优于 MySQL 的 JSON。在半结构化数据场景（商品属性、用户配置、日志元数据）中，JSONB 让你兼具关系型数据库的可靠性和 NoSQL 的灵活性。
+
+### 核心操作符
+
+| 操作符 | 含义 | 示例 |
+|--------|------|------|
+| `->` | 提取 JSON 对象 | `attrs -> 'brand'` → `"Apple"` |
+| `->>` | 提取文本值 | `attrs ->> 'brand'` → `Apple` |
+| `@>` | 包含判断 | `attrs @> '{"brand": "Apple"}'` |
+| `\|\|` | 合并/更新 | `attrs \|\| '{"weight": "187g"}'` |
+
+> 详细说明 → [09-JSONB高级用法.md](./09-JSONB高级用法.md)
