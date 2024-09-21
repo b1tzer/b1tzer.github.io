@@ -48,9 +48,6 @@ extra_javascript:
   - javascripts/custom.js
 
 plugins:
-  # - awesome-pages:
-  #     filename: .pages
-  #     sort_type: natural  # 自然排序，支持数字前缀
   - search:
       lang: zh
 
@@ -190,6 +187,8 @@ nav:
   - ES 集群架构与分片机制: 07-elasticsearch/06-集群架构与分片机制.md
   - ES 性能优化: 07-elasticsearch/07-性能优化.md
   - ES 数据一致性：MySQL 与 ES 同步方案: 07-elasticsearch/08-数据一致性.md
+  - ES 聚合查询：数据分析与统计: 07-elasticsearch/09-聚合查询.md
+  - ES 分词器与中文分词: 07-elasticsearch/10-分词器与中文分词.md
 - 设计模式:
   - 设计模式总览: 08-design-pattern/00-设计模式总览.md
   - 单例模式（Singleton Pattern）: 08-design-pattern/01-单例模式.md
