@@ -6,7 +6,7 @@ title: 个人 Windows 开发环境搭建
 
 ## 1. 整体架构
 
-本方案基于 WSL2（Windows Subsystem for Linux 2）构建开发环境：在 Windows 系统上运行轻量级 Linux 虚拟机，将所有开发工具部署在 Linux 环境中，通过 VSCode 或 JetBrains 远程连接进行开发。
+作为一个长期在 Windows 上做开发的程序员，我尝试过各种环境配置方案，最终这套基于 WSL2 的方案是我用过最舒服的。简单来说，就是在 Windows 系统上运行一个轻量级的 Linux 虚拟机（WSL2），然后把所有开发工具都放在这个 Linux 环境里，通过 VSCode 或者 JetBrains 远程连接过去开发。
 
 ```mermaid
 graph TD
@@ -21,7 +21,7 @@ graph TD
     F --> J[多版本 SDK 管理]
 ```
 
-该架构兼顾了 Windows 系统的日常使用便利性与 Linux 环境的开发优势（更丰富的命令行工具、更稳定的 Docker 支持）。通过远程开发模式，IDE 直接操作 Linux 文件系统，开发体验与原生 Linux 基本一致。
+这套架构的好处在于，你既能享受 Windows 系统的易用性（比如玩游戏、用 Office），又能获得 Linux 环境的开发优势（比如更好的命令行工具、更稳定的 Docker 支持）。而且通过远程开发，你在 VSCode 或者 JetBrains 里看到的就是 Linux 环境的文件，操作起来和在原生 Linux 上几乎没区别。
 
 ## 2. WSL2 安装与配置
 
@@ -42,11 +42,11 @@ wsl --install -d Ubuntu
 ## 3. WSL2 深度调优
 
 !!! tip "性能贴士"
-    WSL2 中访问 `/mnt/c/`（Windows 分区）存在严重的 I/O 性能问题，尤其是 Java 项目编译时耗时显著增加。建议将代码存放在 Linux 根目录（如 `~/projects`）下，可大幅提升文件读写性能。
+    我自己踩过的坑：在 WSL2 中访问 /mnt/c/（Windows 分区）的速度真的慢到怀疑人生！特别是跑 Java 项目的时候，编译一次要等半天。后来把代码移到 Linux 根目录的 ~/projects 下，速度直接起飞，编译时间从几分钟降到几十秒，简直是质的飞跃。
 
 ### 3.1 创建 .wslconfig 文件
 
-WSL2 默认资源分配较为保守，建议在 Windows 用户目录下创建 `.wslconfig` 文件，根据硬件配置进行调优：
+WSL2 默认的配置其实有点保守，特别是内存和 CPU 分配。我建议在 Windows 用户目录下创建一个 `.wslconfig` 文件，根据自己电脑的配置来调优：
 
 ```ini
 # C:\Users\用户名\.wslconfig
