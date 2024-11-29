@@ -72,6 +72,9 @@ markdown_extensions:
   - toc:                       # 目录
       permalink: true
       title: 本页目录
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
 
 nav:
 - Home: index.md
