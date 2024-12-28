@@ -15,11 +15,27 @@ theme:
   name: material
   language: zh
   palette:
-    scheme: default
-    primary: white
-    accent: indigo
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 切换到深色模式
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 切换到浅色模式
+  font:
+    text: Inter
+    code: JetBrains Mono
+  logo: assets/logo.svg
+  favicon: assets/favicon.svg
   features:
     - navigation.top           # 返回顶部按钮
+    - navigation.instant       # XHR 页面加载，避免全页刷新
+    - navigation.instant.progress  # 显示页面加载进度条
     - search.highlight         # 搜索高亮
     - content.code.copy        # 代码复制按钮
 
@@ -45,11 +61,22 @@ extra_css:
 
 # 自定义JavaScript文件
 extra_javascript:
+  - https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js
+  - https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js
   - javascripts/custom.js
 
 plugins:
   - search:
       lang: zh
+  - awesome-pages
+  - minify:
+      minify_html: true
+  - git-revision-date-localized:
+      type: date
+      locale: zh
+      enable_creation_date: true
+      fallback_to_build_date: true
+  - glightbox
 
 markdown_extensions:
   - admonition                 # 提示框（note/warning/tip 等）

@@ -1,0 +1,417 @@
+/* ── 自然风格背景 ─────────────────────────────────────────────── */
+
+/* 浅色模式：清新森林/自然背景 */
+[data-md-color-scheme="default"] .md-main {
+  background-image: url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=80&auto=format&fit=crop');
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+}
+
+/* 深色模式：夜晚森林背景 */
+[data-md-color-scheme="slate"] .md-main {
+  background-image: url('https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80&auto=format&fit=crop');
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+}
+
+/* ── 内容区半透明遮罩 ─────────────────────────────────────────── */
+
+/* 浅色模式内容区 */
+[data-md-color-scheme="default"] .md-content__inner {
+  background: rgba(255, 255, 255, 0.90);
+  border-radius: 12px;
+  padding: 1.8rem 2rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(4px);
+}
+
+/* 深色模式内容区 */
+[data-md-color-scheme="slate"] .md-content__inner {
+  background: rgba(22, 27, 34, 0.90);
+  border-radius: 12px;
+  padding: 1.8rem 2rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.30);
+  backdrop-filter: blur(4px);
+}
+
+/* ── 侧边栏半透明 ─────────────────────────────────────────────── */
+
+[data-md-color-scheme="default"] .md-sidebar__scrollwrap {
+  background: rgba(248, 250, 248, 0.85);
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+}
+
+[data-md-color-scheme="slate"] .md-sidebar__scrollwrap {
+  background: rgba(22, 27, 34, 0.85);
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+}
+
+/* ── 顶部导航栏 ───────────────────────────────────────────────── */
+
+[data-md-color-scheme="default"] .md-header {
+  background: rgba(56, 142, 60, 0.92) !important;
+  backdrop-filter: blur(8px);
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background: rgba(27, 94, 32, 0.92) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* ── 代码块美化 ───────────────────────────────────────────────── */
+
+.md-typeset pre {
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10);
+}
+
+/* ── 标题装饰 ─────────────────────────────────────────────────── */
+
+.md-typeset h1 {
+  border-bottom: 3px solid #4caf50;
+  padding-bottom: 0.4rem;
+}
+
+.md-typeset h2 {
+  border-left: 4px solid #81c784;
+  padding-left: 0.8rem;
+}
+
+/* ── 链接颜色自然绿 ───────────────────────────────────────────── */
+
+[data-md-color-scheme="default"] .md-typeset a {
+  color: #2e7d32;
+}
+
+[data-md-color-scheme="default"] .md-typeset a:hover {
+  color: #1b5e20;
+}
+
+/* ── 滚动条美化 ───────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(76, 175, 80, 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 142, 60, 0.8);
+}
+
+/* ── 反馈组件样式调整 ───────────────────────────────────────── */
+
+/* 反馈标题文字大小和间距 */
+.md-feedback__title {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  margin-bottom: 1rem !important;
+  color: var(--md-default-fg-color) !important;
+}
+
+/* 反馈按钮容器间距 */
+.md-feedback__rate {
+  margin-top: 0.8rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+/* 反馈按钮样式 */
+.md-feedback__rate button {
+  margin: 0 0.5rem 0.5rem 0 !important;
+  padding: 0.6rem 1.2rem !important;
+  border-radius: 6px !important;
+  font-size: 0.9rem !important;
+}
+
+/* 浅色模式反馈按钮 */
+[data-md-color-scheme="default"] .md-feedback__rate button {
+  background: rgba(76, 175, 80, 0.1) !important;
+  border: 1px solid rgba(76, 175, 80, 0.3) !important;
+  color: #2e7d32 !important;
+}
+
+[data-md-color-scheme="default"] .md-feedback__rate button:hover {
+  background: rgba(76, 175, 80, 0.2) !important;
+  border-color: #4caf50 !important;
+}
+
+/* 深色模式反馈按钮 */
+[data-md-color-scheme="slate"] .md-feedback__rate button {
+  background: rgba(129, 199, 132, 0.1) !important;
+  border: 1px solid rgba(129, 199, 132, 0.3) !important;
+  color: #81c784 !important;
+}
+
+[data-md-color-scheme="slate"] .md-feedback__rate button:hover {
+  background: rgba(129, 199, 132, 0.2) !important;
+  border-color: #81c784 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* Mermaid 图表交互样式                                           */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* Mermaid 包裹容器 */
+.mermaid-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  margin: 1rem 0;
+  cursor: grab;
+  background: rgba(255, 255, 255, 0.5);
+  min-height: 100px;
+}
+
+[data-md-color-scheme="slate"] .mermaid-container {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(22, 27, 34, 0.5);
+}
+
+.mermaid-container:active {
+  cursor: grabbing;
+}
+
+/* Mermaid SVG 过渡动画（重置时使用） */
+.mermaid-container svg {
+  display: block;
+  max-width: none; /* 允许缩放超出容器 */
+}
+
+/* 重置按钮 */
+.mermaid-reset-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(76, 175, 80, 0.85);
+  color: #fff;
+  font-size: 18px;
+  line-height: 32px;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 0;
+}
+
+.mermaid-reset-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+  background: rgba(56, 142, 60, 0.95);
+}
+
+[data-md-color-scheme="slate"] .mermaid-reset-btn {
+  background: rgba(129, 199, 132, 0.85);
+  color: #1b5e20;
+}
+
+[data-md-color-scheme="slate"] .mermaid-reset-btn:hover {
+  background: rgba(129, 199, 132, 1);
+}
+
+/* 移动端滑动提示 */
+.mermaid-swipe-hint {
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.4);
+  padding: 0.3rem 0;
+  user-select: none;
+}
+
+[data-md-color-scheme="slate"] .mermaid-swipe-hint {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* 移动端响应式适配 — 平板断点 768px                               */
+/* ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* ── 背景图：iOS Safari 兼容 + 低分辨率 ── */
+  [data-md-color-scheme="default"] .md-main {
+    background-attachment: scroll;
+    background-image: url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=768&q=70&auto=format&fit=crop');
+  }
+
+  [data-md-color-scheme="slate"] .md-main {
+    background-attachment: scroll;
+    background-image: url('https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=768&q=70&auto=format&fit=crop');
+  }
+
+  /* ── 内容区 padding 缩减 ── */
+  [data-md-color-scheme="default"] .md-content__inner,
+  [data-md-color-scheme="slate"] .md-content__inner {
+    padding: 1rem 0.8rem;
+    border-radius: 8px;
+  }
+
+  /* ── 标题字号缩小 ── */
+  .md-typeset h1 {
+    font-size: 1.5rem !important;
+  }
+
+  .md-typeset h2 {
+    font-size: 1.25rem !important;
+  }
+
+  /* ── 代码块横向滚动 ── */
+  .md-typeset pre {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .md-typeset pre::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .md-typeset pre::-webkit-scrollbar-thumb {
+    background: rgba(76, 175, 80, 0.4);
+    border-radius: 3px;
+  }
+
+  /* ── 表格横向滚动 ── */
+  .md-typeset__scrollwrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .md-typeset table:not([class]) {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  /* ── Mermaid 图表容器移动端适配 ── */
+  .mermaid-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── 重置按钮触摸热区扩大至 44×44px ── */
+  .mermaid-reset-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+    line-height: 44px;
+    top: 4px;
+    right: 4px;
+  }
+
+  /* ── 反馈按钮触摸优化 ── */
+  .md-feedback__rate button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    padding: 0.8rem 1.5rem !important;
+    font-size: 1rem !important;
+  }
+
+  /* ── 折叠块触摸优化 ── */
+  .md-typeset details summary {
+    padding: 0.8rem 1rem;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .md-typeset details summary::marker,
+  .md-typeset details summary::-webkit-details-marker {
+    font-size: 1.2em;
+  }
+
+  /* ── 返回顶部按钮触摸优化 ── */
+  .md-top {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    bottom: 1.2rem !important;
+    right: 0.8rem !important;
+  }
+
+  /* ── 代码块长按不触发文本选择 ── */
+  .md-typeset pre code {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* ── 侧边栏移动端优化 ── */
+  .md-sidebar--secondary {
+    display: none; /* 右侧 TOC 在移动端隐藏，通过汉堡菜单访问 */
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* 移动端响应式适配 — 手机断点 480px                               */
+/* ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+
+  [data-md-color-scheme="default"] .md-content__inner,
+  [data-md-color-scheme="slate"] .md-content__inner {
+    padding: 0.8rem 0.5rem;
+    border-radius: 6px;
+  }
+
+  .md-typeset h1 {
+    font-size: 1.3rem !important;
+  }
+
+  .md-typeset h2 {
+    font-size: 1.1rem !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* 减少动画偏好 — 低端设备性能降级                                 */
+/* ═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+
+  /* 禁用 backdrop-filter 避免低端设备卡顿 */
+  [data-md-color-scheme="default"] .md-content__inner,
+  [data-md-color-scheme="slate"] .md-content__inner,
+  [data-md-color-scheme="default"] .md-sidebar__scrollwrap,
+  [data-md-color-scheme="slate"] .md-sidebar__scrollwrap,
+  [data-md-color-scheme="default"] .md-header,
+  [data-md-color-scheme="slate"] .md-header {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* 增加不透明度补偿 */
+  [data-md-color-scheme="default"] .md-content__inner {
+    background: rgba(255, 255, 255, 0.96);
+  }
+
+  [data-md-color-scheme="slate"] .md-content__inner {
+    background: rgba(22, 27, 34, 0.96);
+  }
+
+  /* 禁用过渡动画 */
+  .mermaid-reset-btn {
+    transition: none;
+  }
+
+  .mermaid-container svg {
+    transition: none !important;
+  }
+}

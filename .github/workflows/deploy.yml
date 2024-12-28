@@ -6,7 +6,6 @@ on:
       - main # 在 main 分支有推送时触发（blog 合入 main 后触发）
     paths-ignore:
       - ".github/**"   # 忽略 CI 配置本身的变更
-      - "mkdocs.yml"   # 忽略自动生成的 nav 回写，避免循环触发
       - "docs/index.md" # 忽略自动生成的首页回写，避免循环触发
   workflow_dispatch: # 支持手动触发
 
