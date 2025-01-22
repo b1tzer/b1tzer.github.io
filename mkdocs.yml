@@ -39,10 +39,16 @@ theme:
     - search.highlight         # 搜索高亮
     - content.code.copy        # 代码复制按钮
 
+copyright: Copyright &copy; 2024 - 2026 b1tzer
+
 extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/b1tzer/b1tzer.github.io
+      name: GitHub
   analytics:
     provider: google
-    property: G-ZV6SVQFCWW  # 替换为你的 Google Analytics 跟踪 ID
+    property: G-ZV6SVQFCWW
     feedback:
       title: 你觉得这篇文章有帮助吗？
       ratings:

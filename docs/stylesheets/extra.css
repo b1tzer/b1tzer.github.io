@@ -1,97 +1,171 @@
-/* ── 自然风格背景 ─────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════ */
+/* The Stack — 现代主题样式                                       */
+/* 主色调：Indigo (#6366f1)  |  参考：Stripe / Vercel / Tailwind  */
+/* ═══════════════════════════════════════════════════════════════ */
 
-/* 浅色模式：清新森林/自然背景 */
+/* ── 1. 配色变量（CSS Custom Properties） ─────────────────────── */
+
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #6366f1;
+  --md-primary-fg-color--light: #818cf8;
+  --md-primary-fg-color--dark: #4f46e5;
+  --md-accent-fg-color: #6366f1;
+  --md-accent-fg-color--transparent: rgba(99, 102, 241, 0.1);
+
+  /* 背景 */
+  --ts-bg-primary: #ffffff;
+  --ts-bg-secondary: #f8fafc;
+  --ts-bg-tertiary: #f1f5f9;
+
+  /* 文字 */
+  --ts-text-primary: #1e293b;
+  --ts-text-secondary: #475569;
+  --ts-text-muted: #94a3b8;
+
+  /* 边框 */
+  --ts-border: #e2e8f0;
+  --ts-border-light: #f1f5f9;
+
+  /* 阴影 */
+  --ts-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --ts-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --ts-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #818cf8;
+  --md-primary-fg-color--light: #a5b4fc;
+  --md-primary-fg-color--dark: #6366f1;
+  --md-accent-fg-color: #818cf8;
+  --md-accent-fg-color--transparent: rgba(129, 140, 248, 0.1);
+
+  /* 背景 */
+  --ts-bg-primary: #0f172a;
+  --ts-bg-secondary: #1e293b;
+  --ts-bg-tertiary: #334155;
+
+  /* 文字 */
+  --ts-text-primary: #f1f5f9;
+  --ts-text-secondary: #cbd5e1;
+  --ts-text-muted: #64748b;
+
+  /* 边框 */
+  --ts-border: #334155;
+  --ts-border-light: #1e293b;
+
+  /* 阴影 */
+  --ts-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --ts-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --ts-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.35), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+}
+
+/* ── 2. 全局背景（移除 Unsplash 背景图） ─────────────────────── */
+
 [data-md-color-scheme="default"] .md-main {
-  background-image: url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=80&auto=format&fit=crop');
-  background-size: cover;
-  background-attachment: fixed;
-  background-position: center;
+  background: var(--ts-bg-secondary);
 }
 
-/* 深色模式：夜晚森林背景 */
 [data-md-color-scheme="slate"] .md-main {
-  background-image: url('https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80&auto=format&fit=crop');
-  background-size: cover;
-  background-attachment: fixed;
-  background-position: center;
+  background: var(--ts-bg-primary);
 }
 
-/* ── 内容区半透明遮罩 ─────────────────────────────────────────── */
+/* ── 3. 内容区 ────────────────────────────────────────────────── */
 
-/* 浅色模式内容区 */
-[data-md-color-scheme="default"] .md-content__inner {
-  background: rgba(255, 255, 255, 0.90);
+.md-content__inner {
+  background: var(--ts-bg-primary);
   border-radius: 12px;
-  padding: 1.8rem 2rem;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(4px);
+  padding: 2rem 2.5rem;
+  box-shadow: var(--ts-shadow-md);
+  max-width: 48rem;
 }
 
-/* 深色模式内容区 */
-[data-md-color-scheme="slate"] .md-content__inner {
-  background: rgba(22, 27, 34, 0.90);
-  border-radius: 12px;
-  padding: 1.8rem 2rem;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.30);
-  backdrop-filter: blur(4px);
+/* ── 4. 排版系统 ──────────────────────────────────────────────── */
+
+.md-typeset {
+  line-height: 1.75;
+  color: var(--ts-text-primary);
 }
 
-/* ── 侧边栏半透明 ─────────────────────────────────────────────── */
-
-[data-md-color-scheme="default"] .md-sidebar__scrollwrap {
-  background: rgba(248, 250, 248, 0.85);
-  border-radius: 8px;
-  backdrop-filter: blur(6px);
+.md-typeset p {
+  margin-bottom: 1.2em;
 }
 
-[data-md-color-scheme="slate"] .md-sidebar__scrollwrap {
-  background: rgba(22, 27, 34, 0.85);
-  border-radius: 8px;
-  backdrop-filter: blur(6px);
-}
-
-/* ── 顶部导航栏 ───────────────────────────────────────────────── */
-
-[data-md-color-scheme="default"] .md-header {
-  background: rgba(56, 142, 60, 0.92) !important;
-  backdrop-filter: blur(8px);
-}
-
-[data-md-color-scheme="slate"] .md-header {
-  background: rgba(27, 94, 32, 0.92) !important;
-  backdrop-filter: blur(8px);
-}
-
-/* ── 代码块美化 ───────────────────────────────────────────────── */
-
-.md-typeset pre {
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10);
-}
-
-/* ── 标题装饰 ─────────────────────────────────────────────────── */
-
+/* 标题层次 — 纯字号/字重/间距，无边框装饰 */
 .md-typeset h1 {
-  border-bottom: 3px solid #4caf50;
-  padding-bottom: 0.4rem;
+  font-weight: 700;
+  font-size: 2rem;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+  color: var(--ts-text-primary);
+  border: none;
+  padding: 0;
 }
 
 .md-typeset h2 {
-  border-left: 4px solid #81c784;
-  padding-left: 0.8rem;
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin-top: 2.5rem;
+  margin-bottom: 0.8rem;
+  letter-spacing: -0.01em;
+  color: var(--ts-text-primary);
+  border: none;
+  padding: 0;
 }
 
-/* ── 链接颜色自然绿 ───────────────────────────────────────────── */
-
-[data-md-color-scheme="default"] .md-typeset a {
-  color: #2e7d32;
+.md-typeset h3 {
+  font-weight: 500;
+  font-size: 1.25rem;
+  margin-top: 2rem;
+  margin-bottom: 0.6rem;
+  color: var(--ts-text-primary);
 }
 
-[data-md-color-scheme="default"] .md-typeset a:hover {
-  color: #1b5e20;
+.md-typeset h4 {
+  font-weight: 500;
+  font-size: 1.1rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--ts-text-secondary);
 }
 
-/* ── 滚动条美化 ───────────────────────────────────────────────── */
+/* ── 5. 链接 ──────────────────────────────────────────────────── */
+
+.md-typeset a {
+  color: var(--md-primary-fg-color);
+  text-decoration: none;
+  transition: color 200ms ease;
+}
+
+.md-typeset a:hover {
+  color: var(--md-primary-fg-color--dark);
+  text-decoration: underline;
+}
+
+/* ── 6. 代码块 ────────────────────────────────────────────────── */
+
+.md-typeset pre {
+  border-radius: 8px;
+  box-shadow: var(--ts-shadow-sm);
+  border: 1px solid var(--ts-border);
+}
+
+.md-typeset code {
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+  font-size: 0.85em;
+  background: var(--md-accent-fg-color--transparent);
+}
+
+/* 代码块内的 code 不需要额外背景 */
+.md-typeset pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* ── 7. 滚动条 ────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar {
   width: 6px;
@@ -103,17 +177,147 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(76, 175, 80, 0.5);
+  background: rgba(99, 102, 241, 0.35);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 142, 60, 0.8);
+  background: rgba(99, 102, 241, 0.6);
 }
 
-/* ── 反馈组件样式调整 ───────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════ */
+/* 导航栏与侧边栏                                                 */
+/* ═══════════════════════════════════════════════════════════════ */
 
-/* 反馈标题文字大小和间距 */
+/* ── 顶部导航栏：毛玻璃效果 ── */
+
+[data-md-color-scheme="default"] .md-header {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--ts-border);
+  box-shadow: none;
+  transition: box-shadow 300ms ease;
+}
+
+[data-md-color-scheme="default"] .md-header[data-md-state="shadow"] {
+  box-shadow: var(--ts-shadow-md);
+}
+
+/* 浅色模式下导航栏文字颜色 */
+[data-md-color-scheme="default"] .md-header .md-header__title,
+[data-md-color-scheme="default"] .md-header .md-header__topic,
+[data-md-color-scheme="default"] .md-header .md-header__button,
+[data-md-color-scheme="default"] .md-header .md-search__input,
+[data-md-color-scheme="default"] .md-header .md-icon {
+  color: var(--ts-text-primary);
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background: rgba(15, 23, 42, 0.88) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--ts-border);
+  box-shadow: none;
+  transition: box-shadow 300ms ease;
+}
+
+[data-md-color-scheme="slate"] .md-header[data-md-state="shadow"] {
+  box-shadow: var(--ts-shadow-md);
+}
+
+/* ── 侧边栏 ── */
+
+.md-sidebar__scrollwrap {
+  background: transparent;
+}
+
+/* 左侧导航：激活项指示器 */
+.md-nav__item--active > .md-nav__link {
+  border-left: 3px solid var(--md-primary-fg-color);
+  padding-left: calc(0.6rem - 3px);
+  font-weight: 600;
+  color: var(--md-primary-fg-color);
+}
+
+/* 导航项悬浮 */
+.md-nav__link {
+  transition: background 200ms ease, color 200ms ease;
+  border-radius: 4px;
+}
+
+.md-nav__link:hover {
+  background: var(--md-accent-fg-color--transparent);
+  color: var(--md-primary-fg-color);
+}
+
+/* 右侧 TOC 高亮 */
+.md-nav__link--active {
+  color: var(--md-primary-fg-color) !important;
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* 组件样式统一                                                    */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* ── Admonition 提示框 ── */
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 8px;
+  border-left-width: 4px;
+  box-shadow: var(--ts-shadow-sm);
+  overflow: hidden;
+}
+
+/* ── 表格 ── */
+
+.md-typeset table:not([class]) {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--ts-shadow-sm);
+  border: 1px solid var(--ts-border);
+}
+
+.md-typeset table:not([class]) thead {
+  background: var(--ts-bg-tertiary);
+}
+
+.md-typeset table:not([class]) tbody tr:nth-child(even) {
+  background: var(--ts-bg-secondary);
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background: var(--md-accent-fg-color--transparent);
+  transition: background 200ms ease;
+}
+
+.md-typeset table:not([class]) th,
+.md-typeset table:not([class]) td {
+  border-color: var(--ts-border);
+  padding: 0.6rem 1rem;
+}
+
+/* ── 标签页（tabbed）── */
+
+.md-typeset .tabbed-labels > label {
+  border-bottom: 2px solid transparent;
+  transition: border-color 200ms ease, color 200ms ease;
+}
+
+.md-typeset .tabbed-labels > label:hover {
+  color: var(--md-primary-fg-color);
+}
+
+.md-typeset .tabbed-labels > label.tabbed-labels__active,
+.md-typeset .tabbed-set > input:checked + label {
+  border-bottom-color: var(--md-primary-fg-color);
+  color: var(--md-primary-fg-color);
+}
+
+/* ── 反馈组件 ── */
+
 .md-feedback__title {
   font-size: 1.1rem !important;
   font-weight: 600 !important;
@@ -121,73 +325,50 @@
   color: var(--md-default-fg-color) !important;
 }
 
-/* 反馈按钮容器间距 */
 .md-feedback__rate {
   margin-top: 0.8rem !important;
   margin-bottom: 1.5rem !important;
 }
 
-/* 反馈按钮样式 */
 .md-feedback__rate button {
   margin: 0 0.5rem 0.5rem 0 !important;
   padding: 0.6rem 1.2rem !important;
   border-radius: 6px !important;
   font-size: 0.9rem !important;
+  background: var(--md-accent-fg-color--transparent) !important;
+  border: 1px solid rgba(99, 102, 241, 0.3) !important;
+  color: var(--md-primary-fg-color) !important;
+  transition: all 200ms ease !important;
 }
 
-/* 浅色模式反馈按钮 */
-[data-md-color-scheme="default"] .md-feedback__rate button {
-  background: rgba(76, 175, 80, 0.1) !important;
-  border: 1px solid rgba(76, 175, 80, 0.3) !important;
-  color: #2e7d32 !important;
-}
-
-[data-md-color-scheme="default"] .md-feedback__rate button:hover {
-  background: rgba(76, 175, 80, 0.2) !important;
-  border-color: #4caf50 !important;
-}
-
-/* 深色模式反馈按钮 */
-[data-md-color-scheme="slate"] .md-feedback__rate button {
-  background: rgba(129, 199, 132, 0.1) !important;
-  border: 1px solid rgba(129, 199, 132, 0.3) !important;
-  color: #81c784 !important;
-}
-
-[data-md-color-scheme="slate"] .md-feedback__rate button:hover {
-  background: rgba(129, 199, 132, 0.2) !important;
-  border-color: #81c784 !important;
+.md-feedback__rate button:hover {
+  background: rgba(99, 102, 241, 0.2) !important;
+  border-color: var(--md-primary-fg-color) !important;
+  transform: translateY(-1px);
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
 /* Mermaid 图表交互样式                                           */
 /* ═══════════════════════════════════════════════════════════════ */
 
-/* Mermaid 包裹容器 */
 .mermaid-container {
   position: relative;
   overflow: hidden;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--ts-border);
   margin: 1rem 0;
   cursor: grab;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--ts-bg-secondary);
   min-height: 100px;
-}
-
-[data-md-color-scheme="slate"] .mermaid-container {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(22, 27, 34, 0.5);
 }
 
 .mermaid-container:active {
   cursor: grabbing;
 }
 
-/* Mermaid SVG 过渡动画（重置时使用） */
 .mermaid-container svg {
   display: block;
-  max-width: none; /* 允许缩放超出容器 */
+  max-width: none;
 }
 
 /* 重置按钮 */
@@ -200,7 +381,7 @@
   height: 32px;
   border: none;
   border-radius: 6px;
-  background: rgba(76, 175, 80, 0.85);
+  background: var(--md-primary-fg-color);
   color: #fff;
   font-size: 18px;
   line-height: 32px;
@@ -208,36 +389,162 @@
   cursor: pointer;
   opacity: 0.7;
   transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--ts-shadow-sm);
   padding: 0;
 }
 
 .mermaid-reset-btn:hover {
   opacity: 1;
   transform: scale(1.1);
-  background: rgba(56, 142, 60, 0.95);
-}
-
-[data-md-color-scheme="slate"] .mermaid-reset-btn {
-  background: rgba(129, 199, 132, 0.85);
-  color: #1b5e20;
-}
-
-[data-md-color-scheme="slate"] .mermaid-reset-btn:hover {
-  background: rgba(129, 199, 132, 1);
+  background: var(--md-primary-fg-color--dark);
 }
 
 /* 移动端滑动提示 */
 .mermaid-swipe-hint {
   text-align: center;
   font-size: 0.75rem;
-  color: rgba(0, 0, 0, 0.4);
+  color: var(--ts-text-muted);
   padding: 0.3rem 0;
   user-select: none;
 }
 
-[data-md-color-scheme="slate"] .mermaid-swipe-hint {
-  color: rgba(255, 255, 255, 0.4);
+/* ═══════════════════════════════════════════════════════════════ */
+/* 微交互与动效                                                    */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* 页面内容淡入 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.md-content__inner {
+  animation: fadeInUp 400ms ease-out;
+}
+
+/* 可点击元素通用过渡 */
+.md-typeset a,
+.md-nav__link,
+.md-header__button,
+.md-search__input,
+button {
+  transition: all 200ms ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* 首页专属样式                                                    */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* Hero 区域 */
+.md-typeset .hero-section {
+  text-align: center;
+  padding: 3rem 1rem 2rem;
+  margin: -2rem -2.5rem 2rem;
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 50%, #a5b4fc 100%);
+  color: #fff;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .hero-section {
+  background: linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6366f1 100%);
+}
+
+.md-typeset .hero-section h1 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  color: #fff;
+  letter-spacing: -0.03em;
+}
+
+.md-typeset .hero-section p {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  margin-bottom: 1.5rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.md-typeset .hero-section .hero-cta {
+  display: inline-block;
+  padding: 0.75rem 2rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 300ms ease;
+}
+
+.md-typeset .hero-section .hero-cta:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  text-decoration: none;
+  color: #fff;
+}
+
+/* 卡片网格 */
+.md-typeset .card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.2rem;
+  margin: 1.5rem 0;
+}
+
+.md-typeset .card-grid .card {
+  background: var(--ts-bg-primary);
+  border: 1px solid var(--ts-border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  transition: transform 300ms ease, box-shadow 300ms ease;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.md-typeset .card-grid .card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--ts-shadow-lg);
+  text-decoration: none;
+  color: inherit;
+  border-color: var(--md-primary-fg-color);
+}
+
+.md-typeset .card-grid .card .card-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.md-typeset .card-grid .card .card-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+  color: var(--ts-text-primary);
+}
+
+.md-typeset .card-grid .card .card-desc {
+  font-size: 0.88rem;
+  color: var(--ts-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.md-typeset .card-grid .card .card-count {
+  font-size: 0.8rem;
+  color: var(--md-primary-fg-color);
+  font-weight: 500;
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
@@ -246,21 +553,9 @@
 
 @media (max-width: 768px) {
 
-  /* ── 背景图：iOS Safari 兼容 + 低分辨率 ── */
-  [data-md-color-scheme="default"] .md-main {
-    background-attachment: scroll;
-    background-image: url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=768&q=70&auto=format&fit=crop');
-  }
-
-  [data-md-color-scheme="slate"] .md-main {
-    background-attachment: scroll;
-    background-image: url('https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=768&q=70&auto=format&fit=crop');
-  }
-
   /* ── 内容区 padding 缩减 ── */
-  [data-md-color-scheme="default"] .md-content__inner,
-  [data-md-color-scheme="slate"] .md-content__inner {
-    padding: 1rem 0.8rem;
+  .md-content__inner {
+    padding: 1.2rem 1rem;
     border-radius: 8px;
   }
 
@@ -285,7 +580,7 @@
   }
 
   .md-typeset pre::-webkit-scrollbar-thumb {
-    background: rgba(76, 175, 80, 0.4);
+    background: rgba(99, 102, 241, 0.35);
     border-radius: 3px;
   }
 
@@ -355,7 +650,27 @@
 
   /* ── 侧边栏移动端优化 ── */
   .md-sidebar--secondary {
-    display: none; /* 右侧 TOC 在移动端隐藏，通过汉堡菜单访问 */
+    display: none;
+  }
+
+  /* ── Hero 区域移动端 ── */
+  .md-typeset .hero-section {
+    padding: 2rem 0.8rem 1.5rem;
+    margin: -1.2rem -1rem 1.5rem;
+  }
+
+  .md-typeset .hero-section h1 {
+    font-size: 2rem;
+  }
+
+  .md-typeset .hero-section p {
+    font-size: 1rem;
+  }
+
+  /* ── 卡片网格移动端 ── */
+  .md-typeset .card-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
   }
 }
 
@@ -365,9 +680,8 @@
 
 @media (max-width: 480px) {
 
-  [data-md-color-scheme="default"] .md-content__inner,
-  [data-md-color-scheme="slate"] .md-content__inner {
-    padding: 0.8rem 0.5rem;
+  .md-content__inner {
+    padding: 0.8rem 0.6rem;
     border-radius: 6px;
   }
 
@@ -378,35 +692,46 @@
   .md-typeset h2 {
     font-size: 1.1rem !important;
   }
+
+  .md-typeset .hero-section h1 {
+    font-size: 1.6rem;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
-/* 减少动画偏好 — 低端设备性能降级                                 */
+/* 减少动画偏好                                                    */
 /* ═══════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
 
+  /* 禁用所有非必要动画 */
+  .md-content__inner {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
   /* 禁用 backdrop-filter 避免低端设备卡顿 */
-  [data-md-color-scheme="default"] .md-content__inner,
-  [data-md-color-scheme="slate"] .md-content__inner,
-  [data-md-color-scheme="default"] .md-sidebar__scrollwrap,
-  [data-md-color-scheme="slate"] .md-sidebar__scrollwrap,
   [data-md-color-scheme="default"] .md-header,
   [data-md-color-scheme="slate"] .md-header {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
 
-  /* 增加不透明度补偿 */
-  [data-md-color-scheme="default"] .md-content__inner {
-    background: rgba(255, 255, 255, 0.96);
+  [data-md-color-scheme="default"] .md-header {
+    background: rgba(255, 255, 255, 0.97) !important;
   }
 
-  [data-md-color-scheme="slate"] .md-content__inner {
-    background: rgba(22, 27, 34, 0.96);
+  [data-md-color-scheme="slate"] .md-header {
+    background: rgba(15, 23, 42, 0.97) !important;
   }
 
-  /* 禁用过渡动画 */
   .mermaid-reset-btn {
     transition: none;
   }
