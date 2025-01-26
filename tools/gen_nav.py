@@ -99,6 +99,20 @@ TECH_TO_CHAPTERS: dict[str, list[str]] = {
 # index.md 模板文件路径（用户可在此文件中自由编辑静态内容）
 TEMPLATE_PATH = os.path.join(BASE, "tools", "index_template.md")
 
+# 技术领域 → emoji 图标映射
+DOMAIN_ICONS: dict[str, str] = {
+    "环境搭建": "🛠️",
+    "Java": "☕",
+    "Spring": "🌱",
+    "MySQL": "🐬",
+    "PostgreSQL": "🐘",
+    "Redis": "⚡",
+    "Kafka": "📨",
+    "Elasticsearch": "🔍",
+    "设计模式": "🧩",
+    "软件工程": "📐",
+}
+
 # ── 工具函数 ──────────────────────────────────────────────────────────────────
 
 
@@ -226,8 +240,8 @@ def generate_index_md(articles: list[dict], check_only: bool = False) -> bool:
     """
     生成 docs/index.md。
 
-    读取 tools/index_template.md，将其中的 {{TECH_TABLE}} 占位符替换为
-    根据文章列表动态生成的技术栈表格。
+    读取 tools/index_template.md，将其中的 {{TECH_CARDS}} 占位符替换为
+    根据文章列表动态生成的卡片网格 HTML。
     """
     index_path = os.path.join(DOCS_DIR, "index.md")
 
@@ -247,17 +261,26 @@ def generate_index_md(articles: list[dict], check_only: bool = False) -> bool:
             else:
                 dir_first[d] = f"{d}/{art['file']}"
 
-    # 构建技术栈表格
-    rows = ["| 技术领域 | 内容 | 文档数量 |", "|---------|------|--------|"]
+    # 构建卡片网格 HTML
+    cards = ['<div class="card-grid" markdown>']
     for row in _parse_readme_rows():
         domain, content = row["domain"], row["content"]
         total = sum(dir_count.get(d, 0) for d in row["dirs"])
         first = next((dir_first[d] for d in row["dirs"] if d in dir_first), "")
-        link = f"[{domain}]({first})" if first else domain
-        rows.append(f"| {link} | {content} | {total} 篇 |")
+        icon = DOMAIN_ICONS.get(domain, "📄")
+        href = f' href="{first}"' if first else ""
+        cards.append(
+            f'<a class="card"{href} markdown>\n'
+            f'<span class="card-icon">{icon}</span>\n'
+            f'<span class="card-title">{domain}</span>\n'
+            f'<span class="card-desc">{content}</span>\n'
+            f'<span class="card-count">{total} 篇文档</span>\n'
+            f'</a>\n'
+        )
+    cards.append('</div>')
 
     # 替换占位符
-    index_content = template.replace("{{TECH_TABLE}}", "\n".join(rows))
+    index_content = template.replace("{{TECH_CARDS}}", "\n".join(cards))
 
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:

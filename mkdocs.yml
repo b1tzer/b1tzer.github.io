@@ -85,6 +85,11 @@ plugins:
   - glightbox
 
 markdown_extensions:
+  - attr_list                  # 属性列表（{ .class #id } 语法）
+  - md_in_html                 # 允许 HTML 标签内渲染 Markdown
+  - pymdownx.emoji:            # emoji 与 Material 图标支持
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - admonition                 # 提示框（note/warning/tip 等）
   - pymdownx.details           # 折叠块
   - pymdownx.superfences:      # 代码围栏（支持 mermaid）

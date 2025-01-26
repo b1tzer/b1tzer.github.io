@@ -1,16 +1,21 @@
-# The Stack
-
-> 🎯 一份深度技术解析与实战沉淀的知识库
-
-## 🛠️ 技术栈
-
-本项目涉及的核心技术领域包括：
-
-{{TECH_TABLE}}
-
+---
+hide:
+  - navigation
+  - toc
+  - feedback
 ---
 
-## 📚 内容导航
+<div class="hero-section" markdown>
 
-<!-- 这里可以添加章节导航或个人感受等自定义内容 -->
-<!-- 脚本会自动更新上面的技术栈表格，下面内容保持不变 -->
+# The Stack
+
+**系统化的 Java 后端技术分析，覆盖核心基础、框架原理、数据库、缓存、消息队列、搜索引擎、设计模式与软件工程**
+
+[开始阅读 :material-arrow-right:](01-java-basic/00-Java基础与JVM概览.md){ .hero-cta }
+
+</div>
+
+## 📚 技术领域
+
+{{TECH_CARDS}}
+

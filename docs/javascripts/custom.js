@@ -135,8 +135,9 @@ window.MERMAID_ZOOM_LIB = 'panzoom';
       boundsPadding: 0.1,
       zoomDoubleClickSpeed: 1, // 禁用内置双击缩放，我们自己处理双击重置
       beforeWheel: function (e) {
-        // 仅当鼠标在图表上时才缩放，阻止页面滚动
-        return false; // 返回 false 表示允许缩放
+        // 需要按住 Ctrl/Cmd 才能缩放，避免拦截页面滚动
+        var shouldIgnore = !e.ctrlKey && !e.metaKey;
+        return shouldIgnore; // 返回 true = 忽略此事件（不缩放）
       },
       beforeMouseDown: function (e) {
         // 允许拖拽
@@ -245,9 +246,11 @@ window.MERMAID_ZOOM_LIB = 'panzoom';
       if (container) container.style.cursor = 'grab';
     });
 
-    // ── 阻止图表上的滚轮事件冒泡到页面 ──
+    // ── 阻止图表上 Ctrl+滚轮事件冒泡到页面（缩放时） ──
     container.addEventListener('wheel', function (e) {
-      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
     }, { passive: false });
 
     // ── 移动端适配 ──
@@ -308,7 +311,10 @@ window.MERMAID_ZOOM_LIB = 'panzoom';
     // Material 主题渲染 Mermaid 后，SVG 会出现在 .mermaid 类的容器中
     var svgs = document.querySelectorAll('.mermaid svg, pre.mermaid svg');
     svgs.forEach(function (svg) {
-      initSingleMermaid(svg);
+      // 确保 SVG 已完成渲染（有实际尺寸）
+      if (svg.getBBox && svg.getBBox().width > 0) {
+        initSingleMermaid(svg);
+      }
     });
   }
 
@@ -350,8 +356,10 @@ window.MERMAID_ZOOM_LIB = 'panzoom';
     // 清理上一页的实例（navigation.instant 模式下页面不会完全刷新）
     cleanupInstances();
 
-    // 初始化已有的 Mermaid 图表
-    initAllMermaidCharts();
+    // 延迟初始化 Mermaid 图表，等待异步渲染完成
+    setTimeout(initAllMermaidCharts, 300);
+    // 二次兜底：某些复杂图表渲染较慢
+    setTimeout(initAllMermaidCharts, 1000);
 
     // 监听后续异步渲染的 Mermaid 图表
     if (mermaidObserver) mermaidObserver.disconnect();
