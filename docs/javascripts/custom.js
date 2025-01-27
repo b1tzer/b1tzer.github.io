@@ -345,6 +345,23 @@ window.MERMAID_ZOOM_LIB = 'panzoom';
     return observer;
   }
 
+  // ─── 导航栏标题点击跳转首页 ────────────────────────────────
+
+  /** 使导航栏标题 "The Stack" 可点击跳转首页 */
+  function makeHeaderTitleClickable() {
+    var topics = document.querySelectorAll('.md-header__topic');
+    topics.forEach(function (topic) {
+      // 避免重复绑定
+      if (topic.dataset.clickBound) return;
+      topic.dataset.clickBound = 'true';
+      topic.addEventListener('click', function (e) {
+        // 避免拦截已有链接的点击
+        if (e.target.closest('a')) return;
+        window.location.href = '/';
+      });
+    });
+  }
+
   // ─── 主初始化逻辑 ─────────────────────────────────────────
 
   var mermaidObserver = null;
@@ -352,6 +369,9 @@ window.MERMAID_ZOOM_LIB = 'panzoom';
   function initPage() {
     // 首页反馈隐藏
     hideFeedbackOnHomepage();
+
+    // 导航栏标题 "The Stack" 点击跳转首页
+    makeHeaderTitleClickable();
 
     // 清理上一页的实例（navigation.instant 模式下页面不会完全刷新）
     cleanupInstances();

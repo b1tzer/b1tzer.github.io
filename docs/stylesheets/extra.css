@@ -78,6 +78,8 @@
   padding: 2rem 2.5rem;
   box-shadow: var(--ts-shadow-md);
   max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ── 4. 排版系统 ──────────────────────────────────────────────── */
@@ -224,6 +226,24 @@
 
 [data-md-color-scheme="slate"] .md-header[data-md-state="shadow"] {
   box-shadow: var(--ts-shadow-md);
+}
+
+/* 浅色模式下 GitHub 仓库源码链接颜色修复 */
+[data-md-color-scheme="default"] .md-source {
+  color: var(--ts-text-primary);
+}
+
+[data-md-color-scheme="default"] .md-source__icon svg {
+  fill: var(--ts-text-primary);
+}
+
+[data-md-color-scheme="default"] .md-source__repository {
+  color: var(--ts-text-primary);
+}
+
+/* 导航栏标题可点击 */
+.md-header__topic {
+  cursor: pointer;
 }
 
 /* ── 侧边栏 ── */
@@ -497,8 +517,8 @@ button {
 /* 卡片网格 */
 .md-typeset .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.2rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
   margin: 1.5rem 0;
 }
 
@@ -506,7 +526,7 @@ button {
   background: var(--ts-bg-primary);
   border: 1px solid var(--ts-border);
   border-radius: 10px;
-  padding: 1.5rem;
+  padding: 1rem 1.2rem;
   transition: transform 300ms ease, box-shadow 300ms ease;
   text-decoration: none;
   color: inherit;
@@ -522,15 +542,15 @@ button {
 }
 
 .md-typeset .card-grid .card .card-icon {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.6rem;
+  margin-bottom: 0.4rem;
   display: block;
 }
 
 .md-typeset .card-grid .card .card-title {
   font-weight: 600;
-  font-size: 1.1rem;
-  margin-bottom: 0.4rem;
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
   color: var(--ts-text-primary);
 }
 
@@ -637,6 +657,12 @@ button {
   .md-top {
     min-width: 44px !important;
     min-height: 44px !important;
+    max-height: 44px !important;
+    height: auto !important;
+    padding: 0.4rem 0.8rem !important;
+    line-height: normal !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
     bottom: 1.2rem !important;
     right: 0.8rem !important;
   }
@@ -667,9 +693,9 @@ button {
     font-size: 1rem;
   }
 
-  /* ── 卡片网格移动端 ── */
+  /* ── 卡片网格移动端（平板显示2列） ── */
   .md-typeset .card-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.8rem;
   }
 }
@@ -695,6 +721,11 @@ button {
 
   .md-typeset .hero-section h1 {
     font-size: 1.6rem;
+  }
+
+  /* ── 卡片网格手机端（单列） ── */
+  .md-typeset .card-grid {
+    grid-template-columns: 1fr;
   }
 }
 

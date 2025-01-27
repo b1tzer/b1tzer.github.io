@@ -268,6 +268,10 @@ def generate_index_md(articles: list[dict], check_only: bool = False) -> bool:
         total = sum(dir_count.get(d, 0) for d in row["dirs"])
         first = next((dir_first[d] for d in row["dirs"] if d in dir_first), "")
         icon = DOMAIN_ICONS.get(domain, "📄")
+        # MkDocs use_directory_urls 模式下，.md 文件会被转换为目录形式的 URL
+        # 例如 00-Env/Markdown使用指南.md → 00-Env/Markdown使用指南/
+        if first and first.endswith(".md"):
+            first = first[:-3] + "/"
         href = f' href="{first}"' if first else ""
         cards.append(
             f'<a class="card"{href} markdown>\n'
