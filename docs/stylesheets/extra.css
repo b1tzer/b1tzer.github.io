@@ -522,6 +522,14 @@ button {
   margin: 1.5rem 0;
 }
 
+/* MkDocs Markdown 渲染会在每个 <a class="card"> 外包裹 <p> 标签，
+   需要将 <p> 透明化，让 .card 直接参与 Grid 布局 */
+.md-typeset .card-grid > p {
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+
 .md-typeset .card-grid .card {
   background: var(--ts-bg-primary);
   border: 1px solid var(--ts-border);
@@ -530,7 +538,10 @@ button {
   transition: transform 300ms ease, box-shadow 300ms ease;
   text-decoration: none;
   color: inherit;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .md-typeset .card-grid .card:hover {
@@ -559,6 +570,7 @@ button {
   color: var(--ts-text-secondary);
   line-height: 1.5;
   margin-bottom: 0.5rem;
+  flex: 1;
 }
 
 .md-typeset .card-grid .card .card-count {
