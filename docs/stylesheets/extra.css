@@ -675,8 +675,9 @@ button {
     line-height: normal !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
-    bottom: 1.2rem !important;
-    right: 0.8rem !important;
+    /* 保持 Material 主题默认的居中定位方式：margin-left: 50% + transform: translate(-50%) */
+    margin-left: 50% !important;
+    right: auto !important;
   }
 
   /* ── 代码块长按不触发文本选择 ── */
