@@ -1,4 +1,5 @@
 ---
+doc_id: es-elasticsearch概览
 title: Elasticsearch 搜索引擎核心
 ---
 

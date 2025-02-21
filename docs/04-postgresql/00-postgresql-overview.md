@@ -1,4 +1,5 @@
 ---
+doc_id: pg-postgresql-overview
 title: PostgreSQL 核心特性与选型
 ---
 

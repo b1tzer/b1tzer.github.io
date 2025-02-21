@@ -17,6 +17,7 @@ gen_nav.py — 自动维护 docs/index.md 与 mkdocs.yml nav
 import os
 import re
 import sys
+import json
 import yaml
 
 # ── 路径配置 ──────────────────────────────────────────────────────────────────
@@ -98,6 +99,9 @@ TECH_TO_CHAPTERS: dict[str, list[str]] = {
 
 # index.md 模板文件路径（用户可在此文件中自由编辑静态内容）
 TEMPLATE_PATH = os.path.join(BASE, "tools", "index_template.md")
+
+# 文档 ID 注册表路径（JSON 格式，记录 id → 相对路径的映射）
+ID_REGISTRY_PATH = os.path.join(BASE, "tools", "doc_id_registry.json")
 
 # 技术领域 → emoji 图标映射
 DOMAIN_ICONS: dict[str, str] = {
@@ -431,6 +435,171 @@ def add_frontmatter(file_path: str, expected_title: str, check_only: bool = Fals
     return True
 
 
+# ── 文档 ID 管理 ─────────────────────────────────────────────────────────────
+
+# 目录名 → ID 前缀映射（简短、有意义的英文缩写）
+_DIR_TO_PREFIX: dict[str, str] = {
+    "00-Env": "env",
+    "01-java-basic": "java",
+    "02-spring": "spring",
+    "03-mysql": "mysql",
+    "04-postgresql": "pg",
+    "05-redis": "redis",
+    "06-kafka": "kafka",
+    "07-elasticsearch": "es",
+    "08-design-pattern": "dp",
+    "09-software-engineering": "se",
+}
+
+
+def _generate_doc_id(dir_name: str, file_name: str, subdir_name: str | None = None) -> str:
+    """
+    根据目录名和文件名生成稳定的文档 ID。
+
+    规则：
+      - 前缀取自 _DIR_TO_PREFIX（兜底用目录名去掉数字前缀）
+      - 文件名去掉数字前缀和 .md 后缀，转小写，特殊字符替换为连字符
+      - 子目录名（如有）也会纳入 ID
+
+    示例：
+      01-java-basic/03-并发编程.md → java-并发编程
+      02-spring/01-核心基础/05-AOP面向切面编程.md → spring-核心基础-aop面向切面编程
+    """
+    # 前缀
+    prefix = _DIR_TO_PREFIX.get(dir_name, "")
+    if not prefix:
+        parts = dir_name.split("-", 1)
+        prefix = parts[1].lower() if len(parts) > 1 else dir_name.lower()
+
+    # 文件名部分：去掉数字前缀和扩展名
+    base = os.path.splitext(file_name)[0]
+    base = re.sub(r"^\d+[a-z]?-?", "", base)  # 去掉 "00-"、"01a-" 等前缀
+
+    # 子目录部分
+    sub = ""
+    if subdir_name:
+        sub = re.sub(r"^\d+-?", "", subdir_name)
+
+    # 清理特殊字符：移除 []（）() 等会干扰 Markdown 链接语法的字符
+    base = re.sub(r"[\[\]()（）]", "", base)
+    sub = re.sub(r"[\[\]()（）]", "", sub)
+
+    # 组合 ID：prefix-sub-base（去掉空段）
+    segments = [prefix]
+    if sub:
+        segments.append(sub)
+    if base:
+        segments.append(base)
+
+    doc_id = "-".join(segments)
+    # 最终清理：连续连字符合并
+    doc_id = re.sub(r"-+", "-", doc_id).strip("-")
+    return doc_id
+
+
+def _load_id_registry() -> dict[str, str]:
+    """加载已有的 ID 注册表（id → 相对路径）。"""
+    if os.path.exists(ID_REGISTRY_PATH):
+        with open(ID_REGISTRY_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def _save_id_registry(registry: dict[str, str]) -> None:
+    """保存 ID 注册表到 JSON 文件。"""
+    with open(ID_REGISTRY_PATH, "w", encoding="utf-8") as f:
+        json.dump(registry, f, ensure_ascii=False, indent=2, sort_keys=True)
+
+
+def build_id_registry(articles: list[dict], check_only: bool = False) -> bool:
+    """
+    为所有文章生成文档 ID，写入 frontmatter 并更新注册表。
+
+    - 如果文章 frontmatter 中已有 doc_id，优先使用已有的（保证稳定性）
+    - 如果没有，则自动生成并写入
+    - 检测 ID 冲突并报错
+
+    返回：是否有变更
+    """
+    registry: dict[str, str] = {}  # id → 相对路径（相对于 docs/）
+    changed = False
+
+    for art in articles:
+        file_path = art["path"]
+        dir_name = art["dir"]
+        file_name = art["file"]
+        subdir_name = art.get("subdir")
+
+        # 计算相对于 docs/ 的路径
+        if subdir_name:
+            rel_path = f"{dir_name}/{subdir_name}/{file_name}"
+        else:
+            rel_path = f"{dir_name}/{file_name}"
+
+        # 读取文件，检查是否已有 doc_id
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        existing_id = None
+        if content.startswith("---"):
+            for line in content.split("\n")[1:]:
+                if line.strip() == "---":
+                    break
+                if line.strip().startswith("doc_id:"):
+                    existing_id = line.split(":", 1)[1].strip()
+                    break
+
+        if existing_id:
+            doc_id = existing_id
+        else:
+            doc_id = _generate_doc_id(dir_name, file_name, subdir_name)
+
+        # 检测 ID 冲突
+        if doc_id in registry:
+            print(f"  ⚠️  ID 冲突: '{doc_id}' 同时匹配 {registry[doc_id]} 和 {rel_path}")
+            # 追加数字后缀解决冲突
+            suffix = 2
+            while f"{doc_id}-{suffix}" in registry:
+                suffix += 1
+            doc_id = f"{doc_id}-{suffix}"
+            print(f"       → 自动重命名为 '{doc_id}'")
+
+        registry[doc_id] = rel_path
+
+        # 如果 frontmatter 中没有 doc_id，写入
+        if not existing_id:
+            if check_only:
+                print(f"  [需更新] {rel_path} (缺少 doc_id)")
+                changed = True
+                continue
+
+            if content.startswith("---"):
+                # 在 frontmatter 中插入 doc_id（紧跟在 --- 之后）
+                lines = content.split("\n")
+                lines.insert(1, f"doc_id: {doc_id}")
+                content = "\n".join(lines)
+            else:
+                # 没有 frontmatter，创建一个
+                content = f"---\ndoc_id: {doc_id}\n---\n\n{content}"
+
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            print(f"  [写入] {rel_path} → doc_id: {doc_id}")
+            changed = True
+
+    # 保存注册表
+    old_registry = _load_id_registry()
+    if registry != old_registry:
+        if not check_only:
+            _save_id_registry(registry)
+            print(f"  [更新] doc_id_registry.json ({len(registry)} 条记录)")
+        else:
+            print(f"  [需更新] doc_id_registry.json")
+        changed = True
+
+    return changed
+
+
 # ── 入口 ──────────────────────────────────────────────────────────────────────
 
 
@@ -450,6 +619,9 @@ def main() -> None:
     print("\n📝 处理 frontmatter...")
     for article in articles:
         add_frontmatter(article["path"], article["title"], check_only)
+
+    print("\n🆔 生成文档 ID...")
+    build_id_registry(articles, check_only)
 
     print("\n✅ 完成！")
 

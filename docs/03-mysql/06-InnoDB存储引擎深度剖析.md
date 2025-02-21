@@ -1,4 +1,5 @@
 ---
+doc_id: mysql-InnoDB存储引擎深度剖析
 title: InnoDB 存储引擎深度剖析
 ---
 

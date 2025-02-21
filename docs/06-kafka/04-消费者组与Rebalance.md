@@ -1,4 +1,5 @@
 ---
+doc_id: kafka-消费者组与Rebalance
 title: Kafka 消费者组与 Rebalance
 ---
 

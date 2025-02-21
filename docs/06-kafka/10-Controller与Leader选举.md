@@ -1,4 +1,5 @@
 ---
+doc_id: kafka-Controller与Leader选举
 title: Kafka Controller 与 Leader 选举机制
 ---
 

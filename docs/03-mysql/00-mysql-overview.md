@@ -1,4 +1,5 @@
 ---
+doc_id: mysql-mysql-overview
 title: MySQL 核心知识体系概览
 ---
 

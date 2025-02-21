@@ -1,4 +1,5 @@
 ---
+doc_id: spring-核心基础-Spring容器启动流程深度解析
 title: Spring 容器启动流程深度解析
 ---
 

@@ -1,4 +1,5 @@
 ---
+doc_id: java-JVM内存结构与GC
 title: JVM 内存结构与 GC
 ---
 

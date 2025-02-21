@@ -1,4 +1,5 @@
 ---
+doc_id: se-DDD领域驱动设计
 title: DDD 领域驱动设计
 ---
 

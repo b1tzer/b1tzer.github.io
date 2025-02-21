@@ -1,4 +1,5 @@
 ---
+doc_id: spring-数据与消息-Spring数据访问高级技巧
 title: Spring 数据访问高级技巧
 ---
 

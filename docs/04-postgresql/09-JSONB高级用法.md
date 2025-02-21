@@ -1,4 +1,5 @@
 ---
+doc_id: pg-JSONB高级用法
 title: JSONB 高级用法
 ---
 

@@ -1,4 +1,5 @@
 ---
+doc_id: redis-持久化机制RDB与AOF
 title: Redis 持久化机制：RDB 与 AOF
 ---
 

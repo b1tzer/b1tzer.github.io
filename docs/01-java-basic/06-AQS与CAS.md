@@ -1,4 +1,5 @@
 ---
+doc_id: java-AQS与CAS
 title: AQS 与 CAS
 ---
 

@@ -1,4 +1,5 @@
 ---
+doc_id: spring-核心基础-Bean生命周期与循环依赖
 title: Bean 生命周期与循环依赖
 ---
 

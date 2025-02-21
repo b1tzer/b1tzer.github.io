@@ -1,4 +1,5 @@
 ---
+doc_id: es-查询语法DSL
 title: ES 查询 DSL：核心查询类型
 ---
 

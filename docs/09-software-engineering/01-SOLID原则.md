@@ -1,4 +1,5 @@
 ---
+doc_id: se-SOLID原则
 title: SOLID 原则
 ---
 

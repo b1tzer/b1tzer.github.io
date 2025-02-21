@@ -1,4 +1,5 @@
 ---
+doc_id: java-Java8其他新特性
 title: "[Java8] 其他新特性"
 ---
 

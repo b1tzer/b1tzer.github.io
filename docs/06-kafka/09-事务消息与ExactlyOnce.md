@@ -1,4 +1,5 @@
 ---
+doc_id: kafka-事务消息与ExactlyOnce
 title: Kafka 事务消息与 Exactly Once 语义
 ---
 

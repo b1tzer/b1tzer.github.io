@@ -1,4 +1,5 @@
 ---
+doc_id: pg-MVCC与VACUUM机制
 title: MVCC 与 VACUUM 机制
 ---
 

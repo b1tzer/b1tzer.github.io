@@ -1,4 +1,5 @@
 ---
+doc_id: se-CAP理论与BASE理论
 title: CAP 理论与 BASE 理论
 ---
 

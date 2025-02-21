@@ -1,4 +1,5 @@
 ---
+doc_id: pg-PG与MySQL对比
 title: PostgreSQL vs MySQL 全面对比
 ---
 

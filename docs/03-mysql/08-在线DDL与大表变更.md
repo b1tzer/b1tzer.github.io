@@ -1,4 +1,5 @@
 ---
+doc_id: mysql-在线DDL与大表变更
 title: 在线 DDL 与大表变更
 ---
 

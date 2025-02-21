@@ -1,4 +1,5 @@
 ---
+doc_id: kafka-KRaft模式与去ZooKeeper
 title: KRaft 模式与去 ZooKeeper
 ---
 

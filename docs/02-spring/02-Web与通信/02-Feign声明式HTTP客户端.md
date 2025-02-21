@@ -1,4 +1,5 @@
 ---
+doc_id: spring-Web与通信-Feign声明式HTTP客户端
 title: Feign 声明式 HTTP 客户端
 ---
 

@@ -1,4 +1,5 @@
 ---
+doc_id: spring-数据与消息-Spring消息驱动架构深度解析
 title: Spring 消息驱动架构深度解析
 ---
 

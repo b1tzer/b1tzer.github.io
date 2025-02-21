@@ -84,6 +84,9 @@ plugins:
       fallback_to_build_date: true
   - glightbox
 
+hooks:
+  - hooks/resolve_refs.py
+
 markdown_extensions:
   - attr_list                  # 属性列表（{ .class #id } 语法）
   - md_in_html                 # 允许 HTML 标签内渲染 Markdown

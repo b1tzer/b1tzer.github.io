@@ -1,4 +1,5 @@
 ---
+doc_id: spring-spring-core
 title: Spring / Spring Boot 核心原理
 ---
 

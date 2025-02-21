@@ -1,4 +1,5 @@
 ---
+doc_id: spring-进阶与调优-Spring6-Boot3新特性深度解析
 title: Spring 6 / Boot 3 新特性深度解析
 ---
 

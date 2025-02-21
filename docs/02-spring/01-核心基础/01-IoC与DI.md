@@ -1,4 +1,5 @@
 ---
+doc_id: spring-核心基础-IoC与DI
 title: IoC 与 DI —— 控制反转与依赖注入
 ---
 

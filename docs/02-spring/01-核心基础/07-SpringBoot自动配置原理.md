@@ -1,4 +1,5 @@
 ---
+doc_id: spring-核心基础-SpringBoot自动配置原理
 title: Spring Boot 自动配置原理
 ---
 

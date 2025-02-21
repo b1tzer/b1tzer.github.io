@@ -1,4 +1,5 @@
 ---
+doc_id: spring-核心基础-Spring扩展点详解
 title: Spring 扩展点详解
 ---
 

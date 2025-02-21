@@ -1,4 +1,5 @@
 ---
+doc_id: java-Java8函数式编程
 title: "[Java8] 函数式编程"
 ---
 

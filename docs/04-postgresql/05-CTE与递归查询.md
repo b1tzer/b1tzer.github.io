@@ -1,4 +1,5 @@
 ---
+doc_id: pg-CTE与递归查询
 title: CTE 与递归查询
 ---
 

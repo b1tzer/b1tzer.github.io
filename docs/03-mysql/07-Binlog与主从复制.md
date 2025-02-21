@@ -1,4 +1,5 @@
 ---
+doc_id: mysql-Binlog与主从复制
 title: Binlog 与主从复制
 ---
 

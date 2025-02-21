@@ -1,4 +1,5 @@
 ---
+doc_id: spring-微服务与安全-Spring-Cloud核心组件
 title: Spring Cloud 核心组件
 ---
 

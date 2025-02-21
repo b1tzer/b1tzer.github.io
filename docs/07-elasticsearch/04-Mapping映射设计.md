@@ -1,4 +1,5 @@
 ---
+doc_id: es-Mapping映射设计
 title: ES Mapping 设计：字段类型决定查询能力
 ---
 
