@@ -157,7 +157,7 @@ mise use -g python@3.11
 
 Mise 支持项目级配置，在项目根目录创建 `.mise.toml` 文件即可指定该项目所需的 SDK 版本，进入目录时自动切换。
 
-> 📖 Mise 的详细安装配置和使用说明，请参阅 [命令行工具优化 - Mise](./命令行工具优化.md#36-misesdk-版本管理)。
+> 📖 Mise 的详细安装配置和使用说明，请参阅 [命令行工具优化 - Mise](@env-命令行工具优化#36-misesdk-版本管理)。
 
 ## 6. VSCode 远程开发配置
 
@@ -329,4 +329,4 @@ logout
 | **开发体验** | VSCode / JetBrains 远程开发，与原生 Linux 开发体验一致 |
 | **资源占用** | 相比 Docker Desktop 资源占用更低 |
 
-> 📌 本方案当前仅覆盖 Windows + WSL 环境。Linux / macOS 用户可直接使用原生环境，参考 [命令行工具优化](./命令行工具优化.md) 配置开发工具链。
+> 📌 本方案当前仅覆盖 Windows + WSL 环境。Linux / macOS 用户可直接使用原生环境，参考 [命令行工具优化](@env-命令行工具优化) 配置开发工具链。
