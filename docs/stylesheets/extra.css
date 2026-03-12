@@ -701,4 +701,77 @@ button {
 
 }
 
+/* ═══════════════════════════════════════════════════════════════ */
+/* 字体优化                                                        */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* 全局中英文字体栈：英文优先 Inter，中文回退 Noto Sans SC */
+body,
+.md-typeset {
+  font-family:
+    "Inter",
+    "Noto Sans SC",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    sans-serif;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 代码字体：JetBrains Mono 优先，回退等宽字体 */
+.md-typeset code,
+.md-typeset pre,
+.md-typeset kbd {
+  font-family:
+    "JetBrains Mono",
+    "Fira Code",
+    "Cascadia Code",
+    "Source Code Pro",
+    ui-monospace,
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+  font-feature-settings: "liga" 1, "calt" 1;
+}
+
+/* 标题字体：加强字重渲染 */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
+  font-family:
+    "Inter",
+    "Noto Sans SC",
+    -apple-system,
+    BlinkMacSystemFont,
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+  font-feature-settings: "kern" 1;
+}
+
+
+
+/* 导航栏、侧边栏字体 */
+.md-nav,
+.md-header__title,
+.md-search__input {
+  font-family:
+    "Inter",
+    "Noto Sans SC",
+    -apple-system,
+    BlinkMacSystemFont,
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+}
+
 
