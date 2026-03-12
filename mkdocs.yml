@@ -67,8 +67,7 @@ extra_css:
 
 # 自定义JavaScript文件
 extra_javascript:
-  - https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js
-  - https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js
+  - javascripts/mermaid.mjs
   - javascripts/custom.js
 
 plugins:

@@ -367,68 +367,7 @@
   transform: translateY(-1px);
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/* Mermaid 图表交互样式                                           */
-/* ═══════════════════════════════════════════════════════════════ */
-
-.mermaid-container {
-  position: relative;
-  overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid var(--ts-border);
-  margin: 1rem 0;
-  cursor: grab;
-  background: var(--ts-bg-secondary);
-  min-height: 100px;
-}
-
-.mermaid-container:active {
-  cursor: grabbing;
-}
-
-.mermaid-container svg {
-  display: block;
-  max-width: none;
-}
-
-/* 重置按钮 */
-.mermaid-reset-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 10;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 6px;
-  background: var(--md-primary-fg-color);
-  color: #fff;
-  font-size: 18px;
-  line-height: 32px;
-  text-align: center;
-  cursor: pointer;
-  opacity: 0.7;
-  transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
-  box-shadow: var(--ts-shadow-sm);
-  padding: 0;
-}
-
-.mermaid-reset-btn:hover {
-  opacity: 1;
-  transform: scale(1.1);
-  background: var(--md-primary-fg-color--dark);
-}
-
-/* 移动端滑动提示 */
-.mermaid-swipe-hint {
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--ts-text-muted);
-  padding: 0.3rem 0;
-  user-select: none;
-}
-
-/* ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
 /* 微交互与动效                                                    */
 /* ═══════════════════════════════════════════════════════════════ */
 
@@ -629,22 +568,6 @@ button {
     white-space: nowrap;
   }
 
-  /* ── Mermaid 图表容器移动端适配 ── */
-  .mermaid-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* ── 重置按钮触摸热区扩大至 44×44px ── */
-  .mermaid-reset-btn {
-    width: 44px;
-    height: 44px;
-    font-size: 22px;
-    line-height: 44px;
-    top: 4px;
-    right: 4px;
-  }
-
   /* ── 反馈按钮触摸优化 ── */
   .md-feedback__rate button {
     min-height: 44px !important;
@@ -776,11 +699,6 @@ button {
     background: rgba(15, 23, 42, 0.97) !important;
   }
 
-  .mermaid-reset-btn {
-    transition: none;
-  }
-
-  .mermaid-container svg {
-    transition: none !important;
-  }
 }
+
+
