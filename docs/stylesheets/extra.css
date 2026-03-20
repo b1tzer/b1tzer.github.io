@@ -79,18 +79,12 @@
   border-radius: 12px;
   padding: 2rem 2.5rem;
   box-shadow: var(--ts-shadow-md);
-  max-width: var(--ts-content-width);
+  max-width: var(--ts-content-width-wide);
   margin-left: auto;
   margin-right: auto;
-  transition: max-width 300ms ease;
 }
 
-/* ── 宽屏模式 ── */
-[data-wide] .md-content__inner {
-  max-width: var(--ts-content-width-wide);
-}
-
-[data-wide] .md-grid {
+.md-grid {
   max-width: var(--ts-content-width-wide);
 }
 

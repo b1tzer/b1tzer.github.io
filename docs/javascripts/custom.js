@@ -9,9 +9,6 @@
 (function () {
   'use strict';
 
-  // ── 默认启用宽屏模式 ──
-  document.documentElement.setAttribute('data-wide', '');
-
   function isHomePage() {
     var path = window.location.pathname;
     return path === '/' || path === '/index.html' ||
