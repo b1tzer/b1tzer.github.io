@@ -7,6 +7,8 @@
 
 :root,
 [data-md-color-scheme="default"] {
+  --ts-content-width: 60rem;
+  --ts-content-width-wide: 90rem;
   --md-primary-fg-color: #6366f1;
   --md-primary-fg-color--light: #818cf8;
   --md-primary-fg-color--dark: #4f46e5;
@@ -77,9 +79,19 @@
   border-radius: 12px;
   padding: 2rem 2.5rem;
   box-shadow: var(--ts-shadow-md);
-  max-width: 48rem;
+  max-width: var(--ts-content-width);
   margin-left: auto;
   margin-right: auto;
+  transition: max-width 300ms ease;
+}
+
+/* ── 宽屏模式 ── */
+[data-wide] .md-content__inner {
+  max-width: var(--ts-content-width-wide);
+}
+
+[data-wide] .md-grid {
+  max-width: var(--ts-content-width-wide);
 }
 
 /* ── 4. 排版系统 ──────────────────────────────────────────────── */
@@ -190,56 +202,6 @@
 /* ═══════════════════════════════════════════════════════════════ */
 /* 导航栏与侧边栏                                                 */
 /* ═══════════════════════════════════════════════════════════════ */
-
-/* ── 顶部导航栏：毛玻璃效果 ── */
-
-[data-md-color-scheme="default"] .md-header {
-  background: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--ts-border);
-  box-shadow: none;
-  transition: box-shadow 300ms ease;
-}
-
-[data-md-color-scheme="default"] .md-header[data-md-state="shadow"] {
-  box-shadow: var(--ts-shadow-md);
-}
-
-/* 浅色模式下导航栏文字颜色 */
-[data-md-color-scheme="default"] .md-header .md-header__title,
-[data-md-color-scheme="default"] .md-header .md-header__topic,
-[data-md-color-scheme="default"] .md-header .md-header__button,
-[data-md-color-scheme="default"] .md-header .md-search__input,
-[data-md-color-scheme="default"] .md-header .md-icon {
-  color: var(--ts-text-primary);
-}
-
-[data-md-color-scheme="slate"] .md-header {
-  background: rgba(15, 23, 42, 0.88) !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--ts-border);
-  box-shadow: none;
-  transition: box-shadow 300ms ease;
-}
-
-[data-md-color-scheme="slate"] .md-header[data-md-state="shadow"] {
-  box-shadow: var(--ts-shadow-md);
-}
-
-/* 浅色模式下 GitHub 仓库源码链接颜色修复 */
-[data-md-color-scheme="default"] .md-source {
-  color: var(--ts-text-primary);
-}
-
-[data-md-color-scheme="default"] .md-source__icon svg {
-  fill: var(--ts-text-primary);
-}
-
-[data-md-color-scheme="default"] .md-source__repository {
-  color: var(--ts-text-primary);
-}
 
 /* 导航栏标题可点击 */
 .md-header__topic {
@@ -403,11 +365,12 @@ button {
 /* Hero 区域 */
 .md-typeset .hero-section {
   text-align: center;
-  padding: 3rem 1rem 2rem;
-  margin: -2rem -2.5rem 2rem;
-  border-radius: 12px 12px 0 0;
+  padding: 1.8rem 1rem 1.5rem;
+  margin: -2rem -2.5rem 1.5rem;
+  border-radius: 12px 12px 0 0;  /* 与内容区顶部圆角一致 */
   background: linear-gradient(135deg, #6366f1 0%, #818cf8 50%, #a5b4fc 100%);
   color: #fff;
+  overflow: hidden;
 }
 
 [data-md-color-scheme="slate"] .md-typeset .hero-section {
@@ -415,17 +378,17 @@ button {
 }
 
 .md-typeset .hero-section h1 {
-  font-size: 2.8rem;
-  font-weight: 800;
-  margin-bottom: 0.5rem;
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
   color: #fff;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 
 .md-typeset .hero-section p {
-  font-size: 1.2rem;
+  font-size: 0.95rem;
   opacity: 0.9;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.2rem;
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
@@ -433,12 +396,12 @@ button {
 
 .md-typeset .hero-section .hero-cta {
   display: inline-block;
-  padding: 0.75rem 2rem;
+  padding: 0.5rem 1.5rem;
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
-  border-radius: 8px;
+  border-radius: 6px;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.9rem;
   text-decoration: none;
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -456,9 +419,9 @@ button {
 /* 卡片网格 */
 .md-typeset .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
-  margin: 1.5rem 0;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
 }
 
 /* MkDocs Markdown 渲染会在每个 <a class="card"> 外包裹 <p> 标签，
@@ -472,8 +435,8 @@ button {
 .md-typeset .card-grid .card {
   background: var(--ts-bg-primary);
   border: 1px solid var(--ts-border);
-  border-radius: 10px;
-  padding: 1rem 1.2rem;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
   transition: transform 300ms ease, box-shadow 300ms ease;
   text-decoration: none;
   color: inherit;
@@ -492,28 +455,28 @@ button {
 }
 
 .md-typeset .card-grid .card .card-icon {
-  font-size: 1.6rem;
-  margin-bottom: 0.4rem;
+  font-size: 1.3rem;
+  margin-bottom: 0.3rem;
   display: block;
 }
 
 .md-typeset .card-grid .card .card-title {
   font-weight: 600;
-  font-size: 1rem;
-  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
   color: var(--ts-text-primary);
 }
 
 .md-typeset .card-grid .card .card-desc {
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   color: var(--ts-text-secondary);
-  line-height: 1.5;
-  margin-bottom: 0.5rem;
+  line-height: 1.45;
+  margin-bottom: 0.4rem;
   flex: 1;
 }
 
 .md-typeset .card-grid .card .card-count {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--md-primary-fg-color);
   font-weight: 500;
 }
@@ -617,16 +580,16 @@ button {
 
   /* ── Hero 区域移动端 ── */
   .md-typeset .hero-section {
-    padding: 2rem 0.8rem 1.5rem;
-    margin: -1.2rem -1rem 1.5rem;
+    padding: 1.4rem 0.8rem 1.2rem;
+    margin: -1.2rem -1rem 1.2rem;
   }
 
   .md-typeset .hero-section h1 {
-    font-size: 2rem;
+    font-size: 1.5rem;
   }
 
   .md-typeset .hero-section p {
-    font-size: 1rem;
+    font-size: 0.88rem;
   }
 
   /* ── 卡片网格移动端（平板显示2列） ── */
@@ -683,95 +646,4 @@ button {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-
-  /* 禁用 backdrop-filter 避免低端设备卡顿 */
-  [data-md-color-scheme="default"] .md-header,
-  [data-md-color-scheme="slate"] .md-header {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-
-  [data-md-color-scheme="default"] .md-header {
-    background: rgba(255, 255, 255, 0.97) !important;
-  }
-
-  [data-md-color-scheme="slate"] .md-header {
-    background: rgba(15, 23, 42, 0.97) !important;
-  }
-
 }
-
-/* ═══════════════════════════════════════════════════════════════ */
-/* 字体优化                                                        */
-/* ═══════════════════════════════════════════════════════════════ */
-
-/* 全局中英文字体栈：英文优先 Inter，中文回退 Noto Sans SC */
-body,
-.md-typeset {
-  font-family:
-    "Inter",
-    "Noto Sans SC",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    "PingFang SC",
-    "Hiragino Sans GB",
-    "Microsoft YaHei",
-    sans-serif;
-  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-/* 代码字体：JetBrains Mono 优先，回退等宽字体 */
-.md-typeset code,
-.md-typeset pre,
-.md-typeset kbd {
-  font-family:
-    "JetBrains Mono",
-    "Fira Code",
-    "Cascadia Code",
-    "Source Code Pro",
-    ui-monospace,
-    "SFMono-Regular",
-    Consolas,
-    "Liberation Mono",
-    Menlo,
-    monospace;
-  font-feature-settings: "liga" 1, "calt" 1;
-}
-
-/* 标题字体：加强字重渲染 */
-.md-typeset h1,
-.md-typeset h2,
-.md-typeset h3,
-.md-typeset h4 {
-  font-family:
-    "Inter",
-    "Noto Sans SC",
-    -apple-system,
-    BlinkMacSystemFont,
-    "PingFang SC",
-    "Microsoft YaHei",
-    sans-serif;
-  font-feature-settings: "kern" 1;
-}
-
-
-
-/* 导航栏、侧边栏字体 */
-.md-nav,
-.md-header__title,
-.md-search__input {
-  font-family:
-    "Inter",
-    "Noto Sans SC",
-    -apple-system,
-    BlinkMacSystemFont,
-    "PingFang SC",
-    "Microsoft YaHei",
-    sans-serif;
-}
-
-

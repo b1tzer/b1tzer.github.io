@@ -3,10 +3,14 @@
  * 功能：
  * 1. 首页反馈组件隐藏（兼容 navigation.instant）
  * 2. 导航栏标题点击跳转首页
+ * 3. 默认启用宽屏模式
  */
 
 (function () {
   'use strict';
+
+  // ── 默认启用宽屏模式 ──
+  document.documentElement.setAttribute('data-wide', '');
 
   function isHomePage() {
     var path = window.location.pathname;
