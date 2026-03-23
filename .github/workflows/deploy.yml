@@ -57,6 +57,8 @@ jobs:
 
       # 6. 构建静态站点
       - name: Build MkDocs site
+        env:
+          MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GITHUB_TOKEN }}
         run: mkdocs build --strict
 
       # 6.补充自定义域名
