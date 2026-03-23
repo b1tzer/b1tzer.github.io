@@ -2,7 +2,7 @@ name: 🚀 Deploy MkDocs to GitHub Pages
 
 on:
   schedule:
-    - cron: '7/27 0 * * *'
+    - cron: '7 1 * * *'
   push:
     branches:
       - main # 在 main 分支有推送时触发（blog 合入 main 后触发）
