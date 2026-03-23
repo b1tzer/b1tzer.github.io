@@ -61,11 +61,11 @@ jobs:
           MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GITHUB_TOKEN }}
         run: mkdocs build --strict
 
-      # 6.补充自定义域名
+      # 7.补充自定义域名
       - name: Add CNAME for custom domain
         run: echo "thestack.xpro.wang" > site/CNAME
 
-      # 6. 部署到 GitHub Pages (使用 gh-pages 分支)
+      # 8. 部署到 GitHub Pages (使用 gh-pages 分支)
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
