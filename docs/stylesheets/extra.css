@@ -360,8 +360,8 @@ button {
 .md-typeset .hero-section {
   text-align: center;
   padding: 1.8rem 1rem 1.5rem;
-  margin: -2rem -2.5rem 1.5rem;
-  border-radius: 12px 12px 0 0;  /* 与内容区顶部圆角一致 */
+  margin: 0 0 1.5rem;
+  border-radius: 12px;
   background: linear-gradient(135deg, #6366f1 0%, #818cf8 50%, #a5b4fc 100%);
   color: #fff;
   overflow: hidden;
@@ -383,14 +383,14 @@ button {
   font-size: 0.95rem;
   opacity: 0.9;
   margin-bottom: 1.2rem;
-  max-width: 600px;
+  max-width: 700px;
   margin-left: auto;
   margin-right: auto;
 }
 
 .md-typeset .hero-section .hero-cta {
   display: inline-block;
-  padding: 0.5rem 1.5rem;
+  padding: 0.7rem 1.5rem;
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
   border-radius: 6px;
@@ -575,7 +575,7 @@ button {
   /* ── Hero 区域移动端 ── */
   .md-typeset .hero-section {
     padding: 1.4rem 0.8rem 1.2rem;
-    margin: -1.2rem -1rem 1.2rem;
+    margin: 0 0 1.2rem;
   }
 
   .md-typeset .hero-section h1 {

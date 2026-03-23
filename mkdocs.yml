@@ -36,8 +36,20 @@ theme:
     - navigation.top           # 返回顶部按钮
     - navigation.instant       # XHR 页面加载，避免全页刷新
     - navigation.instant.progress  # 显示页面加载进度条
+    - navigation.footer
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tracking
     - search.highlight         # 搜索高亮
+    - search.suggest
+    - search.share
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
     - content.code.copy        # 代码复制按钮
+    - content.tooltips
+    - toc.follow
 
 copyright: Copyright &copy; 2024 - 2026 b1tzer
 
@@ -77,11 +89,14 @@ plugins:
   - minify:
       minify_html: true
   - git-revision-date-localized:
-      type: date
+      type: timeago
       locale: zh
       enable_creation_date: true
       fallback_to_build_date: true
   - glightbox
+  - git-committers:
+      repository: b1tzer/b1tzer.github.io
+      branch: main 
 
 hooks:
   - hooks/resolve_refs.py
