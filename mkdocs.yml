@@ -101,7 +101,6 @@ plugins:
       repository: b1tzer/b1tzer.github.io
       branch: main
       enabled: !ENV [CI, false]   # 本地构建跳过，只在 CI 执行
-      cache_dir: .cache/git-committers  # 缓存贡献者数据，避免每次 CI 重复请求 GitHub API
 
 hooks:
   - hooks/resolve_refs.py

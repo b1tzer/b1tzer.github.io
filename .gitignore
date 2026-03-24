@@ -56,8 +56,6 @@ __pycache__/
 # ===== MkDocs =====
 # site/ 为构建产物，不纳入版本管理
 site/
-# git-committers 贡献者缓存（CI 通过 actions/cache 管理）
-.cache/
 
 # ===== 项目内部 =====
 # CodeBuddy 计划文件（不纳入版本管理）
