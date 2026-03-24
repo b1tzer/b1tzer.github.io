@@ -13,20 +13,27 @@ site_dir: site
 
 theme:
   name: material
+  custom_dir: overrides
   language: zh
   palette:
-    - scheme: default
-      primary: indigo
-      accent: indigo
+    - media: "(prefers-color-scheme)"
       toggle:
-        icon: material/brightness-7
-        name: 切换到深色模式
-    - scheme: slate
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-4
+        icon: material/link
         name: 切换到浅色模式
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch
+        name: 切换到深色模式
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off
+        name: 切换到跟随系统
   font: false
   logo: assets/logo.svg
   favicon: assets/favicon.svg
@@ -73,13 +80,12 @@ extra:
 
 # 自定义CSS文件
 extra_css:
-  - stylesheets/extra.css
+  - assets/stylesheets/extra.css
 
 # 自定义JavaScript文件
 extra_javascript:
-  - javascripts/mermaid.mjs
-  - javascripts/custom.js
-  - javascripts/open-drawer-toc.js
+  - assets/javascripts/mermaid.mjs
+  - assets/javascripts/custom.js
 
 plugins:
   - search:

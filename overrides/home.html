@@ -1,0 +1,234 @@
+{% extends "main.html" %}
+
+{% block tabs %}
+  {{ super() }}
+  <style>
+    /* 首页隐藏 header 固定定位、两侧边栏、正文内容区 */
+    .md-header { position: initial }
+    .md-main__inner { margin: 0 }
+    .md-content { display: none }
+    @media screen and (min-width: 60em) { .md-sidebar--secondary { display: none } }
+    @media screen and (min-width: 76.25em) { .md-sidebar--primary { display: none } }
+
+    /* ── 首页外层容器：全宽 ── */
+    .home-container {
+      width: 100%;
+      padding-bottom: 3rem;
+    }
+
+    /* ── 内容宽度约束区（复用 Material 的 .md-grid 宽度） ── */
+    .home-inner {
+      max-width: 61rem;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    /* ── Hero 区域 ── */
+    .hero-section {
+      text-align: center;
+      padding: 3rem 1rem 2.5rem;
+      margin: 0 0 2rem;
+      background: linear-gradient(135deg, #6366f1 0%, #818cf8 50%, #a5b4fc 100%);
+      color: #fff;
+      overflow: hidden;
+    }
+
+    [data-md-color-scheme="slate"] .hero-section {
+      background: linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6366f1 100%);
+    }
+
+    .hero-section h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-section p {
+      font-size: 1rem;
+      opacity: 0.9;
+      margin-bottom: 1.5rem;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-cta {
+      display: inline-block;
+      padding: 0.75rem 1.8rem;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff !important;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none !important;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: all 300ms ease;
+    }
+
+    .hero-cta:hover {
+      background: rgba(255, 255, 255, 0.35);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* ── 卡片网格 ── */
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 0 0 1rem;
+      color: var(--md-default-fg-color);
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+      gap: 0.75rem;
+      margin: 0 0 1rem;
+    }
+
+    .card {
+      background: var(--md-default-bg-color);
+      border: 1px solid var(--md-default-fg-color--lightest);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      transition: transform 300ms ease, box-shadow 300ms ease;
+      text-decoration: none !important;
+      color: inherit !important;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+      border-color: var(--md-primary-fg-color);
+    }
+
+    .card-icon {
+      font-size: 1.3rem;
+      margin-bottom: 0.3rem;
+      display: block;
+    }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+      display: block;
+    }
+
+    .card-desc {
+      font-size: 0.8rem;
+      color: var(--md-default-fg-color--light);
+      line-height: 1.45;
+      margin-bottom: 0.4rem;
+      flex: 1;
+      display: block;
+    }
+
+    .card-count {
+      font-size: 0.75rem;
+      color: var(--md-primary-fg-color);
+      font-weight: 500;
+      display: block;
+    }
+
+    /* ── 移动端响应式 ── */
+    @media (max-width: 768px) {
+      .hero-section { padding: 2rem 0.8rem 1.8rem; }
+      .hero-section h1 { font-size: 1.6rem; }
+      .hero-section p { font-size: 0.9rem; }
+      .card-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+      .card-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <div class="home-container md-typeset">
+
+    <!-- Hero 区域（全宽） -->
+    <div class="hero-section">
+      <h1>The Stack</h1>
+      <p>{{ config.site_description }}</p>
+      <a href="{{ '01-java-basic/00-Java基础与JVM概览/' | url }}" class="hero-cta">
+        开始阅读 →
+      </a>
+    </div>
+
+    <!-- 技术领域卡片（内容宽度约束） -->
+    <div class="home-inner">
+    <h2 class="section-title">📚 技术领域</h2>
+    <div class="card-grid">
+      <a class="card" href="{{ '00-Env/Markdown使用指南/' | url }}">
+        <span class="card-icon">🛠️</span>
+        <span class="card-title">环境搭建</span>
+        <span class="card-desc">WSL 环境配置、命令行工具优化、开发环境搭建</span>
+        <span class="card-count">3 篇文档</span>
+      </a>
+      <a class="card" href="{{ '01-java-basic/00-Java基础与JVM概览/' | url }}">
+        <span class="card-icon">☕</span>
+        <span class="card-title">Java</span>
+        <span class="card-desc">Java 8+ 新特性、并发编程、JVM 原理、集合框架</span>
+        <span class="card-count">12 篇文档</span>
+      </a>
+      <a class="card" href="{{ '02-spring/00-spring-core/' | url }}">
+        <span class="card-icon">🌱</span>
+        <span class="card-title">Spring</span>
+        <span class="card-desc">Spring Boot、Spring MVC、Spring Security、Spring Cloud</span>
+        <span class="card-count">28 篇文档</span>
+      </a>
+      <a class="card" href="{{ '03-mysql/00-mysql-overview/' | url }}">
+        <span class="card-icon">🐬</span>
+        <span class="card-title">MySQL</span>
+        <span class="card-desc">MySQL 索引与优化、事务与并发控制</span>
+        <span class="card-count">12 篇文档</span>
+      </a>
+      <a class="card" href="{{ '04-postgresql/00-postgresql-overview/' | url }}">
+        <span class="card-icon">🐘</span>
+        <span class="card-title">PostgreSQL</span>
+        <span class="card-desc">PostgreSQL 高级特性</span>
+        <span class="card-count">10 篇文档</span>
+      </a>
+      <a class="card" href="{{ '05-redis/00-redis-overview/' | url }}">
+        <span class="card-icon">⚡</span>
+        <span class="card-title">Redis</span>
+        <span class="card-desc">Redis 缓存设计、高可用架构、分布式锁</span>
+        <span class="card-count">10 篇文档</span>
+      </a>
+      <a class="card" href="{{ '06-kafka/00-kafka-overview/' | url }}">
+        <span class="card-icon">📨</span>
+        <span class="card-title">Kafka</span>
+        <span class="card-desc">Kafka 原理与实践、消息可靠性保障</span>
+        <span class="card-count">14 篇文档</span>
+      </a>
+      <a class="card" href="{{ '07-elasticsearch/00-elasticsearch概览/' | url }}">
+        <span class="card-icon">🔍</span>
+        <span class="card-title">Elasticsearch</span>
+        <span class="card-desc">Elasticsearch 核心原理、性能优化、数据同步</span>
+        <span class="card-count">11 篇文档</span>
+      </a>
+      <a class="card" href="{{ '08-design-pattern/00-设计模式总览/' | url }}">
+        <span class="card-icon">🧩</span>
+        <span class="card-title">设计模式</span>
+        <span class="card-desc">常用设计模式的实现与应用场景</span>
+        <span class="card-count">14 篇文档</span>
+      </a>
+      <a class="card" href="{{ '09-software-engineering/00-软件工程概览/' | url }}">
+        <span class="card-icon">📐</span>
+        <span class="card-title">软件工程</span>
+        <span class="card-desc">SOLID 原则、DDD 领域驱动设计、系统架构设计</span>
+        <span class="card-count">8 篇文档</span>
+      </a>
+    </div>
+    </div><!-- /.home-inner -->
+
+  </div><!-- /.home-container -->
+{% endblock %}
+
+{% block content %}{% endblock %}
+{% block footer %}{% endblock %}
