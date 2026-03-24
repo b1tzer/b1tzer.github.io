@@ -79,6 +79,7 @@ extra_css:
 extra_javascript:
   - javascripts/mermaid.mjs
   - javascripts/custom.js
+  - javascripts/open-drawer-toc.js
 
 plugins:
   - search:
@@ -99,7 +100,8 @@ plugins:
   - git-committers:
       repository: b1tzer/b1tzer.github.io
       branch: main
-      enabled: !ENV [CI, false]   # 本地构建跳过，只在 CI 执行 
+      enabled: !ENV [CI, false]   # 本地构建跳过，只在 CI 执行
+      cache_dir: .cache/git-committers  # 缓存贡献者数据，避免每次 CI 重复请求 GitHub API
 
 hooks:
   - hooks/resolve_refs.py

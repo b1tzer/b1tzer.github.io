@@ -40,6 +40,15 @@ jobs:
       - name: Install MkDocs dependencies
         run: pip install -r requirements.txt
 
+      # 3.5 缓存 git-committers 贡献者数据（避免每次 CI 重复请求 GitHub API）
+      - name: Cache git-committers data
+        uses: actions/cache@v4
+        with:
+          path: .cache/git-committers
+          key: git-committers-${{ github.ref_name }}
+          restore-keys: |
+            git-committers-
+
       # 4. 同步文章到 docs/ 目录并生成导航
       - name: Sync docs and generate nav
         run: python3 tools/gen_nav.py
