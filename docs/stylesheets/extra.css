@@ -4,6 +4,10 @@
 /* ═══════════════════════════════════════════════════════════════ */
 
 /* ── 1. 配色变量（CSS Custom Properties） ─────────────────────── */
+:root {
+  --md-text-font: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --md-code-font: "JetBrains Mono", "Fira Code", monospace;
+}
 
 :root,
 [data-md-color-scheme="default"] {

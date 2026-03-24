@@ -27,9 +27,7 @@ theme:
       toggle:
         icon: material/brightness-4
         name: 切换到浅色模式
-  font:
-    text: Noto Sans SC
-    code: JetBrains Mono
+  font: false
   logo: assets/logo.svg
   favicon: assets/favicon.svg
   features:
@@ -88,6 +86,10 @@ plugins:
   - awesome-pages
   - minify:
       minify_html: true
+      minify_js: true
+      minify_css: true
+      htmlmin_opts:
+        remove_comments: true 
   - git-revision-date-localized:
       type: timeago
       locale: zh
@@ -96,7 +98,8 @@ plugins:
   - glightbox
   - git-committers:
       repository: b1tzer/b1tzer.github.io
-      branch: main 
+      branch: main
+      enabled: !ENV [CI, false]   # 本地构建跳过，只在 CI 执行 
 
 hooks:
   - hooks/resolve_refs.py
