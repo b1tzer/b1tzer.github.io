@@ -93,18 +93,10 @@
       border: 1px solid var(--md-default-fg-color--lightest);
       border-radius: 8px;
       padding: 0.75rem 1rem;
-      /* opacity/transform 由 extra.css 的进入动画接管，这里只补充 hover 效果 */
       text-decoration: none !important;
       color: inherit !important;
       display: flex;
       flex-direction: column;
-    }
-
-    /* hover 时叠加上移效果（is-visible 后才生效，避免初始状态闪烁） */
-    .card.is-visible:hover {
-      transform: translateY(-4px) !important;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
-      border-color: var(--md-primary-fg-color);
     }
 
     .card-icon {
@@ -160,71 +152,9 @@
       </a>
     </div>
 
-    <!-- 技术领域卡片（内容宽度约束） -->
+    <!-- 技术领域卡片（由 gen_nav.py 生成，从 index.md 内容读取） -->
     <div class="home-inner">
-    <h2 class="section-title">📚 技术领域</h2>
-    <div class="card-grid">
-      <a class="card" href="{{ '00-Env/Markdown使用指南/' | url }}">
-        <span class="card-icon">🛠️</span>
-        <span class="card-title">环境搭建</span>
-        <span class="card-desc">WSL 环境配置、命令行工具优化、开发环境搭建</span>
-        <span class="card-count">3 篇文档</span>
-      </a>
-      <a class="card" href="{{ '01-java-basic/00-Java基础与JVM概览/' | url }}">
-        <span class="card-icon">☕</span>
-        <span class="card-title">Java</span>
-        <span class="card-desc">Java 8+ 新特性、并发编程、JVM 原理、集合框架</span>
-        <span class="card-count">12 篇文档</span>
-      </a>
-      <a class="card" href="{{ '02-spring/00-spring-core/' | url }}">
-        <span class="card-icon">🌱</span>
-        <span class="card-title">Spring</span>
-        <span class="card-desc">Spring Boot、Spring MVC、Spring Security、Spring Cloud</span>
-        <span class="card-count">28 篇文档</span>
-      </a>
-      <a class="card" href="{{ '03-mysql/00-mysql-overview/' | url }}">
-        <span class="card-icon">🐬</span>
-        <span class="card-title">MySQL</span>
-        <span class="card-desc">MySQL 索引与优化、事务与并发控制</span>
-        <span class="card-count">12 篇文档</span>
-      </a>
-      <a class="card" href="{{ '04-postgresql/00-postgresql-overview/' | url }}">
-        <span class="card-icon">🐘</span>
-        <span class="card-title">PostgreSQL</span>
-        <span class="card-desc">PostgreSQL 高级特性</span>
-        <span class="card-count">10 篇文档</span>
-      </a>
-      <a class="card" href="{{ '05-redis/00-redis-overview/' | url }}">
-        <span class="card-icon">⚡</span>
-        <span class="card-title">Redis</span>
-        <span class="card-desc">Redis 缓存设计、高可用架构、分布式锁</span>
-        <span class="card-count">10 篇文档</span>
-      </a>
-      <a class="card" href="{{ '06-kafka/00-kafka-overview/' | url }}">
-        <span class="card-icon">📨</span>
-        <span class="card-title">Kafka</span>
-        <span class="card-desc">Kafka 原理与实践、消息可靠性保障</span>
-        <span class="card-count">14 篇文档</span>
-      </a>
-      <a class="card" href="{{ '07-elasticsearch/00-elasticsearch概览/' | url }}">
-        <span class="card-icon">🔍</span>
-        <span class="card-title">Elasticsearch</span>
-        <span class="card-desc">Elasticsearch 核心原理、性能优化、数据同步</span>
-        <span class="card-count">11 篇文档</span>
-      </a>
-      <a class="card" href="{{ '08-design-pattern/00-设计模式总览/' | url }}">
-        <span class="card-icon">🧩</span>
-        <span class="card-title">设计模式</span>
-        <span class="card-desc">常用设计模式的实现与应用场景</span>
-        <span class="card-count">14 篇文档</span>
-      </a>
-      <a class="card" href="{{ '09-software-engineering/00-软件工程概览/' | url }}">
-        <span class="card-icon">📐</span>
-        <span class="card-title">软件工程</span>
-        <span class="card-desc">SOLID 原则、DDD 领域驱动设计、系统架构设计</span>
-        <span class="card-count">8 篇文档</span>
-      </a>
-    </div>
+      {{ page.content }}
     </div><!-- /.home-inner -->
 
   </div><!-- /.home-container -->

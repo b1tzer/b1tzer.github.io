@@ -73,6 +73,10 @@ def on_page_markdown(markdown, page, config, files, **kwargs):
     # 当前页面相对于 docs/ 的路径
     src_path = page.file.src_path  # 例如 "09-software-engineering/02-软件架构演进.md"
 
+    # 跳过首页，index.md 由 gen_nav.py 自动生成，无需处理 @id 引用
+    if src_path == "index.md":
+        return markdown
+
     def _replace_ref(match):
         link_text = match.group(1)
         doc_id = match.group(2)
