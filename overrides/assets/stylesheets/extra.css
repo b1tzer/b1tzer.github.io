@@ -151,3 +151,27 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── 9. 宽屏适配（≥1280px） ── */
+@media screen and (min-width: 80em) {
+  /* 内容区从 61rem 扩宽到 76rem，两侧保留自然留白 */
+  .md-grid {
+    max-width: 76rem;
+  }
+
+  /* 首页卡片区域跟随扩宽 */
+  .home-inner {
+    max-width: 76rem;
+  }
+}
+
+/* ── 超宽屏（≥1600px）：内容区上限 88rem，避免过度拉伸 ── */
+@media screen and (min-width: 100em) {
+  .md-grid {
+    max-width: 88rem;
+  }
+
+  .home-inner {
+    max-width: 88rem;
+  }
+}

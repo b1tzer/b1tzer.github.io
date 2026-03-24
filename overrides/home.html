@@ -16,11 +16,11 @@
       padding-bottom: 3rem;
     }
 
-    /* ── 内容宽度约束区（复用 Material 的 .md-grid 宽度） ── */
+    /* ── 内容宽度约束区（默认与 .md-grid 保持一致，宽屏由 extra.css 覆盖） ── */
     .home-inner {
       max-width: 61rem;
       margin: 2rem auto 0;
-      padding: 0 1rem;
+      padding: 0 1.5rem;
     }
 
     /* ── Hero 区域 ── */
@@ -97,6 +97,10 @@
       color: inherit !important;
       display: flex;
       flex-direction: column;
+      /* 强制撑满 Grid 单元格，确保同行等高 */
+      align-self: stretch;
+      height: 100%;
+      box-sizing: border-box;
     }
 
     .card-icon {
