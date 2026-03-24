@@ -3,6 +3,8 @@
  * 功能：
  * 首页反馈组件隐藏（兼容 navigation.instant）
  * 移动端打开侧边栏时自动展开目录（TOC）
+ * 首页卡片滚动进入动画（Intersection Observer）
+ * 页面切换时重置内容区动画
  */
 
 (function () {
@@ -51,10 +53,65 @@
     openDrawerToc();
   }
 
+  /* ── 首页卡片 & section-title 滚动进入动画 ── */
+  var _observer = null;
+
+  function initScrollAnimations() {
+    // 清理旧的 observer
+    if (_observer) {
+      _observer.disconnect();
+      _observer = null;
+    }
+
+    var targets = document.querySelectorAll('.card, .section-title');
+    if (!targets.length) return;
+
+    // 不支持 IntersectionObserver 时直接显示
+    if (!('IntersectionObserver' in window)) {
+      targets.forEach(function (el) { el.classList.add('is-visible'); });
+      return;
+    }
+
+    _observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          var el = entry.target;
+          var index = parseInt(el.dataset.animIndex || '0', 10);
+          // 每张卡片错开 60ms
+          setTimeout(function () {
+            el.classList.add('is-visible');
+          }, index * 60);
+          _observer.unobserve(el);
+        }
+      });
+    }, {
+      threshold: 0.1,
+      rootMargin: '0px 0px -40px 0px'
+    });
+
+    targets.forEach(function (el, i) {
+      el.dataset.animIndex = i;
+      _observer.observe(el);
+    });
+  }
+
+  /* ── 页面切换时重置内容区动画 ── */
+  function resetContentAnimation() {
+    var inner = document.querySelector('.md-content__inner');
+    if (!inner) return;
+    // 移除再重新添加，触发 CSS animation 重播
+    inner.style.animation = 'none';
+    // 强制回流
+    void inner.offsetHeight;
+    inner.style.animation = '';
+  }
+
   /* ── 页面就绪 ── */
   function onPageReady() {
     hideFeedbackOnHomepage();
     bindDrawerToc();
+    initScrollAnimations();
+    resetContentAnimation();
   }
 
   function bootstrap() {

@@ -19,22 +19,22 @@
     /* ── 内容宽度约束区（复用 Material 的 .md-grid 宽度） ── */
     .home-inner {
       max-width: 61rem;
-      margin: 0 auto;
+      margin: 2rem auto 0;
       padding: 0 1rem;
     }
 
     /* ── Hero 区域 ── */
     .hero-section {
       text-align: center;
-      padding: 3rem 1rem 2.5rem;
+      padding: 3rem 1rem 3.5rem;
       margin: 0 0 2rem;
-      background: linear-gradient(135deg, #6366f1 0%, #818cf8 50%, #a5b4fc 100%);
+      /* 多色渐变，配合 extra.css 的 background-size:200% 200% 实现流动效果 */
+      background: linear-gradient(135deg, #4f46e5 0%, #6366f1 30%, #818cf8 60%, #a78bfa 100%);
       color: #fff;
-      overflow: hidden;
     }
 
     [data-md-color-scheme="slate"] .hero-section {
-      background: linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6366f1 100%);
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4338ca 60%, #6366f1 100%);
     }
 
     .hero-section h1 {
@@ -65,13 +65,12 @@
       text-decoration: none !important;
       backdrop-filter: blur(4px);
       border: 1px solid rgba(255, 255, 255, 0.3);
-      transition: all 300ms ease;
+      transition: background 200ms ease, border-color 200ms ease;
     }
 
     .hero-cta:hover {
-      background: rgba(255, 255, 255, 0.35);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      background: rgba(255, 255, 255, 0.32);
+      border-color: rgba(255, 255, 255, 0.55);
     }
 
     /* ── 卡片网格 ── */
@@ -94,15 +93,16 @@
       border: 1px solid var(--md-default-fg-color--lightest);
       border-radius: 8px;
       padding: 0.75rem 1rem;
-      transition: transform 300ms ease, box-shadow 300ms ease;
+      /* opacity/transform 由 extra.css 的进入动画接管，这里只补充 hover 效果 */
       text-decoration: none !important;
       color: inherit !important;
       display: flex;
       flex-direction: column;
     }
 
-    .card:hover {
-      transform: translateY(-4px);
+    /* hover 时叠加上移效果（is-visible 后才生效，避免初始状态闪烁） */
+    .card.is-visible:hover {
+      transform: translateY(-4px) !important;
       box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
       border-color: var(--md-primary-fg-color);
     }
