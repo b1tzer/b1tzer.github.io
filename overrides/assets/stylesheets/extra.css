@@ -3,97 +3,7 @@
    策略：克制、流畅，不过度
    ============================================================ */
 
-/* ── 1. 首页 Hero 入场动画 ── */
-@keyframes hero-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes hero-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-/* Hero 背景渐变动画 */
-@keyframes hero-gradient-shift {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* Hero 区域：背景动态渐变 */
-.hero-section {
-  background-size: 200% 200% !important;
-  animation: hero-gradient-shift 8s ease infinite;
-}
-
-/* Hero 标题：延迟 0ms 淡入上移 */
-.hero-section h1 {
-  animation: hero-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* Hero 描述：延迟 120ms */
-.hero-section p {
-  animation: hero-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
-}
-
-/* Hero CTA 按钮：延迟 240ms */
-.hero-cta {
-  animation: hero-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.24s both;
-}
-
-/* ── 卡片 & section-title 入场动画 ── */
-@keyframes card-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* section-title 淡入：Hero 动画结束后衔接出现 */
-.section-title {
-  animation: card-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.55s both;
-}
-
-/* 卡片基础样式 + 入场动画 */
-.card {
-  animation: card-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-  transition:
-    box-shadow 300ms ease,
-    border-color 300ms ease,
-    transform 300ms ease;
-}
-
-/* 用 :nth-child 给每张卡片设置递增延迟（section-title 后依次出现，每张错开 60ms） */
-.card:nth-child(1)  { animation-delay: 0.65s; }
-.card:nth-child(2)  { animation-delay: 0.71s; }
-.card:nth-child(3)  { animation-delay: 0.77s; }
-.card:nth-child(4)  { animation-delay: 0.83s; }
-.card:nth-child(5)  { animation-delay: 0.89s; }
-.card:nth-child(6)  { animation-delay: 0.95s; }
-.card:nth-child(7)  { animation-delay: 1.01s; }
-.card:nth-child(8)  { animation-delay: 1.07s; }
-.card:nth-child(9)  { animation-delay: 1.13s; }
-.card:nth-child(10) { animation-delay: 1.19s; }
-
-/* hover 上浮效果（原 .card.is-visible:hover，现在直接用 .card:hover） */
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
-  border-color: var(--md-primary-fg-color);
-}
-
-/* ── 3. 页面切换淡入过渡（navigation.instant 模式） ── */
+/* ── 1. 页面切换淡入过渡（navigation.instant 模式） ── */
 @keyframes page-fade-in {
   from {
     opacity: 0;
@@ -110,18 +20,17 @@
   animation: page-fade-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* ── 4. 导航 Tab 切换下划线过渡 ── */
+/* ── 2. 导航 Tab 切换下划线过渡 ── */
 .md-tabs__link {
   transition: color 200ms ease, opacity 200ms ease !important;
 }
 
-/* Tab 激活指示线平滑过渡 */
 .md-tabs__indicator {
   transition: width 250ms cubic-bezier(0.4, 0, 0.2, 1),
               left  250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* ── 5. 侧边栏导航项 hover 微动效 ── */
+/* ── 3. 侧边栏导航项 hover 微动效 ── */
 .md-nav__link {
   transition: color 180ms ease, padding-left 180ms ease !important;
 }
@@ -130,18 +39,18 @@
   padding-left: 4px;
 }
 
-/* ── 6. 代码块 / admonition 进入动效（减少视觉跳动） ── */
+/* ── 4. 代码块 / admonition 进入动效 ── */
 .md-typeset .admonition,
 .md-typeset details {
   animation: page-fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* ── 7. 搜索框展开动效 ── */
+/* ── 5. 搜索框展开动效 ── */
 .md-search__form {
   transition: box-shadow 200ms ease !important;
 }
 
-/* ── 8. 尊重用户的减少动效偏好 ── */
+/* ── 6. 尊重用户的减少动效偏好 ── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -152,20 +61,18 @@
   }
 }
 
-/* ── 9. 宽屏适配（≥1280px） ── */
+/* ── 7. 宽屏适配（≥1280px） ── */
 @media screen and (min-width: 80em) {
-  /* 内容区从 61rem 扩宽到 76rem，两侧保留自然留白 */
   .md-grid {
     max-width: 76rem;
   }
 
-  /* 首页卡片区域跟随扩宽 */
   .home-inner {
     max-width: 76rem;
   }
 }
 
-/* ── 超宽屏（≥1600px）：内容区上限 88rem，避免过度拉伸 ── */
+/* ── 超宽屏（≥1600px） ── */
 @media screen and (min-width: 100em) {
   .md-grid {
     max-width: 88rem;

@@ -3,166 +3,398 @@
 {% block tabs %}
   {{ super() }}
   <style>
-    /* 首页隐藏 header 固定定位、两侧边栏、正文内容区 */
-    .md-header { position: initial }
-    .md-main__inner { margin: 0 }
-    .md-content { display: none }
-    @media screen and (min-width: 60em) { .md-sidebar--secondary { display: none } }
-    @media screen and (min-width: 76.25em) { .md-sidebar--primary { display: none } }
+    /* ══════════════════════════════════════════════
+       首页全局样式
+    ══════════════════════════════════════════════ */
+    .md-main__inner { margin: 0; }
+    .md-content { display: none; }
+    @media screen and (min-width: 60em)    { .md-sidebar--secondary { display: none; } }
+    @media screen and (min-width: 76.25em) { .md-sidebar--primary   { display: none; } }
 
-    /* ── 首页外层容器：全宽 ── */
-    .home-container {
+    .md-main { padding-top: 0 !important; }
+
+    /* 禁止首页滑动 */
+    html, body {
+      overflow: hidden !important;
+      height: 100%;
+    }
+
+    /* 隐藏不需要的内容区（因为禁止滑动了） */
+    .content-section {
+      display: none !important;
+    }
+
+    /* 强制首页 header 透明，避免 JS 加载前的闪烁 */
+    .md-header {
+      background-color: transparent !important;
+      box-shadow: none !important;
+    }
+
+    /* 修复 md-tabs 位置，使其固定在 header 下方，并强制透明 */
+    .md-tabs {
+      position: fixed;
+      top: var(--md-header-height, 2.4rem);
       width: 100%;
-      padding-bottom: 3rem;
+      z-index: 200;
+      background-color: transparent !important;
     }
 
-    /* ── 内容宽度约束区（默认与 .md-grid 保持一致，宽屏由 extra.css 覆盖） ── */
-    .home-inner {
-      max-width: 61rem;
-      margin: 2rem auto 0;
-      padding: 0 1.5rem;
-    }
-
-    /* ── Hero 区域 ── */
+    /* ══════════════════════════════════════════════
+       Hero 区域 (动态渐变背景 + 居中内容)
+    ══════════════════════════════════════════════ */
     .hero-section {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #1a1060);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+      color: white;
+      padding: 2rem;
       text-align: center;
-      padding: 3rem 1rem 3.5rem;
-      margin: 0 0 2rem;
-      /* 多色渐变，配合 extra.css 的 background-size:200% 200% 实现流动效果 */
-      background: linear-gradient(135deg, #4f46e5 0%, #6366f1 30%, #818cf8 60%, #a78bfa 100%);
-      color: #fff;
+      z-index: 1;
     }
 
     [data-md-color-scheme="slate"] .hero-section {
-      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4338ca 60%, #6366f1 100%);
+      background: linear-gradient(-45deg, #000000, #1a1a2e, #16213e, #0f3460);
+      background-size: 400% 400%;
     }
 
-    .hero-section h1 {
-      font-size: 2.2rem;
-      font-weight: 700;
-      margin-bottom: 0.6rem;
-      color: #fff;
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* 动态光球背景 */
+    .hero-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.5;
+      animation: floatOrb 10s infinite ease-in-out alternate;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .hero-orb-1 {
+      width: 400px; height: 400px;
+      background: #4f46e5;
+      top: -100px; left: -100px;
+    }
+    .hero-orb-2 {
+      width: 300px; height: 300px;
+      background: #ec4899;
+      bottom: -50px; right: -50px;
+      animation-delay: -5s;
+    }
+
+    @keyframes floatOrb {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(50px, 50px) scale(1.2); }
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 打字机标题 */
+    .hero-title {
+      font-size: clamp(2.5rem, 8vw, 4.5rem);
+      font-weight: 900;
+      margin-bottom: 1rem;
       letter-spacing: -0.02em;
+      line-height: 1.2;
+      background: linear-gradient(to right, #ffffff, #a5b4fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      /* 打字机光标 */
+      border-right: 4px solid #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      width: 0;
     }
 
-    .hero-section p {
-      font-size: 1rem;
-      opacity: 0.9;
-      margin-bottom: 1.5rem;
-      max-width: 700px;
-      margin-left: auto;
-      margin-right: auto;
+    .hero-title.typing-done {
+      border-right-color: transparent;
+      animation: blinkCursor 0.8s step-end infinite;
     }
 
-    .hero-cta {
-      display: inline-block;
-      padding: 0.75rem 1.8rem;
-      background: rgba(255, 255, 255, 0.2);
-      color: #fff !important;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 0.95rem;
-      text-decoration: none !important;
-      backdrop-filter: blur(4px);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      transition: background 200ms ease, border-color 200ms ease;
+    @keyframes blinkCursor {
+      50% { border-right-color: #fff; }
     }
 
-    .hero-cta:hover {
-      background: rgba(255, 255, 255, 0.32);
-      border-color: rgba(255, 255, 255, 0.55);
+    .hero-subtitle {
+      font-size: clamp(1rem, 3vw, 1.25rem);
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 2.5rem;
+      max-width: 600px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.8s ease forwards;
+      animation-delay: 1.2s; /* 等待打字机完成 */
     }
 
-    /* ── 卡片网格 ── */
-    .section-title {
+    .hero-buttons {
+      display: flex;
+      gap: 1.5rem;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.8s ease forwards;
+      animation-delay: 1.5s;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .btn-primary {
+      background: #4f46e5;
+      color: white !important;
+      padding: 1rem 2.5rem;
       font-size: 1.2rem;
+      border-radius: 8px;
       font-weight: 600;
-      margin: 0 0 1rem;
-      color: var(--md-default-fg-color);
+      text-decoration: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+    }
+    .btn-primary:hover {
+      background: #4338ca;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: white !important;
+      padding: 1rem 2.5rem;
+      font-size: 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.3s ease;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    /* 向下滚动提示 */
+    .scroll-indicator {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      animation: fadeUp 0.8s ease forwards, bounce 2s infinite;
+      animation-delay: 2s;
+      color: rgba(255, 255, 255, 0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+    .scroll-indicator:hover {
+      color: rgba(255, 255, 255, 1);
+    }
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0) translateX(-50%); }
+      40% { transform: translateY(-10px) translateX(-50%); }
+      60% { transform: translateY(-5px) translateX(-50%); }
+    }
+    .scroll-indicator svg {
+      width: 24px; height: 24px;
+      fill: currentColor;
+    }
+
+    /* ══════════════════════════════════════════════
+       内容区域 (卡片网格)
+    ══════════════════════════════════════════════ */
+    .content-section {
+      padding: 4rem 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
     }
 
     .card-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
-      gap: 0.75rem;
-      margin: 0 0 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
     }
 
     .card {
       background: var(--md-default-bg-color);
       border: 1px solid var(--md-default-fg-color--lightest);
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      padding: 1.5rem;
       text-decoration: none !important;
       color: inherit !important;
       display: flex;
       flex-direction: column;
-      /* 强制撑满 Grid 单元格，确保同行等高 */
-      align-self: stretch;
-      height: 100%;
-      box-sizing: border-box;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, #4f46e5, #ec4899);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+      border-color: transparent;
+    }
+    [data-md-color-scheme="slate"] .card:hover {
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .card:hover::before {
+      opacity: 1;
     }
 
     .card-icon {
-      font-size: 1.3rem;
-      margin-bottom: 0.3rem;
-      display: block;
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      display: inline-block;
+      transition: transform 0.3s ease;
+    }
+    .card:hover .card-icon {
+      transform: scale(1.1) rotate(5deg);
     }
 
     .card-title {
-      font-weight: 600;
-      font-size: 0.9rem;
-      margin-bottom: 0.25rem;
-      display: block;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--md-default-fg-color);
     }
 
     .card-desc {
-      font-size: 0.8rem;
+      font-size: 0.9rem;
       color: var(--md-default-fg-color--light);
-      line-height: 1.45;
-      margin-bottom: 0.4rem;
-      flex: 1;
-      display: block;
+      line-height: 1.5;
+      flex-grow: 1;
+      margin-bottom: 1.2rem;
     }
 
     .card-count {
       font-size: 0.75rem;
-      color: var(--md-primary-fg-color);
-      font-weight: 500;
-      display: block;
+      font-weight: 600;
+      color: #4f46e5;
+      background: rgba(79, 70, 229, 0.1);
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      align-self: flex-start;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    .card:hover .card-count {
+      background: #4f46e5;
+      color: white;
+    }
+    [data-md-color-scheme="slate"] .card-count {
+      color: #a5b4fc;
+      background: rgba(165, 180, 252, 0.1);
+    }
+    [data-md-color-scheme="slate"] .card:hover .card-count {
+      background: #a5b4fc;
+      color: #1a1a2e;
     }
 
-    /* ── 移动端响应式 ── */
+    /* 移动端适配 */
     @media (max-width: 768px) {
-      .hero-section { padding: 2rem 0.8rem 1.8rem; }
-      .hero-section h1 { font-size: 1.6rem; }
-      .hero-section p { font-size: 0.9rem; }
-      .card-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    @media (max-width: 480px) {
+      .hero-buttons { flex-direction: column; width: 100%; max-width: 300px; }
+      .btn-primary, .btn-secondary { text-align: center; width: 100%; }
       .card-grid { grid-template-columns: 1fr; }
     }
   </style>
-
-  <div class="home-container md-typeset">
-
-    <!-- Hero 区域（全宽） -->
-    <div class="hero-section">
-      <h1>The Stack</h1>
-      <p>{{ config.site_description }}</p>
-      <a href="{{ '01-java-basic/00-Java基础与JVM概览/' | url }}" class="hero-cta">
-        开始阅读 →
-      </a>
-    </div>
-
-    <!-- 技术领域卡片（由 gen_nav.py 生成，从 index.md 内容读取） -->
-    <div class="home-inner">
-      {{ page.content }}
-    </div><!-- /.home-inner -->
-
-  </div><!-- /.home-container -->
 {% endblock %}
 
-{% block content %}{% endblock %}
+{% block hero %}
+  <section class="hero-section">
+    <div class="hero-orb hero-orb-1"></div>
+    <div class="hero-orb hero-orb-2"></div>
+    
+    <div class="hero-content">
+      <h1 class="hero-title" id="hero-title"></h1>
+      <p class="hero-subtitle">{{ config.site_description }}</p>
+      <div class="hero-buttons">
+        <a href="{{ '01-java-basic/00-Java基础与JVM概览/' | url }}" class="btn-primary">开始阅读 →</a>
+        <a href="https://github.com/b1tzer/b1tzer.github.io" target="_blank" class="btn-secondary">GITHUB</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block content %}
+  <section class="content-section md-typeset">
+    {{ super() }}
+  </section>
+{% endblock %}
+
 {% block footer %}{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    // 确保只注册一次订阅，避免重复绑定
+    if (typeof window.homeScriptInitialized === 'undefined') {
+      window.homeScriptInitialized = true;
+      
+      // 监听 MkDocs Material 的页面加载/切换事件 (支持 instant navigation)
+      if (typeof document$ !== "undefined") {
+        document$.subscribe(function() {
+          const titleEl = document.getElementById("hero-title");
+          if (!titleEl) return; // 如果当前不是首页，直接返回
+
+          // 重置状态，确保从其他页面切换回来时能重新播放动画
+          titleEl.textContent = "";
+          titleEl.classList.remove("typing-done");
+          titleEl.style.width = '0';
+
+          let i = 0;
+          const titleText = "The Stack";
+          
+          function typeWriter() {
+            if (i < titleText.length) {
+              titleEl.textContent += titleText.charAt(i);
+              titleEl.style.width = 'auto';
+              i++;
+          setTimeout(typeWriter, 100);
+            } else {
+              titleEl.classList.add("typing-done");
+            }
+          }
+          
+          // 缩短初始等待时间 (从 300ms 降到 50ms)
+          setTimeout(typeWriter, 300);
+        });
+      }
+    }
+  </script>
+{% endblock %}
