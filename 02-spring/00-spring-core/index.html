@@ -1,0 +1,4411 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="一份系统化的 Java 后端面试知识库，覆盖核心基础、框架原理、数据库、缓存、消息队列、搜索引擎、设计模式与软件工程">
+      
+      
+        <meta name="author" content="b1tzer">
+      
+      
+        <link rel="canonical" href="https://b1tzer.github.io/02-spring/00-spring-core/">
+      
+      
+        <link rel="prev" href="../../01-java-basic/14-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E7%B2%BE%E8%AE%B2/">
+      
+      
+        <link rel="next" href="../01-IoC%E4%B8%8EDI/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Spring / Spring Boot 核心原理 - Java 面试指南 | Java Interview Guide</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#spring-spring-boot" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../.." title="Java 面试指南 | Java Interview Guide" class="md-header__button md-logo" aria-label="Java 面试指南 | Java Interview Guide" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Java 面试指南 | Java Interview Guide
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Spring / Spring Boot 核心原理
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/b1tzer/java-interview-guide" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    java-interview-guide
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Java 面试指南 | Java Interview Guide" class="md-nav__button md-logo" aria-label="Java 面试指南 | Java Interview Guide" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Java 面试指南 | Java Interview Guide
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/b1tzer/java-interview-guide" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    java-interview-guide
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    首页
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Java Basic
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Java Basic
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/00-Java%E5%9F%BA%E7%A1%80%E4%B8%8EJVM%E6%A6%82%E8%A7%88/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Java 基础知识与 JVM 原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/01-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    面向对象（OOP）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/02-%E9%9B%86%E5%90%88%E6%A1%86%E6%9E%B6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    集合框架（Collections Framework）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/03-%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    并发编程（Concurrent Programming）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/04-JVM%E5%86%85%E5%AD%98%E7%BB%93%E6%9E%84%E4%B8%8EGC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JVM 内存结构与 GC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/05-%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    异常处理（Exception Handling）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/06-AQS%E4%B8%8ECAS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AQS 与 CAS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/07-%5BJava8%5DLambda%E8%A1%A8%E8%BE%BE%E5%BC%8F/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lambda 表达式
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/08-%5BJava8%5DStream%E6%B5%81%E5%BC%8F%E7%BC%96%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stream API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/09-%5BJava8%5DOptional%E7%A9%BA%E5%80%BC%E5%A4%84%E7%90%86/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/10-%5BJava8%5D%E6%96%B0%E6%97%A5%E6%9C%9FAPI/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    新日期 API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/11-%5BJava8%5D%E6%8E%A5%E5%8F%A3%E9%BB%98%E8%AE%A4%E6%96%B9%E6%B3%95%E4%B8%8E%E9%9D%99%E6%80%81%E6%96%B9%E6%B3%95/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    接口默认方法与静态方法
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/12-%5BJava9-17%5D%E6%96%B0%E7%89%B9%E6%80%A7/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Java 9-17 关键新特性
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/13-%E6%B3%A8%E8%A7%A3%EF%BC%88Annotation%EF%BC%89/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    注解（Annotation）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-java-basic/14-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E7%B2%BE%E8%AE%B2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    数据结构精讲（Java & Spring 生态视角）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spring
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spring
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spring / Spring Boot 核心原理
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spring / Spring Boot 核心原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="本页目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      本页目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#spring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spring 是什么？
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        发展历程
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="发展历程">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键版本节点
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spring_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spring 框架版图
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Spring 框架版图">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        各模块定位速查
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spring_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        为什么要学 Spring 原理？
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        知识地图
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        整体架构
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        知识点导航
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        高频面试速查
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="高频面试速查">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        核心原理
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security / Cloud / 扩展点
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        常见问题速查
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实战性高频面试题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实战性高频面试题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        题目速览
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔥 事务相关（节选）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01-IoC%E4%B8%8EDI/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IoC 与 DI —— 控制反转与依赖注入
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02-Bean%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E4%B8%8E%E5%BE%AA%E7%8E%AF%E4%BE%9D%E8%B5%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bean 生命周期与循环依赖
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03-AOP%E9%9D%A2%E5%90%91%E5%88%87%E9%9D%A2%E7%BC%96%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AOP —— 面向切面编程
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04-SpringMVC%E8%AF%B7%E6%B1%82%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spring MVC 请求处理流程
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05-SpringBoot%E8%87%AA%E5%8A%A8%E9%85%8D%E7%BD%AE%E5%8E%9F%E7%90%86/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spring Boot 自动配置原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06-Spring%E4%BA%8B%E5%8A%A1%E7%AE%A1%E7%90%86/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spring 事务管理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07-Spring%E5%AE%9E%E6%88%98%E5%BA%94%E7%94%A8%E9%A2%98/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spring 实战应用型面试题
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08-Spring-Security%E8%AE%A4%E8%AF%81%E4%B8%8E%E6%8E%88%E6%9D%83/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spring Security 认证与授权
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09-Spring-Cloud%E6%A0%B8%E5%BF%83%E7%BB%84%E4%BB%B6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spring Cloud 核心组件
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10-Spring%E6%89%A9%E5%B1%95%E7%82%B9%E8%AF%A6%E8%A7%A3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spring 扩展点详解
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11-Spring%E5%B8%B8%E7%94%A8%E6%B3%A8%E8%A7%A3%E5%85%A8%E8%A7%A3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spring 常用注解全解
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../12-Feign%E5%A3%B0%E6%98%8E%E5%BC%8FHTTP%E5%AE%A2%E6%88%B7%E7%AB%AF/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Feign 声明式 HTTP 客户端
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../13-gRPC%E8%AF%A6%E8%A7%A3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    gRPC 详解
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mysql
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Mysql
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-mysql/00-mysql-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MySQL 索引、事务与性能优化
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-mysql/01-%E7%B4%A2%E5%BC%95%E5%8E%9F%E7%90%86%E4%B8%8EB%2B%E6%A0%91/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    索引原理与 B+ 树
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-mysql/02-%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95%E4%B8%8E%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    聚簇索引与覆盖索引
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-mysql/03-%E8%81%94%E5%90%88%E7%B4%A2%E5%BC%95%E4%B8%8E%E7%B4%A2%E5%BC%95%E5%A4%B1%E6%95%88/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    联合索引与索引失效
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-mysql/04-%E4%BA%8B%E5%8A%A1%E4%B8%8EACID/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    事务与 ACID
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-mysql/05-MVCC%E4%B8%8E%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MVCC 与隔离级别
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-mysql/06-%E9%94%81%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%AD%BB%E9%94%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    锁机制与死锁
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-mysql/07-EXPLAIN%E4%B8%8E%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EXPLAIN 与性能优化
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-mysql/08-%E5%AE%9E%E6%88%98%E9%97%AE%E9%A2%98%E4%B8%8E%E9%81%BF%E5%9D%91%E6%8C%87%E5%8D%97/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MySQL 实战问题与避坑指南
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Postgresql
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Postgresql
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-postgresql/00-postgresql-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PostgreSQL 核心特性与选型
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-postgresql/01-PG%E4%B8%8EMySQL%E5%AF%B9%E6%AF%94/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PostgreSQL vs MySQL 全面对比
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-postgresql/02-MVCC%E5%8E%9F%E7%90%86%E4%B8%8E%E8%A1%A8%E8%86%A8%E8%83%80/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MVCC 原理与表膨胀
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-postgresql/03-%E7%B4%A2%E5%BC%95%E7%B1%BB%E5%9E%8B%E8%AF%A6%E8%A7%A3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    索引类型详解
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-postgresql/04-%E7%AA%97%E5%8F%A3%E5%87%BD%E6%95%B0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    窗口函数
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-postgresql/05-CTE%E4%B8%8E%E9%80%92%E5%BD%92%E6%9F%A5%E8%AF%A2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CTE 与递归查询
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-postgresql/06-%E7%89%A9%E5%8C%96%E8%A7%86%E5%9B%BE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    物化视图
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-postgresql/07-VACUUM%E6%9C%BA%E5%88%B6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VACUUM 机制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Redis
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-redis/00-redis-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis 缓存设计与高可用
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-redis/01-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E5%BA%95%E5%B1%82%E7%BC%96%E7%A0%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis 数据结构与底层编码
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-redis/02-%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6RDB%E4%B8%8EAOF/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis 持久化机制：RDB 与 AOF
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-redis/03-%E7%BC%93%E5%AD%98%E4%B8%89%E5%A4%A7%E9%97%AE%E9%A2%98/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis 缓存三大问题：穿透、击穿、雪崩
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-redis/04-%E9%AB%98%E5%8F%AF%E7%94%A8%E6%9E%B6%E6%9E%84/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis 高可用架构：主从、哨兵、集群
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-redis/05-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis 分布式锁
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-redis/06-%E5%BA%94%E7%94%A8%E5%9E%8B%E9%97%AE%E9%A2%98/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Redis 应用型问题
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kafka
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Kafka
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-kafka/01-%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kafka 基础概念
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-kafka/02-%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kafka 整体架构
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-kafka/03-%E6%B6%88%E6%81%AF%E5%8F%AF%E9%9D%A0%E6%80%A7/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kafka 消息可靠性：如何保证消息不丢失？
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-kafka/04-%E6%B6%88%E8%B4%B9%E8%80%85%E7%BB%84%E4%B8%8ERebalance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kafka 消费者组与 Rebalance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-kafka/05-%E9%AB%98%E5%90%9E%E5%90%90%E5%8E%9F%E7%90%86/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kafka 高吞吐原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-kafka/06-%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E9%80%89%E5%9E%8B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    消息队列选型对比
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-kafka/07-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E4%B8%8E%E8%A7%A3%E5%86%B3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kafka 工作中常见问题与解决
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-kafka/08-%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91%E9%97%AE%E9%A2%98/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kafka 面试高频问题（实战详解）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elasticsearch
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Elasticsearch
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-elasticsearch/00-elasticsearch%E6%A6%82%E8%A7%88/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elasticsearch 搜索引擎核心复习
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-elasticsearch/01-%E5%BC%95%E5%85%A5%E4%B8%8E%E8%83%8C%E6%99%AF/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ES 引入：它解决了什么问题？
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-elasticsearch/02-%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ES 核心概念：与关系型数据库的对应关系
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-elasticsearch/03-%E5%80%92%E6%8E%92%E7%B4%A2%E5%BC%95/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ES 倒排索引：为何擅长全文检索
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-elasticsearch/04-Mapping%E6%98%A0%E5%B0%84%E8%AE%BE%E8%AE%A1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ES Mapping 设计：字段类型决定查询能力
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-elasticsearch/05-%E6%9F%A5%E8%AF%A2%E8%AF%AD%E6%B3%95DSL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ES 查询 DSL：核心查询类型
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-elasticsearch/06-%E9%9B%86%E7%BE%A4%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%88%86%E7%89%87%E6%9C%BA%E5%88%B6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ES 集群架构与分片机制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-elasticsearch/07-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ES 性能优化
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-elasticsearch/08-%E6%95%B0%E6%8D%AE%E4%B8%80%E8%87%B4%E6%80%A7/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ES 数据一致性：MySQL 与 ES 同步方案
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design Pattern
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design Pattern
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-design-pattern/00-%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E6%80%BB%E8%A7%88/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    设计模式总览
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-design-pattern/01-%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    单例模式（Singleton Pattern）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-design-pattern/02-%E5%B7%A5%E5%8E%82%E6%96%B9%E6%B3%95%E4%B8%8E%E6%8A%BD%E8%B1%A1%E5%B7%A5%E5%8E%82%E6%A8%A1%E5%BC%8F/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    工厂方法模式 & 抽象工厂模式
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-design-pattern/03-%E5%BB%BA%E9%80%A0%E8%80%85%E6%A8%A1%E5%BC%8F/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    建造者模式（Builder Pattern）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-design-pattern/04-%E4%BB%A3%E7%90%86%E6%A8%A1%E5%BC%8F/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    代理模式（Proxy Pattern）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-design-pattern/05-%E8%A3%85%E9%A5%B0%E5%99%A8%E6%A8%A1%E5%BC%8F/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    装饰器模式（Decorator Pattern）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-design-pattern/06-%E9%80%82%E9%85%8D%E5%99%A8%E6%A8%A1%E5%BC%8F/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    适配器模式（Adapter Pattern）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-design-pattern/07-%E7%AD%96%E7%95%A5%E6%A8%A1%E5%BC%8F/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    策略模式（Strategy Pattern）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-design-pattern/08-%E8%A7%82%E5%AF%9F%E8%80%85%E6%A8%A1%E5%BC%8F/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    观察者模式（Observer Pattern）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-design-pattern/09-%E6%A8%A1%E6%9D%BF%E6%96%B9%E6%B3%95%E6%A8%A1%E5%BC%8F/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模板方法模式（Template Method Pattern）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-design-pattern/10-%E8%B4%A3%E4%BB%BB%E9%93%BE%E6%A8%A1%E5%BC%8F/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    责任链模式（Chain of Responsibility Pattern）
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Software Engineering
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Software Engineering
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-software-engineering/00-%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B%E6%A6%82%E8%A7%88/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    软件工程核心知识复习
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-software-engineering/01-SOLID%E5%8E%9F%E5%88%99/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SOLID 原则
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-software-engineering/02-%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84%E6%BC%94%E8%BF%9B/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    软件架构演进
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-software-engineering/03-DDD%E9%A2%86%E5%9F%9F%E9%A9%B1%E5%8A%A8%E8%AE%BE%E8%AE%A1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DDD 领域驱动设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-software-engineering/04-CAP%E7%90%86%E8%AE%BA%E4%B8%8EBASE%E7%90%86%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CAP 理论与 BASE 理论
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-software-engineering/05-%E4%BB%A3%E7%A0%81%E8%B4%A8%E9%87%8F%E4%B8%8E%E9%87%8D%E6%9E%84/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    代码质量与重构
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-software-engineering/06-CICD%E6%8C%81%E7%BB%AD%E9%9B%86%E6%88%90%E4%B8%8E%E4%BA%A4%E4%BB%98/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD 持续集成与持续交付
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-software-engineering/07-%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E6%96%B9%E6%B3%95%E8%AE%BA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    系统设计方法论
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="本页目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      本页目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#spring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spring 是什么？
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        发展历程
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="发展历程">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键版本节点
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spring_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spring 框架版图
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Spring 框架版图">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        各模块定位速查
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spring_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        为什么要学 Spring 原理？
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        知识地图
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        整体架构
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        知识点导航
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        高频面试速查
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="高频面试速查">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        核心原理
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security / Cloud / 扩展点
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        常见问题速查
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        实战性高频面试题
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="实战性高频面试题">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        题目速览
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔥 事务相关（节选）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="spring-spring-boot">Spring / Spring Boot 核心原理<a class="headerlink" href="#spring-spring-boot" title="Permanent link">&para;</a></h1>
+<hr />
+<h2 id="spring">Spring 是什么？<a class="headerlink" href="#spring" title="Permanent link">&para;</a></h2>
+<p>Spring 是 Java 生态中<strong>最主流的企业级应用开发框架</strong>，由 Rod Johnson 于 2003 年创建，核心思想是通过 <strong>IoC（控制反转）</strong> 和 <strong>AOP（面向切面编程）</strong> 解耦应用组件，让开发者专注于业务逻辑而非基础设施。</p>
+<blockquote>
+<p>一句话：Spring 是"Java 企业开发的基础设施"，就像盖楼的钢筋框架，业务代码是砖块，Spring 把它们组装在一起。</p>
+</blockquote>
+<hr />
+<h2 id="_1">发展历程<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>timeline
+    title Spring 发展历程
+    2003 : Spring 1.0
+         : Rod Johnson 发布
+         : 解决 EJB 过重问题
+         : IoC 容器 + AOP
+    2006 : Spring 2.0
+         : XML 配置简化
+         : AspectJ 支持
+    2009 : Spring 3.0
+         : Java 5+ 注解驱动
+         : @Configuration
+         : REST 支持
+    2013 : Spring 4.0
+         : Java 8 支持
+         : WebSocket
+         : Spring Boot 1.0 发布
+    2017 : Spring 5.0
+         : 响应式编程 WebFlux
+         : Kotlin 支持
+         : Spring Boot 2.0
+    2022 : Spring 6.0
+         : 要求 Java 17+
+         : GraalVM 原生镜像
+         : Spring Boot 3.0
+    2024 : Spring Boot 3.3+
+         : 虚拟线程支持
+         : AOT 编译优化</code></pre>
+<h3 id="_2">关键版本节点<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>版本</th>
+<th>时间</th>
+<th>核心变化</th>
+<th>最低 Java 要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Spring 3.x</td>
+<td>2009</td>
+<td>注解驱动开发成熟，<code>@Configuration</code>、<code>@ComponentScan</code></td>
+<td>Java 5</td>
+</tr>
+<tr>
+<td>Spring 4.x</td>
+<td>2013</td>
+<td>Java 8 支持，条件注解 <code>@Conditional</code></td>
+<td>Java 6</td>
+</tr>
+<tr>
+<td><strong>Spring Boot 1.x</strong></td>
+<td><strong>2014</strong></td>
+<td><strong>自动配置革命，约定优于配置，内嵌 Tomcat</strong></td>
+<td>Java 6</td>
+</tr>
+<tr>
+<td>Spring 5.x</td>
+<td>2017</td>
+<td>响应式编程 WebFlux，Reactor 模型</td>
+<td>Java 8</td>
+</tr>
+<tr>
+<td><strong>Spring Boot 2.x</strong></td>
+<td><strong>2018</strong></td>
+<td><strong>Spring 5 + 默认 CGLIB + Actuator 增强</strong></td>
+<td>Java 8</td>
+</tr>
+<tr>
+<td>Spring 6.x</td>
+<td>2022</td>
+<td>Jakarta EE 9+，GraalVM 原生镜像支持</td>
+<td><strong>Java 17</strong></td>
+</tr>
+<tr>
+<td><strong>Spring Boot 3.x</strong></td>
+<td><strong>2022</strong></td>
+<td><strong>Spring 6 + 虚拟线程 + AOT 编译</strong></td>
+<td><strong>Java 17</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>📌 <strong>当前主流</strong>：企业新项目普遍使用 <strong>Spring Boot 3.x + Java 17/21</strong>；存量项目多为 Spring Boot 2.x + Java 8/11。</p>
+</blockquote>
+<hr />
+<h2 id="spring_1">Spring 框架版图<a class="headerlink" href="#spring_1" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TB
+    subgraph 微服务 / 云原生层
+        SCloud["Spring Cloud\nEureka · Gateway · Feign · Sentinel · Config"]
+        SCloudAlibaba["Spring Cloud Alibaba\nNacos · Sentinel · Seata · RocketMQ"]
+    end
+
+    subgraph 应用开发层
+        SBoot["Spring Boot\n自动配置 · 起步依赖 · 内嵌容器 · Actuator"]
+        SSecurity["Spring Security\n认证 · 授权 · OAuth2 · JWT"]
+        SBatch["Spring Batch\n批处理 · Job · Step · ItemReader"]
+        SIntegration["Spring Integration\n企业集成模式 · 消息通道"]
+    end
+
+    subgraph 数据访问层
+        SData["Spring Data\nJPA · Redis · MongoDB · Elasticsearch"]
+        STx["Spring Transaction\n声明式事务 · 编程式事务"]
+    end
+
+    subgraph Web 层
+        SMVC["Spring MVC\nDispatcherServlet · REST · 文件上传"]
+        SWebFlux["Spring WebFlux\n响应式 · Reactor · 非阻塞 IO"]
+    end
+
+    subgraph 核心基础层
+        SCore["Spring Core\nIoC 容器 · DI · Bean 生命周期"]
+        SAOP["Spring AOP\n动态代理 · 切面 · 切点"]
+        SContext["Spring Context\nApplicationContext · 事件 · 国际化"]
+    end
+
+    SCloud &amp; SCloudAlibaba --&gt; SBoot
+    SBoot --&gt; SSecurity &amp; SBatch &amp; SIntegration
+    SBoot --&gt; SData &amp; STx
+    SBoot --&gt; SMVC &amp; SWebFlux
+    SSecurity &amp; SBatch &amp; SData &amp; SMVC &amp; SWebFlux --&gt; SCore &amp; SAOP &amp; SContext</code></pre>
+<h3 id="_3">各模块定位速查<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>定位</th>
+<th>典型使用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Spring Core</strong></td>
+<td>IoC 容器，所有模块的基础</td>
+<td>Bean 管理、依赖注入</td>
+</tr>
+<tr>
+<td><strong>Spring AOP</strong></td>
+<td>面向切面，基于动态代理</td>
+<td>日志、事务、权限切面</td>
+</tr>
+<tr>
+<td><strong>Spring MVC</strong></td>
+<td>Web 层，处理 HTTP 请求</td>
+<td>RESTful API 开发</td>
+</tr>
+<tr>
+<td><strong>Spring WebFlux</strong></td>
+<td>响应式 Web，非阻塞 IO</td>
+<td>高并发、流式数据处理</td>
+</tr>
+<tr>
+<td><strong>Spring Boot</strong></td>
+<td>自动配置，简化开发</td>
+<td>所有 Spring 项目的启动器</td>
+</tr>
+<tr>
+<td><strong>Spring Data</strong></td>
+<td>数据访问统一抽象</td>
+<td>JPA、Redis、MongoDB 操作</td>
+</tr>
+<tr>
+<td><strong>Spring Security</strong></td>
+<td>安全框架，认证与授权</td>
+<td>登录、权限控制、OAuth2</td>
+</tr>
+<tr>
+<td><strong>Spring Batch</strong></td>
+<td>批处理框架</td>
+<td>大数据量定时任务、ETL</td>
+</tr>
+<tr>
+<td><strong>Spring Cloud</strong></td>
+<td>微服务基础设施</td>
+<td>服务注册、网关、熔断</td>
+</tr>
+<tr>
+<td><strong>Spring Cloud Alibaba</strong></td>
+<td>阿里巴巴微服务套件</td>
+<td>Nacos、Sentinel、Seata</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="spring_2">为什么要学 Spring 原理？<a class="headerlink" href="#spring_2" title="Permanent link">&para;</a></h2>
+<p>不理解原理会导致的<strong>线上问题</strong>：</p>
+<ul>
+<li><code>@Transactional</code> 加了但事务不回滚（同类调用绕过代理）</li>
+<li>AOP 切面不生效（<code>this.method()</code> 绕过代理对象）</li>
+<li>循环依赖报错，不知道为什么构造器注入会失败</li>
+<li>自动配置不生效，不知道如何 debug</li>
+</ul>
+<hr />
+<h2 id="_4">知识地图<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>mindmap
+    root((Spring 核心))
+        IoC 与 DI
+            控制反转思想
+            构造器注入
+            字段注入
+            BeanFactory vs ApplicationContext
+        Bean 生命周期
+            实例化
+            依赖注入
+            Aware 回调
+            BeanPostProcessor
+            初始化与销毁
+        AOP 面向切面
+            JDK 动态代理
+            CGLIB 代理
+            切点表达式
+            同类调用失效
+        Spring MVC
+            DispatcherServlet
+            HandlerMapping
+            HandlerAdapter
+            视图解析
+        Spring Boot
+            自动配置原理
+            条件注解
+            起步依赖
+        事务管理
+            传播行为
+            隔离级别
+            事务失效场景
+        循环依赖
+            三级缓存
+            构造器注入限制
+        Spring Security
+            过滤器链
+            JWT 认证
+            方法级权限
+        Spring Cloud
+            Eureka 注册中心
+            Gateway 网关
+            Feign 调用
+            Sentinel 熔断
+        扩展点
+            BeanPostProcessor
+            BeanFactoryPostProcessor
+            ApplicationListener
+        常用注解
+            @Conditional
+            @ConfigurationProperties
+            @Profile
+            @Import</code></pre>
+<hr />
+<h2 id="_5">整体架构<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TB
+    subgraph Spring Cloud 微服务层
+        SGW[Gateway 网关&lt;br/&gt;路由 / 鉴权 / 限流]
+        SEU[Eureka / Nacos&lt;br/&gt;服务注册与发现]
+        SFG[Feign&lt;br/&gt;声明式调用]
+        SST[Sentinel&lt;br/&gt;熔断降级]
+    end
+    subgraph Spring 应用层
+        SB[Spring Boot&lt;br/&gt;自动配置 / 起步依赖]
+        SSC[Spring Security&lt;br/&gt;认证 / 授权 / JWT]
+        SM[Spring MVC&lt;br/&gt;Web 请求处理]
+        ST[Spring Transaction&lt;br/&gt;事务管理]
+        SD[Spring Data&lt;br/&gt;JPA / Redis / MongoDB]
+    end
+    subgraph Spring 核心层
+        SC[Spring Core&lt;br/&gt;IoC / DI / AOP]
+    end
+    subgraph 底层支撑
+        Reflect[Java 反射]
+        Proxy[动态代理&lt;br/&gt;JDK / CGLIB]
+        ANN[注解处理]
+    end
+    SGW &amp; SEU &amp; SFG &amp; SST --&gt; SB
+    SB --&gt; SSC &amp; SM &amp; ST &amp; SD
+    SSC &amp; SM &amp; ST &amp; SD --&gt; SC
+    SC --&gt; Reflect &amp; Proxy &amp; ANN</code></pre>
+<blockquote>
+<p>Spring Core 是一切的基础，IoC 容器依赖反射创建对象，AOP 依赖动态代理增强功能，Spring Boot 在 Spring 之上通过自动配置简化开发，Spring Cloud 在 Spring Boot 之上构建微服务体系。</p>
+</blockquote>
+<hr />
+<h2 id="_6">知识点导航<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>知识点</th>
+<th>核心一句话</th>
+<th>详细文档</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>IoC 与 DI</strong></td>
+<td>IoC 是"容器管对象"，DI 是"容器送依赖"，推荐构造器注入</td>
+<td><a href="../01-IoC%E4%B8%8EDI/">01-IoC与DI.md</a></td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Bean 生命周期与循环依赖</strong></td>
+<td>实例化→注入→Aware→BPP前→初始化→BPP后（AOP代理）→使用→销毁；三级缓存解决循环依赖</td>
+<td><a href="../02-Bean%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E4%B8%8E%E5%BE%AA%E7%8E%AF%E4%BE%9D%E8%B5%96/">02-Bean生命周期与循环依赖.md</a></td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>AOP 面向切面</strong></td>
+<td>基于代理拦截，<code>this</code> 调用绕过代理，Spring Boot 2.x 后默认 CGLIB</td>
+<td><a href="../03-AOP%E9%9D%A2%E5%90%91%E5%88%87%E9%9D%A2%E7%BC%96%E7%A8%8B/">03-AOP面向切面编程.md</a></td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Spring MVC</strong></td>
+<td>DispatcherServlet 总调度，HandlerMapping 找处理器，HandlerAdapter 适配调用</td>
+<td><a href="../04-SpringMVC%E8%AF%B7%E6%B1%82%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B/">04-SpringMVC请求处理流程.md</a></td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>自动配置原理</strong></td>
+<td><code>@EnableAutoConfiguration</code> 读列表，条件注解按需过滤，允许用户覆盖</td>
+<td><a href="../05-SpringBoot%E8%87%AA%E5%8A%A8%E9%85%8D%E7%BD%AE%E5%8E%9F%E7%90%86/">05-SpringBoot自动配置原理.md</a></td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>事务管理</strong></td>
+<td>事务是 AOP 特例，<code>this</code> 调用不生效，异常要抛出，注意传播行为</td>
+<td><a href="../06-Spring%E4%BA%8B%E5%8A%A1%E7%AE%A1%E7%90%86/">06-Spring事务管理.md</a></td>
+</tr>
+<tr>
+<td>7</td>
+<td>~~循环依赖（已合并至 Bean 生命周期）~~</td>
+<td>已合并至 <a href="../02-Bean%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E4%B8%8E%E5%BE%AA%E7%8E%AF%E4%BE%9D%E8%B5%96/">02-Bean生命周期与循环依赖.md</a></td>
+<td>——</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>实战应用题</strong></td>
+<td>事务排查、长事务优化、AOP失效、Bean泄漏、动态注册等 12 道实战题</td>
+<td><a href="../07-Spring%E5%AE%9E%E6%88%98%E5%BA%94%E7%94%A8%E9%A2%98/">07-Spring实战应用题.md</a></td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Spring Security</strong></td>
+<td>过滤器链拦截请求，JWT 无状态认证，方法级 <code>@PreAuthorize</code> 权限控制</td>
+<td><a href="../08-Spring-Security%E8%AE%A4%E8%AF%81%E4%B8%8E%E6%8E%88%E6%9D%83/">08-Spring-Security认证与授权.md</a></td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Spring Cloud</strong></td>
+<td>Eureka 服务发现 + Gateway 网关 + Feign 调用 + Sentinel 熔断，微服务必备</td>
+<td><a href="../09-Spring-Cloud%E6%A0%B8%E5%BF%83%E7%BB%84%E4%BB%B6/">09-Spring-Cloud核心组件.md</a></td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>Spring 扩展点</strong></td>
+<td>BPP 干预初始化，BFPP 修改 Bean 定义，ApplicationListener 监听事件</td>
+<td><a href="../10-Spring%E6%89%A9%E5%B1%95%E7%82%B9%E8%AF%A6%E8%A7%A3/">10-Spring扩展点详解.md</a></td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>常用注解全解</strong></td>
+<td><code>@Conditional</code>、<code>@ConfigurationProperties</code>、<code>@Profile</code>、<code>@Import</code> 等高频注解</td>
+<td><a href="../11-Spring%E5%B8%B8%E7%94%A8%E6%B3%A8%E8%A7%A3%E5%85%A8%E8%A7%A3/">11-Spring常用注解全解.md</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_7">高频面试速查<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
+<h3 id="_8">核心原理<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>关键答案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IoC 和 DI 的区别？</td>
+<td>IoC 是设计思想（控制权交给容器），DI 是具体实现方式（容器注入依赖）</td>
+</tr>
+<tr>
+<td>BeanFactory vs ApplicationContext？</td>
+<td>BeanFactory 懒加载，功能基础；ApplicationContext 预加载单例，扩展了国际化/事件/AOP</td>
+</tr>
+<tr>
+<td>Bean 单例线程安全吗？</td>
+<td>不一定，有可变成员变量就不安全；用 <code>ThreadLocal</code> 或改为 <code>prototype</code> 解决</td>
+</tr>
+<tr>
+<td>@Autowired vs @Resource？</td>
+<td><code>@Autowired</code> 按类型注入（Spring）；<code>@Resource</code> 先按名称注入（JDK）</td>
+</tr>
+<tr>
+<td>AOP 不生效怎么排查？</td>
+<td>① <code>this</code> 同类调用 ② 方法非 public ③ 类未被 Spring 管理 ④ 切点表达式错误</td>
+</tr>
+<tr>
+<td>事务不回滚的原因？</td>
+<td>① 同类调用 ② 异常被捕获未抛出 ③ 非 RuntimeException 未加 <code>rollbackFor</code> ④ 方法非 public</td>
+</tr>
+<tr>
+<td>为什么默认用 CGLIB？</td>
+<td>JDK 代理要求实现接口，大量 Service 没有接口；CGLIB 生成子类无需接口，覆盖面更广</td>
+</tr>
+<tr>
+<td>循环依赖如何解决？</td>
+<td>三级缓存提前暴露 <code>ObjectFactory</code>，支持 AOP 代理；构造器注入无法提前暴露，需用 <code>@Lazy</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="security-cloud">Security / Cloud / 扩展点<a class="headerlink" href="#security-cloud" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>关键答案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>认证和授权的区别？</td>
+<td>认证（Authentication）验证"你是谁"；授权（Authorization）验证"你能做什么"</td>
+</tr>
+<tr>
+<td>JWT 和 Session 的区别？</td>
+<td>Session 有状态，服务端存储，分布式需共享；JWT 无状态，信息在 Token 中，天然支持分布式</td>
+</tr>
+<tr>
+<td>JWT Token 如何主动失效？</td>
+<td>Redis 黑名单（退出时写入 Token，TTL = 剩余有效期）；或 Token 版本号机制</td>
+</tr>
+<tr>
+<td>Eureka 自我保护是什么？</td>
+<td>短时间内大量心跳丢失时，停止剔除服务实例，防止网络抖动误删健康服务</td>
+</tr>
+<tr>
+<td>服务雪崩如何防止？</td>
+<td>超时快速失败 + 熔断（错误率超阈值直接降级）+ 限流（控制入口流量）+ 隔离（独立线程池）</td>
+</tr>
+<tr>
+<td>BeanPostProcessor 和 BeanFactoryPostProcessor 的区别？</td>
+<td>BFPP 在 Bean 实例化前修改 BeanDefinition；BPP 在 Bean 初始化前后处理 Bean 对象（AOP 代理在这里生成）</td>
+</tr>
+<tr>
+<td>@ConditionalOnMissingBean 的作用？</td>
+<td>容器中不存在指定 Bean 时才注册，是 Spring Boot 自动配置"用户优先"原则的核心</td>
+</tr>
+<tr>
+<td>@Configuration 和 @Component 的区别？</td>
+<td><code>@Configuration</code> 中的 <code>@Bean</code> 方法被 CGLIB 代理，方法间调用走容器保证单例；<code>@Component</code> 不代理，方法间调用是普通 Java 调用</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_9">常见问题速查<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>问题现象</th>
+<th>根本原因</th>
+<th>解决方案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@Autowired</code> 注入为 null</td>
+<td>对象不是 Spring 管理的（手动 new）</td>
+<td>改用 <code>@Component</code> + 注入方式获取</td>
+</tr>
+<tr>
+<td>事务不回滚</td>
+<td>异常被捕获 / 非 RuntimeException / 同类调用</td>
+<td>重新抛出异常，加 <code>rollbackFor</code>，避免同类调用</td>
+</tr>
+<tr>
+<td>AOP 切面不生效</td>
+<td><code>this</code> 同类调用绕过代理</td>
+<td>注入自身代理或重构代码</td>
+</tr>
+<tr>
+<td>循环依赖报错</td>
+<td>构造器注入无法提前暴露引用</td>
+<td>改为字段注入，或加 <code>@Lazy</code>，或重构解耦</td>
+</tr>
+<tr>
+<td>自动配置不生效</td>
+<td>条件注解不满足（缺少依赖 / 已有自定义 Bean）</td>
+<td>检查类路径依赖，用 <code>--debug</code> 查看自动配置报告</td>
+</tr>
+<tr>
+<td><code>@PostConstruct</code> 中 NPE</td>
+<td>在构造器中使用了 <code>@Autowired</code> 字段</td>
+<td>将初始化逻辑移到 <code>@PostConstruct</code> 方法中</td>
+</tr>
+<tr>
+<td>JWT Token 失效后仍能访问</td>
+<td>Token 无法主动撤销，服务端只验证签名</td>
+<td>Redis 黑名单 + 退出时写入，或缩短有效期</td>
+</tr>
+<tr>
+<td>Feign 调用超时报错</td>
+<td>默认超时时间过短 / 下游服务响应慢</td>
+<td>配置合理超时时间，加 Fallback 降级处理</td>
+</tr>
+<tr>
+<td>Gateway 过滤器不生效</td>
+<td>过滤器 Order 优先级设置错误</td>
+<td>检查 <code>getOrder()</code> 返回值，数字越小优先级越高</td>
+</tr>
+<tr>
+<td><code>@Profile</code> 配置不生效</td>
+<td><code>spring.profiles.active</code> 未正确设置</td>
+<td>检查启动参数或 <code>application.yml</code> 中的 active 配置</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_10">实战性高频面试题<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>以下是面试中容易"卡住"的实战问题，考察对 Spring 原理的真实理解深度。</p>
+<p>📄 详见：<a href="../07-Spring%E5%AE%9E%E6%88%98%E5%BA%94%E7%94%A8%E9%A2%98/">07-Spring实战应用题.md</a></p>
+</blockquote>
+<h3 id="_11">题目速览<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>题目</th>
+<th>考察方向</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Q1</td>
+<td><code>@Transactional</code> 不回滚怎么排查？</td>
+<td>事务失效场景</td>
+</tr>
+<tr>
+<td>Q2</td>
+<td><code>REQUIRED</code> vs <code>REQUIRES_NEW</code> 怎么选？</td>
+<td>事务传播行为</td>
+</tr>
+<tr>
+<td>Q3</td>
+<td>长事务有什么危害？如何优化？</td>
+<td>事务性能</td>
+</tr>
+<tr>
+<td>Q4</td>
+<td>AOP 切面不生效怎么排查？</td>
+<td>AOP 代理机制</td>
+</tr>
+<tr>
+<td>Q5</td>
+<td>JDK 代理 vs CGLIB 区别？</td>
+<td>代理原理</td>
+</tr>
+<tr>
+<td>Q6</td>
+<td>Bean 初始化几种方式的执行顺序？</td>
+<td>Bean 生命周期</td>
+</tr>
+<tr>
+<td>Q7</td>
+<td><code>BeanPostProcessor</code> 有什么用？</td>
+<td>Spring 扩展点</td>
+</tr>
+<tr>
+<td>Q8</td>
+<td>Spring Boot 启动慢怎么排查优化？</td>
+<td>性能调优</td>
+</tr>
+<tr>
+<td>Q9</td>
+<td>如何自定义 Spring Boot Starter？</td>
+<td>框架扩展</td>
+</tr>
+<tr>
+<td>Q10</td>
+<td>三级缓存分别存什么？为什么需要第三级？</td>
+<td>循环依赖原理</td>
+</tr>
+<tr>
+<td>Q11</td>
+<td>线上 OOM 发现 Bean 泄漏，原因有哪些？</td>
+<td>内存问题排查</td>
+</tr>
+<tr>
+<td>Q12</td>
+<td>如何运行时动态注册 Bean？</td>
+<td>容器扩展</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="_12">🔥 事务相关（节选）<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h3>
+<p><strong>Q1：<code>@Transactional</code> 加了，但数据库没有回滚，你怎么排查？</strong></p>
+<p>排查思路（按优先级）：
+1. <strong>同类调用</strong>：<code>this.methodA()</code> 调用同类的 <code>@Transactional</code> 方法，绕过代理，事务不生效
+2. <strong>异常被吞</strong>：方法内部 <code>try-catch</code> 捕获了异常但没有重新抛出
+3. <strong>异常类型不对</strong>：默认只回滚 <code>RuntimeException</code>，受检异常需加 <code>rollbackFor = Exception.class</code>
+4. <strong>方法非 public</strong>：Spring AOP 只拦截 public 方法
+5. <strong>数据库引擎不支持事务</strong>：MySQL 的 MyISAM 引擎不支持事务，需用 InnoDB
+6. <strong>多数据源问题</strong>：事务管理器和数据源不匹配</p>
+<blockquote>
+<p>📄 完整解析及代码示例见：<a href="../07-Spring%E5%AE%9E%E6%88%98%E5%BA%94%E7%94%A8%E9%A2%98/">07-Spring实战应用题.md</a></p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.top", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
