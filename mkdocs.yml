@@ -90,6 +90,8 @@ extra_javascript:
 plugins:
   - search:
       lang: zh
+      separator: '[\s\u200b\-\.]+'
+      jieba_dict_user: docs/assets/jieba/user_dict.txt
   - awesome-pages
   - minify:
       minify_html: true
