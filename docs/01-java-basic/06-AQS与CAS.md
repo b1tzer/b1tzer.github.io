@@ -14,7 +14,7 @@ title: AQS 与 CAS
 **AQS 和 CAS 解决的核心问题**：
 
 | 问题 | 解决方案 |
-| ：--- | ：--- |
+| :----- | :----- |
 | `synchronized` 不支持超时获取锁 | `ReentrantLock.tryLock(timeout)` |
 | `synchronized` 不支持可中断等待 | `ReentrantLock.lockInterruptibly()` |
 | `synchronized` 不支持公平锁 | `new ReentrantLock(true)` |
@@ -114,7 +114,7 @@ AbstractOwnableSynchronizer          ← 记录当前持有独占锁的线程
 #### AQS 的三大核心要素
 
 | 要素 | 类型 | 作用 |
-| ：--- | ：--- | ：--- |
+| :----- | :--- | :----- |
 | `state` | `volatile int` | 同步状态，含义由子类定义（如 ReentrantLock 用它记录重入次数，Semaphore 用它记录剩余许可数） |
 | CLH 等待队列 | 双向链表 | 存放所有等待获取同步状态的线程节点，保证线程按顺序被唤醒 |
 | `exclusiveOwnerThread` | `Thread` | 当前持有独占锁的线程（继承自 `AbstractOwnableSynchronizer`） |
@@ -218,7 +218,7 @@ ref.compareAndSet(value, newValue, stamp, stamp + 1);
 ### ReentrantLock vs synchronized
 
 | 对比项 | synchronized | ReentrantLock |
-| ：--- | ：--- | ：--- |
+| :----- | :----- | :----- |
 | **实现层面** | JVM 内置关键字 | Java 代码（基于 AQS） |
 | **可中断等待** | ❌ | ✅ `lockInterruptibly()` |
 | **超时获取锁** | ❌ | ✅ `tryLock(timeout, unit)` |
@@ -441,7 +441,7 @@ AbstractQueuedSynchronizer（模板）
 ```
 
 | 模式 | 代表实现 | 说明 |
-| ：--- | ：--- | ：--- |
+| :----- | :----- | :----- |
 | **独占模式** | `ReentrantLock` | 同一时刻只有一个线程持有 |
 | **共享模式** | `CountDownLatch`、`Semaphore`、`ReadLock` | 同一时刻多个线程可以持有 |
 
@@ -716,7 +716,7 @@ public long sum() {
 **性能对比**（高并发场景，16 线程，每线程 100 万次递增）：
 
 | 工具 | 耗时（参考） | 适用场景 |
-| ：--- | ：--- | ：--- |
+| :----- | :----- | :----- |
 | `synchronized` | ~3000ms | 通用，低并发 |
 | `AtomicLong` | ~1500ms | 需要精确原子读写 |
 | `LongAdder` | ~300ms | 高并发纯计数，允许非精确读 |

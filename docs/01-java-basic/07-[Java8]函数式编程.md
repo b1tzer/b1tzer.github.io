@@ -45,7 +45,7 @@ Collections.sort(names, String::compareTo);
 ```
 
 | 形式 | 示例 |
-| ：--- | ：--- |
+| :----- | :----- |
 | 无参数 | `() -> System.out.println("hello")` |
 | 单参数（可省略括号） | `x -> x * 2` |
 | 多参数 | `(x, y) -> x + y` |
@@ -56,7 +56,7 @@ Collections.sort(names, String::compareTo);
 ### 3. 四大函数式接口
 
 | 接口 | 方法签名 | 用途 | 示例 | 记忆口诀 |
-| ：--- | ：--- | ：--- | ：--- | ：--- |
+| :----- | :----- | :----- | :----- | :----- |
 | `Function<T, R>` | `R apply(T t)` | 转换：输入T，输出R | `Function<String, Integer> f = Integer::parseInt` | 有进有出 |
 | `Consumer<T>` | `void accept(T t)` | 消费：输入T，无返回 | `Consumer<String> c = System.out::println` | 有进无出 |
 | `Supplier<T>` | `T get()` | 供给：无输入，输出T | `Supplier<List> s = ArrayList::new` | 无进有出 |
@@ -85,7 +85,7 @@ boolean valid = notEmpty.test("Java"); // true
 ### 4. 方法引用四种形式
 
 | 类型 | 语法 | 等价 Lambda | 使用场景 |
-| ：--- | ：--- | ：--- | ：--- |
+| :----- | :----- | :----- | :----- |
 | 静态方法引用 | `Integer::parseInt` | `s -> Integer.parseInt(s)` | 调用静态方法 |
 | 实例方法引用（特定对象） | `str::toUpperCase` | `() -> str.toUpperCase()` | 调用特定对象的方法 |
 | 实例方法引用（任意对象） | `String::toUpperCase` | `s -> s.toUpperCase()` | 调用参数本身的方法 |
