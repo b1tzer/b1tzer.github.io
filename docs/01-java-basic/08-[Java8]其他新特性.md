@@ -9,14 +9,14 @@ title: "[Java8] 其他新特性"
 
 ---
 
-# 一、新日期 API
+## 一、新日期 API
 
 ---
 
-## 1. 引入：为什么要替换 Date/Calendar？
+### 1. 引入：为什么要替换 Date/Calendar？
 
 | 问题 | 旧 API（Date/Calendar） | 新 API（java.time） | 为什么新 API 更好 |
-|------|------------------------|-------------------|----------------|
+| ：--- | ：--- | ：--- | ：--- |
 | 线程安全 | ❌ 非线程安全 | ✅ 不可变对象，天然线程安全 | 不可变对象无需同步，可安全共享 |
 | 月份从0开始 | ❌ 0=1月，极易出错 | ✅ 1=1月，符合直觉 | 历史遗留问题，新 API 修正了 |
 | 时区处理 | ❌ 混乱，容易出错 | ✅ ZonedDateTime 明确处理时区 | 时区和时间分离，语义清晰 |
@@ -26,17 +26,17 @@ title: "[Java8] 其他新特性"
 
 ---
 
-## 2. 三个核心类对比
+### 2. 三个核心类对比
 
 | 类 | 包含信息 | 适用场景 |
-|----|---------|---------|
+| ：--- | ：--- | ：--- |
 | `LocalDate` | 仅日期（年月日） | 生日、节假日、不涉及时间的日期 |
 | `LocalDateTime` | 日期+时间，无时区 | 单时区系统的业务时间 |
 | `ZonedDateTime` | 日期+时间+时区 | 跨时区系统、国际化应用 |
 
 ---
 
-## 3. 核心类使用
+### 3. 核心类使用
 
 ```java
 // LocalDate：只有日期，无时间，无时区
@@ -62,15 +62,18 @@ Instant fromOld = oldDate.toInstant();      // 旧转新
 
 ---
 
-## 4. 新日期 API 常见问题
+### 4. 新日期 API 常见问题
 
 **Q：LocalDate、LocalDateTime、ZonedDateTime 有什么区别？**
+
 > `LocalDate` 只有日期，适合生日、节假日等场景；`LocalDateTime` 有日期和时间但无时区，适合单时区系统；`ZonedDateTime` 包含时区信息，适合跨时区的国际化应用。
 
 **Q：为什么新日期 API 是线程安全的？**
+
 > 新日期 API 的所有类都是不可变对象，每次操作（如 `plusDays`）都返回新对象，不修改原对象，因此天然线程安全，无需同步。
 
 **Q：如何将旧的 Date 转换为新的 LocalDateTime？**
+
 > ```java
 > Date date = new Date();
 > LocalDateTime ldt = date.toInstant()
@@ -80,9 +83,9 @@ Instant fromOld = oldDate.toInstant();      // 旧转新
 
 ---
 
-## 5. 新日期 API 工作中常见坑
+### 5. 新日期 API 工作中常见坑
 
-### ❌ 坑1：SimpleDateFormat 多线程共享导致数据错乱
+#### ❌ 坑1：SimpleDateFormat 多线程共享导致数据错乱
 
 ```java
 // ❌ 危险：SimpleDateFormat 是非线程安全的，多线程共享会出错
@@ -112,7 +115,7 @@ public static String format(Date date) {
 }
 ```
 
-### ❌ 坑2：月份从 0 开始的历史遗留坑
+#### ❌ 坑2：月份从 0 开始的历史遗留坑
 
 ```java
 // ❌ 旧 API：月份从 0 开始，极易出错
@@ -124,7 +127,7 @@ LocalDate date = LocalDate.of(2024, 1, 15); // 这才是 2024年1月15日
 LocalDate date2 = LocalDate.of(2024, Month.JANUARY, 15); // 更清晰
 ```
 
-### ❌ 坑3：时区处理不当导致时间偏差
+#### ❌ 坑3：时区处理不当导致时间偏差
 
 ```java
 // ❌ 危险：服务器时区和数据库时区不一致时，存储/读取时间会偏差
@@ -143,7 +146,7 @@ ZonedDateTime userTime = now.atZone(ZoneId.of("Asia/Shanghai"));
 String display = userTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 ```
 
-### ❌ 坑4：日期计算忽略夏令时
+#### ❌ 坑4：日期计算忽略夏令时
 
 ```java
 // ❌ 危险：某些国家有夏令时，直接加减小时数可能不准确
@@ -155,7 +158,7 @@ ZonedDateTime next = dt.plusHours(1); // 夏令时切换，实际跳过了一小
 // LocalDateTime 不感知时区，无法处理夏令时
 ```
 
-### ❌ 坑5：数据库与 Java 时间类型的映射
+#### ❌ 坑5：数据库与 Java 时间类型的映射
 
 ```java
 // MySQL DATETIME ↔ Java 类型映射（MyBatis/JPA）
@@ -174,11 +177,11 @@ ZonedDateTime next = dt.plusHours(1); // 夏令时切换，实际跳过了一小
 
 ---
 
-# 二、接口默认方法与静态方法
+## 二、接口默认方法与静态方法
 
 ---
 
-## 1. 引入：为什么需要默认方法？
+### 1. 引入：为什么需要默认方法？
 
 **问题**：接口一旦发布，新增方法会破坏所有实现类（编译错误）。
 
@@ -200,10 +203,10 @@ public interface Collection<E> {
 
 ---
 
-## 2. 默认方法 vs 静态方法
+### 2. 默认方法 vs 静态方法
 
 | 特性 | 默认方法（default） | 静态方法（static） |
-|------|-------------------|-----------------|
+| ：--- | ：--- | ：--- |
 | 调用方式 | 通过实例调用，可被子类覆盖 | 通过接口名调用，不可被覆盖 |
 | 用途 | 为接口提供默认实现，保持向后兼容 | 提供工具方法，与接口强相关的静态工具 |
 | 示例 | `Collection.forEach()` | `Comparator.comparing()` |
@@ -227,7 +230,7 @@ Validator<String> v = Validator.notNull();
 
 ---
 
-## 3. 多继承冲突解决规则
+### 3. 多继承冲突解决规则
 
 ```java
 interface A {
@@ -248,28 +251,32 @@ class C implements A, B {
 ```
 
 **三条优先级规则**：
+
 1. **类优先**：类中定义的方法优先于接口默认方法
 2. **子接口优先**：更具体的接口（子接口）优先于父接口
 3. **显式覆盖**：若仍有歧义，必须在实现类中显式覆盖并指定调用哪个接口的方法
 
 ---
 
-## 4. 接口方法常见问题
+### 4. 接口方法常见问题
 
 **Q：接口默认方法和抽象类有什么区别？**
+
 > 1. 接口可以多实现，抽象类只能单继承；2. 接口默认方法不能有状态（字段），抽象类可以有实例字段；3. 接口默认方法主要用于向后兼容，抽象类用于代码复用和模板方法模式。
 
 **Q：Java 8 接口可以有哪些类型的方法？**
+
 > Java 8 接口可以有：1. 抽象方法（必须实现）；2. 默认方法（`default`，有实现，可覆盖）；3. 静态方法（`static`，有实现，不可覆盖）。Java 9 还增加了私有方法（`private`）。
 
 **Q：为什么 Java 8 要给接口加默认方法？**
+
 > 主要是为了向后兼容。Java 8 引入 Stream API 后，需要给 `Collection` 接口添加 `stream()`、`forEach()` 等方法。如果没有默认方法，所有实现了 `Collection` 的类都需要修改，影响面极大。
 
 ---
 
-## 5. 接口方法工作中常见坑
+### 5. 接口方法工作中常见坑
 
-### ❌ 坑1：把 default 方法当抽象类用（滥用）
+#### ❌ 坑1：把 default 方法当抽象类用（滥用）
 
 ```java
 // ❌ 错误：用 default 方法存储状态，接口不应该有状态
@@ -290,7 +297,7 @@ public abstract class AbstractUserService {
 }
 ```
 
-### ❌ 坑2：default 方法与实现类方法的优先级混淆
+#### ❌ 坑2：default 方法与实现类方法的优先级混淆
 
 ```java
 public interface Greeting {
@@ -309,7 +316,7 @@ public class MyService implements Greeting {
 // 你的类方法会覆盖库的 default 方法，可能导致资源未正确关闭
 ```
 
-### ❌ 坑3：接口静态方法不能被继承
+#### ❌ 坑3：接口静态方法不能被继承
 
 ```java
 public interface Validator {
@@ -326,7 +333,7 @@ Validator v = Validator.notNull(); // ✅
 // StringValidator.notNull(); // ❌ 编译报错
 ```
 
-### ❌ 坑4：Java 9 私有方法的使用场景
+#### ❌ 坑4：Java 9 私有方法的使用场景
 
 ```java
 // Java 9 新增：接口私有方法，用于提取 default 方法的公共逻辑
