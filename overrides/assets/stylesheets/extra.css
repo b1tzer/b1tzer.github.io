@@ -82,3 +82,17 @@
     max-width: 88rem;
   }
 }
+
+/* ── 8. 内容页标题滚动固定（排除首页） ── */
+@media screen and (min-width: 60em) {
+  .md-content .md-typeset h2,
+  .md-content .md-typeset h3,
+  .md-content .md-typeset h4 {
+    position: sticky;
+    top: var(--md-header-height, 2.4rem);
+    background-color: var(--md-default-bg-color);
+    z-index: 1;
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
+  }
+}
