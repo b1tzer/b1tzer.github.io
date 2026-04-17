@@ -517,6 +517,66 @@ def merge_mkdocs_nav(existing_nav: list, articles: list[dict], chapters: list[di
     return nav
 
 
+# ── nav 自定义 YAML 序列化 ───────────────────────────────────────────────────
+
+def _yaml_quote_scalar(s: str) -> str:
+    """
+    借助 PyYAML 为单个标量生成合规的 YAML 字符串（自动决定是否加引号），
+    再做两步风格对齐：
+      1. 若 PyYAML 选择了单引号且内容无特殊字符，则剥掉引号（保持 plain 风格）；
+      2. 若仍需要引号，则统一为双引号（与 mkdocs.yml 原有风格一致）。
+    """
+    if not isinstance(s, str):
+        s = str(s)
+    dumped = yaml.safe_dump(s, allow_unicode=True, default_flow_style=False,
+                            default_style=None).rstrip("\n")
+    if dumped.endswith("\n..."):
+        dumped = dumped[:-4]
+
+    # PyYAML 对单引号形式的内部转义：'' 表示一个 '
+    if len(dumped) >= 2 and dumped[0] == "'" and dumped[-1] == "'":
+        inner = dumped[1:-1].replace("''", "'")
+        # 无 YAML 特殊字符：剥掉引号
+        if not re.search(r'[\[\]:&#*?|>!%@`]', inner) and not inner.startswith(("-", "?")):
+            return inner
+        # 否则改用双引号，最小转义 \ 和 "
+        escaped = inner.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    return dumped
+
+def _dump_nav(nav: list, indent: int = 1) -> str:
+    """
+    手写递归生成 nav 的 YAML 文本，每层缩进 2 空格。
+
+    入参：
+        nav    — list，每项为 {title: str_path} 或 {title: sub_list}
+        indent — 当前缩进层级（1 表示第一级，即 `  - xxx`）
+
+    输出格式示例（indent=1 时）：
+          - Home: index.md
+          - 环境搭建:
+            - Markdown 使用指南: 00-Env/Markdown使用指南.md
+    """
+    pad = "  " * indent  # 每层 2 空格
+    lines: list[str] = []
+    _collect_nav_lines(nav, indent, lines)
+    return "\n".join(lines) + "\n"
+
+def _collect_nav_lines(nav: list, indent: int, out: list[str]) -> None:
+    """递归地把每行推入 out 列表，避免在拼接时引入多余空行。"""
+    pad = "  " * indent
+    for item in nav:
+        if not isinstance(item, dict) or len(item) != 1:
+            continue  # 忽略非法结构
+        title, value = next(iter(item.items()))
+        title_s = _yaml_quote_scalar(str(title))
+        if isinstance(value, list):
+            out.append(f"{pad}- {title_s}:")
+            _collect_nav_lines(value, indent + 1, out)
+        else:
+            out.append(f"{pad}- {title_s}: {_yaml_quote_scalar(str(value))}")
+
+
 def update_mkdocs_yml(articles: list[dict], chapters: list[dict], check_only: bool = False) -> bool:
     """
     增量更新 mkdocs.yml 的 nav 部分：读取现有 nav，合并新增文章，保留已有顺序。
@@ -546,14 +606,16 @@ def update_mkdocs_yml(articles: list[dict], chapters: list[dict], check_only: bo
     print("  → 合并新增条目...")
     new_nav = merge_mkdocs_nav(existing_nav, articles, chapters)
 
-    nav_yaml = yaml.dump(new_nav, default_flow_style=False, allow_unicode=True, indent=2)
-    # 只去掉不含 YAML 特殊字符的单引号对；含 [ ] : # & * ? | > ! % @ ` 的值必须保留引号
-    nav_yaml = re.sub(r"'([^']*)'", lambda m: m.group(1) if not re.search(r'[\[\]:&#*?|>!%@`]', m.group(1)) else f'"{m.group(1)}"', nav_yaml).rstrip("\n")
+    # 手写递归序列化 nav，严格控制每层 2 空格缩进，保持与 mkdocs.yml 中
+    # theme / plugins / extra 等块一致的缩进风格。
+    # nav 的结构非常简单：每一项都是 {title: path_str} 或 {title: sub_list}，
+    # 因此无需依赖 PyYAML（它对 block sequence 缩进的控制能力不够细）。
+    nav_body = _dump_nav(new_nav, indent=1)  # 顶层从 1 级缩进起（即 2 空格）
 
-    # 将 nav: 之后的所有内容替换为新的 nav_yaml，末尾统一保留一个换行
+    # 将 nav: 之后的所有内容替换为新的 nav_body，末尾统一保留一个换行
     new_content = re.sub(
         r"(nav:\n).*",
-        r"\g<1>" + nav_yaml,
+        lambda _m: "nav:\n" + nav_body,
         content,
         flags=re.DOTALL,
     ).rstrip("\n") + "\n"
