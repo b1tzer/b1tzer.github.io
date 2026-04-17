@@ -63,6 +63,30 @@ public final class String implements Serializable, Comparable<String>, CharSeque
 !!! note "为什么选择 LATIN1 而不是 UTF-8？"
     LATIN1（ISO-8859-1）是单字节定长编码，每个字符恰好 1 字节，便于通过下标 O(1) 随机访问。UTF-8 是变长编码，随机访问需要 O(n) 扫描，不适合作为内部存储格式。
 
+**coder 由 JVM 自动判断**：创建 String 对象时，JVM 会扫描所有字符，根据码点范围自动选择编码，对开发者完全透明。
+
+??? info "展开：coder 的自动判断规则与示例"
+
+    ```java
+    // 判断规则（伪代码）
+    if (所有字符码点 <= 0xFF) {
+        coder = LATIN1;   // 每字符 1 字节
+    } else {
+        coder = UTF16;    // 每字符 2 字节
+    }
+    ```
+
+    ```java
+    String s1 = "hello";       // 全 ASCII → LATIN1（5 字节）
+    String s2 = "café";        // é 码点 0xE9 ≤ 0xFF → LATIN1（4 字节）
+    String s3 = "你好";         // 中文码点 > 0xFF → UTF16（4 字节）
+    String s4 = "hello世界";    // 含中文 → 整体升级为 UTF16（14 字节）
+    ```
+
+    **一票否决制**：只要字符串中任何一个字符超出 LATIN1 范围（> 0xFF），整个字符串就必须使用 UTF16 存储，不能混合编码。这是为了保证 `charAt(i)`、`length()` 等方法能够 O(1) 随机访问。
+
+    可以通过 JVM 参数 `-XX:-CompactStrings` 关闭该优化，强制所有 String 使用 UTF16（退化为 JDK 8 的 `char[]` 等价行为），默认开启 `-XX:+CompactStrings`。
+
 ```txt
 JDK 8 存储 "hello"：
 ┌────┬────┬────┬────┬────┐
