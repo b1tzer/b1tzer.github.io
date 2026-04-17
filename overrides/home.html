@@ -1,319 +1,88 @@
 {% extends "main.html" %}
 
-{% block tabs %}
-  {{ super() }}
-  <style>
-    /* ══════════════════════════════════════════════
-       首页全局样式
-    ══════════════════════════════════════════════ */
-    .md-main__inner { margin: 0; }
-    .md-content { display: none; }
-    @media screen and (min-width: 60em)    { .md-sidebar--secondary { display: none; } }
-    @media screen and (min-width: 76.25em) { .md-sidebar--primary   { display: none; } }
+{% block tabs %}{{ super() }}{% endblock %}
 
-    .md-main { padding-top: 0 !important; }
+{% block content %}
+{% set stats       = config.extra.home_stats   if config.extra.home_stats   is defined else {} %}
+{% set tech_stacks = config.extra.tech_stacks  if config.extra.tech_stacks  is defined else [] %}
+{% set cta_url     = config.extra.home_cta_url if config.extra.home_cta_url is defined else '' %}
+<div class="home-page">
 
-    /* 禁止首页滑动 */
-    html, body {
-      overflow: hidden !important;
-      height: 100%;
-    }
+  <!-- Hero 区 -->
+  <section class="hero-section" id="hero-section">
+    <div class="hero-spotlight" id="hero-spotlight" aria-hidden="true"></div>
 
-    /* 隐藏不需要的内容区（因为禁止滑动了） */
-    .content-section {
-      display: none !important;
-    }
+    <div class="hero-inner">
+      <!-- 左侧文字 -->
+      <div class="hero-left">
+        <span class="hero-eyebrow">
+          <span class="hero-eyebrow-dot" aria-hidden="true"></span>
+          The Stack
+        </span>
 
-    /* 强制首页 header 透明，避免 JS 加载前的闪烁 */
-    .md-header {
-      background-color: transparent !important;
-      box-shadow: none !important;
-    }
+        <h1 class="hero-title">{{ config.site_name }}</h1>
 
-    /* 修复 md-tabs 位置，使其固定在 header 下方，并强制透明 */
-    .md-tabs {
-      position: fixed;
-      top: var(--md-header-height, 2.4rem);
-      width: 100%;
-      z-index: 200;
-      background-color: transparent !important;
-    }
+        <p class="hero-subtitle">{{ config.site_description }}</p>
 
-    /* ══════════════════════════════════════════════
-       Hero 区域 (动态渐变背景 + 居中内容)
-    ══════════════════════════════════════════════ */
-    .hero-section {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      /* 探照灯背景底色：深邃的暗色 */
-      background-color: #0a0a0a;
-      color: white;
-      padding: 2rem;
-      text-align: center;
-      z-index: 1;
-    }
+        <div class="hero-buttons">
+          <a href="{{ cta_url | url }}" class="btn-primary" aria-label="开始阅读第一篇文章">
+            开始阅读
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <a href="{{ config.repo_url }}" target="_blank" rel="noopener" class="btn-ghost" aria-label="在 GitHub 上查看源码">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+            GitHub
+          </a>
+        </div>
 
-    [data-md-color-scheme="slate"] .hero-section {
-      background-color: #050505;
-    }
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-num">{{ stats.topics | default("?") }}</span>
+            <span class="hero-stat-label">技术主题</span>
+          </div>
+          <div class="hero-stat-sep" aria-hidden="true"></div>
+          <div class="hero-stat">
+            <span class="hero-stat-num">{{ stats.total | default("?") }}+</span>
+            <span class="hero-stat-label">深度文章</span>
+          </div>
+        </div>
+      </div>
 
-    /* 探照灯光晕层 */
-    .hero-spotlight {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 0;
-      /* 使用 CSS 变量控制光源位置，默认在中心 */
-      --x: 50%;
-      --y: 50%;
-      background: radial-gradient(
-        circle 600px at var(--x) var(--y),
-        rgba(79, 70, 229, 0.15),
-        transparent 80%
-      );
-      transition: background 0.1s ease;
-    }
-
-    [data-md-color-scheme="slate"] .hero-spotlight {
-      background: radial-gradient(
-        circle 600px at var(--x) var(--y),
-        rgba(79, 70, 229, 0.2),
-        transparent 80%
-      );
-    }
-
-    .hero-content {
-      position: relative;
-      z-index: 1;
-      max-width: 800px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    /* 打字机标题 */
-    .hero-title {
-      font-size: clamp(2.5rem, 8vw, 4.5rem);
-      font-weight: 900;
-      margin-bottom: 1rem;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-      background: linear-gradient(to right, #ffffff, #a5b4fc);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      /* 打字机光标 */
-      border-right: 4px solid #fff;
-      white-space: nowrap;
-      overflow: hidden;
-      width: 0;
-    }
-
-    .hero-title.typing-done {
-      border-right-color: transparent;
-      animation: blinkCursor 0.8s step-end infinite;
-    }
-
-    @keyframes blinkCursor {
-      50% { border-right-color: #fff; }
-    }
-
-    .hero-subtitle {
-      font-size: clamp(1rem, 3vw, 1.25rem);
-      color: rgba(255, 255, 255, 0.8);
-      margin-bottom: 2.5rem;
-      max-width: 600px;
-      opacity: 0;
-      transform: translateY(20px);
-      animation: fadeUp 0.8s ease forwards;
-      animation-delay: 1.2s; /* 等待打字机完成 */
-    }
-
-    .hero-buttons {
-      display: flex;
-      gap: 1.5rem;
-      opacity: 0;
-      transform: translateY(20px);
-      animation: fadeUp 0.8s ease forwards;
-      animation-delay: 1.5s;
-    }
-
-    @keyframes fadeUp {
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .btn-primary {
-      background: #4f46e5;
-      color: white !important;
-      padding: 1rem 2.5rem;
-      font-size: 1.2rem;
-      border-radius: 8px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
-    }
-    .btn-primary:hover {
-      background: #4338ca;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
-    }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.1);
-      color: white !important;
-      padding: 1rem 2.5rem;
-      font-size: 1.2rem;
-      border-radius: 8px;
-      font-weight: 600;
-      text-decoration: none;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      transition: all 0.3s ease;
-    }
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: translateY(-2px);
-    }
-
-    /* ══════════════════════════════════════════════
-       内容区域 (卡片网格)
-    ══════════════════════════════════════════════ */
-    .content-section {
-      padding: 4rem 1rem;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .card-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1.5rem;
-      margin-top: 2rem;
-    }
-
-    .card {
-      background: var(--md-default-bg-color);
-      border: 1px solid var(--md-default-fg-color--lightest);
-      border-radius: 12px;
-      padding: 1.5rem;
-      text-decoration: none !important;
-      color: inherit !important;
-      display: flex;
-      flex-direction: column;
-      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
-    }
-
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0; height: 4px;
-      background: linear-gradient(90deg, #4f46e5, #ec4899);
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
-      border-color: transparent;
-    }
-    [data-md-color-scheme="slate"] .card:hover {
-      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
-    }
-
-    .card:hover::before {
-      opacity: 1;
-    }
-
-    .card-icon {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-      display: inline-block;
-      transition: transform 0.3s ease;
-    }
-    .card:hover .card-icon {
-      transform: scale(1.1) rotate(5deg);
-    }
-
-    .card-title {
-      font-size: 1.2rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      color: var(--md-default-fg-color);
-    }
-
-    .card-desc {
-      font-size: 0.9rem;
-      color: var(--md-default-fg-color--light);
-      line-height: 1.5;
-      flex-grow: 1;
-      margin-bottom: 1.2rem;
-    }
-
-    .card-count {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #4f46e5;
-      background: rgba(79, 70, 229, 0.1);
-      padding: 0.3rem 0.8rem;
-      border-radius: 20px;
-      align-self: flex-start;
-      transition: background 0.3s ease, color 0.3s ease;
-    }
-    .card:hover .card-count {
-      background: #4f46e5;
-      color: white;
-    }
-    [data-md-color-scheme="slate"] .card-count {
-      color: #a5b4fc;
-      background: rgba(165, 180, 252, 0.1);
-    }
-    [data-md-color-scheme="slate"] .card:hover .card-count {
-      background: #a5b4fc;
-      color: #1a1a2e;
-    }
-
-    /* 移动端适配 */
-    @media (max-width: 768px) {
-      .hero-buttons { flex-direction: column; width: 100%; max-width: 300px; }
-      .btn-primary, .btn-secondary { text-align: center; width: 100%; }
-      .card-grid { grid-template-columns: 1fr; }
-    }
-  </style>
-{% endblock %}
-
-{% block hero %}
-  <section class="hero-section">
-    <div class="hero-spotlight"></div>
-    
-    <div class="hero-content">
-      <h1 class="hero-title" id="hero-title" aria-label="{{ config.site_name }}"></h1>
-      <p class="hero-subtitle">{{ config.site_description }}</p>
-      <div class="hero-buttons">
-        <a href="{{ '01-java-basic/00-Java基础与JVM概览/' | url }}" class="btn-primary">开始阅读 →</a>
-        <a href="https://github.com/b1tzer/b1tzer.github.io" target="_blank" class="btn-secondary">GITHUB</a>
+      <!-- 右侧技术栈列表（数据来自 gen_index.py 注入的 tech_stacks，单一数据源） -->
+      <div class="hero-right">
+        {% for stack in tech_stacks %}
+        <a href="{{ stack.url | url }}" class="stack-item"
+           style="--si-color:{{ stack.color }}; --i:{{ loop.index0 }}"
+           aria-label="进入 {{ stack.name }} 专题">
+          <span class="stack-accent" aria-hidden="true"></span>
+          <span class="stack-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">{{ stack.icon_svg | safe }}</svg>
+          </span>
+          <span class="stack-info">
+            <span class="stack-head">
+              <span class="stack-name">{{ stack.name }}</span>
+              <span class="stack-meta">
+                <span class="stack-meta-count">{{ stack.count }} 篇</span>
+                {% if stack.updated %}
+                <span class="stack-meta-sep" aria-hidden="true">·</span>
+                <span class="stack-meta-updated">{{ stack.updated }}</span>
+                {% endif %}
+              </span>
+            </span>
+            <span class="stack-tags">
+              {% for tag in stack.tags %}
+              <span class="stack-tag">{{ tag }}</span>
+              {% endfor %}
+            </span>
+          </span>
+          <span class="stack-arrow" aria-hidden="true">→</span>
+        </a>
+        {% endfor %}
       </div>
     </div>
   </section>
-{% endblock %}
 
-{% block content %}
-  <section class="content-section md-typeset" id="content-section">
-    {{ super() }}
-  </section>
+</div>
 {% endblock %}
 
 {% block footer %}{% endblock %}
@@ -321,66 +90,46 @@
 {% block scripts %}
   {{ super() }}
   <script>
-    // 确保只注册一次订阅，避免重复绑定
-    if (typeof window.homeScriptInitialized === 'undefined') {
-      window.homeScriptInitialized = true;
-      let typingTimeout;
-      
-      // 监听 MkDocs Material 的页面加载/切换事件 (支持 instant navigation)
-      if (typeof document$ !== "undefined") {
-        document$.subscribe(function() {
-          const titleEl = document.getElementById("hero-title");
-          if (!titleEl) return; // 如果当前不是首页，直接返回
+    (() => {
+      /* ────────────────────────────────────────────
+         Hero 探照灯鼠标跟随
+         —— 绑定在 .hero-section 上，而非 document：
+            1) 离开首页后 DOM 卸载，事件监听自动失效，不存在泄漏
+            2) 坐标使用相对 hero 的 offsetX/offsetY，
+               与 spotlight (inset:0, absolute) 坐标系一致
+         ──────────────────────────────────────────── */
+      const setupSpotlight = () => {
+        const hero      = document.querySelector('.hero-section');
+        const spotlight = document.getElementById('hero-spotlight');
+        if (!hero || !spotlight || hero.dataset.spotlightBound === '1') return;
+        hero.dataset.spotlightBound = '1';
 
-          // 清除可能存在的旧定时器，避免竞态条件
-          clearTimeout(typingTimeout);
+        let rafPending = false;
+        let x = 0, y = 0;
 
-          // 重置状态，确保从其他页面切换回来时能重新播放动画
-          titleEl.textContent = "";
-          titleEl.classList.remove("typing-done");
-          titleEl.style.width = '0';
+        hero.addEventListener('mousemove', (e) => {
+          const rect = hero.getBoundingClientRect();
+          x = e.clientX - rect.left;
+          y = e.clientY - rect.top;
+          if (rafPending) return;
+          rafPending = true;
+          requestAnimationFrame(() => {
+            rafPending = false;
+            spotlight.style.setProperty('--x', `${x}px`);
+            spotlight.style.setProperty('--y', `${y}px`);
+          });
+        }, { passive: true });
+      };
 
-          const titleText = "{{ config.site_name }}";
-          
-          // 检测用户是否偏好减少动效
-          const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-          if (prefersReducedMotion) {
-            titleEl.textContent = titleText;
-            titleEl.style.width = 'auto';
-            titleEl.classList.add("typing-done");
-            return;
-          }
-
-          let i = 0;
-          function typeWriter() {
-            if (i < titleText.length) {
-              titleEl.textContent += titleText.charAt(i);
-              titleEl.style.width = 'auto';
-              i++;
-              typingTimeout = setTimeout(typeWriter, 100);
-            } else {
-              titleEl.classList.add("typing-done");
-            }
-          }
-          
-          // 缩短初始等待时间 (从 300ms 降到 50ms)
-          typingTimeout = setTimeout(typeWriter, 300);
-        });
+      if (typeof document$ !== 'undefined') {
+        // MkDocs Material SPA 模式：每次页面切换都会触发，
+        // 切到非首页时 .hero-section 不存在，setup 会 early return
+        document$.subscribe(setupSpotlight);
+      } else if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupSpotlight);
+      } else {
+        setupSpotlight();
       }
-
-      // 注册探照灯鼠标跟随事件 (全局只需注册一次)
-      document.addEventListener('mousemove', function(e) {
-        const spotlight = document.querySelector('.hero-spotlight');
-        if (!spotlight) return;
-        
-        // 获取鼠标在屏幕上的坐标
-        const x = e.clientX;
-        const y = e.clientY;
-        
-        // 更新 CSS 变量，改变径向渐变的中心点
-        spotlight.style.setProperty('--x', `${x}px`);
-        spotlight.style.setProperty('--y', `${y}px`);
-      });
-    }
+    })();
   </script>
 {% endblock %}

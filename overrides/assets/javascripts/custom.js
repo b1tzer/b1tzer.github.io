@@ -68,16 +68,13 @@
   /* ── 文章朗读功能（Web Speech API） ── */
   var ttsState = {
     synth: window.speechSynthesis || null,
-    utterances: [],       // 分段的 SpeechSynthesisUtterance 列表
-    paragraphs: [],       // 对应的 DOM 段落元素
+    paragraphs: [],       // 朗读的 DOM 段落元素
     currentIndex: -1,     // 当前朗读的段落索引
     status: 'stopped',    // stopped | playing | paused
     rate: 1.0,            // 语速
     voice: null,          // 选中的语音
     btnEl: null,          // 朗读按钮
-    panelEl: null,        // 控制面板
-    keepAliveTimer: null, // Chrome 长文本保活定时器
-    progressTimer: null   // 进度更新定时器
+    keepAliveTimer: null  // Chrome 长文本保活定时器
   };
 
   /** 检测浏览器是否支持 Speech API */
@@ -277,15 +274,26 @@
     if (index >= 0 && index < ttsState.paragraphs.length) {
       var el = ttsState.paragraphs[index].el;
       el.classList.add('tts-reading');
-      // 滚动到可视区域
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // 优化滚动逻辑：只有当元素即将离开视口时才滚动
+      var rect = el.getBoundingClientRect();
+      var windowHeight = window.innerHeight || document.documentElement.clientHeight;
+      
+      // 如果元素顶部在屏幕上方，或者元素底部在屏幕下方 20% 区域内，则触发滚动
+      if (rect.top < 80 || rect.bottom > windowHeight * 0.8) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
   }
 
-  /** Chrome 长文本保活：防止朗读超过 15 秒后被暂停 */
+  /** Chrome 长文本保活：防止朗读超过 15 秒后被暂停
+   *  注意：只有在 status==='playing' 时才执行，避免干扰刚 resume 的状态
+   */
   function startKeepAlive() {
     stopKeepAlive();
     ttsState.keepAliveTimer = setInterval(function () {
+      // 用户状态不是 playing 时不做任何操作，避免与 pause/resume 时序冲突
+      if (ttsState.status !== 'playing') return;
       if (ttsState.synth.speaking && !ttsState.synth.paused) {
         ttsState.synth.pause();
         ttsState.synth.resume();
@@ -353,8 +361,6 @@
     }
     ttsState.status = 'playing';
     updateTTSButton();
-    showTTSPanel();
-    updateVoiceSelector();
     startKeepAlive();
 
     speakParagraph(0);
@@ -370,14 +376,32 @@
     }
   }
 
-  /** 恢复朗读 */
+  /** 恢复朗读
+   *  解决 Chrome Web Speech API 已知问题：
+   *  - 暂停后 synth.paused 状态不可靠
+   *  - 暂停超过 ~15s 后 resume() 调用成功但实际无声
+   *  策略：先尝试原生 resume()，100ms 后校验；若仍未恢复，从当前段落重新朗读
+   */
   function resumeTTS() {
-    if (ttsState.synth.paused) {
-      ttsState.synth.resume();
-      ttsState.status = 'playing';
+    if (ttsState.status !== 'paused') return;
+
+    // 先尝试原生 resume
+    try { ttsState.synth.resume(); } catch (e) { /* ignore */ }
+    ttsState.status = 'playing';
+    updateTTSButton();
+
+    // 稍作延迟再启动 keepAlive，避免立即 pause/resume 干扰刚恢复的播放
+    setTimeout(function () {
+      // 校验：如果 resume 没有真正恢复朗读，则从当前段落重新开始
+      if (ttsState.status !== 'playing') return;
+      if (!ttsState.synth.speaking || ttsState.synth.paused) {
+        // 彻底重置底层队列，从当前段落重播
+        ttsState.synth.cancel();
+        var idx = ttsState.currentIndex >= 0 ? ttsState.currentIndex : 0;
+        speakParagraph(idx);
+      }
       startKeepAlive();
-      updateTTSButton();
-    }
+    }, 120);
   }
 
   /** 停止朗读 */
@@ -392,70 +416,40 @@
     });
     ttsState.paragraphs = [];
     updateTTSButton();
-    hideTTSPanel();
-  }
-
-  /** 清理进度更新定时器 */
-  function clearProgressTimer() {
-    if (ttsState.progressTimer) {
-      clearInterval(ttsState.progressTimer);
-      ttsState.progressTimer = null;
-    }
   }
 
   /** 更新朗读按钮状态 */
   function updateTTSButton() {
     if (!ttsState.btnEl) return;
-    var icon = ttsState.btnEl.querySelector('.tts-icon');
-    if (!icon) return;
-
+    // 通过 data-state 属性驱动 CSS 切换不同 SVG 图标显示
+    ttsState.btnEl.setAttribute('data-state', ttsState.status);
     switch (ttsState.status) {
       case 'playing':
-        icon.textContent = '⏸';
         ttsState.btnEl.title = '暂停朗读';
+        ttsState.btnEl.setAttribute('aria-label', '暂停朗读');
         ttsState.btnEl.classList.add('tts-active');
         break;
       case 'paused':
-        icon.textContent = '▶';
         ttsState.btnEl.title = '继续朗读';
+        ttsState.btnEl.setAttribute('aria-label', '继续朗读');
         ttsState.btnEl.classList.add('tts-active');
         break;
       default:
-        icon.textContent = '🔊';
         ttsState.btnEl.title = '朗读文章';
+        ttsState.btnEl.setAttribute('aria-label', '朗读文章');
         ttsState.btnEl.classList.remove('tts-active');
     }
   }
 
-  /** 显示控制面板 */
-  function showTTSPanel() {
-    if (ttsState.panelEl) {
-      ttsState.panelEl.classList.add('tts-panel-visible');
-    }
-  }
-
-  /** 隐藏控制面板 */
-  function hideTTSPanel() {
-    if (ttsState.panelEl) {
-      ttsState.panelEl.classList.remove('tts-panel-visible');
-    }
-  }
-
-  /** 创建朗读按钮和控制面板 */
+  /** 创建朗读按钮（仅文章标题旁） */
   function createTTSControls() {
-    // 移除旧的控件（页面切换时）
+    // 移除旧的按钮（页面切换时）
     var oldBtn = document.querySelector('.tts-btn');
     if (oldBtn) oldBtn.remove();
-    var oldPanel = document.querySelector('.tts-panel');
-    if (oldPanel) oldPanel.remove();
-    
-    // 清理旧的定时器，防止内存泄漏
-    clearProgressTimer();
 
     // 首页不显示
     if (isHomePage()) {
       ttsState.btnEl = null;
-      ttsState.panelEl = null;
       return;
     }
 
@@ -469,7 +463,25 @@
     var btn = document.createElement('button');
     btn.className = 'tts-btn';
     btn.title = '朗读文章';
-    btn.innerHTML = '<span class="tts-icon">🔊</span>';
+    btn.setAttribute('aria-label', '朗读文章');
+    btn.setAttribute('data-state', 'stopped');
+    // 三种状态的 SVG 图标（Lucide 风格细描边），通过 data-state 属性切换显示
+    btn.innerHTML =
+      // stopped: 音量波形（两道扩散的声波）
+      '<svg class="tts-icon tts-icon-speaker" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M11 5 6 9H3a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3l5 4V5Z"/>' +
+        '<path class="tts-wave tts-wave-1" d="M15.5 9a4 4 0 0 1 0 6"/>' +
+        '<path class="tts-wave tts-wave-2" d="M18.5 6a8 8 0 0 1 0 12"/>' +
+      '</svg>' +
+      // playing: 暂停（两道圆角竖条）
+      '<svg class="tts-icon tts-icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<rect x="7" y="5" width="3.2" height="14" rx="1.2"/>' +
+        '<rect x="13.8" y="5" width="3.2" height="14" rx="1.2"/>' +
+      '</svg>' +
+      // paused: 播放（圆角三角）
+      '<svg class="tts-icon tts-icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M7 5.5a1 1 0 0 1 1.5-.87l10 6.5a1 1 0 0 1 0 1.74l-10 6.5A1 1 0 0 1 7 18.5v-13Z"/>' +
+      '</svg>';
     btn.addEventListener('click', function () {
       switch (ttsState.status) {
         case 'stopped':
@@ -485,119 +497,6 @@
     });
     h1.appendChild(btn);
     ttsState.btnEl = btn;
-
-    // 创建底部控制面板
-    var panel = document.createElement('div');
-    panel.className = 'tts-panel';
-    panel.innerHTML =
-      '<div class="tts-panel-inner">' +
-        '<button class="tts-panel-btn tts-panel-stop" title="停止">⏹</button>' +
-        '<div class="tts-panel-voice">' +
-          '<label>语音</label>' +
-          '<select class="tts-voice-select"></select>' +
-        '</div>' +
-        '<div class="tts-panel-speed">' +
-          '<label>语速</label>' +
-          '<input type="range" class="tts-speed-slider" min="0.5" max="2.5" step="0.1" value="1.0">' +
-          '<span class="tts-speed-value">1.0x</span>' +
-        '</div>' +
-        '<span class="tts-panel-progress"></span>' +
-      '</div>';
-
-    document.body.appendChild(panel);
-    ttsState.panelEl = panel;
-
-    // 停止按钮
-    panel.querySelector('.tts-panel-stop').addEventListener('click', stopTTS);
-
-    // 语音选择器
-    var voiceSelect = panel.querySelector('.tts-voice-select');
-    populateVoiceSelector(voiceSelect);
-    voiceSelect.addEventListener('change', function () {
-      var voices = ttsState.synth.getVoices();
-      var selected = voices.find(function (v) { return v.name === voiceSelect.value; });
-      if (selected) {
-        ttsState.voice = selected;
-        // 如果正在朗读，重新开始当前段落以应用新语音
-        if (ttsState.status === 'playing') {
-          ttsState.synth.cancel();
-          speakParagraph(ttsState.currentIndex);
-        }
-      }
-    });
-
-    // 语速滑块
-    var slider = panel.querySelector('.tts-speed-slider');
-    var speedLabel = panel.querySelector('.tts-speed-value');
-    slider.addEventListener('input', function () {
-      var newRate = parseFloat(this.value);
-      ttsState.rate = newRate;
-      speedLabel.textContent = newRate.toFixed(1) + 'x';
-
-      // 如果正在朗读，重新开始当前段落以应用新语速
-      if (ttsState.status === 'playing') {
-        ttsState.synth.cancel();
-        speakParagraph(ttsState.currentIndex);
-      }
-    });
-
-    // 定时更新进度
-    ttsState.progressTimer = setInterval(function () {
-      var progress = panel.querySelector('.tts-panel-progress');
-      if (progress && ttsState.status !== 'stopped' && ttsState.paragraphs.length > 0) {
-        progress.textContent = (ttsState.currentIndex + 1) + ' / ' + ttsState.paragraphs.length;
-      } else if (progress) {
-        progress.textContent = '';
-      }
-    }, 500);
-  }
-
-  /** 填充语音选择器下拉框 */
-  function populateVoiceSelector(selectEl) {
-    if (!selectEl) return;
-    selectEl.innerHTML = '';
-
-    var zhVoices = getChineseVoices();
-    var otherVoices = ttsState.synth.getVoices().filter(function (v) {
-      return v.lang.indexOf('zh') === -1 && v.lang.indexOf('cmn') === -1;
-    });
-
-    // 中文语音分组
-    if (zhVoices.length > 0) {
-      var zhGroup = document.createElement('optgroup');
-      zhGroup.label = '中文语音（推荐）';
-      zhVoices.forEach(function (v) {
-        var opt = document.createElement('option');
-        opt.value = v.name;
-        opt.textContent = v.name + (v.localService ? '' : ' ☁️');
-        if (ttsState.voice && ttsState.voice.name === v.name) {
-          opt.selected = true;
-        }
-        zhGroup.appendChild(opt);
-      });
-      selectEl.appendChild(zhGroup);
-    }
-
-    // 其他语音分组（只显示前 10 个，避免列表过长）
-    if (otherVoices.length > 0) {
-      var otherGroup = document.createElement('optgroup');
-      otherGroup.label = '其他语音';
-      otherVoices.slice(0, 10).forEach(function (v) {
-        var opt = document.createElement('option');
-        opt.value = v.name;
-        opt.textContent = v.name + ' (' + v.lang + ')' + (v.localService ? '' : ' ☁️');
-        otherGroup.appendChild(opt);
-      });
-      selectEl.appendChild(otherGroup);
-    }
-  }
-
-  /** 更新语音选择器的选中状态 */
-  function updateVoiceSelector() {
-    if (!ttsState.panelEl) return;
-    var selectEl = ttsState.panelEl.querySelector('.tts-voice-select');
-    if (!selectEl || !ttsState.voice) return;
-    selectEl.value = ttsState.voice.name;
   }
 
   /** 初始化朗读功能 */

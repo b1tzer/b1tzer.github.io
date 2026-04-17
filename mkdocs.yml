@@ -81,6 +81,7 @@ extra:
 # 自定义CSS文件
 extra_css:
   - assets/stylesheets/extra.css
+  - assets/stylesheets/home.css
 
 # 自定义JavaScript文件
 extra_javascript:

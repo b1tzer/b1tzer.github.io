@@ -5,8 +5,3 @@ hide:
   - toc
   - feedback
 ---
-
-## 📚 技术领域
-
-{{TECH_CARDS}}
-
