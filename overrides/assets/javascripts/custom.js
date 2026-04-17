@@ -76,7 +76,8 @@
     voice: null,          // 选中的语音
     btnEl: null,          // 朗读按钮
     panelEl: null,        // 控制面板
-    keepAliveTimer: null  // Chrome 长文本保活定时器
+    keepAliveTimer: null, // Chrome 长文本保活定时器
+    progressTimer: null   // 进度更新定时器
   };
 
   /** 检测浏览器是否支持 Speech API */
@@ -394,6 +395,14 @@
     hideTTSPanel();
   }
 
+  /** 清理进度更新定时器 */
+  function clearProgressTimer() {
+    if (ttsState.progressTimer) {
+      clearInterval(ttsState.progressTimer);
+      ttsState.progressTimer = null;
+    }
+  }
+
   /** 更新朗读按钮状态 */
   function updateTTSButton() {
     if (!ttsState.btnEl) return;
@@ -439,6 +448,9 @@
     if (oldBtn) oldBtn.remove();
     var oldPanel = document.querySelector('.tts-panel');
     if (oldPanel) oldPanel.remove();
+    
+    // 清理旧的定时器，防止内存泄漏
+    clearProgressTimer();
 
     // 首页不显示
     if (isHomePage()) {
@@ -530,7 +542,7 @@
     });
 
     // 定时更新进度
-    setInterval(function () {
+    ttsState.progressTimer = setInterval(function () {
       var progress = panel.querySelector('.tts-panel-progress');
       if (progress && ttsState.status !== 'stopped' && ttsState.paragraphs.length > 0) {
         progress.textContent = (ttsState.currentIndex + 1) + ' / ' + ttsState.paragraphs.length;

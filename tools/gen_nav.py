@@ -212,9 +212,12 @@ def collect_articles() -> tuple[list[dict], list[dict]]:
             )
             if sub_md_files:
                 subdirs.append({"name": sub_entry, "files": sub_md_files})
+                print(f"    [子目录] {entry}/{sub_entry}: {len(sub_md_files)} 篇")
 
         if md_files or subdirs:
             chapters.append({"dir": entry, "files": md_files, "subdirs": subdirs})
+            sub_total = sum(len(s["files"]) for s in subdirs)
+            print(f"  [章节] {entry}: 根目录 {len(md_files)} 篇，子目录 {sub_total} 篇")
 
     # 构建文章列表（包含根目录文件和子目录文件）
     articles = []
@@ -239,119 +242,313 @@ def collect_articles() -> tuple[list[dict], list[dict]]:
                 })
     return articles, chapters
 
+# ── nav 数字前缀提取 ─────────────────────────────────────────────────────────
 
-def generate_index_md(articles: list[dict], check_only: bool = False) -> bool:
+# 匹配文件名或目录名开头的数字前缀，如 "01-"、"01a-"
+_NUM_PREFIX = re.compile(r"^(\d+)[a-z]?-")
+
+
+def _nav_sort_key(path_str: str) -> tuple:
     """
-    生成 docs/index.md。
-
-    读取 tools/index_template.md，将其中的 {{TECH_CARDS}} 占位符替换为
-    根据文章列表动态生成的卡片网格 HTML。
+    从 nav 条目的路径字符串中提取排序键。
+    路径格式："dir/file.md" 或 "dir/subdir/file.md"
+    取最后一段（文件名或子目录名）的数字前缀作为排序依据。
+    有数字前缀 → (0, 数字值)；无前缀 → (1, 0)（排到有前缀的后面）
     """
-    index_path = os.path.join(DOCS_DIR, "index.md")
+    last_seg = path_str.rstrip("/").rsplit("/", 1)[-1]
+    m = _NUM_PREFIX.match(last_seg)
+    if m:
+        return (0, int(m.group(1)))
+    return (1, 0)
 
-    # 读取模板
-    with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
-        template = f.read()
 
-    # 预建索引：目录名 → 文档数量 / 第一篇文章路径
-    dir_count: dict[str, int] = {}
-    dir_first: dict[str, str] = {}
-    for art in articles:
-        d = art["dir"]
-        dir_count[d] = dir_count.get(d, 0) + 1
-        if d not in dir_first:
-            if "subdir" in art:
-                dir_first[d] = f"{d}/{art['subdir']}/{art['file']}"
-            else:
-                dir_first[d] = f"{d}/{art['file']}"
+def _insert_into_section(section: list, new_entry: dict, new_path: str) -> None:
+    """
+    将 new_entry（{title: path}）按数字前缀规则插入 section 列表。
 
-    # 构建卡片网格 HTML
-    cards = ['<div class="card-grid" markdown>']
-    for row in _parse_readme_rows():
-        domain, content = row["domain"], row["content"]
-        total = sum(dir_count.get(d, 0) for d in row["dirs"])
-        first = next((dir_first[d] for d in row["dirs"] if d in dir_first), "")
-        icon = DOMAIN_ICONS.get(domain, "📄")
-        # MkDocs use_directory_urls 模式下，.md 文件会被转换为目录形式的 URL
-        # 例如 00-Env/Markdown使用指南.md → 00-Env/Markdown使用指南/
-        if first and first.endswith(".md"):
-            first = first[:-3] + "/"
-        href = f' href="{first}"' if first else ""
-        cards.append(
-            f'<a class="card"{href} markdown>\n'
-            f'<span class="card-icon">{icon}</span>\n'
-            f'<span class="card-title">{domain}</span>\n'
-            f'<span class="card-desc">{content}</span>\n'
-            f'<span class="card-count">{total} 篇文档</span>\n'
-            f'</a>\n'
+    规则：
+      - 有数字前缀：找到第一个数字前缀 > 新条目前缀的位置插入；
+        若存在相同前缀的条目，则插到同前缀最后一个的后面。
+      - 无数字前缀：追加到列表末尾（跳过子目录分组条目）。
+    """
+    new_key = _nav_sort_key(new_path)
+
+    if new_key[0] == 1:
+        # 无数字前缀：追加到末尾
+        section.append(new_entry)
+        return
+
+    new_num = new_key[1]
+    insert_pos = len(section)  # 默认追加到末尾
+
+    for i, item in enumerate(section):
+        # 跳过子目录分组（值为 list 的条目）
+        item_path = next(iter(item.values()))
+        if isinstance(item_path, list):
+            continue
+        item_num_key = _nav_sort_key(item_path)
+        if item_num_key[0] == 0:
+            if item_num_key[1] == new_num:
+                # 相同前缀：更新插入位置到该条目之后，继续遍历
+                insert_pos = i + 1
+            elif item_num_key[1] > new_num:
+                # 找到第一个比新条目数字大的位置，停止
+                insert_pos = i
+                break
+
+    section.insert(insert_pos, new_entry)
+
+
+def _merge_nav_section(
+    existing_section: list,
+    ch_dir: str,
+    ch_files: list[str],
+    ch_subdirs: list[dict],
+    articles: list[dict],
+) -> tuple[list, int]:
+    """
+    将文件系统中的文章合并进已有的 section，只插入新增条目，保留已有顺序。
+
+    返回：(merged_section, added_count)
+    """
+    section = list(existing_section)  # 浅拷贝，避免修改原列表
+    added = 0
+
+    # 收集已有条目的路径集合（用于判断是否已存在）
+    def _existing_paths(sec: list) -> set[str]:
+        paths = set()
+        for item in sec:
+            v = next(iter(item.values()))
+            if isinstance(v, str):
+                paths.add(v)
+            elif isinstance(v, list):
+                paths |= _existing_paths(v)
+        return paths
+
+    existing_paths = _existing_paths(section)
+
+    # ── 处理章节根目录下的文件 ────────────────────────────────────────────────
+    for fname in ch_files:
+        nav_path = f"{ch_dir}/{fname}"
+        if nav_path in existing_paths:
+            continue  # 已存在，跳过
+        art = next(
+            (a for a in articles
+             if a["dir"] == ch_dir and a.get("subdir") is None and a["file"] == fname),
+            None,
         )
-    cards.append('</div>')
+        if art:
+            _insert_into_section(section, {art["title"]: nav_path}, nav_path)
+            existing_paths.add(nav_path)
+            added += 1
+            print(f"  [新增] nav 条目: {nav_path}")
 
-    # 替换占位符
-    index_content = template.replace("{{TECH_CARDS}}", "\n".join(cards))
+    # ── 处理子目录分组 ────────────────────────────────────────────────────────
+    for sub in ch_subdirs:
+        sub_name = sub["name"]
+        sub_title = get_subdir_title(sub_name)
 
-    if os.path.exists(index_path):
-        with open(index_path, "r", encoding="utf-8") as f:
-            if f.read() == index_content:
-                return False
+        # 在 section 中找到对应的子目录分组条目
+        sub_entry_idx = next(
+            (i for i, item in enumerate(section)
+             if next(iter(item.keys())) == sub_title
+             and isinstance(next(iter(item.values())), list)),
+            None,
+        )
 
-    if not check_only:
-        with open(index_path, "w", encoding="utf-8") as f:
-            f.write(index_content)
-        print("  [更新] docs/index.md")
-    else:
-        print("  [需更新] docs/index.md")
-    return True
-
-
-def generate_mkdocs_nav(articles: list[dict], chapters: list[dict]) -> list:
-    """根据文章列表和章节结构生成 MkDocs nav 结构，支持子目录二级分组。"""
-    nav: list = [{"Home": "index.md"}]
-
-    for ch in chapters:
-        ch_dir = ch["dir"]
-        section: list = []
-
-        # 添加章节根目录下的文件
-        for fname in ch["files"]:
-            art = next(
-                (a for a in articles
-                 if a["dir"] == ch_dir and a.get("subdir") is None and a["file"] == fname),
-                None,
-            )
-            if art:
-                section.append({art["title"]: f"{ch_dir}/{fname}"})
-
-        # 添加子目录分组
-        for sub in ch.get("subdirs", []):
+        if sub_entry_idx is None:
+            # 子目录分组不存在，整体新建
             sub_section = []
             for fname in sub["files"]:
+                nav_path = f"{ch_dir}/{sub_name}/{fname}"
                 art = next(
                     (a for a in articles
-                     if a["dir"] == ch_dir and a.get("subdir") == sub["name"]
+                     if a["dir"] == ch_dir and a.get("subdir") == sub_name
                      and a["file"] == fname),
                     None,
                 )
                 if art:
-                    sub_section.append(
-                        {art["title"]: f"{ch_dir}/{sub['name']}/{fname}"}
-                    )
+                    sub_section.append({art["title"]: nav_path})
+                    added += 1
+                    print(f"  [新增] nav 条目: {nav_path}")
             if sub_section:
-                section.append({get_subdir_title(sub["name"]): sub_section})
+                new_sub_entry = {sub_title: sub_section}
+                # 子目录分组按自身目录名的数字前缀插入
+                _insert_into_section(section, new_sub_entry, sub_name)
+        else:
+            # 子目录分组已存在，递归合并其内部条目
+            existing_sub = list(section[sub_entry_idx][sub_title])
+            existing_sub_paths = _existing_paths(existing_sub)
+            for fname in sub["files"]:
+                nav_path = f"{ch_dir}/{sub_name}/{fname}"
+                if nav_path in existing_sub_paths:
+                    continue
+                art = next(
+                    (a for a in articles
+                     if a["dir"] == ch_dir and a.get("subdir") == sub_name
+                     and a["file"] == fname),
+                    None,
+                )
+                if art:
+                    _insert_into_section(existing_sub, {art["title"]: nav_path}, nav_path)
+                    existing_sub_paths.add(nav_path)
+                    added += 1
+                    print(f"  [新增] nav 条目: {nav_path}")
+            section[sub_entry_idx] = {sub_title: existing_sub}
 
-        if section:
-            nav.append({get_chapter_title(ch_dir): section})
+    return section, added
+
+
+def prune_nav(nav: list, check_only: bool = False) -> tuple[list, int]:
+    """
+    清理 nav 中所有指向不存在文件的条目。
+
+    规则：
+      - 叶子条目（值为字符串路径）：若对应文件在 DOCS_DIR 下不存在则删除
+      - 分组条目（值为列表）：递归清理，若清理后子列表为空则删除整个分组
+      - Home 条目（index.md）始终保留
+
+    返回：(pruned_nav, removed_count)
+    """
+    removed = 0
+
+    def _prune(section: list) -> list:
+        nonlocal removed
+        result = []
+        for item in section:
+            title = next(iter(item.keys()))
+            value = next(iter(item.values()))
+
+            if isinstance(value, list):
+                # 分组条目：递归清理
+                pruned_sub = _prune(value)
+                if pruned_sub:
+                    result.append({title: pruned_sub})
+                else:
+                    removed += 1
+                    print(f"  [清理] nav 空分组: {title}")
+            else:
+                # 叶子条目：检查文件是否存在
+                if value == "index.md":
+                    result.append(item)
+                    continue
+                file_path = os.path.join(DOCS_DIR, value)
+                if os.path.isfile(file_path):
+                    result.append(item)
+                else:
+                    removed += 1
+                    if check_only:
+                        print(f"  [需清理] nav 条目: {value}")
+                    else:
+                        print(f"  [清理] nav 条目: {value}")
+        return result
+
+    pruned = _prune(nav)
+    return pruned, removed
+
+
+def merge_mkdocs_nav(existing_nav: list, articles: list[dict], chapters: list[dict]) -> list:
+    """
+    将文件系统中的文章增量合并进已有的 nav，保留已有条目的顺序。
+
+    规则：
+      - 已有条目：保持原位不动
+      - 新增文章：有数字前缀 → 按数字顺序插入；无前缀 → 追加到对应层级末尾
+      - 新增章节（顶层目录）：按章节目录名的数字前缀插入到顶层 nav
+    """
+    nav = list(existing_nav)  # 浅拷贝
+
+    # 确保首项是 Home
+    if not nav or next(iter(nav[0].keys())) != "Home":
+        nav.insert(0, {"Home": "index.md"})
+
+    for ch in chapters:
+        ch_dir = ch["dir"]
+        ch_title = get_chapter_title(ch_dir)
+
+        # 在已有 nav 中查找该章节
+        ch_entry_idx = next(
+            (i for i, item in enumerate(nav)
+             if next(iter(item.keys())) == ch_title
+             and isinstance(next(iter(item.values())), list)),
+            None,
+        )
+
+        if ch_entry_idx is None:
+            # 章节不存在，整体新建后按数字前缀插入顶层 nav
+            section: list = []
+            for fname in ch["files"]:
+                art = next(
+                    (a for a in articles
+                     if a["dir"] == ch_dir and a.get("subdir") is None
+                     and a["file"] == fname),
+                    None,
+                )
+                if art:
+                    section.append({art["title"]: f"{ch_dir}/{fname}"})
+            for sub in ch.get("subdirs", []):
+                sub_section = []
+                for fname in sub["files"]:
+                    art = next(
+                        (a for a in articles
+                         if a["dir"] == ch_dir and a.get("subdir") == sub["name"]
+                         and a["file"] == fname),
+                        None,
+                    )
+                    if art:
+                        sub_section.append(
+                            {art["title"]: f"{ch_dir}/{sub['name']}/{fname}"}
+                        )
+                if sub_section:
+                    new_sub_entry = {get_subdir_title(sub["name"]): sub_section}
+                    _insert_into_section(section, new_sub_entry, sub["name"])
+            if section:
+                new_ch_entry = {ch_title: section}
+                _insert_into_section(nav, new_ch_entry, ch_dir)
+                print(f"  [新增] nav 章节: {ch_title}")
+        else:
+            # 章节已存在，增量合并内部条目
+            existing_section = list(nav[ch_entry_idx][ch_title])
+            merged, added = _merge_nav_section(
+                existing_section, ch_dir, ch["files"], ch.get("subdirs", []), articles
+            )
+            nav[ch_entry_idx] = {ch_title: merged}
+
     return nav
 
 
-def update_mkdocs_yml(nav_data: list, check_only: bool = False) -> bool:
-    """将 nav_data 写入 mkdocs.yml 的 nav 部分。"""
+def update_mkdocs_yml(articles: list[dict], chapters: list[dict], check_only: bool = False) -> bool:
+    """
+    增量更新 mkdocs.yml 的 nav 部分：读取现有 nav，合并新增文章，保留已有顺序。
+    """
     mkdocs_path = os.path.join(BASE, "mkdocs.yml")
     with open(mkdocs_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    nav_yaml = yaml.dump(nav_data, default_flow_style=False, allow_unicode=True, indent=2)
-    nav_yaml = nav_yaml.replace("'", "").rstrip("\n")  # 移除 yaml.dump 产生的多余单引号和末尾换行
+    # 只提取 nav: 部分进行解析，避免 mkdocs.yml 中 !ENV / !!python 等自定义标签干扰
+    nav_match = re.search(r"\bnav:\n(.*)", content, re.DOTALL)
+    if nav_match:
+        nav_yaml_str = "nav:\n" + nav_match.group(1)
+        existing_config = yaml.safe_load(nav_yaml_str)
+    else:
+        existing_config = {}
+    existing_nav: list = existing_config.get("nav") or [{"Home": "index.md"}]
+
+    # 清理不存在的文件条目（文件删除或重命名后移除旧条目）
+    print("  → 检查失效条目...")
+    existing_nav, removed = prune_nav(existing_nav, check_only)
+    if removed:
+        print(f"  [清理] 共移除 {removed} 个失效 nav 条目")
+    else:
+        print("  → 无失效条目")
+
+    # 增量合并
+    print("  → 合并新增条目...")
+    new_nav = merge_mkdocs_nav(existing_nav, articles, chapters)
+
+    nav_yaml = yaml.dump(new_nav, default_flow_style=False, allow_unicode=True, indent=2)
+    # 只去掉不含 YAML 特殊字符的单引号对；含 [ ] : # & * ? | > ! % @ ` 的值必须保留引号
+    nav_yaml = re.sub(r"'([^']*)'", lambda m: m.group(1) if not re.search(r'[\[\]:&#*?|>!%@`]', m.group(1)) else f'"{m.group(1)}"', nav_yaml).rstrip("\n")
 
     # 将 nav: 之后的所有内容替换为新的 nav_yaml，末尾统一保留一个换行
     new_content = re.sub(
@@ -362,12 +559,13 @@ def update_mkdocs_yml(nav_data: list, check_only: bool = False) -> bool:
     ).rstrip("\n") + "\n"
 
     if new_content == content:
+        print("  → mkdocs.yml nav 无变化，跳过写入")
         return False
 
     if not check_only:
         with open(mkdocs_path, "w", encoding="utf-8") as f:
             f.write(new_content)
-        print("  [更新] mkdocs.yml")
+        print("  [更新] mkdocs.yml nav 已写入")
     else:
         print("  [需更新] mkdocs.yml")
     return True
@@ -392,7 +590,7 @@ def add_frontmatter(file_path: str, expected_title: str, check_only: bool = Fals
             return True
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(f"---\ntitle: {expected_title}\n---\n\n{content}")
-        print(f"  [添加] {file_path} (frontmatter)")
+        print(f"  [添加 frontmatter] {file_path}  title={expected_title!r}")
         return True
 
     # 解析现有 frontmatter
@@ -414,7 +612,7 @@ def add_frontmatter(file_path: str, expected_title: str, check_only: bool = Fals
         lines.insert(1, f"title: {expected_title}")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
-        print(f"  [更新] {file_path} (添加 frontmatter title)")
+        print(f"  [添加 title] {file_path}  title={expected_title!r}")
         return True
 
     # ── 情况 3：title 已存在 ──────────────────────────────────────────────────
@@ -422,7 +620,7 @@ def add_frontmatter(file_path: str, expected_title: str, check_only: bool = Fals
         return False  # 无需修改
 
     if check_only:
-        print(f"  [需更新] {file_path} (frontmatter title 不一致)")
+        print(f"  [需更新] {file_path} (frontmatter title 不一致: {existing_title!r} → {expected_title!r})")
         return True
 
     new_lines = [
@@ -431,7 +629,7 @@ def add_frontmatter(file_path: str, expected_title: str, check_only: bool = Fals
     ]
     with open(file_path, "w", encoding="utf-8") as f:
         f.write("\n".join(new_lines))
-    print(f"  [更新] {file_path} (frontmatter title)")
+    print(f"  [更新 title] {file_path}  {existing_title!r} → {expected_title!r}")
     return True
 
 
@@ -551,8 +749,10 @@ def build_id_registry(articles: list[dict], check_only: bool = False) -> bool:
 
         if existing_id:
             doc_id = existing_id
+            print(f"  [复用 doc_id] {rel_path}  id={doc_id!r}")
         else:
             doc_id = _generate_doc_id(dir_name, file_name, subdir_name)
+            print(f"  [生成 doc_id] {rel_path}  id={doc_id!r}")
 
         # 检测 ID 冲突
         if doc_id in registry:
@@ -569,7 +769,7 @@ def build_id_registry(articles: list[dict], check_only: bool = False) -> bool:
         # 如果 frontmatter 中没有 doc_id，写入
         if not existing_id:
             if check_only:
-                print(f"  [需更新] {rel_path} (缺少 doc_id)")
+                print(f"  [需写入] {rel_path}  缺少 doc_id，将写入 {doc_id!r}")
                 changed = True
                 continue
 
@@ -584,18 +784,31 @@ def build_id_registry(articles: list[dict], check_only: bool = False) -> bool:
 
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
-            print(f"  [写入] {rel_path} → doc_id: {doc_id}")
+            print(f"  [写入 doc_id] {rel_path}  id={doc_id!r}")
             changed = True
 
     # 保存注册表
     old_registry = _load_id_registry()
+    # 计算新增/删除/修改的条目
+    added_ids   = set(registry) - set(old_registry)
+    removed_ids = set(old_registry) - set(registry)
+    changed_ids = {k for k in registry if k in old_registry and registry[k] != old_registry[k]}
     if registry != old_registry:
+        print(f"  [注册表变更] 新增 {len(added_ids)} 条，删除 {len(removed_ids)} 条，路径变更 {len(changed_ids)} 条")
+        for k in sorted(added_ids):
+            print(f"    + {k}: {registry[k]}")
+        for k in sorted(removed_ids):
+            print(f"    - {k}: {old_registry[k]}")
+        for k in sorted(changed_ids):
+            print(f"    ~ {k}: {old_registry[k]} → {registry[k]}")
         if not check_only:
             _save_id_registry(registry)
             print(f"  [更新] doc_id_registry.json ({len(registry)} 条记录)")
         else:
             print(f"  [需更新] doc_id_registry.json")
         changed = True
+    else:
+        print(f"  → doc_id_registry.json 无变化（共 {len(registry)} 条记录）")
 
     return changed
 
@@ -604,26 +817,41 @@ def build_id_registry(articles: list[dict], check_only: bool = False) -> bool:
 
 
 def main() -> None:
+    import time
     check_only = "--check" in sys.argv
+    mode_label = "[CHECK 模式，不写入文件]" if check_only else "[写入模式]"
+    print(f"{'='*60}")
+    print(f"gen_nav.py  {mode_label}")
+    print(f"{'='*60}")
 
-    print("🔍 扫描文章...")
+    t0 = time.time()
+
+    print("\n🔍 扫描文章...")
     articles, chapters = collect_articles()
-    print(f"   共发现 {len(articles)} 篇文章，{len(chapters)} 个章节")
-
-    print("\n📄 生成 docs/index.md...")
-    generate_index_md(articles, check_only)
+    print(f"   ✔ 共发现 {len(articles)} 篇文章，{len(chapters)} 个章节")
 
     print("\n🔧 更新 mkdocs.yml nav...")
-    update_mkdocs_yml(generate_mkdocs_nav(articles, chapters), check_only)
+    nav_changed = update_mkdocs_yml(articles, chapters, check_only)
+    print(f"   ✔ nav {'有变更' if nav_changed else '无变更'}")
 
-    print("\n📝 处理 frontmatter...")
+    print("\n📝 处理 frontmatter title...")
+    fm_changed = 0
+    fm_skipped = 0
     for article in articles:
-        add_frontmatter(article["path"], article["title"], check_only)
+        if add_frontmatter(article["path"], article["title"], check_only):
+            fm_changed += 1
+        else:
+            fm_skipped += 1
+    print(f"   ✔ 变更 {fm_changed} 篇，跳过 {fm_skipped} 篇")
 
     print("\n🆔 生成文档 ID...")
-    build_id_registry(articles, check_only)
+    id_changed = build_id_registry(articles, check_only)
+    print(f"   ✔ doc_id {'有变更' if id_changed else '无变更'}")
 
-    print("\n✅ 完成！")
+    elapsed = time.time() - t0
+    print(f"\n{'='*60}")
+    print(f"✅ 完成！耗时 {elapsed:.2f}s")
+    print(f"{'='*60}")
 
 
 if __name__ == "__main__":

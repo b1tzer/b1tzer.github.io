@@ -111,6 +111,7 @@ plugins:
       enabled: !ENV [CI, false]   # 本地构建跳过，只在 CI 执行
 
 hooks:
+  - hooks/gen_index.py
   - hooks/resolve_refs.py
 
 markdown_extensions:
@@ -162,6 +163,11 @@ nav:
   - Java 9-17 关键新特性: 01-java-basic/09-[Java9-17]新特性.md
   - 注解（Annotation）: 01-java-basic/10-注解（Annotation）.md
   - 数据结构精讲（Java & Spring 生态视角）: 01-java-basic/11-数据结构精讲.md
+  - 类加载机制与双亲委派模型: 01-java-basic/12-类加载机制与双亲委派模型.md
+  - 字符串底层原理与 String Pool: 01-java-basic/13-字符串底层原理与StringPool.md
+  - 泛型底层原理与类型擦除: 01-java-basic/14-泛型底层原理与类型擦除.md
+  - 反射性能底层原理与 MethodHandle: 01-java-basic/15-反射性能底层原理与MethodHandle.md
+  - Java NIO 与 I/O 模型深度解析: 01-java-basic/16-NIO与IO模型深度解析.md
 - Spring:
   - Spring / Spring Boot 核心原理: 02-spring/00-spring-core.md
   - 核心基础:

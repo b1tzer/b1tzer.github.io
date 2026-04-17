@@ -76,27 +76,38 @@
     .hero-orb {
       position: absolute;
       border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.5;
-      animation: floatOrb 10s infinite ease-in-out alternate;
       z-index: 0;
       pointer-events: none;
+      will-change: transform;
+      transition: transform 0.2s ease-out; /* 平滑跟随鼠标 */
+    }
+    .hero-orb::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      border-radius: 50%;
+      animation: floatOrb 8s infinite ease-in-out alternate;
+      will-change: transform;
     }
     .hero-orb-1 {
       width: 400px; height: 400px;
-      background: #4f46e5;
       top: -100px; left: -100px;
+    }
+    .hero-orb-1::after {
+      background: radial-gradient(circle, rgba(79,70,229,0.5) 0%, rgba(79,70,229,0) 70%);
     }
     .hero-orb-2 {
       width: 300px; height: 300px;
-      background: #ec4899;
       bottom: -50px; right: -50px;
-      animation-delay: -5s;
+    }
+    .hero-orb-2::after {
+      background: radial-gradient(circle, rgba(236,72,153,0.5) 0%, rgba(236,72,153,0) 70%);
+      animation-delay: -4s;
     }
 
     @keyframes floatOrb {
       0% { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(50px, 50px) scale(1.2); }
+      100% { transform: translate(120px, 80px) scale(1.25); }
     }
 
     .hero-content {
@@ -190,39 +201,6 @@
     .btn-secondary:hover {
       background: rgba(255, 255, 255, 0.2);
       transform: translateY(-2px);
-    }
-
-    /* 向下滚动提示 */
-    .scroll-indicator {
-      position: absolute;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%);
-      opacity: 0;
-      animation: fadeUp 0.8s ease forwards, bounce 2s infinite;
-      animation-delay: 2s;
-      color: rgba(255, 255, 255, 0.6);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.8rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: color 0.3s ease;
-    }
-    .scroll-indicator:hover {
-      color: rgba(255, 255, 255, 1);
-    }
-    @keyframes bounce {
-      0%, 20%, 50%, 80%, 100% { transform: translateY(0) translateX(-50%); }
-      40% { transform: translateY(-10px) translateX(-50%); }
-      60% { transform: translateY(-5px) translateX(-50%); }
-    }
-    .scroll-indicator svg {
-      width: 24px; height: 24px;
-      fill: currentColor;
     }
 
     /* ══════════════════════════════════════════════
@@ -341,7 +319,7 @@
     <div class="hero-orb hero-orb-2"></div>
     
     <div class="hero-content">
-      <h1 class="hero-title" id="hero-title"></h1>
+      <h1 class="hero-title" id="hero-title" aria-label="{{ config.site_name }}"></h1>
       <p class="hero-subtitle">{{ config.site_description }}</p>
       <div class="hero-buttons">
         <a href="{{ '01-java-basic/00-Java基础与JVM概览/' | url }}" class="btn-primary">开始阅读 →</a>
@@ -352,7 +330,7 @@
 {% endblock %}
 
 {% block content %}
-  <section class="content-section md-typeset">
+  <section class="content-section md-typeset" id="content-section">
     {{ super() }}
   </section>
 {% endblock %}
@@ -365,6 +343,7 @@
     // 确保只注册一次订阅，避免重复绑定
     if (typeof window.homeScriptInitialized === 'undefined') {
       window.homeScriptInitialized = true;
+      let typingTimeout;
       
       // 监听 MkDocs Material 的页面加载/切换事件 (支持 instant navigation)
       if (typeof document$ !== "undefined") {
@@ -372,29 +351,56 @@
           const titleEl = document.getElementById("hero-title");
           if (!titleEl) return; // 如果当前不是首页，直接返回
 
+          // 清除可能存在的旧定时器，避免竞态条件
+          clearTimeout(typingTimeout);
+
           // 重置状态，确保从其他页面切换回来时能重新播放动画
           titleEl.textContent = "";
           titleEl.classList.remove("typing-done");
           titleEl.style.width = '0';
 
-          let i = 0;
-          const titleText = "The Stack";
+          const titleText = "{{ config.site_name }}";
           
+          // 检测用户是否偏好减少动效
+          const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          if (prefersReducedMotion) {
+            titleEl.textContent = titleText;
+            titleEl.style.width = 'auto';
+            titleEl.classList.add("typing-done");
+            return;
+          }
+
+          let i = 0;
           function typeWriter() {
             if (i < titleText.length) {
               titleEl.textContent += titleText.charAt(i);
               titleEl.style.width = 'auto';
               i++;
-          setTimeout(typeWriter, 100);
+              typingTimeout = setTimeout(typeWriter, 100);
             } else {
               titleEl.classList.add("typing-done");
             }
           }
           
           // 缩短初始等待时间 (从 300ms 降到 50ms)
-          setTimeout(typeWriter, 300);
+          typingTimeout = setTimeout(typeWriter, 300);
         });
       }
+
+      // 注册鼠标视差事件 (全局只需注册一次)
+      document.addEventListener('mousemove', function(e) {
+        const orb1 = document.querySelector('.hero-orb-1');
+        const orb2 = document.querySelector('.hero-orb-2');
+        if (!orb1 || !orb2) return;
+        
+        // 计算鼠标相对于屏幕中心的偏移量 (-1 到 1)
+        const x = (e.clientX / window.innerWidth - 0.5) * 2;
+        const y = (e.clientY / window.innerHeight - 0.5) * 2;
+        
+        // 应用视差位移 (orb1 顺向，orb2 逆向)
+        orb1.style.transform = `translate(${x * 60}px, ${y * 60}px)`;
+        orb2.style.transform = `translate(${x * -40}px, ${y * -40}px)`;
+      });
     }
   </script>
 {% endblock %}

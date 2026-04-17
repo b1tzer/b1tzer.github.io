@@ -20,7 +20,7 @@ hide:
 <span class="card-icon">☕</span>
 <span class="card-title">Java</span>
 <span class="card-desc">Java 8+ 新特性、并发编程、JVM 原理、集合框架</span>
-<span class="card-count">12 篇文档</span>
+<span class="card-count">17 篇文档</span>
 </a>
 
 <a class="card" href="02-spring/00-spring-core/" markdown>
