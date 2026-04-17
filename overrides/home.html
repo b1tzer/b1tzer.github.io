@@ -52,9 +52,8 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #1a1060);
-      background-size: 400% 400%;
-      animation: gradientBG 15s ease infinite;
+      /* 探照灯背景底色：深邃的暗色 */
+      background-color: #0a0a0a;
       color: white;
       padding: 2rem;
       text-align: center;
@@ -62,52 +61,35 @@
     }
 
     [data-md-color-scheme="slate"] .hero-section {
-      background: linear-gradient(-45deg, #000000, #1a1a2e, #16213e, #0f3460);
-      background-size: 400% 400%;
+      background-color: #050505;
     }
 
-    @keyframes gradientBG {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
-    /* 动态光球背景 */
-    .hero-orb {
+    /* 探照灯光晕层 */
+    .hero-spotlight {
       position: absolute;
-      border-radius: 50%;
-      z-index: 0;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       pointer-events: none;
-      will-change: transform;
-      transition: transform 0.2s ease-out; /* 平滑跟随鼠标 */
-    }
-    .hero-orb::after {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      border-radius: 50%;
-      animation: floatOrb 8s infinite ease-in-out alternate;
-      will-change: transform;
-    }
-    .hero-orb-1 {
-      width: 400px; height: 400px;
-      top: -100px; left: -100px;
-    }
-    .hero-orb-1::after {
-      background: radial-gradient(circle, rgba(79,70,229,0.5) 0%, rgba(79,70,229,0) 70%);
-    }
-    .hero-orb-2 {
-      width: 300px; height: 300px;
-      bottom: -50px; right: -50px;
-    }
-    .hero-orb-2::after {
-      background: radial-gradient(circle, rgba(236,72,153,0.5) 0%, rgba(236,72,153,0) 70%);
-      animation-delay: -4s;
+      z-index: 0;
+      /* 使用 CSS 变量控制光源位置，默认在中心 */
+      --x: 50%;
+      --y: 50%;
+      background: radial-gradient(
+        circle 600px at var(--x) var(--y),
+        rgba(79, 70, 229, 0.15),
+        transparent 80%
+      );
+      transition: background 0.1s ease;
     }
 
-    @keyframes floatOrb {
-      0% { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(120px, 80px) scale(1.25); }
+    [data-md-color-scheme="slate"] .hero-spotlight {
+      background: radial-gradient(
+        circle 600px at var(--x) var(--y),
+        rgba(79, 70, 229, 0.2),
+        transparent 80%
+      );
     }
 
     .hero-content {
@@ -315,8 +297,7 @@
 
 {% block hero %}
   <section class="hero-section">
-    <div class="hero-orb hero-orb-1"></div>
-    <div class="hero-orb hero-orb-2"></div>
+    <div class="hero-spotlight"></div>
     
     <div class="hero-content">
       <h1 class="hero-title" id="hero-title" aria-label="{{ config.site_name }}"></h1>
@@ -387,19 +368,18 @@
         });
       }
 
-      // 注册鼠标视差事件 (全局只需注册一次)
+      // 注册探照灯鼠标跟随事件 (全局只需注册一次)
       document.addEventListener('mousemove', function(e) {
-        const orb1 = document.querySelector('.hero-orb-1');
-        const orb2 = document.querySelector('.hero-orb-2');
-        if (!orb1 || !orb2) return;
+        const spotlight = document.querySelector('.hero-spotlight');
+        if (!spotlight) return;
         
-        // 计算鼠标相对于屏幕中心的偏移量 (-1 到 1)
-        const x = (e.clientX / window.innerWidth - 0.5) * 2;
-        const y = (e.clientY / window.innerHeight - 0.5) * 2;
+        // 获取鼠标在屏幕上的坐标
+        const x = e.clientX;
+        const y = e.clientY;
         
-        // 应用视差位移 (orb1 顺向，orb2 逆向)
-        orb1.style.transform = `translate(${x * 60}px, ${y * 60}px)`;
-        orb2.style.transform = `translate(${x * -40}px, ${y * -40}px)`;
+        // 更新 CSS 变量，改变径向渐变的中心点
+        spotlight.style.setProperty('--x', `${x}px`);
+        spotlight.style.setProperty('--y', `${y}px`);
       });
     }
   </script>
