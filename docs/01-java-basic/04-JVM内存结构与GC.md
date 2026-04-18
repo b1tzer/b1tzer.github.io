@@ -781,7 +781,6 @@ JIT / 解释器会在每条"引用字段赋值"字节码前后自动插入一小
     > 📖 写屏障在具体收集器上是如何落地、一次完整并发收集的四阶段时间线长什么样，见 §6.3 CMS 详解。
 
 ??? warning "展开：写屏障的代价"
-
     每一条引用字段赋值都会多执行几条屏障指令，引用更新密集的业务（大图遍历、ORM、大量 setter）开销可达 5%~10%。这也是为什么 Parallel GC 的吞吐量最高——它**没有写屏障**。G1 的 RSet 维护同样依赖写屏障，这也是 G1 内存占用较高的原因之一（见 §6.4）。
 
 ??? note "展开：写屏障如何补上 Initial Mark 的'漏'——一张图串起全流程"
@@ -818,47 +817,110 @@ JIT / 解释器会在每条"引用字段赋值"字节码前后自动插入一小
 
 ```txt
 Mark-Sweep Algorithm：
-┌──────────────────────────────────────────┐
-│ [Alive] [Garbage] [Alive] [Garbage] [Alive] [Garbage] │  After marking
-│ [Alive] [       ] [Alive] [       ] [Alive] [       ] │  After sweeping
-│ ← Generates memory fragmentation, large objects cannot allocate → │
-└──────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│ [Alive] [Garbage] [Alive] [Garbage] [Alive] [Garbage] │  After marking.    │
+│ [Alive] [       ] [Alive] [       ] [Alive] [       ] │  After sweeping.   │
+│ ← Generates memory fragmentation, large objects cannot allocate →          │
+└────────────────────────────────────────────────────────────────────────────┘
 
 Mark-Compact Algorithm：
-┌──────────────────────────────────────────┐
-│ [Alive] [Garbage] [Alive] [Garbage] [Alive] [Garbage] │  After marking
-│ [Alive] [Alive] [Alive] [           Free Space     ] │  After compacting
-│ ← No fragmentation, but moving objects requires updating all references → │
-└──────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│ [Alive] [Garbage] [Alive] [Garbage] [Alive] [Garbage] │  After marking     │
+│ [Alive] [Alive] [Alive] [           Free Space     ] │  After compacting   │
+│ ← No fragmentation, but moving objects requires updating all references →  │
+└────────────────────────────────────────────────────────────────────────────┘
 
 Copying Algorithm：
-┌──────────────────────┬──────────────────────┐
-│ From: [Alive][Garbage][Alive][Garbage] │ To: [Empty] │  Before GC
-│ From: [Cleared             ]    │ To: [Alive][Alive] │  After GC
-│ ← No fragmentation, fast, but 50% space utilization → │
-└──────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│ From: [Alive][Garbage][Alive][Garbage] │ To: [Empty] │  Before GC          │
+│ From: [Cleared             ]    │ To: [Alive][Alive] │  After GC           │
+│ ← No fragmentation, fast, but 50% space utilization →                      │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 5.4 逃逸分析与栈上分配
 
-JDK 6+ 引入逃逸分析，JIT 编译器判断对象是否会"逃逸"出方法：
+前面讲的所有 GC 机制都在解决一个问题：**如何高效地回收堆上的垃圾**。但还有一条更激进的思路——**如果一个对象根本不需要进堆，那就不需要 GC 了**。这就是 **逃逸分析（Escape Analysis）** 的出发点：JDK 6 起由 C2 JIT 在方法编译时进行的一项静态分析，JDK 8 起默认开启（`-XX:+DoEscapeAnalysis`）。
+
+#### 什么叫"逃逸"？
+
+"逃逸"指的是**一个在方法内部 new 出来的对象，其引用被传播到方法作用域之外**。HotSpot 把逃逸程度分为三级，级别越高，可做的优化越少：
+
+| 逃逸级别 | 含义 | 典型场景 | 可做的优化 |
+| :---- | :---- | :---- | :---- |
+| **NoEscape** | 引用完全不离开当前方法 | 局部 `new` 后只读字段 | 标量替换、（理论上的）栈上分配、锁消除 |
+| **ArgEscape** | 引用作为参数传给别的方法，但未被外部长期持有 | `logger.debug(new Point(x,y))` | 锁消除（有条件） |
+| **GlobalEscape** | 引用被存入静态字段 / 实例字段 / 返回值 / 抛出的异常 | `return new X()`、`this.p = new P()` | 无，必须堆分配 |
 
 ```java
-// 未逃逸：对象不会被外部引用
+// ① NoEscape：引用完全不出方法
 public int sum() {
-    Point p = new Point(1, 2); // p 不会逃逸
-    return p.x + p.y;
-    // JIT 可能：1. 栈上分配（方法结束自动回收，无需 GC）
-    //           2. 标量替换（直接用 int x=1, int y=2 替代对象）
+    Point p = new Point(1, 2);
+    return p.x + p.y;              // p 用完即弃，JIT 可做标量替换
 }
 
-// 已逃逸：对象被外部持有
+// ② ArgEscape：引用作为参数传出去，但未被长期持有
+public void log() {
+    logger.debug(new Point(1, 2)); // 逃到 debug 方法，但没被存起来
+}
+
+// ③ GlobalEscape：引用被外部长期持有
 public Point create() {
-    return new Point(1, 2); // 逃逸到调用者，必须在堆上分配
+    return new Point(1, 2);        // 逃到调用者，必须堆分配
 }
 ```
 
-**标量替换**是逃逸分析最重要的优化：将对象的字段拆散为独立的局部变量，完全消除对象分配，减少 GC 压力。
+#### 基于逃逸分析的三项优化
+
+HotSpot 在确认一个对象为 `NoEscape` 后，会按以下优先级尝试优化：
+
+**① 标量替换（Scalar Replacement）—— 真正在生产中起作用的主力优化**
+
+把对象的字段**直接拆散为独立的局部变量**，塞进栈帧或寄存器，对象本身彻底不存在。由 `-XX:+EliminateAllocations` 控制（默认开启）。
+
+```java
+// 源代码
+Point p = new Point(1, 2);
+return p.x + p.y;
+
+// JIT 等价改写为（伪代码）
+int p$x = 1;     // 对象消失，字段变成局部变量
+int p$y = 2;     // 后续甚至可能被常量折叠为 return 3
+return p$x + p$y;
+```
+
+**② 锁消除（Lock Elision）**
+
+如果加锁对象是 `NoEscape` 的（不可能被其他线程看到），同步块就没有存在的必要。经典例子：`StringBuffer.append` 内部有 `synchronized`，但如果这个 `StringBuffer` 是方法内的局部变量，JIT 会直接把锁去掉，性能退化到接近 `StringBuilder`。
+
+**③ 栈上分配（Stack Allocation）—— 理论存在，HotSpot 实际并未落地**
+
+!!! warning "一个常见的误解"
+    很多资料（包括《深入理解 Java 虚拟机》早期版本）都写过"逃逸分析会把对象分配到栈上"。**但 HotSpot 至今没有真正实现过通用的栈上分配**——源码里只保留了 `StackAllocate` 的占位开关，C2 最终落地的始终是**标量替换**。
+    
+    换个角度看，标量替换其实比栈上分配"更彻底"：栈上分配只是换了个分配位置，对象结构还在；而标量替换直接让对象消失、字段变成独立的局部变量。所以你在实践中观察到的"对象没进堆"，本质都是标量替换的效果。本节标题仍然沿用"栈上分配"这个流传更广的说法，但请记住：**真正在工作的是标量替换**。
+
+#### 怎么验证它生效了？
+
+相关的 JVM 参数（JDK 8+ 默认都为开启）：
+
+```bash
+-XX:+DoEscapeAnalysis           # 逃逸分析总开关
+-XX:+EliminateAllocations       # 标量替换
+-XX:+EliminateLocks             # 锁消除
+-XX:+PrintEscapeAnalysis        # 打印 EA 过程（需 debug 版 JVM）
+-XX:+PrintEliminateAllocations  # 打印被消除的分配（需 debug 版 JVM）
+```
+
+生产 JVM 上看不到 `PrintXxx` 的输出也没关系，更实用的验证方式是**写一个紧循环反复创建短命对象，观察 Young GC 频率**：关闭逃逸分析（`-XX:-DoEscapeAnalysis`）后 Young GC 会显著变密，前后对比即可看到优化效果。
+
+#### 局限性
+
+- **只在 C2（Server 编译器）里有效**——C1（Client）不做逃逸分析，解释执行时也不生效。所以**冷代码、启动期、被 `-Xcomp` 强制编译到 C1 的路径都吃不到这个优化**。
+- **分析成本不低**：对象字段一多、调用链一深，逃逸分析会保守地把对象判为 GlobalEscape（宁可放弃优化也不能出错）。
+- **数组不友好**：元素个数在编译期不可知的数组很难被标量替换。
+
+> 💡 **和 GC 的关系**：逃逸分析本身不是 GC 算法，但它是**减小 GC 压力的第一道防线**——大量短命对象（方法内的临时 `Point`、`Iterator`、自动装箱的 `Integer` 等）如果都能被标量替换掉，Eden 的分配速率会显著下降，Young GC 频率也随之降低。这也是为什么"方法短、对象作用域小"的代码风格天然对 JIT 友好。
 
 ### 5.5 Safepoint（安全点）—— STW 的基石
 
