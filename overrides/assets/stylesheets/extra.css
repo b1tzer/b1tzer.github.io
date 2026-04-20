@@ -3,6 +3,13 @@
    策略：克制、流畅，不过度
    ============================================================ */
 
+/* 注意：横向滚动护栏已下沉到首页作用域（见 home.css），
+   此处不再对 html/body 设置 overflow-x，
+   因为全局裁剪会破坏 Material 移动端抽屉导航（.md-nav--primary）
+   从视口外部滑入的动画，导致点击汉堡按钮时只显示蒙版、
+   看不到导航文字。文章页的横向溢出依赖 Material 自身
+   对 table/pre 的滚动处理 + 下文触控设备禁用 translateX hover。 */
+
 /* ── 1. 页面切换淡入过渡（navigation.instant 模式） ── */
 @keyframes page-fade-in {
   from {
@@ -61,18 +68,16 @@
   }
 }
 
-/* ── 7. 宽屏适配（≥1280px） ── */
+/* ── 7. 宽屏适配（≥ 1280px）──
+   注意：首页 .hero-inner 本身 max-width 为 1320px，
+   这里只调整 Material 网格，不触及 hero，避免反向压缩 */
 @media screen and (min-width: 80em) {
   .md-grid {
     max-width: 76rem;
   }
-
-  .hero-inner {
-    max-width: 76rem;
-  }
 }
 
-/* ── 超宽屏（≥1600px） ── */
+/* ── 超宽屏（≥ 1600px）── */
 @media screen and (min-width: 100em) {
   .md-grid {
     max-width: 88rem;
@@ -82,16 +87,19 @@
     max-width: 88rem;
   }
 }
-
 /* ── 8. 文章朗读功能样式 ── */
 
-/* 朗读按钮（标题旁） */
+/* 朗读按钮（标题旁）
+   移动端触控区延展至≥ 44×44px（WCAG AA 推荐），
+   视觉尺寸维持 2.1rem，通过 padding 扩展点击热区 */
 .tts-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 2.1rem;
   height: 2.1rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   margin-left: 0.6rem;
   padding: 0;
   border: 1px solid var(--md-default-fg-color--lightest);
@@ -178,13 +186,24 @@
   animation: tts-wave-pulse 1.4s ease-in-out 0.2s infinite;
 }
 
-/* 朗读时段落高亮 */
+/* 朗读时段落高亮（默认规则） */
 .tts-reading {
   background: var(--md-accent-fg-color--transparent) !important;
   border-left: 3px solid var(--md-accent-fg-color) !important;
   padding-left: 0.75rem !important;
   border-radius: 4px;
   transition: background 300ms ease, border-left 300ms ease, padding-left 300ms ease;
+}
+
+/* 表格单元格内不使用左边条＋ padding，避免整行列宽跳变
+   改用背景色 + 内阴影的方式传达朗读位置 */
+td.tts-reading,
+th.tts-reading {
+  background: var(--md-accent-fg-color--transparent) !important;
+  border-left: none !important;
+  padding-left: inherit !important;
+  box-shadow: inset 3px 0 0 0 var(--md-accent-fg-color);
+  border-radius: 0;
 }
 
 /* 尊重减少动效偏好 */

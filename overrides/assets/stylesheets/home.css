@@ -20,40 +20,77 @@
       规则自动失效，无需任何 JS 同步 body class。
 ═══════════════════════════════════════════════ */
 
-/* 1) body 背景同步为首页背景色，消除溢出时的颜色差异 */
-[data-md-color-scheme="slate"]   body:has(.home-page) { background-color: #0d1117; }
-[data-md-color-scheme="default"] body:has(.home-page) { background-color: #ffffff; }
+/* 1) body 背景同步为首页背景色，消除溢出时的颜色差异
+      双重选择器：
+      - body:has(.home-page)  —— 现代浏览器（Chrome 105+/Firefox 121+/Safari 15.4+）
+      - body.is-home          —— JS 兜底，由 custom.js 检测到 .home-page 后注入，
+                                 为老浏览器（旧 Firefox / Safari）提供相同效果
+*/
+[data-md-color-scheme="slate"]   body:has(.home-page),
+[data-md-color-scheme="slate"]   body.is-home { background-color: #0d1117; }
+[data-md-color-scheme="default"] body:has(.home-page),
+[data-md-color-scheme="default"] body.is-home { background-color: #ffffff; }
 
 /* 2) .md-main 及其内容链路全部"透明 + 全宽" */
-body:has(.home-page) .md-main { background-color: transparent; }
-body:has(.home-page) .md-main__inner {
+body:has(.home-page) .md-main,
+body.is-home .md-main { background-color: transparent; }
+body:has(.home-page) .md-main__inner,
+body.is-home .md-main__inner {
   margin: 0 !important;
   max-width: none !important;
   padding: 0 !important;
   display: block !important;   /* 取消 Material 默认的 grid/flex 布局 */
 }
-body:has(.home-page) .md-content {
+body:has(.home-page) .md-content,
+body.is-home .md-content {
   max-width: none !important;
   margin: 0 !important;
   padding: 0 !important;
   background-color: transparent;
 }
-body:has(.home-page) .md-content__inner {
+body:has(.home-page) .md-content__inner,
+body.is-home .md-content__inner {
   margin: 0 !important;
   padding: 0 !important;
   max-width: none !important;
 }
-body:has(.home-page) .md-content__inner::before { display: none; }    /* 顶部占位空白 */
-body:has(.home-page) .md-content__button { display: none !important; } /* 编辑/查看源码按钮 */
-body:has(.home-page) .md-source-file     { display: none !important; } /* 文件元信息 */
-body:has(.home-page) .md-feedback        { display: none !important; } /* 反馈组件 */
+body:has(.home-page) .md-content__inner::before,
+body.is-home .md-content__inner::before { display: none; }    /* 顶部占位空白 */
+body:has(.home-page) .md-content__button,
+body.is-home .md-content__button { display: none !important; } /* 编辑/查看源码按钮 */
+body:has(.home-page) .md-source-file,
+body.is-home .md-source-file     { display: none !important; } /* 文件元信息 */
+body:has(.home-page) .md-feedback,
+body.is-home .md-feedback        { display: none !important; } /* 反馈组件 */
 
 /* 3) 首页隐藏侧边栏 */
 body:has(.home-page) .md-sidebar--primary,
-body:has(.home-page) .md-sidebar--secondary { display: none !important; }
+body:has(.home-page) .md-sidebar--secondary,
+body.is-home .md-sidebar--primary,
+body.is-home .md-sidebar--secondary { display: none !important; }
 
 /* 4) header：去掉阴影，避免首页切到文章页时 "咔哒" 感 */
-body:has(.home-page) .md-header { box-shadow: none !important; }
+body:has(.home-page) .md-header,
+body.is-home .md-header { box-shadow: none !important; }
+
+/* 5) 首页专属横向滚动护栏
+   —— 作用域：仅首页 body，不污染全局。文章页依赖 Material 默认布局，
+      不加 overflow-x，避免影响移动端抽屉导航 .md-nav--primary（其通过
+      transform 从视口外滑入，若父级 body 有 overflow-x:clip/hidden，
+      抽屉内容会被裁掉，只剩灰色蒙版）。
+   —— 目的：拦截 .stack-item 入场动画 translateX(28px) 及任何子元素
+      意外溢出，避免首页手机端出现横向滚动条。
+   —— 降级：旧浏览器不支持 clip 时回退 hidden，效果等价。 */
+body:has(.home-page),
+body.is-home {
+  overflow-x: hidden;
+}
+@supports (overflow-x: clip) {
+  body:has(.home-page),
+  body.is-home {
+    overflow-x: clip;
+  }
+}
 
 /* ══════════════════════════════════════════════
    CSS 变量 —— 深色主题（slate）
@@ -149,6 +186,7 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
 ═══════════════════════════════════════════════ */
 .hero-section {
   position: relative;
+  /* 先用 100vh 作为兜底（iOS Safari <=15.4 不支持 dvh） */
   min-height: calc(100vh - var(--md-header-height, 2.4rem) - 2.4rem);
   background-color: transparent;
   display: flex;
@@ -158,10 +196,22 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
   padding: clamp(3rem, 8vh, 6rem) 2rem 3rem;
 }
 
+/* 现代浏览器使用 100dvh：解决 iOS Safari 地址栏收起时 Hero 突然拉高的抖动 */
+@supports (min-height: 100dvh) {
+  .hero-section {
+    min-height: calc(100dvh - var(--md-header-height, 2.4rem) - 2.4rem);
+  }
+}
+
 /* 窄屏 Material 隐藏 tabs，只减去 header 高度 */
 @media screen and (max-width: 59.9375em) {
   .hero-section {
     min-height: calc(100vh - var(--md-header-height, 2.4rem));
+  }
+  @supports (min-height: 100dvh) {
+    .hero-section {
+      min-height: calc(100dvh - var(--md-header-height, 2.4rem));
+    }
   }
 }
 
@@ -215,6 +265,11 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
+  /* 关键：grid 子项默认 min-width: auto，会被内部最宽的不可收缩元素
+     （如长英文标题 / uppercase 标签 / 按钮组）撑破父容器。显式 0 后
+     grid 才会真正以 1fr 约束宽度，避免 .hero-left 在 375px 窄屏下
+     被撑到 370px（超出视口） */
+  min-width: 0;
 }
 
 /* 小标签 */
@@ -265,6 +320,10 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
   opacity: 0;
   transform: translateY(16px);
   animation: fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards;
+  /* 窄屏兵底：若未来 site_name 换成长英文单词或专有名词，
+     允许在任位置换行，避免撑破 .hero-left */
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 /* 高对比度模式兜底 */
@@ -286,6 +345,8 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
   opacity: 0;
   transform: translateY(16px);
   animation: fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+  /* 同标题，防止长 URL 或不可断字英文术语在窄屏下撑破容器 */
+  overflow-wrap: anywhere;
 }
 
 /* 按钮组 */
@@ -383,7 +444,16 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+  /* 同 .hero-left，防止内部 .stack-item 的 min-content（icon+padding+arrow
+     固定和）把 grid 列撑出 1fr 约束，进而在单列布局下推宽 .hero-left */
+  min-width: 0;
   /* 容器不再整体动画，交由子项 stagger 入场 */
+  /* 关键：子项入场动画使用 translateX(28px)，hover 使用 translateX(5px)，
+     在窄屏 100% 宽度容器下会溢出父级右边界，触发手机端横向滚动条。
+     用 overflow-x: clip 在本地裁切，不影响父容器滚动/定位。
+     （clip 不支持的旧浏览器回退到 hidden，等价效果） */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* 卡片 stagger 入场：--i 由模板注入（loop.index0） */
@@ -412,27 +482,42 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
               opacity 0.22s ease, filter 0.22s ease;
 }
 
-/* 品牌色渐显背景：hover 时从左向右淡入，作为视觉锚点 */
+/* 品牌色渐显背景：hover 时从左向右淡入，作为视觉锚点
+   fallback：不支持 color-mix 的浏览器（Firefox <113 / Safari <16.2）
+   使用主题高亮色作为降级背景 */
 .stack-item::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
   background: linear-gradient(90deg,
-    color-mix(in srgb, var(--si-color) 14%, transparent) 0%,
+    var(--home-spotlight) 0%,
     transparent 60%);
   opacity: 0;
   transition: opacity 0.25s ease;
   pointer-events: none;
   z-index: 0;
 }
+@supports (background: color-mix(in srgb, red, blue)) {
+  .stack-item::before {
+    background: linear-gradient(90deg,
+      color-mix(in srgb, var(--si-color) 14%, transparent) 0%,
+      transparent 60%);
+  }
+}
 
 .stack-item > * { position: relative; z-index: 1; }
 
 .stack-item:hover {
   transform: translateX(5px);
-  border-color: color-mix(in srgb, var(--si-color) 55%, var(--home-card-border));
+  /* fallback：直接使用品牌色（浏览器不支持 color-mix 时） */
+  border-color: var(--si-color, var(--home-card-hover-bd));
   background: var(--home-card-hover-bg);
+}
+@supports (border-color: color-mix(in srgb, red, blue)) {
+  .stack-item:hover {
+    border-color: color-mix(in srgb, var(--si-color) 55%, var(--home-card-border));
+  }
 }
 
 .stack-item:hover::before { opacity: 1; }
@@ -466,7 +551,13 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
   opacity: 1;
   width: 4px;
   height: 2.6rem;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--si-color) 60%, transparent);
+  /* fallback：不支持 color-mix 的浏览器使用纯品牌色 */
+  box-shadow: 0 0 12px var(--si-color, #6366f1);
+}
+@supports (box-shadow: 0 0 12px color-mix(in srgb, red, blue)) {
+  .stack-item:hover .stack-accent {
+    box-shadow: 0 0 12px color-mix(in srgb, var(--si-color) 60%, transparent);
+  }
 }
 
 /* 品牌图标容器：常态使用 --si-color，浅色主题下维持品牌色，深色主题轻微提亮 */
@@ -479,9 +570,15 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
   justify-content: center;
   border-radius: 8px;
   color: var(--si-color, #6366f1);
-  background: color-mix(in srgb, var(--si-color) 10%, transparent);
+  /* fallback：不支持 color-mix 时使用主题卡片背景 */
+  background: var(--home-card-bg);
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
               background 0.22s ease, box-shadow 0.22s ease;
+}
+@supports (background: color-mix(in srgb, red, blue)) {
+  .stack-icon {
+    background: color-mix(in srgb, var(--si-color) 10%, transparent);
+  }
 }
 
 .stack-icon svg {
@@ -492,8 +589,15 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
 
 .stack-item:hover .stack-icon {
   transform: scale(1.08) rotate(-3deg);
-  background: color-mix(in srgb, var(--si-color) 20%, transparent);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--si-color) 35%, transparent);
+  /* fallback：不支持 color-mix 时使用品牌色 + 低透明度模拟 */
+  background: var(--home-card-hover-bg);
+  box-shadow: 0 4px 14px var(--si-color, #6366f1);
+}
+@supports (background: color-mix(in srgb, red, blue)) {
+  .stack-item:hover .stack-icon {
+    background: color-mix(in srgb, var(--si-color) 20%, transparent);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--si-color) 35%, transparent);
+  }
 }
 
 .stack-info {
@@ -538,7 +642,13 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
 
 .stack-meta-count {
   font-weight: 600;
-  color: color-mix(in srgb, var(--home-card-title) 70%, var(--home-count-color));
+  /* fallback：不支持 color-mix 时使用 count 色 */
+  color: var(--home-count-color);
+}
+@supports (color: color-mix(in srgb, red, blue)) {
+  .stack-meta-count {
+    color: color-mix(in srgb, var(--home-card-title) 70%, var(--home-count-color));
+  }
 }
 
 .stack-meta-sep {
@@ -592,6 +702,17 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
 /* ══════════════════════════════════════════════
    响应式
 ═══════════════════════════════════════════════ */
+
+/* 中等宽度（13"/14" 笔记本 1025-1280px）：
+   原 5fr/7fr 在此区间会让左列中文标题被压到 3-4 行，
+   调整为 4fr/8fr 并缩小 gap，让左右两列呼吸更均衡 */
+@media (min-width: 1025px) and (max-width: 1280px) {
+  .hero-inner {
+    grid-template-columns: 4fr 8fr;
+    gap: clamp(2rem, 4vw, 3.5rem);
+  }
+}
+
 @media (max-width: 1024px) {
   .hero-section {
     padding: clamp(2rem, 6vh, 4rem) 2rem 2.5rem;
@@ -604,18 +725,47 @@ body:has(.home-page) .md-header { box-shadow: none !important; }
   .hero-left { align-items: center; }
   .hero-subtitle { max-width: 100%; }
   .hero-buttons { justify-content: center; }
-  .hero-stats { justify-content: center; }
+  .hero-stats { justify-content: center; flex-wrap: wrap; }
   /* 窄屏下保留 stagger，但整体缩短延迟，避免等待感 */
   .stack-item { animation-delay: calc(0.05s + var(--i, 0) * 35ms); }
 }
 
 @media (max-width: 768px) {
-  .hero-section { padding: 0 1.5rem; }
+  .hero-section { padding: clamp(1.5rem, 4vh, 2.5rem) 1.5rem 2rem; }
 }
 
 @media (max-width: 480px) {
   .hero-buttons { flex-direction: column; align-items: center; }
   .btn-primary, .btn-ghost { width: 100%; max-width: 280px; justify-content: center; }
+  /* 极小屏（<=360px）允许 stats 行换行，避免挤出视口 */
+  .hero-stats { gap: 0.75rem; }
+  .hero-stat-sep { display: none; }
+}
+
+/* ══════════════════════════════════════════════
+   触控设备（无真实 hover）专项修正
+   —— 根因：移动端 :active / :focus 仍会触发 hover 态规则，
+      .stack-item:hover { transform: translateX(5px) } 会把卡片推出
+      视口右边界，在 iOS / 部分 Android 浏览器上产生横向滚动条。
+   —— 策略：仅对 (hover: none) 指针设备关闭水平位移，
+      保留颜色 / 阴影反馈，体验不受损。
+═══════════════════════════════════════════════ */
+@media (hover: none) {
+  .stack-item:hover,
+  .stack-item:active,
+  .stack-item:focus {
+    transform: none;
+  }
+  .stack-item:hover .stack-arrow,
+  .stack-item:active .stack-arrow,
+  .stack-item:focus .stack-arrow {
+    transform: none;
+  }
+  /* 触控设备上去掉 .btn-primary / .btn-ghost 的 translateY(-2px) hover 抖动 */
+  .btn-primary:hover,
+  .btn-ghost:hover {
+    transform: none;
+  }
 }
 
 /* ══════════════════════════════════════════════

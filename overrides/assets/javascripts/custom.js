@@ -11,11 +11,17 @@
 (function () {
   'use strict';
 
-  /* ── 首页判断 ── */
+  /* ── 首页判断（基于 DOM 特征，兼容子路径部署 / 自定义域名） ── */
   function isHomePage() {
-    var path = window.location.pathname;
-    return path === '/' || path === '/index.html' ||
-      (path.endsWith('/') && path.split('/').filter(Boolean).length === 0);
+    return !!document.querySelector('.home-page');
+  }
+
+  /* ── 同步首页兜底类（用于不支持 :has() 的旧浏览器） ── */
+  function syncHomeBodyClass() {
+    var body = document.body;
+    if (!body) return;
+    if (isHomePage()) body.classList.add('is-home');
+    else body.classList.remove('is-home');
   }
 
   /* ── 首页隐藏反馈组件 ── */
@@ -26,8 +32,10 @@
     }
   }
 
-  /* ── 移动端打开侧边栏时自动展开 TOC ── */
-  var MOBILE_BREAKPOINT = 960;
+  /* ── 移动端打开侧边栏时自动展开 TOC ──
+   *  与 Material 默认断点（76.25em ≈ 1220px）对齐，
+   *  避免 960~1220px 区间 drawer 打开却不自动展开 TOC */
+  var MOBILE_BREAKPOINT = 1220;
   var RETRY_LIMIT = 20;
   var RETRY_DELAY = 75;
 
@@ -238,15 +246,45 @@
     if (!content) return [];
 
     // 选取正文中的可读元素，排除代码块、脚本、样式等
-    var selectors = 'p, h1, h2, h3, h4, h5, h6, li, blockquote, .admonition-title, .admonition > p, td, th';
+    // 使用 :scope 限定直接子段落，避免 blockquote/admonition/li 内嵌 <p> 被重复加入
+    var selectors = [
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'p', 'li', 'blockquote',
+      '.admonition-title',
+      'td', 'th'
+    ].join(',');
     var elements = content.querySelectorAll(selectors);
     var result = [];
+    var seenEls = new Set();
+
+    /** 更稳妥的可见性判断：兼容 visibility/hidden attr/display:none */
+    function isVisible(el) {
+      if (!el) return false;
+      if (typeof el.checkVisibility === 'function') {
+        return el.checkVisibility({ checkOpacity: false, checkVisibilityCSS: true });
+      }
+      var rects = el.getClientRects();
+      return rects && rects.length > 0;
+    }
 
     elements.forEach(function (el) {
       // 跳过隐藏元素、代码块内容、空文本
-      if (el.offsetParent === null) return;
+      if (!isVisible(el)) return;
       if (el.closest('pre') || el.closest('code') || el.closest('.mermaid')) return;
       if (el.closest('.md-source') || el.closest('.md-feedback')) return;
+
+      // 去重：跳过其祖先已经被选中的节点
+      // 例如 blockquote 里的 <p>、li 里的 <p>、admonition 里的 <p>
+      var tag = el.tagName;
+      var isBlockWrap = tag === 'BLOCKQUOTE' || tag === 'LI';
+      if (tag === 'P' || isBlockWrap) {
+        if (el.closest('blockquote') !== el && el.closest('blockquote')) return;
+        if (el.closest('li') !== el && el.closest('li')) return;
+        if (el.closest('.admonition')) return;
+      }
+
+      // 额外去重：若同一文本节点已被收录，跳过
+      if (seenEls.has(el)) return;
 
       var rawText = (el.textContent || '').trim();
       // 过滤掉过短的文本（如单个符号）
@@ -258,10 +296,17 @@
       // 使用文本预处理优化朗读质量
       var processedText = preprocessText(rawText, el.tagName);
 
+      seenEls.add(el);
       result.push({ el: el, text: processedText });
     });
 
     return result;
+  }
+
+  /** 清理正文中所有残留的 tts-reading 类（SPA 切页保险） */
+  function clearAllTTSHighlights() {
+    var highlighted = document.querySelectorAll('.tts-reading');
+    highlighted.forEach(function (el) { el.classList.remove('tts-reading'); });
   }
 
   /** 高亮当前朗读的段落 */
@@ -506,6 +551,8 @@
       ttsState.synth.cancel();
       stopKeepAlive();
     }
+    // 清理上一页可能残留的高亮，避免 SPA 切页后视觉残留
+    clearAllTTSHighlights();
     ttsState.status = 'stopped';
     ttsState.currentIndex = -1;
     ttsState.paragraphs = [];
@@ -524,6 +571,7 @@
 
   /* ── 页面就绪 ── */
   function onPageReady() {
+    syncHomeBodyClass();
     hideFeedbackOnHomepage();
     bindDrawerToc();
     resetContentAnimation();
