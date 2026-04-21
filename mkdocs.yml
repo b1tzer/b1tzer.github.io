@@ -214,6 +214,7 @@ nav:
   - MySQL:
     - MySQL 核心知识体系概览: 03-mysql/00-mysql-overview.md
     - 数据类型与表设计规范: 03-mysql/01-数据类型与表设计规范.md
+    - MySQL 整体架构 —— Server 层 × 存储引擎层的双层模型: 03-mysql/01a-MySQL整体架构.md
     - 索引详解: 03-mysql/02-索引详解.md
     - SQL 执行与性能优化: 03-mysql/03-SQL执行与性能优化.md
     - 事务与并发控制: 03-mysql/04-事务与并发控制.md
@@ -224,6 +225,7 @@ nav:
     - 高可用架构方案: 03-mysql/09-高可用架构方案.md
     - 分库、分表与分片：分布式数据库架构详解: 03-mysql/10-分库分表与分布式架构.md
     - MySQL 实战问题与避坑指南: 03-mysql/11-实战问题与避坑指南.md
+    - MySQL 8.0 与 8.4 新特性精讲: 03-mysql/12-MySQL8.0与8.4新特性精讲.md
   - PostgreSQL:
     - PostgreSQL 核心特性与选型: 04-postgresql/00-postgresql-overview.md
     - PostgreSQL vs MySQL 全面对比: 04-postgresql/01-PG与MySQL对比.md

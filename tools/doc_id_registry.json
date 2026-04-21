@@ -57,6 +57,8 @@
   "kafka-高吞吐原理": "06-kafka/05-高吞吐原理.md",
   "mysql-Binlog与主从复制": "03-mysql/07-Binlog与主从复制.md",
   "mysql-InnoDB存储引擎深度剖析": "03-mysql/06-InnoDB存储引擎深度剖析.md",
+  "mysql-MySQL8.0与8.4新特性精讲": "03-mysql/12-MySQL8.0与8.4新特性精讲.md",
+  "mysql-MySQL整体架构": "03-mysql/01a-MySQL整体架构.md",
   "mysql-SQL执行与性能优化": "03-mysql/03-SQL执行与性能优化.md",
   "mysql-mysql-overview": "03-mysql/00-mysql-overview.md",
   "mysql-事务与并发控制": "03-mysql/04-事务与并发控制.md",

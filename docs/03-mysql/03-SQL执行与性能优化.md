@@ -7,9 +7,23 @@ title: SQL 执行与性能优化
 
 > **核心问题**：一条 SQL 是如何被执行的？查询优化器是如何选择执行计划的？如何用 EXPLAIN 分析和优化 SQL 性能？
 
+> **一句话口诀**
+> 
+> 1. **SQL 走四层：连接器 → 解析器 → 优化器 → 执行器**——8.0 已删除查询缓存，出问题先定位哪层。
+> 2. **优化器选索引靠 Cardinality，统计信息过期就会选错**——`ANALYZE TABLE` / `FORCE INDEX` / 覆盖索引是三张底牌。
+> 3. **EXPLAIN 看五列**：`type`（访问类型）/ `key`（真走索引）/ `key_len`（联合索引用多长）/ `rows`（扫描行）/ `Extra`（暗号）。
+> 4. **Join 原则：小表驱动大表 + 被驱动表走索引**——NLJ 要索引，没索引就退化 BNL（8.0.18+ 改走 Hash Join）。
+> 5. **深分页用延迟关联**：先走覆盖索引查主键，再 JOIN 回表拿数据，避免大 offset 扫后丢弃。
+
+> **边界声明**：本篇讲 **SQL 执行链路 / 优化器代价模型 / EXPLAIN 字段 / Join 算法 / 慢查询排查**；
+> 
+> - **索引结构与失效原理** 见 [02-索引详解.md](02-索引详解.md)；
+> - **缓冲池 / Change Buffer / 索引下推物理层实现** 见 [06-InnoDB存储引擎深度剖析.md](06-InnoDB存储引擎深度剖析.md)；
+> - **线上慢 SQL 实战案例（N+1 / 大 IN / 燎原型 SQL）** 见 [11-实战问题与避坑指南.md](11-实战问题与避坑指南.md)。
+
 ---
 
-## 它解决了什么问题？
+## 1. 它解决了什么问题？
 
 理解 SQL 执行原理和性能优化工具，能帮助你：
 
@@ -21,7 +35,7 @@ title: SQL 执行与性能优化
 
 ---
 
-# 一、SQL 执行全链路
+## 2. SQL 执行全链路
 
 ```mermaid
 flowchart TD
@@ -34,10 +48,10 @@ flowchart TD
     Executor --> InnoDB["InnoDB 存储引擎\n（Buffer Pool、磁盘）"]
 ```
 
-### 各层职责
+### 2.1 各层职责
 
 | 层次 | 职责 | 常见问题 |
-|------|------|---------|
+| :--- | :--- | :--- |
 | **连接器** | 认证用户、管理连接、分配权限 | 连接数过多（`Too many connections`） |
 | **解析器** | 词法/语法分析，生成语法树 | SQL 语法错误 |
 | **预处理器** | 验证表名列名是否存在，检查权限 | 表不存在、列名错误 |
@@ -46,11 +60,11 @@ flowchart TD
 
 ---
 
-# 二、查询优化器：代价模型
+## 3. 查询优化器：代价模型
 
 优化器的目标是找到**代价最小**的执行计划。代价 = IO 代价 + CPU 代价。
 
-### 统计信息
+### 3.1 统计信息
 
 优化器依赖统计信息做决策：
 
@@ -67,7 +81,7 @@ ANALYZE TABLE user;
 
 **Cardinality（基数）**：索引列唯一值的数量。基数越高，索引区分度越好，优化器越倾向于使用该索引。
 
-### 优化器选错索引的场景
+### 3.2 优化器选错索引的场景
 
 ```sql
 -- 场景：明明有更好的索引，优化器却选了全表扫描
@@ -87,23 +101,23 @@ ALTER TABLE orders ADD INDEX idx_status_time(status, create_time);
 
 ---
 
-# 三、EXPLAIN 执行计划分析
+## 4. EXPLAIN 执行计划分析
 
-## EXPLAIN 关键字段
+### 4.1 EXPLAIN 关键字段
 
 ```sql
 EXPLAIN SELECT * FROM user WHERE name = 'Tom' AND age > 18;
 ```
 
 | 字段 | 含义 | 重点关注值 |
-|------|------|-----------|
+| :--- | :--- | :--- |
 | **type** | 访问类型（性能从好到差） | `system > const > eq_ref > ref > range > index > ALL` |
 | **key** | 实际使用的索引 | NULL 表示未使用索引 |
 | **key_len** | 索引使用的字节数 | 越长说明使用了更多索引列 |
 | **rows** | 预估扫描行数 | 越小越好 |
 | **Extra** | 额外信息 | `Using index`（覆盖索引）、`Using filesort`（需优化）、`Using temporary`（需优化） |
 
-## type 类型详解
+### 4.2 type 类型详解
 
 ```
 system      → 表只有一行（系统表）
@@ -127,10 +141,10 @@ flowchart LR
     style ALL fill:#FF6B6B
 ```
 
-## Extra 字段含义
+### 4.3 Extra 字段含义
 
 | Extra 值 | 含义 | 是否需要优化 |
-|---------|------|------------|
+| :--- | :--- | :--- |
 | `Using index` | 覆盖索引，无需回表 | ✅ 很好 |
 | `Using where` | 在索引扫描后还需过滤 | ⚠️ 可接受 |
 | `Using filesort` | 需要额外排序（无法利用索引排序） | ⚠️ 需优化 |
@@ -139,9 +153,9 @@ flowchart LR
 
 ---
 
-# 四、Join 算法
+## 5. Join 算法
 
-### Nested Loop Join（NLJ，嵌套循环）
+### 5.1 Nested Loop Join（NLJ，嵌套循环）
 
 最基础的 Join 算法，适合驱动表数据量小、被驱动表有索引的场景：
 
@@ -159,11 +173,11 @@ WHERE o.status = 1;
 -- orders 是驱动表（有 WHERE 过滤），users.id 是主键（索引），NLJ 效率高
 ```
 
-### Block Nested Loop Join（BNL，块嵌套循环）
+### 5.2 Block Nested Loop Join（BNL，块嵌套循环）
 
 当被驱动表**没有索引**时，NLJ 退化为全表扫描，性能极差。BNL 通过 Join Buffer 优化：
 
-```
+```txt
 将驱动表数据分批加载到 Join Buffer（内存）
 for each batch in Join Buffer:
     全表扫描被驱动表，与 Join Buffer 中的数据批量匹配
@@ -173,9 +187,9 @@ for each batch in Join Buffer:
 - 减少了被驱动表的全表扫描次数（从 N 次减少到 N/batch_size 次）
 - **EXPLAIN 中 Extra 显示 `Using join buffer (Block Nested Loop)`，说明被驱动表缺少索引，需要优化**
 
-### Hash Join（MySQL 8.0.18+）
+### 5.3 Hash Join（MySQL 8.0.18+）
 
-```
+```txt
 1. 将小表（Build 阶段）加载到内存哈希表
 2. 扫描大表（Probe 阶段），用 Join 条件在哈希表中查找匹配行
 ```
@@ -184,7 +198,7 @@ for each batch in Join Buffer:
 - 适合大表 Join 且无索引的场景
 - MySQL 8.0.18+ 自动使用，替代了 BNL
 
-### Join 优化原则
+### 5.4 Join 优化原则
 
 ```sql
 -- ✅ 小表驱动大表（MySQL 优化器通常会自动选择，但可以用 STRAIGHT_JOIN 强制）
@@ -199,9 +213,9 @@ ALTER TABLE orders ADD INDEX idx_user_id(user_id);
 
 ---
 
-# 五、子查询优化
+## 6. 子查询优化
 
-### IN 子查询的陷阱
+### 6.1 IN 子查询的陷阱
 
 ```sql
 -- ❌ 可能很慢：子查询每次都执行
@@ -217,7 +231,7 @@ WHERE u.city = '北京';
 
 MySQL 5.6+ 优化器会自动将 IN 子查询转换为 Semi-Join，性能已大幅改善。但复杂子查询仍建议手动改写为 JOIN。
 
-### EXISTS vs IN
+### 6.2 EXISTS vs IN
 
 ```sql
 -- 外表小、内表大：用 EXISTS（外表驱动，内表走索引）
@@ -233,34 +247,11 @@ SELECT * FROM orders WHERE user_id IN (
 
 ---
 
-# 六、常见优化案例
+## 7. 常见优化案例
 
-### 案例1：函数导致全表扫描
+> 📖 **索引失效的 5 大场景（函数 / 隐式转换 / LIKE 前缀 / OR / 最左前缀）** 和 **覆盖索引基础案例** 已在 [02-索引详解.md](02-索引详解.md) 系统展开，本章只保留与 **EXPLAIN / Extra / Join / 分页** 强相关的案例。
 
-```sql
--- ❌ 问题 SQL：全表扫描
-SELECT * FROM orders WHERE YEAR(create_time) = 2024;
--- EXPLAIN 显示 type=ALL
-
--- ✅ 优化后：范围查询走索引
-SELECT * FROM orders
-WHERE create_time >= '2024-01-01' AND create_time < '2025-01-01';
--- EXPLAIN 显示 type=range
-```
-
-### 案例2：SELECT * 导致回表
-
-```sql
--- ❌ 问题 SQL：SELECT * 导致回表
-SELECT * FROM user WHERE name = 'Tom';
--- EXPLAIN 显示 Extra 无 Using index
-
--- ✅ 优化后：覆盖索引，避免回表
-SELECT id, name, age FROM user WHERE name = 'Tom';
--- 如果有联合索引 (name, age)，EXPLAIN 显示 Extra=Using index
-```
-
-### 案例3：ORDER BY 导致文件排序
+### 7.1 案例1：ORDER BY 导致文件排序
 
 ```sql
 -- ❌ 问题 SQL：排序字段不在索引中
@@ -271,7 +262,7 @@ SELECT * FROM user WHERE status = 1 ORDER BY create_time DESC;
 -- EXPLAIN 显示 Extra=Using index condition（无 filesort）
 ```
 
-### 案例4：大偏移量分页优化
+### 7.2 案例2：大偏移量分页优化
 
 ```sql
 -- ❌ 深分页，offset 很大时性能极差（需要扫描并丢弃大量数据）
@@ -286,10 +277,10 @@ INNER JOIN (
 
 ---
 
-# 七、SQL 优化技巧汇总
+## 8. SQL 优化技巧汇总
 
 | 优化方向 | 具体做法 |
-|---------|---------|
+| :--- | :--- |
 | **避免全表扫描** | 给 WHERE 条件列建索引，避免索引失效 |
 | **避免回表** | 使用覆盖索引，SELECT 只查需要的列 |
 | **避免文件排序** | ORDER BY 的列加入联合索引 |
@@ -299,9 +290,9 @@ INNER JOIN (
 
 ---
 
-# 八、慢查询分析
+## 9. 慢查询分析
 
-### 开启慢查询日志
+### 9.1 开启慢查询日志
 
 ```sql
 -- 查看慢查询配置
@@ -317,7 +308,7 @@ SET GLOBAL slow_query_log_file = '/var/log/mysql/slow.log';
 SET GLOBAL log_queries_not_using_indexes = ON;
 ```
 
-### pt-query-digest 分析
+### 9.2 pt-query-digest 分析
 
 ```bash
 # 分析慢查询日志，按总耗时排序
@@ -328,7 +319,7 @@ pt-query-digest /var/log/mysql/slow.log
 #    1  0xABC...    120.0000 45.2%   1000  0.1200  SELECT orders WHERE...
 ```
 
-### 慢查询排查步骤
+### 9.3 慢查询排查步骤
 
 ```mermaid
 flowchart TD
@@ -346,7 +337,7 @@ flowchart TD
 
 ---
 
-# 九、常见问题
+## 10. 常见问题
 
 **Q：优化器为什么会选错索引？如何解决？**
 
