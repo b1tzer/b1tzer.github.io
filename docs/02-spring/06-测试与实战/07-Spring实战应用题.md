@@ -298,33 +298,43 @@ public class MyAutoConfiguration {
 
 ## 🔥 循环依赖相关
 
-### Q10：三级缓存分别存什么？为什么需要第三级？
+> 📖 **三级缓存机制题**（"三级缓存各存什么？为什么需要第三级？构造器为什么不能解决循环依赖？"）已在 [Bean 生命周期与循环依赖 §6 + §8 Q3/Q4/Q5](@spring-核心基础-Bean生命周期与循环依赖) 给出源码级答案，本文不再重复，专注"**生产排障 + 业务选型**"视角。
 
-| 缓存 | 名称 | 存储内容 |
-|-----|------|---------|
-| 一级缓存 | `singletonObjects` | 完整的单例 Bean（初始化完成） |
-| 二级缓存 | `earlySingletonObjects` | 提前暴露的半成品 Bean（已实例化，未完成初始化） |
-| 三级缓存 | `singletonFactories` | `ObjectFactory`，用于生成 Bean 的早期引用 |
+### Q10：Spring Boot 3.x 升级后启动报 `BeanCurrentlyInCreationException`，怎么排查并解决？
 
-**为什么需要第三级缓存？**
-
-> 如果 Bean 需要 AOP 代理，不能直接暴露原始对象，需要通过 `ObjectFactory` 延迟决定是否创建代理。
+**症状定位**：
 
 ```
-A 依赖 B，B 依赖 A（A 有 AOP 切面）：
-
-1. 创建 A 的原始对象，放入三级缓存（ObjectFactory）
-2. 注入 B，开始创建 B
-3. B 需要注入 A，从三级缓存取出 ObjectFactory，调用得到 A 的代理对象
-4. 将 A 的代理对象放入二级缓存，删除三级缓存
-5. B 初始化完成，放入一级缓存
-6. A 完成初始化，用二级缓存中的代理对象替换，放入一级缓存
+Error creating bean with name 'orderService':
+Requested bean is currently in creation: Is there an unresolvable circular reference?
 ```
 
-**Spring Boot 2.6+ 默认禁止循环依赖**，需要显式开启：
-```properties
-spring.main.allow-circular-references=true
+**根因**：Spring 6 / Boot 3 将 `spring.main.allow-circular-references` 默认值由 `true` 改为 `false`，Boot 2.x 时期"靠三级缓存悄悄跑起来"的字段/Setter 循环依赖集中暴露。
+
+**排查 checklist**：
+
+- [ ] **第一步：定位环**——启动日志会打印 `The dependencies of some of the beans in the application context form a cycle`，跟着 `┌─────┐` 环形箭头找到所有参与者
+- [ ] **第二步：确认注入方式**——构造器注入的环 vs 字段/Setter 注入的环，前者无法靠开关救，后者可以临时救
+- [ ] **第三步：判断是不是"真环"还是"假环"**——有时候是 `@Configuration` 类里 `@Bean` 方法互相调用造成的伪环，改成参数注入即可
+- [ ] **第四步：按优先级选方案**（见下表）
+
+**解决方案选型矩阵**：
+
+| 方案 | 适用场景 | 代价 | 是否推荐 |
+| :-- | :-- | :-- | :-- |
+| **重构：提取公共依赖** `A→C←B` | 业务上两者共享某块逻辑 | 需要改动多个类 | ⭐⭐⭐ 首选 |
+| **重构：事件解耦** `ApplicationEventPublisher` | 发布-订阅类单向通知 | 同步/异步语义需要评估 | ⭐⭐⭐ 首选 |
+| **`@Lazy` 打破构造器环** | 历史遗留构造器注入 | 注入代理，首次调用才解析 | ⭐⭐ 权宜 |
+| **`allow-circular-references=true`** | 大规模遗留代码临时上线 | 掩盖设计问题、后续技术债 | ⭐ 临时救场 |
+
+```yaml
+# 临时救场配置（务必同步打日志 + 提技术债工单）
+spring:
+  main:
+    allow-circular-references: true
 ```
+
+> 📖 三级缓存**为什么**能（部分）解决循环依赖、构造器**为什么**不行的源码机制，见 [Bean 生命周期与循环依赖 §6](@spring-核心基础-Bean生命周期与循环依赖)。本题只给工程决策。
 
 ---
 

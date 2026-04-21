@@ -489,49 +489,13 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 ### 案例2：理解循环依赖解决机制
 
-#### 三级缓存分析
-```java
-// DefaultSingletonBeanRegistry.java
-public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements SingletonBeanRegistry {
-    
-    /** 一级缓存：完整的单例 Bean */
-    private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
-    
-    /** 二级缓存：早期暴露的 Bean（未完成初始化） */
-    private final Map<String, Object> earlySingletonObjects = new ConcurrentHashMap<>(16);
-    
-    /** 三级缓存：ObjectFactory，用于创建代理对象 */
-    private final Map<String, ObjectFactory<?>> singletonFactories = new ConcurrentHashMap<>(16);
-    
-    protected Object getSingleton(String beanName, boolean allowEarlyReference) {
-        // 先从一级缓存获取
-        Object singletonObject = this.singletonObjects.get(beanName);
-        if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
-            // 如果正在创建中，从二级缓存获取
-            singletonObject = this.earlySingletonObjects.get(beanName);
-            if (singletonObject == null && allowEarlyReference) {
-                // 如果二级缓存也没有，从三级缓存获取 ObjectFactory
-                synchronized (this.singletonObjects) {
-                    singletonObject = this.singletonObjects.get(beanName);
-                    if (singletonObject == null) {
-                        singletonObject = this.earlySingletonObjects.get(beanName);
-                        if (singletonObject == null) {
-                            ObjectFactory<?> singletonFactory = this.singletonFactories.get(beanName);
-                            if (singletonFactory != null) {
-                                // 调用 ObjectFactory 获取 Bean（可能是代理对象）
-                                singletonObject = singletonFactory.getObject();
-                                this.earlySingletonObjects.put(beanName, singletonObject);
-                                this.singletonFactories.remove(beanName);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return singletonObject;
-    }
-}
-```
+> 📖 三级缓存的完整源码（`DefaultSingletonBeanRegistry.getSingleton()`）与事件序列、"为什么要三级而不是二级"的严谨解释，详见 [Bean 生命周期与循环依赖 §6](@spring-核心基础-Bean生命周期与循环依赖)。本文是**调试技巧**视角，源码机制不再重复展开，只给出**调试时的断点位置建议**：
+>
+> - `DefaultSingletonBeanRegistry#getSingleton(String, boolean)`：跟踪"一级→二级→三级"的查找路径
+> - `AbstractAutowireCapableBeanFactory#doCreateBean`：跟踪 Bean 实例化后放入三级缓存的时机（`addSingletonFactory` 调用处）
+> - `AbstractAutoProxyCreator#getEarlyBeanReference`：断在这里可观察循环依赖触发的**提前代理**生成
+>
+> 调试时建议开启 `-Dspring.main.allow-circular-references=true` 并写一对 A/B 互相依赖的 `@Component`，逐步 step into 上述三处断点，即可亲眼看到三级缓存的状态迁移。
 
 ## 实用工具和技巧
 

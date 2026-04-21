@@ -5,30 +5,51 @@ title: Spring 扩展点详解
 
 # Spring 扩展点详解
 
-> **一句话记忆口诀**：扩展点按"作用对象"二分——改元数据（`BeanFactoryPostProcessor` / `BeanDefinitionRegistryPostProcessor`）与改实例（`BeanPostProcessor` 及其子类 `InstantiationAwareBPP` / `MergedBeanDefinitionPostProcessor` / `SmartInstantiationAwareBPP`）；按"作用时机"从早到晚 ——`ApplicationContextInitializer` → `BDRPP` → `BFPP` → `BPP#before` → `BPP#after` → `SmartInitializingSingleton` → `ApplicationListener(ContextRefreshedEvent)` → `CommandLineRunner/ApplicationRunner`；排序看 `PriorityOrdered` → `Ordered` → 注册顺序；事件默认同步，`@Async` 需 `@EnableAsync`，`@TransactionalEventListener` 绑定事务阶段。
+> **一句话记忆口诀**：
+> 
+> 扩展点按"作用对象"二分
+> 
+> - **改元数据**（`BeanFactoryPostProcessor` / `BeanDefinitionRegistryPostProcessor`）
+> - **改实例**（`BeanPostProcessor` 及其子类 `InstantiationAwareBPP` / `MergedBeanDefinitionPostProcessor` / `SmartInstantiationAwareBPP`）；  
+>
+> 按"作用阶段"五段
+>
+> - **启动前**（`BootstrapRegistryInitializer` → `EnvironmentPostProcessor` → `SpringApplicationRunListener` → `ApplicationContextInitializer`）
+> - **刷新中**（`BDRPP` → `BFPP` → `BPP` → `SmartInitializingSingleton`）
+> - **刷新后**（`ApplicationListener` → `SmartLifecycle` → `Runner`）
+> - **运行期**（事件广播）
+> - **关闭期**（`DestructionAwareBPP` / `SmartLifecycle#stop`）；  
+>
+> 注册方式的铁律：**早于 `refresh()` 走 SPI，晚于 `refresh()` 可 `@Component`**；排序只认 `PriorityOrdered` → `Ordered` → 注册顺序，`@Order` 对 BPP/BFPP 无效。
+
+
+> 📖 **边界声明**：本文只讲"**扩展点本身**"的契约、陷阱、源码实现。
+>
+> - `refresh()` 12 步的宏观时序与 `SpringFactoriesLoader` SPI 细节 → [Spring 容器启动流程深度解析](03-Spring容器启动流程深度解析.md)
+> - 单个 Bean `doCreateBean()` 的内部阶段 → [Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md)
+> - `BeanDefinition` 的结构、合并、三种实现 → [IoC 与 DI §4](01-IoC与DI.md)
 
 ---
 
-## 1. 引入：为什么高级开发者必须吃透扩展点
+## 1. 引入：扩展点视角的定位
 
-扩展点是 Spring "对扩展开放、对修改关闭"的物化形式。八成业务开发者只用到 `@EventListener` 和 `ApplicationContextAware`，但下面这些问题只有吃透扩展点才答得上：
 
-- 为什么 `@Autowired` 是靠 `BeanPostProcessor` 实现的？自己写的 BPP 里能用 `@Autowired` 吗？
-- 为什么 `BeanFactoryPostProcessor` 可以 `@Component` 注册，但有时候 `@PostConstruct` 又不生效？
-- `ImportSelector` 和 `ImportBeanDefinitionRegistrar` 什么时候选哪个？`@EnableXxx` 系注解为什么总是配一个 `Import`？
-- `@EventListener` 监听 `ContextRefreshedEvent` 能拿到全部 Bean 吗？为什么有时候拿不到？
-- `@TransactionalEventListener` 的 `BEFORE_COMMIT` 与 `AFTER_COMMIT` 有什么语义差异？事务里监听到的事件丢失怎么排查？
-- 为什么 `ApplicationContextInitializer` 不能 `@Component`，只能配在 `spring.factories`？
+高级开发者必须对扩展点的四件事给出精确答案：
 
-这些问题的共同答案是：**扩展点不是孤立接口，而是嵌在 `refresh()` 12 步与 `doCreateBean()` 9 步里的一个个"预留钩子"**。理解它们的**作用对象、作用时机、注册方式、排序规则**四件事，才算真正掌握。
+| 维度 | 要回答的问题 |
+| :-- | :-- |
+| **作用对象** | 改的是 `BeanDefinition` 还是 Bean 实例？能不能替换对象？ |
+| **触发时机** | 属于哪一阶段？早于还是晚于 `refresh()`？每个 Bean 一次还是全局一次？ |
+| **注册方式** | SPI、`@Component`、`@Import`、手动 API，能混用吗？ |
+| **排序规则** | `PriorityOrdered` / `Ordered` / `@Order` 哪个生效？扩展点之间的执行顺序约束是什么？ |
 
-> 📖 `refresh()` 12 步的宏观视角见 [Spring 容器启动流程深度解析](03-Spring容器启动流程深度解析.md)；`doCreateBean()` 的微观视角见 [Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md)。本文专注"**扩展点本身**"——每个接口的契约、触发点、使用陷阱。
+本文按"**分类学 → 逐家族契约 → 注册与排序 → AOT 下的半失效 → 误区**"的顺序展开。
 
 ---
 
-## 2. 扩展点分类学：两个维度 + 一张对照表
+## 2. 扩展点分类学
 
-### 2.1 按"作用对象"分类（关键直觉）
+### 2.1 按作用对象：两个世界
 
 ```txt
 ┌────────────────────────┐          ┌────────────────────────┐
@@ -36,63 +57,82 @@ title: Spring 扩展点详解
 │      （元数据/配置）      │ ──────→ │       （真实对象）       │
 └───────────┬────────────┘          └───────────┬────────────┘
             │                                    │
+  改元数据的扩展点（启动前半段）               改实例的扩展点（启动后半段）
   BeanFactoryPostProcessor                BeanPostProcessor
   BeanDefinitionRegistryPostProcessor     InstantiationAwareBPP
   ImportSelector                          MergedBeanDefinitionPostProcessor
   ImportBeanDefinitionRegistrar           SmartInstantiationAwareBPP
+  BeanDefinitionCustomizer                DestructionAwareBPP
 ```
 
-**作用对象决定能做什么**：操作 `BeanDefinition` 的扩展点只能在 Bean 还没出生时修改"档案卡"；操作 Bean 实例的扩展点才能替换对象、生成代理、做依赖注入。
+> 📖 这两个世界的分界线是 `refresh()` 第 5 步与第 6 步——BFPP 全部执行完后 `BeanDefinition` 才冻结。详见 [启动流程 §8](03-Spring容器启动流程深度解析.md)。
 
-### 2.2 按"作用时机"分类（执行顺序全景）
+### 2.2 按作用阶段：五段划分
 
 ```mermaid
 flowchart TB
-    Init["① ApplicationContextInitializer<br>（refresh() 之前，SpringBoot prepareContext）"]
-    BDRPP["② BeanDefinitionRegistryPostProcessor<br>（注册新的 BeanDefinition）"]
-    BFPP["③ BeanFactoryPostProcessor<br>（修改已有的 BeanDefinition）"]
-    Instan["④ InstantiationAwareBPP#postProcessBeforeInstantiation<br>（可短路整个生命周期）"]
-    Merge["⑤ MergedBeanDefinitionPostProcessor<br>（缓存注入点、元数据）"]
-    Smart["⑥ SmartInstantiationAwareBPP#getEarlyBeanReference<br>（循环依赖时提前代理）"]
-    Inject["⑦ InstantiationAwareBPP#postProcessProperties<br>（@Autowired / @Resource 注入）"]
-    Aware["⑧ Aware 接口回调<br>（BeanName/ClassLoader/BeanFactory）"]
-    Before["⑨ BPP#postProcessBeforeInitialization<br>（ApplicationContextAware、@PostConstruct 实际触发）"]
-    After["⑩ BPP#postProcessAfterInitialization<br>（⚠️ AOP 代理在此生成）"]
-    SmartInit["⑪ SmartInitializingSingleton<br>（全部单例就绪后的全局钩子）"]
-    Listener["⑫ ApplicationListener(ContextRefreshedEvent)<br>（容器刷新完成事件）"]
-    Runner["⑬ CommandLineRunner / ApplicationRunner<br>（SpringBoot 独有，run 方法收尾）"]
+    subgraph P1["① 启动前（容器未创建）"]
+        direction LR
+        BRI["BootstrapRegistryInitializer<br>（Boot 2.4+）"]
+        EPP["EnvironmentPostProcessor"]
+        SARL["SpringApplicationRunListener"]
+        ACI["ApplicationContextInitializer"]
+    end
+    subgraph P2["② refresh() 中（容器刷新）"]
+        direction LR
+        BDRPP["BeanDefinitionRegistryPostProcessor"]
+        BFPP["BeanFactoryPostProcessor"]
+        BPP["BeanPostProcessor 家族"]
+        SIS["SmartInitializingSingleton"]
+    end
+    subgraph P3["③ 刷新后（容器就绪）"]
+        direction LR
+        LIS["ApplicationListener / @EventListener"]
+        SL["SmartLifecycle#start"]
+        RUN["CommandLineRunner / ApplicationRunner"]
+    end
+    subgraph P4["④ 运行期"]
+        EVT["事件广播（@EventListener 实时触发）"]
+    end
+    subgraph P5["⑤ 关闭期"]
+        DES["DestructionAwareBPP / SmartLifecycle#stop / @PreDestroy"]
+    end
 
-    Init --> BDRPP --> BFPP --> Instan --> Merge --> Smart --> Inject --> Aware --> Before --> After --> SmartInit --> Listener --> Runner
+    P1 --> P2 --> P3 --> P4 --> P5
 ```
 
-> 第 ④~⑩ 步对每个 Bean 重复一次，第 ⑪~⑬ 步对整个容器只执行一次。
+> **每个 Bean 一次 vs 全局一次**：BPP 家族与 `MergedBeanDefinitionBPP` 对每个 Bean 触发；其余都是全局单次触发。
 
 ### 2.3 扩展点速查对照表
 
-| 扩展点 | 作用对象 | 触发时机 | 典型实现 |
-| :-- | :-- | :-- | :-- |
-| `ApplicationContextInitializer` | `ConfigurableApplicationContext` | `refresh()` 之前 | `ConfigurationWarningsApplicationContextInitializer` |
-| `BeanDefinitionRegistryPostProcessor` | `BeanDefinitionRegistry` | BDRPP 阶段 | `ConfigurationClassPostProcessor`、MyBatis `MapperScannerConfigurer` |
-| `BeanFactoryPostProcessor` | `ConfigurableListableBeanFactory` | BFPP 阶段 | `PropertySourcesPlaceholderConfigurer` |
-| `ImportSelector` | 返回类名数组 | 配置类解析阶段 | `AutoConfigurationImportSelector` |
-| `ImportBeanDefinitionRegistrar` | `BeanDefinitionRegistry` | 配置类解析阶段 | `MapperScannerRegistrar`、`FeignClientsRegistrar` |
-| `InstantiationAwareBeanPostProcessor` | Bean 实例（实例化前后） | 每个 Bean 实例化 | `AutowiredAnnotationBeanPostProcessor` |
-| `MergedBeanDefinitionPostProcessor` | 合并后的 `RootBeanDefinition` | 每个 Bean 元数据合并 | `AutowiredAnnotationBeanPostProcessor`（缓存注入点） |
-| `SmartInstantiationAwareBeanPostProcessor` | Bean 实例（提前暴露） | 循环依赖触发时 | `AbstractAutoProxyCreator` |
-| `BeanPostProcessor` | Bean 实例（初始化前后） | 每个 Bean 初始化 | `ApplicationContextAwareProcessor`、`AbstractAutoProxyCreator` |
-| `SmartInitializingSingleton` | Bean 自身（全员到齐钩子） | `preInstantiateSingletons()` 末尾 | `EventListenerMethodProcessor` |
-| `ApplicationListener` / `@EventListener` | 事件对象 | 事件发布时 | 业务监听器 |
-| `CommandLineRunner` / `ApplicationRunner` | 启动参数 | `SpringApplication.run()` 收尾 | 启动期初始化数据、校验配置 |
+| 扩展点 | 作用对象 | 阶段 | 触发点（对应 refresh 步骤或启动阶段） | 典型实现 |
+| :-- | :-- | :-- | :-- | :-- |
+| `BootstrapRegistryInitializer` | `BootstrapRegistry` | ① 启动前 | `SpringApplication` 构造，早于 `prepareEnvironment` | 早期共享基础设施（Boot 2.4+） |
+| `EnvironmentPostProcessor` | `ConfigurableEnvironment` | ① 启动前 | `prepareEnvironment` 中 | `ConfigDataEnvironmentPostProcessor`（加载 yaml） |
+| `SpringApplicationRunListener` | `SpringApplication` 事件 | ① 启动前 + 贯穿全程 | `run()` 全程 | `EventPublishingRunListener` |
+| `ApplicationContextInitializer` | `ConfigurableApplicationContext` | ① 启动前 | `prepareContext` 第 ③ 步 | `ContextIdApplicationContextInitializer` |
+| `BeanDefinitionRegistryPostProcessor` | `BeanDefinitionRegistry` | ② refresh | 第 5 步（BDRPP 轮） | `ConfigurationClassPostProcessor`、`MapperScannerConfigurer` |
+| `BeanFactoryPostProcessor` | `ConfigurableListableBeanFactory` | ② refresh | 第 5 步（BFPP 轮） | `PropertySourcesPlaceholderConfigurer` |
+| `BeanDefinitionCustomizer` | 单个 `BeanDefinition` | ② refresh | 注册 BD 时（lambda） | 手动 `registerBean` 时定制 scope/primary |
+| `ImportSelector` | 返回类名数组 | ② refresh | 第 5 步内 `ConfigurationClassPostProcessor` | `AutoConfigurationImportSelector` |
+| `ImportBeanDefinitionRegistrar` | `BeanDefinitionRegistry` | ② refresh | 同上 | `MapperScannerRegistrar`、`FeignClientsRegistrar` |
+| `MergedBeanDefinitionPostProcessor` | 合并后的 `RootBeanDefinition` | ② refresh（每 Bean） | `doCreateBean` 元数据合并 | `AutowiredAnnotationBeanPostProcessor` 缓存注入点 |
+| `InstantiationAwareBeanPostProcessor` | Bean 实例（实例化前后） | ② refresh（每 Bean） | 实例化前 + 属性注入阶段 | `AutowiredAnnotationBeanPostProcessor` |
+| `SmartInstantiationAwareBeanPostProcessor` | Bean 实例（提前暴露） | ② refresh（每 Bean） | 循环依赖触发时 | `AbstractAutoProxyCreator` |
+| `BeanPostProcessor` | Bean 实例（初始化前后） | ② refresh（每 Bean） | 初始化前后 | `ApplicationContextAwareProcessor`、`AbstractAutoProxyCreator` |
+| `DestructionAwareBeanPostProcessor` | Bean 实例（销毁前） | ⑤ 关闭 | `destroyBean` 时 | `InitDestroyAnnotationBeanPostProcessor`（`@PreDestroy`） |
+| `SmartInitializingSingleton` | Bean 自身 | ② refresh（全局单次） | 第 11 步末尾 | `EventListenerMethodProcessor` |
+| `ApplicationListener` / `@EventListener` | 事件对象 | ② / ③ / ④ | 事件发布时 | 业务监听器 |
+| `SmartLifecycle` | Bean 自身 | ③ 刷新后 / ⑤ 关闭 | 第 12 步 `finishRefresh` / `close()` | MQ 消费者、调度器 |
+| `CommandLineRunner` / `ApplicationRunner` | 启动参数 | ③ 刷新后 | `SpringApplication.run` 第 8 步 | 启动期数据预热 |
 
 ---
 
-## 3. BeanFactoryPostProcessor 家族：修改 BeanDefinition
+## 3. BeanFactoryPostProcessor 家族：改元数据
 
-> 📖 `BeanDefinition` 的结构定义与合并机制见 [IoC 与 DI §4](01-IoC与DI.md)。本文只强调它们**作为扩展点**的使用边界。
+### 3.1 `BeanDefinitionRegistryPostProcessor`（BDRPP）——注册新 BD
 
-### 3.1 `BeanDefinitionRegistryPostProcessor`——注册新 Bean
-
-继承自 `BeanFactoryPostProcessor`，多出一个 `postProcessBeanDefinitionRegistry(registry)`，可以向容器**新增** `BeanDefinition`。它在 BFPP 阶段**更早**执行。
+`BFPP` 的子接口，多出 `postProcessBeanDefinitionRegistry(registry)`，可**向容器新增** `BeanDefinition`。在 BFPP 阶段**更早**执行（见 [启动流程 §8.2](03-Spring容器启动流程深度解析.md) 四轮调用图）。
 
 ```java
 @Component
@@ -100,7 +140,6 @@ public class MyBeanDefinitionRegistrar implements BeanDefinitionRegistryPostProc
 
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
-        // 动态注册一个 Bean，相当于运行时的 @Component
         RootBeanDefinition bd = new RootBeanDefinition(DynamicService.class);
         bd.setScope(BeanDefinition.SCOPE_SINGLETON);
         registry.registerBeanDefinition("dynamicService", bd);
@@ -108,56 +147,73 @@ public class MyBeanDefinitionRegistrar implements BeanDefinitionRegistryPostProc
 
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
-        // 可留空；BDRPP 通常只用上面一个方法
+        // BDRPP 通常只用上面一个方法
     }
 }
 ```
 
-**典型应用**：
-- `ConfigurationClassPostProcessor`（Spring 内置）：解析 `@Configuration` / `@ComponentScan` / `@Import`，把扫到的类注册为 `BeanDefinition`
-- MyBatis `MapperScannerConfigurer`：扫描 `@Mapper` 接口批量注册
-- Dubbo `ServiceAnnotationPostProcessor`：扫描 `@DubboService`
+**典型实现**：`ConfigurationClassPostProcessor`（解析所有 `@Configuration` / `@ComponentScan` / `@Import`）、MyBatis `MapperScannerConfigurer`、Dubbo `ServiceAnnotationPostProcessor`。
 
-### 3.2 `BeanFactoryPostProcessor`——修改已有 Bean
+### 3.2 `BeanFactoryPostProcessor`（BFPP）——改已有 BD
 
 ```java
 @Component
 public class MyBeanFactoryPostProcessor implements BeanFactoryPostProcessor {
-
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
-        // 修改已有 BeanDefinition 的属性
         BeanDefinition bd = beanFactory.getBeanDefinition("userService");
         bd.getPropertyValues().add("maxRetry", 3);
     }
 }
 ```
 
-**典型应用**：`PropertySourcesPlaceholderConfigurer`——把 `BeanDefinition` 中的 `${xxx}` 占位符替换为配置值。Spring Boot 里该能力已融入 `PropertySourcesPropertyResolver`，日常很少再手写。
+**典型实现**：`PropertySourcesPlaceholderConfigurer`（替换 `${...}` 占位符，Boot 里已内建）。
 
-### 3.3 排序与陷阱
+### 3.3 `BeanDefinitionCustomizer`——轻量 BD 定制（Spring 5.0+）
 
-**排序规则**（三级优先级）：
+手动注册 Bean 时的 lambda 式定制器，不是 BPP/BFPP 的替代，而是**局部补充**：
 
-```txt
-① 实现 PriorityOrdered 的 BDRPP / BFPP   ← 最先执行，按 getOrder() 排序
-② 实现 Ordered 的 BDRPP / BFPP          ← 次先
-③ 普通 BDRPP / BFPP                    ← 按注册顺序
+```java
+// 注册时当场定制 BeanDefinition
+context.registerBean(MyService.class,
+    bd -> {
+        bd.setLazyInit(true);
+        bd.setPrimary(true);
+        bd.setScope(BeanDefinition.SCOPE_PROTOTYPE);
+    });
+
+// 或通过 GenericApplicationContext 的函数式 API
+GenericApplicationContext ctx = new GenericApplicationContext();
+ctx.registerBean("svc", MyService.class, MyService::new,
+    bd -> bd.setLazyInit(true));
 ```
 
-!!! warning "BFPP 里不要触发 Bean 的提前实例化"
-    如果在 `postProcessBeanFactory` 里调用 `beanFactory.getBean(...)`，会把依赖的 Bean 提前实例化——此时 `BeanPostProcessor` 还没全部注册，可能导致 `@Autowired`、AOP、`@Async` 等**全部失效**。Spring 启动日志里的经典警告：
-    > `Bean 'xxx' of type [X] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)`
-    常见元凶就是在 BFPP 里 `getBean()`、或把 BFPP 声明为 `static @Bean`（防止被代理加载 BPP）。
+**适用场景**：AOT / 函数式 Bean 注册（`@Bean` 注解的非注解替代），无需再写 BFPP。
 
-!!! note "BFPP 为什么可以用 `@Component`，而 BPP 也行"
-    BFPP / BDRPP / BPP 这三类在 `refresh()` 中有**专用的提前注册流程**（`invokeBeanFactoryPostProcessors()` 与 `registerBeanPostProcessors()`），容器会主动扫描它们并**优先于业务 Bean** 实例化。所以它们可以直接 `@Component`。但 `ApplicationContextInitializer` 不一样——它在 `refresh()` **之前**就要用，此时容器还没启动，自然无法靠 `@Component` 注册，必须走 SPI（见 §7）。
+### 3.4 BFPP 的致命陷阱：不要 `getBean()`
+
+!!! danger "BFPP 里调用 `getBean()` 会导致 BPP 全线失效"
+    原理：BFPP 在 `refresh()` 第 5 步执行，此时第 6 步 `registerBeanPostProcessors` **尚未开始**——所有 BPP 还没装入 `beanFactory`。如果 BFPP 里直接 `getBean("xxx")` 把业务 Bean 提前实例化，这个 Bean 的初始化过程**绕过了所有后续 BPP**，导致：
+
+    - `@Autowired` / `@Resource` 注入失败（依赖是 `null`）
+    - `@Transactional` / `@Async` / `@Cacheable` 全部不生效（AOP 代理由 BPP 生成）
+    - `@PostConstruct` 不执行（由 `CommonAnnotationBeanPostProcessor` 触发）
+
+    启动日志里的经典警告：
+    > `Bean 'xxx' of type [X] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)`
+
+    **规避方法**：
+    1. BFPP 声明为 **`static @Bean`**（Spring 保证 `static @Bean` 的 BFPP 比普通 `@Bean` 更早实例化，避开配置类自身 Bean 被提前实例化）
+    2. 要用的"Bean"改为 `ObjectProvider<T>` 构造器注入，延迟到真正使用时才查
+    3. 真正需要早期初始化的场景，换用 `ApplicationContextInitializer`（更早）或 `SmartInitializingSingleton`（更晚但安全）
+
+### 3.5 BFPP 家族为什么可以 `@Component`
+
+三类 BPP/BFPP 在 `refresh()` 里有**专用的提前实例化路径**（`invokeBeanFactoryPostProcessors()` 与 `registerBeanPostProcessors()`），容器会主动识别并优先于业务 Bean 实例化。所以它们能用 `@Component` 注册。而 `ApplicationContextInitializer` 等启动期扩展点在 `refresh()` **之前**就要用，此时容器还没开始扫描——必须走 SPI（见 §7）。
 
 ---
 
-## 4. BeanPostProcessor 家族：Bean 实例的全生命周期干预
-
-> 📖 Bean 生命周期的完整阶段见 [Bean 生命周期与循环依赖 §3](02-Bean生命周期与循环依赖.md)。本文只按"扩展点视角"梳理 BPP 的继承体系。
+## 4. BeanPostProcessor 家族：改实例
 
 ### 4.1 继承体系
 
@@ -188,6 +244,7 @@ classDiagram
     class DestructionAwareBeanPostProcessor {
         <<interface>>
         +postProcessBeforeDestruction(bean, name)
+        +requiresDestruction(bean)
     }
     BeanPostProcessor <|-- InstantiationAwareBeanPostProcessor
     InstantiationAwareBeanPostProcessor <|-- SmartInstantiationAwareBeanPostProcessor
@@ -195,24 +252,53 @@ classDiagram
     BeanPostProcessor <|-- DestructionAwareBeanPostProcessor
 ```
 
-### 4.2 各接口的契约
+### 4.2 五个子接口的契约对照表
 
 | 接口 | 关键方法 | 返回值语义 | 典型使用者 |
 | :-- | :-- | :-- | :-- |
-| `BeanPostProcessor` | `postProcessBeforeInitialization` / `postProcessAfterInitialization` | 返回 bean 替换原对象；返回 null 等于 Spring 停止后续 BPP 链（**很少使用**） | `ApplicationContextAwareProcessor` 注入 `ApplicationContext`、`AbstractAutoProxyCreator` 生成 AOP 代理 |
-| `InstantiationAwareBPP` | `postProcessBeforeInstantiation` | **返回非 null 直接短路**：跳过后续实例化/注入/初始化，但仍会走 `postProcessAfterInitialization` | 自定义"不经过 Spring 实例化"的 Bean、AOP 提前代理 |
-| `InstantiationAwareBPP` | `postProcessProperties` | 修改或替换注入的 `PropertyValues` | `AutowiredAnnotationBeanPostProcessor`（`@Autowired`）、`CommonAnnotationBeanPostProcessor`（`@Resource`、`@PostConstruct`） |
+| `BeanPostProcessor` | `postProcessBeforeInitialization` / `postProcessAfterInitialization` | 返回 bean 替换原对象；返回 `null` 停止后续 BPP 链 | `ApplicationContextAwareProcessor` 注入容器服务、`AbstractAutoProxyCreator` 生成 AOP 代理 |
+| `InstantiationAwareBPP` | `postProcessBeforeInstantiation` | **返回非 `null` 直接短路**：跳过后续实例化/注入/初始化，但仍会走 `postProcessAfterInitialization` | 自定义"绕过 Spring 实例化"的场景、AOP 提前代理 |
+| `InstantiationAwareBPP` | `postProcessProperties` | 修改或替换要注入的 `PropertyValues` | `AutowiredAnnotationBeanPostProcessor`（`@Autowired`）、`CommonAnnotationBeanPostProcessor`（`@Resource`） |
 | `SmartInstantiationAwareBPP` | `getEarlyBeanReference` | 为三级缓存提供"早期引用"生成逻辑 | `AbstractAutoProxyCreator` 在循环依赖时提前生成代理 |
-| `MergedBeanDefinitionPostProcessor` | `postProcessMergedBeanDefinition` | 对合并后的 `RootBeanDefinition` 做最后修改 | `AutowiredAnnotationBeanPostProcessor` 在此**缓存 `@Autowired` 注入点**，避免每次 `populateBean` 都反射扫描 |
-| `DestructionAwareBPP` | `postProcessBeforeDestruction` | 容器销毁 Bean 前调用 | `InitDestroyAnnotationBeanPostProcessor` 触发 `@PreDestroy` |
+| `MergedBeanDefinitionPostProcessor` | `postProcessMergedBeanDefinition` | 对合并后的 `RootBeanDefinition` 做最后修改 | `AutowiredAnnotationBeanPostProcessor` **缓存注入点**，避免每次 `populateBean` 反射扫描 |
+| `DestructionAwareBPP` | `postProcessBeforeDestruction` | 销毁前的最后一次干预 | `InitDestroyAnnotationBeanPostProcessor` 触发 `@PreDestroy` |
 
-!!! tip "面试高频：`@Autowired` 和 `@PostConstruct` 由同一个 BPP 处理吗？"
-    不是。`@Autowired` 由 `AutowiredAnnotationBeanPostProcessor` 在 `postProcessProperties`（第⑦步）处理；`@PostConstruct` 由 `CommonAnnotationBeanPostProcessor`（`InitDestroyAnnotationBeanPostProcessor` 的子类）在 `postProcessBeforeInitialization`（第⑨步）处理。二者虽都是 BPP，但属于**不同子接口、不同阶段**。
+### 4.3 Bean 生命周期内的 BPP 调用顺序（每 Bean 一次）
 
-### 4.3 自定义 BPP 的正确姿势
+> 📖 完整 8 步 + 隐式钩子见 [Bean 生命周期 §3](02-Bean生命周期与循环依赖.md)。此处仅列 **BPP 维度**的调用链：
+
+```txt
+createBean()
+  ├─ resolveBeforeInstantiation
+  │    └─ InstantiationAwareBPP.postProcessBeforeInstantiation     ← 可短路
+  └─ doCreateBean()
+       ├─ applyMergedBeanDefinitionPostProcessors
+       │    └─ MergedBeanDefinitionPostProcessor                   ← 缓存 @Autowired 注入点
+       ├─ addSingletonFactory → 三级缓存
+       │    └─ SmartInstantiationAwareBPP.getEarlyBeanReference    ← 循环依赖才触发
+       ├─ populateBean
+       │    ├─ InstantiationAwareBPP.postProcessAfterInstantiation ← 返回 false 可跳过注入
+       │    └─ InstantiationAwareBPP.postProcessProperties         ← @Autowired/@Resource 真正执行
+       └─ initializeBean
+            ├─ invokeAwareMethods                                  ← 核心 Aware
+            ├─ applyBeanPostProcessorsBeforeInitialization         ← @PostConstruct 实际触发点
+            ├─ invokeInitMethods                                   ← InitializingBean / init-method
+            └─ applyBeanPostProcessorsAfterInitialization          ← AOP 代理生成点
+destroyBean()
+  └─ DestructionAwareBPP.postProcessBeforeDestruction              ← @PreDestroy 触发
+```
+
+!!! tip "面试高频：`@Autowired` 与 `@PostConstruct` 由同一个 BPP 处理吗？"
+    不是。
+    - `@Autowired` 由 `AutowiredAnnotationBeanPostProcessor` 在 `postProcessProperties`（属性注入阶段）处理
+    - `@PostConstruct` 由 `CommonAnnotationBeanPostProcessor`（继承 `InitDestroyAnnotationBeanPostProcessor`）在 `postProcessBeforeInitialization`（初始化前阶段）处理
+    - `@Resource` 同样由 `CommonAnnotationBeanPostProcessor` 处理，但走的是 `postProcessProperties`
+    - `@PreDestroy` 走 `DestructionAwareBPP.postProcessBeforeDestruction`
+
+### 4.4 自定义 BPP 的正确姿势
 
 ```java
-@Component  // 注册为普通 Bean，Spring 会识别为 BPP
+@Component
 public class TimingBeanPostProcessor implements BeanPostProcessor, Ordered {
 
     private final Map<String, Long> startTimes = new ConcurrentHashMap<>();
@@ -229,7 +315,6 @@ public class TimingBeanPostProcessor implements BeanPostProcessor, Ordered {
         if (start != null) {
             long costMs = (System.nanoTime() - start) / 1_000_000;
             if (costMs > 100) {
-                // 记录慢启动 Bean，用于性能优化
                 log.warn("Slow bean init: {} cost {} ms", beanName, costMs);
             }
         }
@@ -241,43 +326,52 @@ public class TimingBeanPostProcessor implements BeanPostProcessor, Ordered {
 }
 ```
 
-!!! warning "自定义 BPP 内部慎用 `@Autowired`"
-    BPP 的提前注册导致它**自身无法被其他 BPP 增强**——它创建时其他 BPP 可能还没就绪。所以：
-    - BPP 内部的 `@Autowired` 字段可能拿不到增强过的依赖（拿到的是"原始对象"或旧版本）
-    - BPP 内部慎用 `@Transactional`、`@Async`、`@Cacheable`——它们依赖的 AOP BPP 可能还没注册
-    - **保险做法**：BPP 的依赖通过**构造器注入** + 声明类型为 `BeanFactory`（延迟查找），或干脆实现 `ApplicationContextAware` + 在需要时 `getBean()`。
+### 4.5 BPP 自身的"增强盲区"
+
+!!! warning "BPP 自身不会被其他 BPP 增强"
+    BPP 在 `refresh()` 第 6 步被提前实例化，**早于业务 BPP 装入容器**。这意味着：
+
+    | 业务代码里工作的注解 | 在 BPP 自身中的表现 |
+    | :-- | :-- |
+    | `@Autowired` 字段 | 依赖可能是未增强的原始对象（取决于 BPP 排序） |
+    | `@Transactional` / `@Async` / `@Cacheable` | **全部静默失效**——AOP 代理由 `AnnotationAwareAspectJAutoProxyCreator` 生成，它本身是个 BPP |
+    | `@PostConstruct` | 如果 `CommonAnnotationBeanPostProcessor` 尚未注册则不触发 |
+
+    **安全的依赖方式**：
+    1. **构造器注入 `BeanFactory` / `Environment`**：这两个在 BPP 创建时已可用
+    2. 需要业务 Bean 时注入 `ObjectProvider<T>`，延迟到 `postProcessAfterInitialization` 里再 `getIfAvailable()`
+    3. 绝对不要在 BPP 上标注事务/异步/缓存注解
 
 ---
 
-## 5. Aware 接口家族：获取容器上下文
+## 5. Aware 接口家族：感知容器上下文
 
-Aware 接口让 Bean 主动"感知"容器内部对象。它分为**两类触发路径**，不分清楚会在排查问题时困惑：
+Aware 分**两类触发路径**——这是排查"为什么我的 Aware 没生效"的关键：
 
-| 类别 | 触发路径 | 注入内容 | 代表接口 |
-| :-- | :-- | :-- | :-- |
-| **核心 Aware** | `invokeAwareMethods()` 直接硬编码调用 | Bean 自身元数据 | `BeanNameAware` / `BeanClassLoaderAware` / `BeanFactoryAware` |
-| **扩展 Aware** | 由 `ApplicationContextAwareProcessor` 这个 BPP 在 `postProcessBeforeInitialization` 中触发 | 容器级服务 | `ApplicationContextAware` / `EnvironmentAware` / `ResourceLoaderAware` / `MessageSourceAware` / `ApplicationEventPublisherAware` / `EmbeddedValueResolverAware` |
-
-### 5.1 完整接口清单
-
-| 接口 | 注入内容 | 典型使用 |
+| 类别 | 触发路径 | 对应 BPP 还是硬编码 |
 | :-- | :-- | :-- |
-| `BeanNameAware` | 当前 Bean 名 | 日志、定时任务名标识 |
-| `BeanClassLoaderAware` | 加载该 Bean 的 `ClassLoader` | SPI / 插件隔离 |
-| `BeanFactoryAware` | `BeanFactory`（最小契约） | 框架组件 |
-| `ApplicationContextAware` | `ApplicationContext`（全套能力） | `SpringContextHolder` 工具类 |
-| `EnvironmentAware` | `Environment`（配置 + Profile） | 读取配置时避免 `@Value` 的字符串硬编码 |
-| `ResourceLoaderAware` | `ResourceLoader` | 加载 `classpath:*.yml` 类资源 |
-| `MessageSourceAware` | `MessageSource` | 国际化 i18n |
-| `ApplicationEventPublisherAware` | `ApplicationEventPublisher` | 独立于 `ApplicationContext` 的事件发布 |
-| `EmbeddedValueResolverAware` | `StringValueResolver` | 解析 `${...}` 占位符（轻量替代 `@Value`） |
+| **核心 Aware** | `invokeAwareMethods()` 内硬编码 `instanceof` 判断 | 非 BPP |
+| **扩展 Aware** | 由 `ApplicationContextAwareProcessor` 这个 BPP 在 `postProcessBeforeInitialization` 中反射触发 | BPP |
 
-### 5.2 `SpringContextHolder` 的标准实现
+### 5.1 接口清单
+
+| 类别 | 接口 | 注入内容 | 典型使用 |
+| :-- | :-- | :-- | :-- |
+| **核心** | `BeanNameAware` | 当前 Bean 名 | 日志、定时任务标识 |
+| **核心** | `BeanClassLoaderAware` | 加载该 Bean 的 `ClassLoader` | SPI / 插件隔离 |
+| **核心** | `BeanFactoryAware` | `BeanFactory`（最小契约） | 框架组件 |
+| **扩展** | `ApplicationContextAware` | `ApplicationContext`（全能） | `SpringContextHolder` 工具类 |
+| **扩展** | `EnvironmentAware` | `Environment`（配置 + Profile） | 动态读配置 |
+| **扩展** | `ResourceLoaderAware` | `ResourceLoader` | 加载 `classpath:*.yml` 类资源 |
+| **扩展** | `MessageSourceAware` | `MessageSource` | 国际化 i18n |
+| **扩展** | `ApplicationEventPublisherAware` | `ApplicationEventPublisher` | 不持有整个 Context 的事件发布 |
+| **扩展** | `EmbeddedValueResolverAware` | `StringValueResolver` | 解析 `${...}` 占位符（轻量替代 `@Value`） |
+
+### 5.2 `SpringContextHolder` 标准实现
 
 ```java
 @Component
 public class SpringContextHolder implements ApplicationContextAware {
-
     private static ApplicationContext ctx;
 
     @Override
@@ -287,12 +381,11 @@ public class SpringContextHolder implements ApplicationContextAware {
 
     public static <T> T getBean(Class<T> type) { return ctx.getBean(type); }
     public static <T> T getBean(String name, Class<T> type) { return ctx.getBean(name, type); }
-    public static ApplicationContext getContext() { return ctx; }
 }
 ```
 
-!!! warning "`ApplicationContextAware` 在 AOT / GraalVM 下的坑"
-    原生镜像禁用了运行时反射元数据，`ctx.getBean(Xxx.class)` 可能抛异常。Spring 6 推荐重构为**构造器注入**——直接 `@Autowired` 具体类型，而不是把 `ApplicationContext` 当万能容器用。详见 [IoC 与 DI §8](01-IoC与DI.md)。
+!!! warning "AOT / GraalVM 下 `ApplicationContextAware` 的反模式"
+    原生镜像禁用运行时反射元数据，`ctx.getBean(Xxx.class)` 需要提前声明 `RuntimeHints`，否则抛 `MissingReflectionRegistrationError`。Spring 6 推荐把 `ApplicationContextAware` 重构为**构造器注入 `ObjectProvider<T>`**——显式、可静态分析、AOT 友好。详见 [IoC 与 DI §8](01-IoC与DI.md) 与本文 §11。
 
 ---
 
@@ -302,49 +395,46 @@ public class SpringContextHolder implements ApplicationContextAware {
 
 ```mermaid
 flowchart LR
-    Pub["发布方<br>ApplicationEventPublisher.publishEvent()"] --> Mul["ApplicationEventMulticaster<br>事件广播器"]
-    Mul --> L1["Listener A<br>（同步）"]
-    Mul --> L2["Listener B<br>（@Async 异步）"]
+    Pub["ApplicationEventPublisher<br>.publishEvent()"] --> Mul["ApplicationEventMulticaster<br>（事件广播器）"]
+    Mul --> L1["ApplicationListener<br>（接口式，同步）"]
+    Mul --> L2["@EventListener<br>（注解式，同步/@Async）"]
     Mul --> L3["@TransactionalEventListener<br>（绑定事务阶段）"]
 ```
 
-### 6.2 两种写法
+### 6.2 两种写法与能力对比
+
+| 能力 | `ApplicationListener` 接口 | `@EventListener` 注解 |
+| :-- | :-- | :-- |
+| 注册时机 | BPP 扫描阶段即完成（早） | `SmartInitializingSingleton` 回调（晚） |
+| 能否监听启动早期事件 | ✅ 可（如 `ApplicationStartingEvent`） | ❌ 不可 |
+| 条件过滤 | 代码 `if` | ✅ SpEL `condition = "#event.xx > 1"` |
+| 异步执行 | 手动线程池 | ✅ `@Async` |
+| 绑定事务阶段 | 不支持 | ✅ `@TransactionalEventListener` |
+| 一个类多个监听方法 | 需写多个类 | ✅ 同类多方法 |
 
 ```java
-// 方式一：实现 ApplicationListener 接口（经典）
-@Component
-public class AppReadyListener implements ApplicationListener<ApplicationReadyEvent> {
-    @Override
-    public void onApplicationEvent(ApplicationReadyEvent event) {
-        // 容器完全启动后的初始化逻辑
-    }
-}
-
-// 方式二：@EventListener 注解（推荐，更灵活）
 @Component
 public class OrderEventHandler {
 
     @EventListener
     public void onOrderCreated(OrderCreatedEvent event) { ... }
 
-    // ① 支持 SpEL 条件过滤
     @EventListener(condition = "#event.amount > 1000")
     public void onBigOrder(OrderCreatedEvent event) { ... }
 
-    // ② 支持异步（需 @EnableAsync）
     @Async
     @EventListener
     public void onOrderAsync(OrderCreatedEvent event) { ... }
 
-    // ③ 绑定事务阶段
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrderCommitted(OrderCreatedEvent event) { ... }
 }
 ```
 
-### 6.3 自定义事件
+### 6.3 自定义事件与 POJO 事件
 
 ```java
+// 继承 ApplicationEvent（经典）
 public class OrderCreatedEvent extends ApplicationEvent {
     private final Long orderId;
     public OrderCreatedEvent(Object source, Long orderId) {
@@ -354,84 +444,174 @@ public class OrderCreatedEvent extends ApplicationEvent {
     public Long getOrderId() { return orderId; }
 }
 
-@Service
-public class OrderService {
-    @Autowired
-    private ApplicationEventPublisher publisher;
+// Spring 4.2+：直接发 POJO，自动包装为 PayloadApplicationEvent
+publisher.publishEvent(new OrderCreatedPojo(orderId));
+```
 
-    @Transactional
-    public void createOrder(Order order) {
-        // 持久化...
-        publisher.publishEvent(new OrderCreatedEvent(this, order.getId()));
+### 6.4 内置事件的选型矩阵
+
+> 📖 完整的启动期事件时序与对比表见 [启动流程 §9](03-Spring容器启动流程深度解析.md)。这里只给"**该监听哪个**"的选型视角：
+
+| 业务意图 | 该监听的事件 | 理由 |
+| :-- | :-- | :-- |
+| Bean 全就绪后预热缓存（仍在启动期） | `ContextRefreshedEvent` | 所有单例已创建 |
+| 应用"对外可用"（注册服务发现、开放流量） | **`ApplicationReadyEvent`** | Runner 已跑完，最晚最可靠 |
+| 启动失败告警 | `ApplicationFailedEvent` | 捕获启动异常 |
+| 容器显式 `start()` 的业务组件启停 | `ContextStartedEvent` / `ContextStoppedEvent` | 配合 `SmartLifecycle` 使用（见 §9） |
+| 容器关闭前清理 | `ContextClosedEvent` | `close()` 开始时触发，早于 Bean 销毁 |
+
+### 6.5 事件机制的三大陷阱
+
+> 📖 `@EventListener` 为什么监听不到早期事件的根因见 [启动流程 Q6](03-Spring容器启动流程深度解析.md)。
+
+!!! warning "陷阱 1：`@EventListener` 注册在 `SmartInitializingSingleton` 阶段"
+    在其他 Bean 的 `@PostConstruct` 中发布的事件，`@EventListener` **收不到**（此时它还没注册到广播器）。需要监听早期事件，改用 `ApplicationListener` 接口方式——它在 BPP 扫描阶段就注册。
+
+!!! warning "陷阱 2：默认同步，`@Async` 有三个坑"
+    1. 需要配置类加 `@EnableAsync`，否则 `@Async` 只是注释
+    2. 异步监听器**事务上下文不传播**——`TransactionSynchronizationManager` 是 `ThreadLocal`，跨线程丢失
+    3. 异步异常**不会抛给发布者**——必须配置 `AsyncUncaughtExceptionHandler` 捕获
+
+!!! danger "陷阱 3：`@TransactionalEventListener` 无事务时静默丢失"
+    | `phase` | 触发时机 | 使用场景 |
+    | :-- | :-- | :-- |
+    | `BEFORE_COMMIT` | 事务提交**前** | 同一事务中做最终校验 |
+    | `AFTER_COMMIT`（默认） | 事务提交**后** | 发 MQ、发通知（确保落库） |
+    | `AFTER_ROLLBACK` | 事务回滚后 | 清理、补偿 |
+    | `AFTER_COMPLETION` | 事务结束（无论成败） | 资源释放 |
+
+    必须在**活跃事务**中 `publishEvent()` 才会触发；否则事件默默丢失——生产中最常见的"事件消失"原因。兜底方案：`@TransactionalEventListener(fallbackExecution = true)`。
+
+---
+
+## 7. 启动期扩展点：早于 refresh() 的四个接口
+
+这组扩展点都在 `refresh()` **之前**被调用——此时容器还没开始扫描，**全部不能靠 `@Component` 注册**，必须走 SPI 或手动 API。
+
+### 7.1 介入时机与分工
+
+```mermaid
+timeline
+    title 启动前的扩展点时序
+    section SpringApplication 构造
+        BootstrapRegistryInitializer : 最早，持有 BootstrapRegistry
+    section prepareEnvironment
+        EnvironmentPostProcessor : 操作 Environment / PropertySource
+    section 贯穿 run() 全程
+        SpringApplicationRunListener : 桥接 SpringApplicationEvent
+    section prepareContext
+        ApplicationContextInitializer : 拿到 ApplicationContext（refresh 前最后的修改窗口）
+```
+
+### 7.2 `BootstrapRegistryInitializer`（Boot 2.4+）
+
+最早的扩展点。在 `SpringApplication` 构造时就运行，**比 `ApplicationContextInitializer` 还早**，此时连 `Environment` 都还没准备。持有一个 `BootstrapRegistry`，用于注册**跨启动阶段共享的单例基础设施**（典型：ConfigData 的 `RestTemplate` 客户端）。
+
+```java
+public class MyBootstrapInitializer implements BootstrapRegistryInitializer {
+    @Override
+    public void initialize(BootstrapRegistry registry) {
+        registry.register(MyEarlyClient.class,
+            ctx -> new MyEarlyClient(/* 构造参数 */));
+        // 注册关闭钩子：把 bootstrap 阶段的单例迁移到最终的 ApplicationContext
+        registry.addCloseListener(evt ->
+            evt.getApplicationContext().getBeanFactory()
+               .registerSingleton("myEarlyClient",
+                   evt.getBootstrapContext().get(MyEarlyClient.class)));
     }
 }
 ```
 
-!!! tip "Spring 4.2+ 事件类型可不再继承 `ApplicationEvent`"
-    ```java
-    publisher.publishEvent(new OrderCreatedPojo(order.getId()));  // 任意 POJO
-    ```
-    容器内部会把它包装成 `PayloadApplicationEvent`。这让事件类与 Spring 解耦，便于领域模型复用。
+### 7.3 `EnvironmentPostProcessor`——改 Environment
 
-### 6.4 内置事件清单（高频）
+`prepareEnvironment` 阶段介入，可**动态添加/替换 `PropertySource`**、激活 Profile。Spring Boot 的 `application.yml` 加载就是由它完成的（`ConfigDataEnvironmentPostProcessor`）。
 
-| 事件 | 触发时机 | 典型用途 |
-| :-- | :-- | :-- |
-| `ContextRefreshedEvent` | 容器初始化/刷新完成 | 启动后预热缓存、注册定时任务 |
-| `ContextStartedEvent` | 显式调用 `start()` | Lifecycle Bean 启动 |
-| `ContextStoppedEvent` | 显式调用 `stop()` | 优雅暂停服务 |
-| `ContextClosedEvent` | 容器关闭 | 释放资源、持久化状态 |
-| `ApplicationStartedEvent` | Spring Boot：`run()` 中 Context 刷新后、Runner 执行前 | 启动完成的早期通知 |
-| `ApplicationReadyEvent` | Spring Boot：Runner 执行完毕，应用完全就绪 | 注册到服务发现、开放健康检查 |
-| `ApplicationFailedEvent` | Spring Boot 启动失败 | 告警、优雅退出 |
+```java
+public class DecryptEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
+    @Override
+    public void postProcessEnvironment(ConfigurableEnvironment env, SpringApplication app) {
+        // 解密配置中以 ENC(...) 包裹的字段，前置于所有 PropertySource
+        env.getPropertySources().addFirst(
+            new MapPropertySource("decrypted", decryptFrom(env)));
+    }
 
-### 6.5 事件机制的三大陷阱
+    @Override
+    public int getOrder() { return Ordered.HIGHEST_PRECEDENCE; }
+}
+```
 
-!!! warning "陷阱 1：`@EventListener` 的注册时机"
-    `@EventListener` **不是** Bean 初始化时就注册的，而是在容器所有单例初始化完成后，由 `EventListenerMethodProcessor`（一个 `SmartInitializingSingleton`）统一扫描注册。
-    **后果**：在 `@PostConstruct` 或更早阶段发布的事件，`@EventListener` 监听器**收不到**。需要监听 `ContextRefreshedEvent` 前的事件，只能用 `ApplicationListener` 接口方式。
+**对比 `ApplicationContextInitializer`**：`EnvironmentPostProcessor` **更早**（Context 还没创建），且只能接触 `Environment`；`ApplicationContextInitializer` 拿到的是整个 `ConfigurableApplicationContext`，能做更多事。
 
-!!! warning "陷阱 2：`@Async` 失效"
-    默认事件是**同步**的——发布者在事件处理完才返回。想要异步需要两步：
-    1. 配置类加 `@EnableAsync`
-    2. 监听方法加 `@Async`
-    异步监听器在独立线程池执行，**事务上下文不传播**、**异常不抛给发布者**——需要用 `AsyncUncaughtExceptionHandler` 捕获。
+### 7.4 `SpringApplicationRunListener`（Boot 事件总线）
 
-!!! warning "陷阱 3：`@TransactionalEventListener` 的事务阶段"
-    | `phase` | 触发时机 | 使用场景 |
-    | :-- | :-- | :-- |
-    | `BEFORE_COMMIT` | 事务提交**前** | 在同一事务中做最终校验 |
-    | `AFTER_COMMIT`（默认） | 事务提交**后** | 发 MQ、发通知（确保数据已落库） |
-    | `AFTER_ROLLBACK` | 事务回滚后 | 清理、补偿 |
-    | `AFTER_COMPLETION` | 事务结束（无论成败） | 资源释放 |
+贯穿 `SpringApplication.run()` 全程，对应的生命周期方法被顺序调用。Spring Boot 内建实现 `EventPublishingRunListener` 把这些回调**桥接成** `ApplicationStartingEvent` 等 `SpringApplicationEvent`——所以 `@EventListener` 能监听到它们。自定义 `RunListener` 适合**埋点、监控**（关心启动每个阶段的耗时）。
 
-    !!! danger "注意"
-        `@TransactionalEventListener` 必须在**活跃事务**中发布事件才会触发；如果发布时没有事务，事件**默默丢失**（除非设置 `fallbackExecution = true`）。这是生产中最常见的"事件丢失"原因。
+```java
+public class TimingRunListener implements SpringApplicationRunListener {
+    private final long startTs;
+    // ⚠️ 构造器签名固定：(SpringApplication, String[])
+    public TimingRunListener(SpringApplication app, String[] args) {
+        this.startTs = System.currentTimeMillis();
+    }
+
+    @Override public void starting(ConfigurableBootstrapContext bootstrap) { /* ... */ }
+    @Override public void started(ConfigurableApplicationContext ctx, Duration timeTaken) {
+        log.info("started in {} ms", System.currentTimeMillis() - startTs);
+    }
+    // 其他回调省略...
+}
+```
+
+### 7.5 `ApplicationContextInitializer`——refresh 前的最后窗口
+
+```java
+public class DynamicPropertyInitializer
+        implements ApplicationContextInitializer<ConfigurableApplicationContext>, Ordered {
+
+    @Override
+    public void initialize(ConfigurableApplicationContext ctx) {
+        ctx.getEnvironment().getPropertySources()
+           .addFirst(new MapPropertySource("dynamic", Map.of("feature.x", "on")));
+        // 也可以在这里 ctx.addBeanFactoryPostProcessor(...) 注册额外 BFPP
+    }
+
+    @Override public int getOrder() { return Ordered.HIGHEST_PRECEDENCE; }
+}
+```
+
+**它是 `refresh()` 之前**唯一能拿到 `ConfigurableApplicationContext` 并安全修改的位置——动态注册 `PropertySource`、追加 `BFPP`、调整 `allow-bean-definition-overriding` 等底层开关，都只能在这里做。
+
+### 7.6 四个扩展点的注册方式
+
+> 📖 Boot 2 vs Boot 3 的 SPI 文件路径差异见 [启动流程 §5.1](03-Spring容器启动流程深度解析.md)，本文不重复。
+
+| 扩展点 | Boot 2 `spring.factories` 键 | Boot 3 `.imports` 文件 | 手动 API |
+| :-- | :-- | :-- | :-- |
+| `BootstrapRegistryInitializer` | `org.springframework.boot.BootstrapRegistryInitializer` | `META-INF/spring/...BootstrapRegistryInitializer.imports` | `SpringApplication.addBootstrapRegistryInitializers` |
+| `EnvironmentPostProcessor` | `org.springframework.boot.env.EnvironmentPostProcessor` | `META-INF/spring/...EnvironmentPostProcessor.imports` | 无（必须 SPI） |
+| `SpringApplicationRunListener` | `org.springframework.boot.SpringApplicationRunListener` | `META-INF/spring/...SpringApplicationRunListener.imports` | 无 |
+| `ApplicationContextInitializer` | `org.springframework.context.ApplicationContextInitializer` | `META-INF/spring/...ApplicationContextInitializer.imports` | `SpringApplication.addInitializers` |
 
 ---
 
-## 7. 配置驱动与 SPI 扩展点
+## 8. 配置驱动扩展点：`@Import` 三兄弟
 
-### 7.1 `@Import` 三兄弟
-
-`@Import` 是把外部配置拉进容器的"通用入口"，有三种用法：
+`@Import` 是把外部配置拉进容器的"通用入口"：
 
 | 用法 | 导入对象 | 何时使用 |
 | :-- | :-- | :-- |
-| `@Import(Xxx.class)` | **具体配置类**（`@Configuration` 或普通 `@Component`） | 静态导入单个配置 |
-| `@Import(XxxImportSelector.class)` | 返回 **类名数组** | 根据条件批量导入已知类 |
-| `@Import(XxxRegistrar.class)` | 直接向 `BeanDefinitionRegistry` **动态注册 Bean** | 根据注解属性扫描包、生成代理 |
+| `@Import(Xxx.class)` | **具体配置类** | 静态导入单个配置 |
+| `@Import(XxxImportSelector.class)` | 返回 **类名数组** | 根据注解属性批量导入**已知类** |
+| `@Import(XxxRegistrar.class)` | 向 `BeanDefinitionRegistry` 直接注册 | 需要**扫描包、动态生成 BD** |
 
-### 7.2 `ImportSelector` 示例
+### 8.1 `ImportSelector`
 
 ```java
 public class MyImportSelector implements ImportSelector {
     @Override
     public String[] selectImports(AnnotationMetadata metadata) {
-        // 读取 @EnableMyFeature 注解的属性
         Map<String, Object> attrs = metadata.getAnnotationAttributes(EnableMyFeature.class.getName());
-        String mode = (String) attrs.get("mode");
-        return "prod".equals(mode)
+        return "prod".equals(attrs.get("mode"))
             ? new String[]{"com.example.ProdConfig"}
             : new String[]{"com.example.DevConfig"};
     }
@@ -444,64 +624,102 @@ public @interface EnableMyFeature {
 }
 ```
 
-**典型应用**：Spring Boot 的 `@EnableAutoConfiguration` → `AutoConfigurationImportSelector`（读取 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 批量导入自动配置类）。
+**典型应用**：Spring Boot 的 `@EnableAutoConfiguration` → `AutoConfigurationImportSelector`，从 `.imports` 文件批量返回所有候选自动配置类名。
 
-### 7.3 `ImportBeanDefinitionRegistrar` 示例
+### 8.2 `DeferredImportSelector`（延迟导入）
 
-当只知道"要扫描某个包"而不知道具体类名时，`ImportSelector` 无法胜任——必须用 `Registrar` 自行构造 `BeanDefinition`：
+`ImportSelector` 的子接口，会被延迟到**所有 `@Configuration` 类处理完**之后再执行。`AutoConfigurationImportSelector` 就是它的实现——用户配置类优先解析，自动配置最后补齐，保证 `@ConditionalOnMissingBean` 能正确识别"用户已定义了 X"。
+
+### 8.3 `ImportBeanDefinitionRegistrar`
+
+只知道"扫描某个包"而不知道具体类名时，`ImportSelector` 无法胜任，必须用 `Registrar` 自行构造 BD：
 
 ```java
 public class MapperRegistrar implements ImportBeanDefinitionRegistrar {
     @Override
     public void registerBeanDefinitions(AnnotationMetadata metadata,
                                         BeanDefinitionRegistry registry) {
-        Map<String, Object> attrs = metadata.getAnnotationAttributes(EnableMyMapper.class.getName());
-        String[] packages = (String[]) attrs.get("basePackages");
+        String[] packages = (String[]) metadata.getAnnotationAttributes(
+            EnableMyMapper.class.getName()).get("basePackages");
 
         ClassPathBeanDefinitionScanner scanner = new ClassPathBeanDefinitionScanner(registry, false);
         scanner.addIncludeFilter(new AnnotationTypeFilter(MyMapper.class));
-        for (String pkg : packages) {
-            scanner.scan(pkg);
-        }
+        for (String pkg : packages) scanner.scan(pkg);
     }
 }
 ```
 
-**典型应用**：MyBatis `@MapperScan` → `MapperScannerRegistrar`；Spring Cloud OpenFeign `@EnableFeignClients` → `FeignClientsRegistrar`；Dubbo `@EnableDubbo` → `DubboComponentScanRegistrar`。
+**典型应用**：MyBatis `@MapperScan` → `MapperScannerRegistrar`；OpenFeign `@EnableFeignClients` → `FeignClientsRegistrar`；Dubbo `@EnableDubbo` → `DubboComponentScanRegistrar`。
 
-### 7.4 `ApplicationContextInitializer` 与 SPI
+### 8.4 Selector vs Registrar 的选型决策
 
-`ApplicationContextInitializer` 在 `refresh()` **之前**被调用，此时容器还没启动，Bean 扫描还没开始——所以**不能用 `@Component` 注册**，只能走 SPI：
-
+```txt
+要加入容器的是什么？
+├─ 已知具体类名（编译期静态） → ImportSelector
+│   └─ 需要等所有 @Configuration 处理完再决定？→ DeferredImportSelector
+└─ 运行时扫描/动态生成的 BD（类名未知） → ImportBeanDefinitionRegistrar
 ```
-src/main/resources/META-INF/spring.factories              # Spring Boot 2.x
-src/main/resources/META-INF/spring/
-  org.springframework.context.ApplicationContextInitializer.imports   # Spring Boot 3.x
-```
 
-```properties
-# spring.factories 示例
-org.springframework.context.ApplicationContextInitializer=\
-com.example.MyContextInitializer
-```
+---
+
+## 9. `SmartLifecycle`：容器级启停钩子
+
+`Lifecycle` 接口定义 `start()` / `stop()`，`SmartLifecycle` 增强了**自动启动、优雅停机、阶段排序**能力。它**不是 BPP**，而是容器级别的启停组件——典型载体：MQ 消费者、嵌入式 Web 服务器、定时任务调度器。
+
+### 9.1 生命周期
+
+- **启动**：`refresh()` 第 12 步 `finishRefresh` → `lifecycleProcessor.onRefresh()` → 遍历所有 `SmartLifecycle`，`isAutoStartup() == true` 的调用 `start()`
+- **关闭**：`close()` → `lifecycleProcessor.onClose()` → 按 `phase` **倒序**调用 `stop(Runnable callback)`，支持异步优雅停机
+
+### 9.2 标准实现
 
 ```java
-public class MyContextInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+@Component
+public class KafkaConsumerLifecycle implements SmartLifecycle {
+    private final KafkaConsumer<?, ?> consumer;
+    private volatile boolean running;
+
     @Override
-    public void initialize(ConfigurableApplicationContext ctx) {
-        // 在 refresh() 之前动态添加 PropertySource、激活 Profile、注册监听器
-        ctx.getEnvironment().getPropertySources()
-           .addFirst(new MapPropertySource("dynamic", Map.of("feature.x", "on")));
+    public void start() {
+        consumer.subscribe(...);
+        running = true;
     }
+
+    @Override
+    public void stop(Runnable callback) {
+        // 异步停机：先停止拉取、消费完在途消息、再回调
+        CompletableFuture.runAsync(() -> {
+            consumer.close();
+            running = false;
+            callback.run();  // ⚠️ 必须调用 callback，否则容器永远等下去
+        });
+    }
+
+    @Override public boolean isRunning() { return running; }
+    @Override public boolean isAutoStartup() { return true; }
+
+    // phase 越大越晚启动、越早停止（像栈）
+    // Web 服务器通常是最晚启动（phase = Integer.MAX_VALUE）、最早停止
+    @Override public int getPhase() { return 1000; }
 }
 ```
 
-!!! note "`AutoConfigurationImportSelector` 为什么也要 SPI"
-    严格说它是被 `@Import` 驱动的，但它要加载的**"候选自动配置类列表"**本身是通过 SPI 加载的：Spring Boot 2.x 读 `spring.factories` 里的 `EnableAutoConfiguration` 键，Spring Boot 3.x 读 `AutoConfiguration.imports` 文件。这是 Spring SPI 机制（`SpringFactoriesLoader`）在自动配置上的直接应用。
+### 9.3 与 `@PostConstruct` / Runner 的区别
 
-### 7.5 `CommandLineRunner` / `ApplicationRunner`（Spring Boot 独有）
+| 钩子 | 触发时机 | 能否优雅停机 | 重启能力 |
+| :-- | :-- | :-- | :-- |
+| `@PostConstruct` | 本 Bean 初始化时 | ❌ 需 `@PreDestroy` 配合 | ❌ 一次性 |
+| `Runner` | 容器就绪后一次性执行 | ❌ | ❌ |
+| `SmartLifecycle` | 容器级启动/关闭 | ✅ `stop(Runnable)` 异步回调 | ✅ 支持 `start()` / `stop()` 反复调用 |
+| `@EventListener(ContextRefreshedEvent)` | 刷新完成时 | ❌ | ❌ |
 
-在 Bean 全部就绪后、`SpringApplication.run()` 返回前执行一次，相当于 `main` 方法的"后置钩子"：
+**一句话决策**：**需要"优雅启停"用 `SmartLifecycle`，一次性初始化用 `Runner`**。
+
+---
+
+## 10. `CommandLineRunner` / `ApplicationRunner`
+
+容器所有 Bean 就绪后、`SpringApplication.run()` 返回前执行一次。
 
 ```java
 @Component
@@ -516,148 +734,187 @@ public class DataInitializer implements CommandLineRunner {
 
 | 对比项 | `CommandLineRunner` | `ApplicationRunner` |
 | :-- | :-- | :-- |
-| 参数形态 | 原始 `String...` | `ApplicationArguments`（已解析 `--key=value`、非选项参数） |
-| 排序 | `@Order` 或 `Ordered` | 同上 |
+| 参数形态 | 原始 `String...` | `ApplicationArguments`（已解析 `--key=value`） |
+| 排序 | `@Order` / `Ordered` | 同 |
 | 触发时机 | `ApplicationStartedEvent` 之后、`ApplicationReadyEvent` 之前 | 同 |
+| Runner 抛异常 | **中断启动**（容器回滚关闭） | 同 |
 
-!!! tip "Runner vs `@PostConstruct` vs `ApplicationReadyEvent` 如何选？"
-    - **`@PostConstruct`**：Bean 自己的初始化（需要本 Bean 的依赖已就绪即可）
-    - **`Runner`**：全局一次性任务、且要保证**容器级 Bean 全部就绪**（数据预热、依赖检查）
-    - **`ApplicationReadyEvent`**：更晚、更明确"服务可对外"——注册到服务发现、开放流量入口，推荐用它
+!!! tip "Runner / `@PostConstruct` / `ApplicationReadyEvent` 选型"
+    - `@PostConstruct`：本 Bean 的初始化，依赖本 Bean 的依赖已注入
+    - **Runner**：全局一次性任务，需要**整个容器已就绪**（数据预热、依赖健康检查）
+    - **`ApplicationReadyEvent`**：最晚、最明确的"对外可用"时刻——注册服务发现、开放流量入口
+    - **`SmartLifecycle`**：有启停语义的组件（能在 `close()` 时优雅退出）
 
 ---
 
-## 8. 扩展点注册方式与排序规则总结
+## 11. AOT / GraalVM 下扩展点的"半失效"
 
-### 8.1 注册方式矩阵
+Spring 6 / Boot 3 引入的 AOT 把"运行期注解解析 + 反射实例化"搬到**构建期**，产物是一个预生成的 `ApplicationContextInitializer` 类。这对扩展点带来结构性冲击。
 
-| 扩展点 | `@Component` 注册 | SPI 注册 | `@Import` 注册 | 手动 API |
+> 📖 AOT 的启动流程视角见 [启动流程 §11](03-Spring容器启动流程深度解析.md)。本节从**扩展点视角**补充——哪些扩展点会"半失效"、怎么改。
+
+### 11.1 AOT 下各扩展点的状态
+
+| 扩展点 | AOT 下的表现 |
+| :-- | :-- |
+| `BootstrapRegistryInitializer` | ✅ 正常（运行期）—— Bootstrap 阶段仍动态执行 |
+| `EnvironmentPostProcessor` | ✅ 正常（运行期） |
+| `ApplicationContextInitializer` | ⚠️ **AOT 生成的 Initializer 已在最前**——自定义的仍会执行，但要小心它依赖"还未注册的 BD"的场景 |
+| `BeanDefinitionRegistryPostProcessor` | 🔴 **构建期执行一次，运行期不再执行**——动态注册 BD 多半无效 |
+| `BeanFactoryPostProcessor` | 🟡 **部分失效**：Spring 自带 BFPP 在构建期求值完毕；用户 BFPP 仍会在运行期执行，但 BD 已冻结，修改窗口变窄 |
+| `ImportSelector` / `Registrar` | 🔴 **构建期执行**——运行期决策失效，条件必须在构建期可静态分析 |
+| `@Conditional` | 🔴 **构建期求值**——结果编译进二进制，运行期更改环境变量无效 |
+| `BeanPostProcessor` 家族 | ✅ 运行期正常，但反射触达的字段/方法必须已声明 `RuntimeHints` |
+| `SmartInitializingSingleton` | ✅ 正常 |
+| `ApplicationListener` / `@EventListener` | ✅ 正常 |
+| `SmartLifecycle` | ✅ 正常 |
+| `Runner` | ✅ 正常 |
+| CGLIB 代理（Full `@Configuration`） | 🔴 **强制 Lite 模式**——禁止运行时字节码生成 |
+
+### 11.2 AOT 友好的扩展点改造清单
+
+1. **`ApplicationContextAware` + `getBean(Xxx.class)`** → 改为**构造器注入 `ObjectProvider<T>`**
+2. **运行期动态 `@Import`** → 改为构建期可静态分析的形式，或迁移到 `ApplicationContextInitializer` 里手动注册
+3. **BFPP 里 `registry.registerBeanDefinition(...)`** → 改用 `@Bean` 方法 + `BeanDefinitionCustomizer`
+4. **`@Configuration(proxyBeanMethods = true)` 的方法互调** → 改为参数注入（把被调方法的返回值作为当前方法的参数），避免依赖 CGLIB
+5. **反射访问第三方类** → 注册 `RuntimeHintsRegistrar` 或 `@RegisterReflectionForBinding`
+
+> 📖 `RuntimeHints` 注册方式、完整的 AOT 构建命令详见 [Spring 启动与并发优化](../05-进阶与调优/01b-启动与并发优化.md) AOT 章节。
+
+---
+
+## 12. 注册方式与排序规则总结
+
+### 12.1 注册方式矩阵
+
+| 扩展点 | `@Component` | SPI（`.imports` / `spring.factories`） | `@Import` | 手动 API |
 | :-- | :--: | :--: | :--: | :--: |
-| `ApplicationContextInitializer` | ❌ | ✅ | | `SpringApplication.addInitializers` |
-| `BeanDefinitionRegistryPostProcessor` | ✅ | | ✅ | `context.addBeanFactoryPostProcessor` |
-| `BeanFactoryPostProcessor` | ✅ | | ✅ | 同上 |
-| `BeanPostProcessor` 族 | ✅ | | ✅ | `beanFactory.addBeanPostProcessor` |
-| `ImportSelector` / `ImportBeanDefinitionRegistrar` | | | ✅（必须） | |
-| `ApplicationListener` | ✅ | ✅ | | `SpringApplication.addListeners` |
-| `@EventListener` | ✅ | | | （方法注解，自动扫描） |
-| `CommandLineRunner` / `ApplicationRunner` | ✅ | | | |
+| `BootstrapRegistryInitializer` | ❌ | ✅ | ❌ | `SpringApplication.addBootstrapRegistryInitializers` |
+| `EnvironmentPostProcessor` | ❌ | ✅ | ❌ | ❌ |
+| `SpringApplicationRunListener` | ❌ | ✅ | ❌ | ❌ |
+| `ApplicationContextInitializer` | ❌ | ✅ | ❌ | `SpringApplication.addInitializers` |
+| `BeanDefinitionRegistryPostProcessor` | ✅ | — | ✅ | `context.addBeanFactoryPostProcessor` |
+| `BeanFactoryPostProcessor` | ✅ | — | ✅ | 同上 |
+| `BeanPostProcessor` 族 | ✅ | — | ✅ | `beanFactory.addBeanPostProcessor` |
+| `ImportSelector` / `Registrar` | ❌ | — | ✅（必须） | ❌ |
+| `SmartInitializingSingleton` | ✅ | — | ✅ | ❌ |
+| `SmartLifecycle` | ✅ | — | ✅ | ❌ |
+| `ApplicationListener` | ✅ | ✅ | ✅ | `SpringApplication.addListeners` |
+| `@EventListener` | ✅ | — | — | — |
+| `Runner` | ✅ | — | ✅ | — |
 
-### 8.2 排序规则（通用）
+**铁律**：**早于 `refresh()` 的扩展点只能走 SPI / 手动 API；晚于 `refresh()` 的可以 `@Component`**。
 
-所有扩展点共用同一套排序规则：
+### 12.2 排序规则（通用）
 
 ```txt
-① PriorityOrdered  ← 最高优先级（框架级扩展点常用）
+① PriorityOrdered  ← 最高优先级（框架级扩展点常用，如 ConfigurationClassPostProcessor）
 ② Ordered          ← 次之（业务级扩展点常用）
-③ 普通扩展点       ← 按注册顺序（不稳定，避免依赖）
+③ 普通扩展点       ← 按注册/扫描顺序（不稳定，避免依赖）
 ```
 
-**对 BPP 特殊说明**：Spring 会将三类 BPP 分别排序——先执行 `PriorityOrdered` 组，再执行 `Ordered` 组，最后是普通组。所以 `AutowiredAnnotationBeanPostProcessor`（`PriorityOrdered`）一定在业务 BPP 之前执行，这保证了业务 BPP 拿到的是"已完成依赖注入"的 Bean。
+!!! warning "`@Order` 注解对 BPP/BFPP 无效"
+    Spring 在排序 BPP 和 BFPP 时，源码里是 `instanceof PriorityOrdered` / `instanceof Ordered` 的显式判断，**不读取 `@Order` 注解**。对这类扩展点，**必须实现接口**才能控制顺序。
+    `@Order` 对以下扩展点有效：`ApplicationListener`、`@EventListener`、`Runner`、普通 `@Component`。
+
+### 12.3 BPP 的分组排序
+
+Spring 把 BPP 分三组依次装入 `beanFactory`：
+
+1. 先装 `PriorityOrdered` 组（排序后）
+2. 再装 `Ordered` 组（排序后）
+3. 最后装普通组
+
+**保证**：`AutowiredAnnotationBeanPostProcessor`（`PriorityOrdered`）一定在业务 BPP 之前，业务 BPP 拿到的 Bean **已完成依赖注入**。
 
 ---
 
-## 9. 常见误区与陷阱
+## 13. 常见误区与陷阱
 
-### 误区 1：BFPP 里 `getBean()` 提前实例化业务 Bean
+> BFPP 里 `getBean()` 导致 BPP 全线失效的陷阱见 §3.4；BPP 内部 `@Transactional` 失效见 §4.5；`@EventListener` 早期事件丢失见 §6.5；此处只列前文未覆盖的误区。
+
+### 误区 1：`ApplicationContextInitializer` 用 `@Component` 声明
+
+容器刷新前 `@Component` 扫描还没开始。**必须**走 `spring.factories` / `.imports` / `SpringApplication.addInitializers()`。这个错误的症状是"Initializer 类存在但从不执行"。
+
+### 误区 2：`SmartLifecycle.stop(Runnable)` 忘记调用 `callback.run()`
 
 ```java
-// ❌ 在 BFPP 里直接 getBean，Bean 会绕过后续 BPP 增强
-@Component
-public class BadBFPP implements BeanFactoryPostProcessor {
-    @Override
-    public void postProcessBeanFactory(ConfigurableListableBeanFactory bf) {
-        DataSource ds = bf.getBean(DataSource.class);  // 启动日志大量警告
-        ds.getConnection();
-    }
+// ❌ 容器永远等待这个组件停机，close() 挂起
+@Override
+public void stop(Runnable callback) {
+    consumer.close();
+    // 忘了 callback.run()！
 }
 ```
 
-**正确做法**：如果确实需要早期初始化，改用 `ApplicationContextInitializer`（最早阶段）或 `SmartInitializingSingleton`（所有 Bean 就绪后）。
+容器关闭时会阻塞等待所有 `SmartLifecycle` 的 callback 回调，超过 `timeoutPerShutdownPhase`（默认 30s）才强制进入下一 phase。症状：`close()` 总要卡 30 秒。
 
-### 误区 2：BPP 依赖业务 Bean 的增强
+### 误区 3：把 `@EventListener` 写在 `@Configuration` 类的 `static` 方法里
 
-```java
-// ❌ BPP 内用 @Transactional，事务注解根本不生效
-@Component
-public class BadBPP implements BeanPostProcessor {
-    @Transactional
-    @Override
-    public Object postProcessAfterInitialization(Object bean, String name) { ... }
-}
-```
+`@EventListener` 只扫描**实例方法**，`static` 方法会被 `EventListenerMethodProcessor` 跳过，启动无报错但监听器永不触发。
 
-BPP 在业务 BPP 之前注册，自身 **不会被 AOP BPP 增强**。需要事务请在 BPP 外面写代理。
+### 误区 4：`ImportBeanDefinitionRegistrar` 里使用 `@Autowired`
 
-### 误区 3：`@EventListener` 监听 `@PostConstruct` 里发布的事件
+Registrar 在 BD 注册阶段就要运行，此时容器连 `BeanFactory` 都没初始化完，`@Autowired` 不会生效。需要依赖时，通过实现 `EnvironmentAware` / `ResourceLoaderAware` 拿到——Spring 会在调用 `registerBeanDefinitions` 前先触发这些 Aware。
 
-`@EventListener` 在 `SmartInitializingSingleton` 阶段才注册。如果在 `@PostConstruct` 中发布事件，**监听器还没注册**——事件被静默丢弃。
+### 误区 5：以为 `BeanDefinitionCustomizer` 能改所有 Bean
 
-**正确做法**：
-- 发布时机推后到 `ContextRefreshedEvent` 或 `ApplicationReadyEvent`
-- 或改用 `ApplicationListener` 接口方式（更早注册）
-
-### 误区 4：`@TransactionalEventListener` 在非事务方法里发事件
-
-```java
-// ❌ 没有 @Transactional，事件默认被忽略
-public void createOrder() {
-    repo.save(order);
-    publisher.publishEvent(new OrderCreatedEvent(this, order.getId()));
-    // @TransactionalEventListener(AFTER_COMMIT) 不会触发！
-}
-```
-
-**解决**：① 加 `@Transactional`；或 ② 在监听器上设置 `fallbackExecution = true` 允许无事务时也执行。
-
-### 误区 5：`ApplicationContextInitializer` 用 `@Component` 声明
-
-容器刷新前根本还没扫描 `@Component`。**必须**走 `spring.factories` / `.imports` 或 `SpringApplication.addInitializers()`。
+它只在**手动 `registerBean()`** 时生效。对 `@Component` / `@Bean` 扫描注册的 Bean，要改 BD 仍然要用 BFPP。
 
 ---
 
-## 10. 高频面试题（源码级标准答案）
+## 14. 高频面试题（源码级标准答案）
 
-**Q1：`BeanFactoryPostProcessor` 和 `BeanPostProcessor` 有什么本质区别？**
+**Q1：BFPP、BPP、`SmartInitializingSingleton`、`SmartLifecycle` 分别干预什么阶段？**
 
-> 二者作用对象不同、时机不同。`BFPP` 在 Bean **实例化之前**对 `BeanDefinition`（元数据/档案卡）做修改，只能改配置、不能接触对象；`BPP` 在每个 Bean **初始化前后**对 Bean 实例做干预，能做依赖注入、AOP 代理、属性验证等。一句话——`BFPP` 改元数据，`BPP` 改实例。
+> - **BFPP（含 BDRPP）**：`refresh()` 第 5 步，改 `BeanDefinition`（元数据）——改配置、不能接触 Bean 实例
+> - **BPP 家族**：第 6 步注册装入，第 11 步每个 Bean 初始化前后介入——做依赖注入、AOP 代理、属性增强
+> - **`SmartInitializingSingleton`**：第 11 步末尾，所有单例到齐后的**全局单次**钩子——`@EventListener` 注册在此
+> - **`SmartLifecycle`**：第 12 步 `finishRefresh` 调 `start()`、容器 `close()` 时按 phase 倒序调 `stop()`——有启停语义的组件（MQ、调度器）用它
 
-**Q2：`@Autowired` 是怎么被处理的？为什么自定义 BPP 内部慎用 `@Autowired`？**
+**Q2：自定义 BPP 能用 `@Autowired` 吗？为什么 BPP 里 `@Transactional` 不生效？**
 
-> `@Autowired` 由 `AutowiredAnnotationBeanPostProcessor` 实现，它实现了 `InstantiationAwareBeanPostProcessor` 和 `MergedBeanDefinitionPostProcessor`——合并元数据阶段扫描缓存注入点，`postProcessProperties` 阶段反射赋值。而自定义 BPP 的实例化在其他 BPP 注册之前，它自己不受其他 BPP 增强，所以注入的依赖可能是原始对象（无 AOP）、事务/缓存/异步注解也都不生效。保险做法是构造器注入基础类型（`BeanFactory` / `Environment`），或实现 Aware 延迟获取。
+> 能用但有风险。BPP 被 Spring 提前实例化（早于业务 BPP 装入容器），其 `@Autowired` 依赖如果需要 AOP 增强，拿到的可能是未增强的原始对象；`@Transactional` / `@Async` / `@Cacheable` 依赖 `AnnotationAwareAspectJAutoProxyCreator`（本身是个 BPP）生成代理，对 BPP 自身**不会生效**，因为"后来装入的 BPP 不能回头增强已创建的 BPP"。保险做法：构造器注入 `BeanFactory` / `Environment`，或注入 `ObjectProvider<T>` 延迟查找。
 
-**Q3：`ImportSelector` 和 `ImportBeanDefinitionRegistrar` 怎么选？**
+**Q3：`ImportSelector` 和 `ImportBeanDefinitionRegistrar` 怎么选？`DeferredImportSelector` 有什么特殊？**
 
-> 如果**要导入的类在编译期已知**（只要决定"导哪几个"），用 `ImportSelector`——返回类名数组即可，Spring 会自动把它们作为配置类解析。如果要**根据注解属性动态扫描包、生成代理、控制 `BeanDefinition` 细节**，用 `ImportBeanDefinitionRegistrar`——直接拿到 `BeanDefinitionRegistry` 可做任何事。Spring Boot 自动配置用 `ImportSelector`（`AutoConfigurationImportSelector`），MyBatis/Feign 的 `@XxxScan` 用 `Registrar`。
+> 编译期**类名已知**用 `ImportSelector`（返回字符串数组）；需要**扫描包 / 动态生成 BD**用 `Registrar`（直接操作 `BeanDefinitionRegistry`）。`DeferredImportSelector` 是 `ImportSelector` 的延迟版——它**等所有 `@Configuration` 类处理完之后**再执行，Spring Boot 的 `AutoConfigurationImportSelector` 就是它，这样用户自定义配置优先于自动配置，`@ConditionalOnMissingBean` 才能正确识别"用户已定义"。
 
-**Q4：`ApplicationContextInitializer` 为什么不能 `@Component`？**
+**Q4：`ApplicationContextInitializer`、`EnvironmentPostProcessor`、`BootstrapRegistryInitializer` 的区别？**
 
-> 它在 `refresh()` 之前被调用——此时容器还没加载、`@Component` 扫描还没开始，自然无法靠注解注册。只能走 SPI：`META-INF/spring.factories`（Boot 2）或 `META-INF/spring/...ApplicationContextInitializer.imports`（Boot 3），或在 `main()` 里显式 `SpringApplication.addInitializers(...)`。本质原因——扩展点的注册方式取决于它的触发时机是否早于容器启动。
+> 三者都是启动前扩展点，时机从早到晚：`BootstrapRegistryInitializer`（Boot 2.4+，`SpringApplication` 构造期，最早，Environment 都还没）→ `EnvironmentPostProcessor`（`prepareEnvironment` 中，只能操作 `Environment`）→ `ApplicationContextInitializer`（`prepareContext` 中，拿得到整个 `ConfigurableApplicationContext`，`refresh` 前最后的修改窗口）。全部**不能 `@Component`**，必须走 SPI——容器这时还没开始扫描注解。
 
-**Q5：`@EventListener` 为什么可能监听不到早期事件？**
+**Q5：`@EventListener` 为什么可能监听不到早期事件？`SmartInitializingSingleton` 的意义是什么？**
 
-> `@EventListener` 的注册由 `EventListenerMethodProcessor` 完成，它实现了 `SmartInitializingSingleton`，在**全部单例初始化完毕**后才扫描所有 Bean 上的 `@EventListener` 方法做注册。这意味着早于该时机发布的事件（例如其他 Bean 的 `@PostConstruct` 里）不会被 `@EventListener` 监听到——需要改用 `ApplicationListener` 接口方式（在普通 BPP 阶段就会注册）。
+> `@EventListener` 由 `EventListenerMethodProcessor`（一个 `SmartInitializingSingleton`）在第 11 步末尾扫描所有单例的 `@EventListener` 方法做注册。**早于该时机**发布的事件（如其他 Bean 的 `@PostConstruct` 里）监听器还没注册到广播器——事件默默丢失。需要监听早期事件改用 `ApplicationListener` 接口（在 BPP 扫描阶段就注册）。`SmartInitializingSingleton` 的价值就是"**全员到齐后再做一次全局扫描/决策**"，`@EventListener` 注册、`@Scheduled` 启动都依赖它。
 
-**Q6：`@TransactionalEventListener` 事件丢失怎么排查？**
+**Q6：`SmartLifecycle` 和 `Runner`、`ApplicationReadyEvent` 怎么选？**
 
-> 首先确认发布方**处于活跃事务中**——没事务时事件默认被忽略（源码在 `TransactionalApplicationListenerMethodAdapter#onApplicationEvent`）。临时兜底可设 `fallbackExecution = true`。其次确认 `phase` 配置合理——`AFTER_COMMIT` 在回滚时不触发；如果要处理回滚场景需要 `AFTER_ROLLBACK` 或 `AFTER_COMPLETION`。最后确认监听器本身**不在事务内**执行额外 DB 操作（默认 `AFTER_COMMIT` 外部无事务，需要自己加 `@Transactional(propagation = REQUIRES_NEW)`）。
+> 看是否需要"启停语义"。**一次性初始化**（数据预热、健康检查）用 `Runner`；**对外宣告可用**（服务发现注册）用 `ApplicationReadyEvent`；**有启停语义的组件**（MQ 消费者、调度器、嵌入式服务器）必须用 `SmartLifecycle`——它在容器 `close()` 时会按 `phase` 倒序调用 `stop(Runnable)`，支持异步优雅停机。`Runner` 一旦执行完就无法再"关闭"。
 
-**Q7：BPP、BFPP 的执行顺序靠什么控制？**
+**Q7：AOT / GraalVM 原生镜像下，哪些扩展点会"半失效"？怎么改？**
 
-> 三级排序：① 实现 `PriorityOrdered` 接口的最先执行（框架内置扩展点用这个）；② 实现 `Ordered` 接口的次之；③ 其余按注册顺序。`@Order` 注解对这些扩展点**不生效**（Spring 源码里显式 instanceof 判断，不读注解），必须实现接口。
+> 构建期固化的：`BeanDefinitionRegistryPostProcessor`（构建期执行一次，运行期失效）、`ImportSelector` / `Registrar`（构建期求值）、`@Conditional`（构建期评估）、Full `@Configuration` CGLIB 代理（强制 Lite 模式）。运行期正常的：`BPP` 家族（注意反射要注册 `RuntimeHints`）、`Runner`、`SmartLifecycle`、`@EventListener`。典型改造：`ApplicationContextAware` + `getBean` 改为构造器注入 `ObjectProvider<T>`；`@Configuration` 方法互调改为参数注入；手动 BD 注册改用 `BeanDefinitionCustomizer` lambda。
+
+**Q8：`@Order` 注解能控制 BPP / BFPP 的执行顺序吗？**
+
+> **不能**。Spring 在排序 BPP / BFPP 时是 `instanceof PriorityOrdered` 和 `instanceof Ordered` 的显式判断，不读 `@Order` 注解——必须**实现接口**。`@Order` 只对 `ApplicationListener`、`@EventListener`、`Runner`、`@Component` 之间的顺序生效。这是工作中最容易踩的"顺序没生效"陷阱。
 
 ---
 
-## 11. 章节图谱与延伸阅读
+## 15. 章节图谱
 
 ```mermaid
 flowchart LR
-    EXT["本文：扩展点详解<br>（BPP / BFPP / Aware / 事件 / Import）"]
-    IoC["01-IoC 与 DI<br>（BeanDefinition 元数据）"]
-    LIFE["02-Bean 生命周期<br>（扩展点在 doCreateBean 中的位置）"]
-    BOOT["03-容器启动流程<br>（扩展点在 refresh() 12 步的位置）"]
+    EXT["本文：扩展点详解<br>（契约/注册/排序/AOT）"]
+    IoC["01-IoC 与 DI<br>（BeanDefinition 结构）"]
+    LIFE["02-Bean 生命周期<br>（BPP 在 doCreateBean 的位置）"]
+    BOOT["03-容器启动流程<br>（扩展点在 refresh 12 步的位置）"]
     AOP["05-AOP<br>（AutoProxyCreator 是一个 BPP）"]
-    ANN["08-常用注解全解<br>（@Import 等注解语义）"]
+    ANN["08-常用注解全解<br>（@Import / @Order / @Primary 语义）"]
     AUTO["07-SpringBoot 自动配置<br>（AutoConfigurationImportSelector）"]
+    TUNE["05-进阶与调优/启动与并发优化<br>（AOT RuntimeHints）"]
 
     EXT --> IoC
     EXT --> LIFE
@@ -665,6 +922,7 @@ flowchart LR
     EXT --> AOP
     EXT --> ANN
     EXT --> AUTO
+    EXT --> TUNE
 ```
 
-> **一句话口诀（再述）**：扩展点按"作用对象"分两类（改元数据/改实例），按"作用时机"从早到晚是 `Initializer` → `BDRPP` → `BFPP` → `InstantiationAwareBPP` → `MergedBeanDefinitionBPP` → `BPP#before` → `BPP#after` → `SmartInitializingSingleton` → `ApplicationListener` → `Runner`；注册方式取决于是否早于 `refresh()`——早于的走 SPI，晚于的可 `@Component`；排序认 `PriorityOrdered` → `Ordered` → 注册顺序；事件默认同步，`@Async` 需开启，`@TransactionalEventListener` 无事务则丢失。
+> **一句话口诀（再述）**：**按对象分两类**（改元数据 / 改实例）；**按阶段分五段**（启动前 → refresh 中 → 刷新后 → 运行期 → 关闭期）；**铁律**：早于 `refresh()` 走 SPI，晚于 `refresh()` 可 `@Component`；**排序**认 `PriorityOrdered` → `Ordered` → 注册顺序，`@Order` 对 BPP/BFPP 无效；**AOT 下**动态 BD 注册 / 条件注解求值 / CGLIB 代理半失效，构造器注入 + `ObjectProvider` 是最安全的改造方向。

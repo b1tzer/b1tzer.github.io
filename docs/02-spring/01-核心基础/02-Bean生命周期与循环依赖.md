@@ -5,7 +5,17 @@ title: Bean 生命周期与循环依赖
 
 # Bean 生命周期与循环依赖
 
-> **一句话记忆口诀**：实例化 → 属性注入 → Aware → BPP#before → 初始化 → BPP#after（AOP 代理）→ SmartInitializingSingleton → 使用 → 销毁（LIFO）；三级缓存提前暴露半成品，一级存完整 Bean，二级存早期引用，三级存工厂（支持 AOP 代理），构造器注入无法提前暴露所以不能解决循环依赖。
+> **一句话记忆口诀**：  
+> 实例化 → 属性注入 → Aware → BPP#before → 初始化 → BPP#after（AOP 代理）→ SmartInitializingSingleton → 使用 → 销毁（LIFO）；  
+> 三级缓存提前暴露半成品，一级存完整 Bean，二级存早期引用，三级存工厂（支持 AOP 代理），构造器注入无法提前暴露所以不能解决循环依赖。
+
+> 📖 **边界声明**：本文聚焦"**单个 Bean 从 `createBean()` 到 `destroy()` 之间发生了什么**"，以下主题请见对应专题：
+>
+> - `refresh()` 12 步宏观启动流程、`getBean` 宏观入口 → [Spring 容器启动流程深度解析](@spring-核心基础-Spring容器启动流程深度解析)
+> - `BeanDefinition` 静态结构、`DependencyDescriptor` 依赖解析算法、字段/构造器/Setter 三种注入方式对比 → [IoC 与 DI](@spring-核心基础-IoC与DI)
+> - `BeanPostProcessor` / `BeanFactoryPostProcessor` 家族的完整成员矩阵与自定义实现 → [Spring 扩展点详解](@spring-核心基础-Spring扩展点详解)
+> - AOP 代理生成的内部流程（JDK/CGLIB 选择、`ProxyFactory` 内部）与同类自调用失效的工程解法 → [AOP 面向切面编程](@spring-核心基础-AOP面向切面编程)
+> - 三级缓存完整源码案例、调试技巧 → 本文 §6（源头），其他姊妹文档 📖 引用此处
 
 ---
 
@@ -20,8 +30,6 @@ title: Bean 生命周期与循环依赖
 - 为什么 `@Async` 方法在同类内调用不生效？是"同一个问题的另一个表现"吗？
 
 这些问题的共同答案是：**生命周期不是 8 步，而是 8 个"显式阶段" + 若干"隐式钩子"，它们共同定义了 Bean 从字节码到可用对象的全部状态转移**。
-
-> 📖 容器启动的宏观视角（`refresh()` 12 步）见 [Spring 容器启动流程深度解析](03-Spring容器启动流程深度解析.md)；`BeanDefinition` 静态结构与依赖解析算法见 [IoC 与 DI](01-IoC与DI.md)。本文专注"**单个 Bean 从 `createBean()` 到 `destroy()` 之间发生了什么**"。
 
 ---
 
@@ -68,14 +76,14 @@ flowchart LR
 
 ### ① 实例化 Instantiation
 
-容器调用 `createBeanInstance()`，按 [IoC 与 DI §7](01-IoC与DI.md) 列出的**三条路径**之一创建原始对象：反射构造器 / `@Bean` 工厂方法 / `FactoryBean`。此时所有字段均为默认值（`null` / `0`），单例 Bean 的 `ObjectFactory` 在这一步完成后**立刻**放入三级缓存（为循环依赖做准备）。
+容器调用 `createBeanInstance()`，按 [IoC 与 DI §7](@spring-核心基础-IoC与DI) 列出的**三条路径**之一创建原始对象：反射构造器 / `@Bean` 工厂方法 / `FactoryBean`。此时所有字段均为默认值（`null` / `0`），单例 Bean 的 `ObjectFactory` 在这一步完成后**立刻**放入三级缓存（为循环依赖做准备）。
 
 !!! note "隐式钩子：`InstantiationAwareBeanPostProcessor#postProcessBeforeInstantiation`"
     在 `createBeanInstance()` **之前**，容器会先询问所有 `InstantiationAwareBeanPostProcessor`："你要不要直接返回一个对象替代正常的实例化？" 如果某个 BPP 返回非 `null`，生命周期**立即短路**——跳过后续所有步骤，直接进入第⑥步。AOP 的 `AnnotationAwareAspectJAutoProxyCreator` 就是靠这个钩子实现"为某些 Bean 提前创建代理"。
 
 ### ② 属性注入 Populate
 
-`populateBean()` 扫描字段与 setter 上的 `@Autowired` / `@Value` / `@Resource`，通过 `DependencyDescriptor` 解析（算法见 [IoC 与 DI §6](01-IoC与DI.md)）。`@Value("${...}")` 占位符在容器启动阶段由 `PropertySourcesPlaceholderConfigurer`（一个 `BeanFactoryPostProcessor`）在 `BeanDefinition` 级别预解析，此步只是把最终值填入。
+`populateBean()` 扫描字段与 setter 上的 `@Autowired` / `@Value` / `@Resource`，通过 `DependencyDescriptor` 解析（算法见 [IoC 与 DI §6](@spring-核心基础-IoC与DI)）。`@Value("${...}")` 占位符在容器启动阶段由 `PropertySourcesPlaceholderConfigurer`（一个 `BeanFactoryPostProcessor`）在 `BeanDefinition` 级别预解析，此步只是把最终值填入。
 
 !!! note "隐式钩子：`InstantiationAwareBeanPostProcessor#postProcessProperties`"
     注入的**真正执行者**是 `AutowiredAnnotationBeanPostProcessor`（处理 `@Autowired`）和 `CommonAnnotationBeanPostProcessor`（处理 `@Resource`），它们都是 `InstantiationAwareBeanPostProcessor` 的实现，在这一步通过反射对字段 / setter 赋值。
@@ -83,18 +91,55 @@ flowchart LR
 
 ### ③ Aware 接口回调
 
-`invokeAwareMethods()` 按固定顺序注入容器级对象：
+!!! note "📖 术语家族：`*Aware`"
+    **字面义**：Aware = "知晓的 / 感知的"。
+    **在本框架中的含义**：Spring 容器在 Bean 初始化阶段回调，**把 Bean 所处的上下文信息"告诉"Bean**——谁想拿到 Xxx，就实现 `XxxAware` 接口。
+    **同家族成员**：
 
-| Aware 接口 | 注入内容 | 典型使用方 |
-| :-- | :-- | :-- |
-| `BeanNameAware` | Bean 在容器中的 id | 定时任务类获取自身名称 |
-| `BeanClassLoaderAware` | 加载该 Bean 的 `ClassLoader` | SPI 加载 |
-| `BeanFactoryAware` | 基础容器 `BeanFactory` | 框架组件 |
-| `ApplicationContextAware` | 企业级容器（支持事件/国际化/资源） | 手写 `SpringContextHolder` 工具类 |
+    | 成员 | 注入内容 | 触发时机 | 源码位置 |
+    | :-- | :-- | :-- | :-- |
+    | `BeanNameAware` | Bean 在容器中的 id | 第③步 `invokeAwareMethods` | `org.springframework.beans.factory.BeanNameAware` |
+    | `BeanClassLoaderAware` | 加载该 Bean 的 `ClassLoader` | 第③步 `invokeAwareMethods` | `org.springframework.beans.factory.BeanClassLoaderAware` |
+    | `BeanFactoryAware` | 基础容器 `BeanFactory` | 第③步 `invokeAwareMethods` | `org.springframework.beans.factory.BeanFactoryAware` |
+    | `ApplicationContextAware` | 企业级容器 `ApplicationContext` | 第④步（经 `ApplicationContextAwareProcessor`） | `org.springframework.context.ApplicationContextAware` |
+    | `EnvironmentAware` | `Environment` 对象 | 第④步（同上） | `org.springframework.context.EnvironmentAware` |
+    | `ResourceLoaderAware` | `ResourceLoader` | 第④步（同上） | `org.springframework.context.ResourceLoaderAware` |
+    | `MessageSourceAware` | `MessageSource`（国际化） | 第④步（同上） | `org.springframework.context.MessageSourceAware` |
 
-> 其余 `EnvironmentAware` / `ResourceLoaderAware` / `MessageSourceAware` 等在 `ApplicationContextAwareProcessor`（一个 `BeanPostProcessor`）的 `postProcessBeforeInitialization` 中触发——严格说它们属于第④步，只是概念上归为 Aware 家族。
+    **命名规律**：`XxxAware` = "想拿到 Xxx 的 Bean 就实现这个接口"。**两类触发路径**：基础容器级（`BeanName` / `BeanClassLoader` / `BeanFactory`）由 `invokeAwareMethods` 在**第③步**显式调用；应用上下文级（`ApplicationContext` / `Environment` / `ResourceLoader` / `MessageSource` 等）由 `ApplicationContextAwareProcessor` 这个 `BeanPostProcessor` 在**第④步**统一回调——严格按源码它们属于第④步，只是概念上归为 Aware 家族。
 
 ### ④ BeanPostProcessor#before
+
+!!! note "📖 术语家族：`*Processor` / `BeanPostProcessor`（简称 BPP）"
+    **字面义**：Processor = "处理器"；Post = "在...之后"（BPP 即"Bean 之后的处理器"，相对于 `BeanFactoryPostProcessor` 的"BeanFactory 之后"）。
+    **在本框架中的含义**：Spring 对**单个 Bean 实例**的标准加工流水线上的拦截点——每个 Bean 在生命周期的固定阶段都会被全部 BPP 依次"过一遍"。
+    **同家族成员**：
+
+    | 成员 | 关键钩子方法 | 触发阶段 | 典型实现 |
+    | :-- | :-- | :-- | :-- |
+    | `BeanPostProcessor` | `postProcessBeforeInitialization` / `postProcessAfterInitialization` | 第④ / 第⑥步 | `ApplicationContextAwareProcessor`（Aware 回调）、`AbstractAutoProxyCreator`（AOP 代理生成） |
+    | `InstantiationAwareBeanPostProcessor` | `postProcessBeforeInstantiation` / `postProcessProperties` | 第①步前 / 第②步 | `AutowiredAnnotationBeanPostProcessor`（`@Autowired`）、`CommonAnnotationBeanPostProcessor`（`@Resource` / `@PostConstruct`） |
+    | `SmartInstantiationAwareBeanPostProcessor` | `getEarlyBeanReference` | 循环依赖触发时 | `AbstractAutoProxyCreator`（提前生成代理） |
+    | `MergedBeanDefinitionPostProcessor` | `postProcessMergedBeanDefinition` | 第①步与第②步之间 | `AutowiredAnnotationBeanPostProcessor`（缓存注入点元数据） |
+    | `DestructionAwareBeanPostProcessor` | `postProcessBeforeDestruction` | 第⑨步 | `InitDestroyAnnotationBeanPostProcessor`（`@PreDestroy`） |
+
+    **继承关系**：
+
+    ```mermaid
+    flowchart TB
+        BPP["BeanPostProcessor<br>before/after Initialization"]
+        IABPP["InstantiationAwareBeanPostProcessor<br>before Instantiation / postProcessProperties"]
+        SIABPP["SmartInstantiationAwareBeanPostProcessor<br>getEarlyBeanReference"]
+        MBDPP["MergedBeanDefinitionPostProcessor<br>postProcessMergedBeanDefinition"]
+        DABPP["DestructionAwareBeanPostProcessor<br>postProcessBeforeDestruction"]
+
+        BPP --> IABPP
+        IABPP --> SIABPP
+        BPP --> MBDPP
+        BPP --> DABPP
+    ```
+
+    **命名规律**：`XxxBeanPostProcessor` = "在 Bean 生命周期的某个阶段插一刀"；前缀决定插入点——`Instantiation*` 管实例化前后（第①~②）、`SmartInstantiation*` 管循环依赖提前代理、`MergedBeanDefinition*` 管元数据合并、`Destruction*` 管销毁。**BPP vs BFPP 的本质分工**：BPP 改**单个 Bean 实例**；`BeanFactoryPostProcessor`（BFPP）改**整个容器的 BeanDefinition 元数据**——详见 [Spring 扩展点详解 §3~§4](@spring-核心基础-Spring扩展点详解)。
 
 `applyBeanPostProcessorsBeforeInitialization()` 遍历所有 `BeanPostProcessor`，依次调用 `postProcessBeforeInitialization()`。
 
@@ -108,8 +153,16 @@ flowchart LR
 1. `InitializingBean.afterPropertiesSet()`（实现接口方式）
 2. `@Bean(initMethod = "xxx")` 或 XML `init-method`（声明式）
 
-!!! note "为什么框架自身偏爱 `afterPropertiesSet`、业务偏爱 `@PostConstruct`"
-    `InitializingBean` 是 Spring 专有接口，对业务代码是耦合；`@PostConstruct` 来自 JSR-250 标准（现位于 `jakarta.annotation`），与 Spring 解耦。所以 Spring 框架**内部组件**常用 `InitializingBean`（如 `SqlSessionFactoryBean`），**业务代码**推荐用 `@PostConstruct`。
+!!! note "📖 术语家族：Bean 初始化/销毁钩子三兄弟"
+    **同一个"初始化时机"有三套并行的 API**，分别来自三套命名哲学：
+
+    | 钩子 | 来源 | 触发阶段 | 与 Spring 耦合度 | 典型使用方 |
+    | :-- | :-- | :-- | :-- | :-- |
+    | `@PostConstruct` / `@PreDestroy` | **JSR-250**（`jakarta.annotation`） | 第④步 / 第⑨步（由 `CommonAnnotationBeanPostProcessor` 触发） | 零耦合（标准注解） | **业务代码首选** |
+    | `InitializingBean#afterPropertiesSet` / `DisposableBean#destroy` | **Spring 专有接口** | 第⑤步 / 第⑨步 | 强耦合（侵入 Spring 类型） | Spring 框架**内部组件**（如 `SqlSessionFactoryBean`） |
+    | `@Bean(initMethod=/destroyMethod=)` / XML `init-method` / `destroy-method` | **声明式配置** | 第⑤步 / 第⑨步（在 `InitializingBean` 之后） | 零耦合（仅配置） | 集成第三方库（无法改源码时） |
+
+    **命名规律**：`@PostConstruct`（JSR-250："构造之后"）= `afterPropertiesSet`（Spring："属性就绪之后"）= 声明式 `init-method`——三者**语义等价、触发时机紧邻**（④→⑤→⑤），执行顺序是 `@PostConstruct` → `afterPropertiesSet` → `init-method`。**为什么 Spring 自身偏爱 `afterPropertiesSet`、业务偏爱 `@PostConstruct`**：框架内部用 Spring 接口天经地义，业务代码用 JSR-250 标准可保持与 Spring 解耦，便于将来替换容器。
 
 ### ⑥ BeanPostProcessor#after ⚠️ AOP 代理在此创建
 
@@ -168,7 +221,7 @@ flowchart LR
 
 ---
 
-## 5. 常见误区
+## 5. 不理解底层会踩的坑
 
 ### 误区 1：在构造器中使用 `@Autowired` 注入的字段
 
@@ -219,7 +272,7 @@ MyService svc = new MyService();       // ❌ 绕过容器
 svc.doSomething();                      // @Autowired 字段全是 null
 ```
 
-只有**容器管理**的 Bean 才会走生命周期。如果确实需要对容器外对象做注入，用 `AutowireCapableBeanFactory.autowireBean(obj)`（见 [IoC 与 DI §3.1](01-IoC与DI.md)）。
+只有**容器管理**的 Bean 才会走生命周期。如果确实需要对容器外对象做注入，用 `AutowireCapableBeanFactory.autowireBean(obj)`（见 [IoC 与 DI §3.1](@spring-核心基础-IoC与DI)）。
 
 ### 误区 4：把 `@PostConstruct` 当作"全员到齐"的钩子
 
@@ -251,6 +304,8 @@ svc.doSomething();                      // @Autowired 字段全是 null
 ### 6.2 三级缓存的源码定位
 
 全部位于 `DefaultSingletonBeanRegistry`：
+
+> 📖 `ObjectFactory` 属 `*Factory` 家族，与 `BeanFactory` / `FactoryBean` 的命名差异详见 [IoC 与 DI](@spring-核心基础-IoC与DI)。这里只关注它作为"**延迟的早期引用生成器**"的角色。
 
 ```java
 // 一级缓存：完整 Bean
@@ -335,7 +390,7 @@ flowchart LR
 | 方案 | 适用场景 | 原理 |
 | :-- | :-- | :-- |
 | **重构：提取公共依赖** | 首选 | A ↔ B 改成 A → C ← B，环被打破 |
-| **重构：事件解耦** | 发布-订阅类场景 | 用 `ApplicationEventPublisher` 替代直接引用，见 [扩展点详解 §6](04-Spring扩展点详解.md) |
+| **重构：事件解耦** | 发布-订阅类场景 | 用 `ApplicationEventPublisher` 替代直接引用，见 [扩展点详解 §6](@spring-核心基础-Spring扩展点详解) |
 | **`@Lazy`** | 构造器注入被迫循环时 | 注入代理对象，首次调用时才解析目标 |
 | **字段注入 + `allow-circular-references=true`** | 历史遗留代码临时救场 | 依赖三级缓存，不推荐长期使用 |
 
@@ -379,7 +434,7 @@ public class OrderService {
 }
 ```
 
-> 📖 完整排查清单与解决方案（注入自身代理、`AopContext.currentProxy()` 等）见 [AOP 面向切面编程 §4](05-AOP面向切面编程.md)。本文只强调：**这是"代理模式的本质限制"，而非生命周期 bug**。
+> 📖 完整排查清单与解决方案（注入自身代理、`AopContext.currentProxy()` 等）见 [AOP 面向切面编程 §4](@spring-核心基础-AOP面向切面编程)。本文只强调：**这是"代理模式的本质限制"，而非生命周期 bug**。
 
 ---
 

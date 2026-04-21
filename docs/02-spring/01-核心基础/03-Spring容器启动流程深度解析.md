@@ -5,11 +5,19 @@ title: Spring 容器启动流程深度解析
 
 # Spring 容器启动流程深度解析
 
-> **一句话记忆口诀**：`SpringApplication.run()` 八步（监听器 → 环境 → Banner → 上下文 → prepare → **refresh** → afterRefresh → Runner）；  
+> **一句话记忆口诀**：  
+> `SpringApplication.run()` 八步（监听器 → 环境 → Banner → 上下文 → prepare → **refresh** → afterRefresh → Runner）；  
 > `refresh()` 十二步关键顺序是"先改定义（BFPP）→ 再装处理器（BPP）→ 最后实例化单例（finishBeanFactoryInitialization）"；  
 > 启动期靠 `SpringFactoriesLoader` 读 `META-INF/spring.factories`（Boot 2）/ `META-INF/spring/...imports`（Boot 3）实现 SPI；  
 > 三大事件时机：`ContextRefreshedEvent`（refresh 末尾）→ `ApplicationStartedEvent`（Runner 执行前）→ `ApplicationReadyEvent`（Runner 执行后）；  
 > Spring 6 AOT 把 `BeanDefinition` 注册从运行期搬到构建期。
+
+> 📖 **边界声明**：
+>
+> - 单个 Bean 从 `createBean()` 到 `destroy()` 之间的阶段（属性注入、Aware、BPP before/after、初始化、销毁）见 [Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md)。 
+> - `BeanFactoryPostProcessor` / `BeanPostProcessor` / `Aware` / `ApplicationListener` / `ImportBeanDefinitionRegistrar` 的使用方式与代码示例见 [Spring 扩展点详解](04-Spring扩展点详解.md)。  
+> - 懒加载、组件扫描范围裁剪、AOT / Native Image 构建实战见 [Spring 启动与并发优化](../05-进阶与调优/01b-启动与并发优化.md)。  
+> 本文**只讲启动时序与顺序约束**，不与上述文档重复。
 
 ---
 
@@ -25,12 +33,6 @@ title: Spring 容器启动流程深度解析
 - AOT 模式下 `BeanFactoryPostProcessor` 为什么"半失效"？
 
 这些问题的共同前提是：**启动流程由一组强顺序约束串起来**，每一步只能在前一步完成后才能正确工作。本文按这个"顺序约束"视角展开。
-
-> 📖 **边界声明**：
-> - 单个 Bean 从 `createBean()` 到 `destroy()` 之间的阶段（属性注入、Aware、BPP before/after、初始化、销毁）见 [Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md)。 
-> - `BeanFactoryPostProcessor` / `BeanPostProcessor` / `Aware` / `ApplicationListener` / `ImportBeanDefinitionRegistrar` 的使用方式与代码示例见 [Spring 扩展点详解](04-Spring扩展点详解.md)。  
-> - 懒加载、组件扫描范围裁剪、AOT / Native Image 构建实战见 [Spring 启动与并发优化](../05-进阶与调优/01b-启动与并发优化.md)。  
-> 本文**只讲启动时序与顺序约束**，不与上述文档重复。
 
 ---
 
