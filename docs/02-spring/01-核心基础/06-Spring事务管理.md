@@ -15,11 +15,11 @@ title: Spring 事务管理 —— 从声明式注解到源码级机制
 
 > 📖 **边界声明**：本文聚焦"**Spring 事务的抽象层与 AOP 织入机制**"，以下主题请见对应专题：
 >
-> - AOP 代理的 JDK/CGLIB 选型、同类自调用的三种规避方案、`AopContext.currentProxy()` 的用法 → [AOP 面向切面编程](05-AOP面向切面编程.md)
-> - 7 种传播行为的完整代码示例、5 种隔离级别的完整代码示例、多数据源 `@EnableTransactionManagement`、HikariCP 调优 → [Spring 数据访问高级技巧](../04-数据与消息/01-Spring数据访问高级技巧.md)
-> - 事务不生效的**排查流程**、`REQUIRED` vs `REQUIRES_NEW` 的**业务选型**、长事务危害与优化 → [Spring 实战应用题 Q1~Q3](../06-测试与实战/07-Spring实战应用题.md)
-> - 事务消息（本地消息表、`@TransactionalEventListener` 的消息集成用法）→ [消息驱动架构深度解析](../04-数据与消息/03-消息驱动架构深度解析.md)
-> - AOP 代理在 Bean 生命周期中的生成时机 → [Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md)
+> - AOP 代理的 JDK/CGLIB 选型、同类自调用的三种规避方案、`AopContext.currentProxy()` 的用法 → [AOP 面向切面编程](@spring-核心基础-AOP面向切面编程)
+> - 7 种传播行为的完整代码示例、5 种隔离级别的完整代码示例、多数据源 `@EnableTransactionManagement`、HikariCP 调优 → [Spring 数据访问高级技巧](@spring-数据与消息-Spring数据访问高级技巧)
+> - 事务不生效的**排查流程**、`REQUIRED` vs `REQUIRES_NEW` 的**业务选型**、长事务危害与优化 → [Spring 实战应用题 Q1~Q3](@spring-测试与实战-Spring实战应用题)
+> - 事务消息（本地消息表、`@TransactionalEventListener` 的消息集成用法）→ [消息驱动架构深度解析](@spring-数据与消息-Spring消息驱动架构深度解析)
+> - AOP 代理在 Bean 生命周期中的生成时机 → [Bean 生命周期与循环依赖](@spring-核心基础-Bean生命周期与循环依赖)
 
 ---
 
@@ -153,7 +153,7 @@ public BeanFactoryTransactionAttributeSourceAdvisor transactionAdvisor(
 }
 ```
 
-> 📖 `Advisor` 如何被 `AbstractAutoProxyCreator` 包装成代理，详见 [AOP §4](05-AOP面向切面编程.md)——事务代理的创建时机与普通 AOP 代理**完全一致**，在 Bean 初始化最后一步（`applyBeanPostProcessorsAfterInitialization`）织入。
+> 📖 `Advisor` 如何被 `AbstractAutoProxyCreator` 包装成代理，详见 [AOP §4](@spring-核心基础-AOP面向切面编程)——事务代理的创建时机与普通 AOP 代理**完全一致**，在 Bean 初始化最后一步（`applyBeanPostProcessorsAfterInitialization`）织入。
 
 ### 4.2 `TransactionInterceptor.invokeWithinTransaction()` 主流程
 
@@ -249,7 +249,7 @@ public void onApplicationEvent(ApplicationEvent event) {
 | `BEFORE_COMMIT` | 提交前（此时还能写 DB） | `beforeCommit()` |
 
 !!! warning "`AFTER_COMMIT` 阶段不能再写数据库到同一事务"
-    此时事务已提交、连接已解绑，在监听器里再做 DB 操作会**开启新事务**（或无事务写入）。需要让"写库 + 发消息"完全原子，用 `BEFORE_COMMIT` 或 **本地消息表**（见 [消息驱动架构深度解析](../04-数据与消息/03-消息驱动架构深度解析.md)）。
+    此时事务已提交、连接已解绑，在监听器里再做 DB 操作会**开启新事务**（或无事务写入）。需要让"写库 + 发消息"完全原子，用 `BEFORE_COMMIT` 或 **本地消息表**（见 [消息驱动架构深度解析](@spring-数据与消息-Spring消息驱动架构深度解析)）。
 
 ---
 
@@ -269,7 +269,7 @@ public void onApplicationEvent(ApplicationEvent event) {
 
 > **为什么默认 `REQUIRED`**：绝大多数场景希望"一组操作在同一事务里、同时成败"，这正是 `REQUIRED` 的语义；每次 `REQUIRES_NEW` 都要额外获取一个连接并挂起当前事务，开销显著。
 
-> 📖 **完整的代码示例与业务取舍**（如"日志用 REQUIRES_NEW"）见 [Spring 数据访问高级技巧 §事务传播行为深度解析](../04-数据与消息/01-Spring数据访问高级技巧.md) 与 [实战题 Q2](../06-测试与实战/07-Spring实战应用题.md)。本文只讲**底层机制**。
+> 📖 **完整的代码示例与业务取舍**（如"日志用 REQUIRES_NEW"）见 [Spring 数据访问高级技巧 §事务传播行为深度解析](@spring-数据与消息-Spring数据访问高级技巧) 与 [实战题 Q2](@spring-测试与实战-Spring实战应用题)。本文只讲**底层机制**。
 
 ### 5.2 `REQUIRES_NEW` 的"挂起 / 恢复"时序
 
@@ -336,7 +336,7 @@ sequenceDiagram
 | `SERIALIZABLE` | ❌ | ❌ | ❌ | 性能最低，极少使用 |
 | `DEFAULT` | 取决于数据库 | 取决于数据库 | 取决于数据库 | ⚠️ **@Transactional 的默认值** |
 
-> 📖 每个级别的代码示例与并发现象演示见 [Spring 数据访问高级技巧 §事务隔离级别](../04-数据与消息/01-Spring数据访问高级技巧.md)，本文只讲**方言差异**与**`readOnly` 真实语义**。
+> 📖 每个级别的代码示例与并发现象演示见 [Spring 数据访问高级技巧 §事务隔离级别](@spring-数据与消息-Spring数据访问高级技巧)，本文只讲**方言差异**与**`readOnly` 真实语义**。
 
 ### 6.2 `DEFAULT` 的坑：同一份代码在不同数据库行为不同
 
@@ -385,7 +385,7 @@ flowchart TD
 | 失效类型 | 源码依据 | 规避方案 |
 | :-- | :-- | :-- |
 | ① 非 public | `AbstractFallbackTransactionAttributeSource.computeTransactionAttribute` 中 `if (allowPublicMethodsOnly() && !Modifier.isPublic(...)) return null;` | 改 public；或使用 AspectJ LTW |
-| ② 同类调用 | AOP 代理机制的结构性限制——见 [AOP §7.1](05-AOP面向切面编程.md) | 三种方案详见下表 |
+| ② 同类调用 | AOP 代理机制的结构性限制——见 [AOP §7.1](@spring-核心基础-AOP面向切面编程) | 三种方案详见下表 |
 | ③ 异常被吞 | `TransactionAspectSupport.invokeWithinTransaction` 里 `try { proceed() } catch (Throwable ex) { completeTransactionAfterThrowing(...) }`——没有 catch 到就走 `commitTransactionAfterReturning` | 重抛 or `TransactionAspectSupport.currentTransactionStatus().setRollbackOnly()` |
 | ④ 异常类型不匹配 | `DefaultTransactionAttribute.rollbackOn(ex)` 默认实现 `ex instanceof RuntimeException \|\| ex instanceof Error` | `@Transactional(rollbackFor = Exception.class)` |
 | ⑤ 非 Spring Bean | `AbstractAutoProxyCreator` 只对容器内 Bean 生效 | 让类进容器；或 AspectJ 编译/加载期织入 |
@@ -398,7 +398,7 @@ flowchart TD
 | 暴露代理到 ThreadLocal | `((OrderService) AopContext.currentProxy()).saveOrder();` | 配合 `@EnableAspectJAutoProxy(exposeProxy=true)` |
 | 设计上拆分 | 移到独立 `OrderPersistenceService` | 最根本——消除自调用本身 |
 
-> 📖 三种方案的细节对比与适用场景，详见 [AOP §7.1](05-AOP面向切面编程.md)。
+> 📖 三种方案的细节对比与适用场景，详见 [AOP §7.1](@spring-核心基础-AOP面向切面编程)。
 
 ### 7.3 常见错误代码示例
 
@@ -612,7 +612,7 @@ public class ReactiveOrderService {
 
 ## 12. 高频面试题（源码级标准答案）
 
-> 📖 **事务失效排查流程** / **REQUIRED vs REQUIRES_NEW 业务选型** / **长事务优化** 这三题已在 [实战题 Q1~Q3](../06-测试与实战/07-Spring实战应用题.md) 给出工程排查视角的答案，本文不再重复，专注"源码机制"题。
+> 📖 **事务失效排查流程** / **REQUIRED vs REQUIRES_NEW 业务选型** / **长事务优化** 这三题已在 [实战题 Q1~Q3](@spring-测试与实战-Spring实战应用题) 给出工程排查视角的答案，本文不再重复，专注"源码机制"题。
 
 **Q1：`@Transactional` 注解是如何"变成"事务行为的？从注解到提交的完整链路说一下。**
 

@@ -15,10 +15,10 @@ title: AOP —— 面向切面编程
 
 > 📖 **边界声明**：本文只讲"**AOP 本身**"的机制、源码、陷阱。
 >
-> - 事务失效的完整 5 种场景（异常被吞、异常类型不匹配、REQUIRES_NEW 传播等）→ [Spring 事务管理](06-Spring事务管理.md)
-> - `@Configuration` Full/Lite 模式下 CGLIB 的使用 → [IoC 与 DI §7.2](01-IoC与DI.md)
-> - `AbstractAutoProxyCreator` 作为 BPP 的契约与三级缓存提前暴露 → [Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md) / [扩展点详解 §4](04-Spring扩展点详解.md)
-> - 注解属性类型、`@Retention` / `@Target` 的含义 → [注解（Annotation）](../../01-java-basic/10-注解（Annotation）.md)
+> - 事务失效的完整 5 种场景（异常被吞、异常类型不匹配、REQUIRES_NEW 传播等）→ [Spring 事务管理](@spring-核心基础-Spring事务管理)
+> - `@Configuration` Full/Lite 模式下 CGLIB 的使用 → [IoC 与 DI §7.2](@spring-核心基础-IoC与DI)
+> - `AbstractAutoProxyCreator` 作为 BPP 的契约与三级缓存提前暴露 → [Bean 生命周期与循环依赖](@spring-核心基础-Bean生命周期与循环依赖) / [扩展点详解 §4](@spring-核心基础-Spring扩展点详解)
+> - 注解属性类型、`@Retention` / `@Target` 的含义 → [注解（Annotation）](@java-注解Annotation)
 
 ---
 
@@ -126,7 +126,7 @@ doCreateBean()
                   └─ 匹配 Advisor → ProxyFactory.getProxy  → JDK / CGLIB
 ```
 
-> 📖 完整 8 步生命周期与三级缓存时序见 [Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md)，本文只讲"代理生成这一步"的内部。
+> 📖 完整 8 步生命周期与三级缓存时序见 [Bean 生命周期与循环依赖](@spring-核心基础-Bean生命周期与循环依赖)，本文只讲"代理生成这一步"的内部。
 
 ### 4.3 循环依赖下的提前代理
 
@@ -149,7 +149,7 @@ sequenceDiagram
 ```
 
 !!! warning "循环依赖下的"双胞胎代理"风险"
-    若自定义 BPP 修改了循环依赖中 Bean 的引用，可能导致"A 的代理"和"A 本身"是两个对象——注入给 B 的是代理，而 A 的 `singletonObjects` 里是原始对象。Spring 通过 `earlyProxyReferences` 缓存来保证**同一 Bean 的 `getEarlyBeanReference` 和后续 `postProcessAfterInitialization` 返回同一个代理**。详见 [Bean 生命周期 §5](02-Bean生命周期与循环依赖.md)。
+    若自定义 BPP 修改了循环依赖中 Bean 的引用，可能导致"A 的代理"和"A 本身"是两个对象——注入给 B 的是代理，而 A 的 `singletonObjects` 里是原始对象。Spring 通过 `earlyProxyReferences` 缓存来保证**同一 Bean 的 `getEarlyBeanReference` 和后续 `postProcessAfterInitialization` 返回同一个代理**。详见 [Bean 生命周期 §5](@spring-核心基础-Bean生命周期与循环依赖)。
 
 ### 4.4 `@EnableAspectJAutoProxy` 做了什么
 
@@ -411,7 +411,7 @@ Spring 6 / Boot 3 引入 AOT 后，代理生成机制发生了结构性变化：
 2. **反射访问代理方法需注册 hints**：`@RegisterReflectionForBinding` 或手动 `RuntimeHintsRegistrar`
 3. **避免 `AopContext.currentProxy()` + 反射**：运行期绕过代理进入目标对象的操作，原生镜像下可能因方法签名未注册 hint 而抛 `MissingReflectionRegistrationError`
 
-> 📖 `RuntimeHints` 注册的完整流程见 [启动与并发优化 AOT 章节](../05-进阶与调优/01b-启动与并发优化.md)。
+> 📖 `RuntimeHints` 注册的完整流程见 [启动与并发优化 AOT 章节](@spring-进阶与调优-启动与并发优化)。
 
 ---
 

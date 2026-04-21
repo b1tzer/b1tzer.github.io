@@ -14,9 +14,9 @@ title: Spring 容器启动流程深度解析
 
 > 📖 **边界声明**：
 >
-> - 单个 Bean 从 `createBean()` 到 `destroy()` 之间的阶段（属性注入、Aware、BPP before/after、初始化、销毁）见 [Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md)。 
-> - `BeanFactoryPostProcessor` / `BeanPostProcessor` / `Aware` / `ApplicationListener` / `ImportBeanDefinitionRegistrar` 的使用方式与代码示例见 [Spring 扩展点详解](04-Spring扩展点详解.md)。  
-> - 懒加载、组件扫描范围裁剪、AOT / Native Image 构建实战见 [Spring 启动与并发优化](../05-进阶与调优/01b-启动与并发优化.md)。  
+> - 单个 Bean 从 `createBean()` 到 `destroy()` 之间的阶段（属性注入、Aware、BPP before/after、初始化、销毁）见 [Bean 生命周期与循环依赖](@spring-核心基础-Bean生命周期与循环依赖)。 
+> - `BeanFactoryPostProcessor` / `BeanPostProcessor` / `Aware` / `ApplicationListener` / `ImportBeanDefinitionRegistrar` 的使用方式与代码示例见 [Spring 扩展点详解](@spring-核心基础-Spring扩展点详解)。  
+> - 懒加载、组件扫描范围裁剪、AOT / Native Image 构建实战见 [Spring 启动与并发优化](@spring-进阶与调优-启动与并发优化)。  
 > 本文**只讲启动时序与顺序约束**，不与上述文档重复。
 
 ---
@@ -107,7 +107,7 @@ public ConfigurableApplicationContext run(String... args) {
 !!! note "八步的本质是三层嵌套"
     - **外层**（`SpringApplication`）：Boot 引导层，发布五大 `SpringApplicationEvent` 事件。
     - **中层**（`refresh()`）：Spring Framework 容器层，12 步刷新，发布 `ContextRefreshedEvent`。
-    - **内层**（`doCreateBean()`）：单个 Bean 的生命周期层，见 [Bean 生命周期](02-Bean生命周期与循环依赖.md) 第 3、6 节。
+    - **内层**（`doCreateBean()`）：单个 Bean 的生命周期层，见 [Bean 生命周期](@spring-核心基础-Bean生命周期与循环依赖) 第 3、6 节。
 
     三层关系：外层 ⊃ 中层 ⊃ 内层。很多"启动慢"问题需要区分发生在哪一层，否则排查方向完全不同。
 
@@ -316,7 +316,7 @@ flowchart TB
     它在第 ② 轮执行，做了三件极其重要的事：
     1. **解析 `@Configuration` 类**：递归处理 `@ComponentScan` / `@Import` / `@ImportResource` / `@PropertySource`
     2. **注册 `@Bean` 方法**：作为新的 `BeanDefinition` 注入容器
-    3. **决定 Full / Lite 模式**：若 `@Configuration(proxyBeanMethods=true)`，为配置类生成 CGLIB 代理（见 [IoC 与 DI §7.2](01-IoC与DI.md)）
+    3. **决定 Full / Lite 模式**：若 `@Configuration(proxyBeanMethods=true)`，为配置类生成 CGLIB 代理（见 [IoC 与 DI §7.2](@spring-核心基础-IoC与DI)）
 
     所有自动配置（`@AutoConfiguration`）、所有 `@EnableXxx` 注解能起作用的唯一原因，就是 `ConfigurationClassPostProcessor` 在这一步把它们展开。
 
@@ -327,7 +327,7 @@ flowchart TB
 - `getBean()` 触发单个 Bean 的完整生命周期（实例化 → 属性注入 → Aware → BPP before → 初始化 → BPP after）
 - 所有单例创建完毕后，**遍历一遍所有 Bean**，对实现 `SmartInitializingSingleton` 的 Bean 调用 `afterSingletonsInstantiated()`——这是 `@EventListener` 真正被注册到广播器的时机
 
-> 📖 第 11 步的内部细节（`doCreateBean` 的各阶段、三级缓存、AOP 代理生成）属于 Bean 生命周期范畴，见 [Bean 生命周期与循环依赖](02-Bean生命周期与循环依赖.md) 第 3、6 节。
+> 📖 第 11 步的内部细节（`doCreateBean` 的各阶段、三级缓存、AOP 代理生成）属于 Bean 生命周期范畴，见 [Bean 生命周期与循环依赖](@spring-核心基础-Bean生命周期与循环依赖) 第 3、6 节。
 
 ### 8.4 第 12 步 `finishRefresh`
 
@@ -394,8 +394,8 @@ timeline
 | `BeanDefinitionStoreException` | 第 2 或第 5 步 | `@ComponentScan` 扫不到类、XML 解析失败、`@Configuration` 类缺默认构造器 | 检查类路径、包名 |
 | `BeanDefinitionOverrideException` | 第 5 步 | 两个同名 `@Bean`（Boot 2.1+ 默认禁止覆盖） | `spring.main.allow-bean-definition-overriding=true`（治标）/ 改名（治本） |
 | `NoSuchBeanDefinitionException` | 第 11 步（实例化时） | 类型找不到 / 被 `@Conditional` 排除 | 启动加 `--debug` 看 `CONDITIONS EVALUATION REPORT` |
-| `NoUniqueBeanDefinitionException` | 第 11 步 | 多个候选无 `@Primary` / `@Qualifier` | 见 [IoC 与 DI §6](01-IoC与DI.md) |
-| `BeanCurrentlyInCreationException` | 第 11 步 | 构造器循环依赖 / Spring 6 默认禁用字段循环依赖 | 见 [Bean 生命周期 §6](02-Bean生命周期与循环依赖.md) |
+| `NoUniqueBeanDefinitionException` | 第 11 步 | 多个候选无 `@Primary` / `@Qualifier` | 见 [IoC 与 DI §6](@spring-核心基础-IoC与DI) |
+| `BeanCurrentlyInCreationException` | 第 11 步 | 构造器循环依赖 / Spring 6 默认禁用字段循环依赖 | 见 [Bean 生命周期 §6](@spring-核心基础-Bean生命周期与循环依赖) |
 | `BeanCreationException` | 第 11 步 | `@PostConstruct` 抛异常 / `afterPropertiesSet` 失败 | 看 `Caused by` 链 |
 | `IllegalStateException: Failed to load ApplicationContext` | 任意阶段 | 通用包装，必须看 `Caused by` | 看内嵌异常 |
 
@@ -444,13 +444,13 @@ AOT + Native Image 启动：
   冷启动时间：~100ms（Serverless 场景提升 10~50 倍）
 ```
 
-> 📖 AOT 的构建配置、`RuntimeHints` 声明、Native Image 构建命令详见 [Spring 启动与并发优化](../05-进阶与调优/01b-启动与并发优化.md) AOT 编译优化章节。IoC 层面的 AOT 影响见 [IoC 与 DI §8](01-IoC与DI.md)。
+> 📖 AOT 的构建配置、`RuntimeHints` 声明、Native Image 构建命令详见 [Spring 启动与并发优化](@spring-进阶与调优-启动与并发优化) AOT 编译优化章节。IoC 层面的 AOT 影响见 [IoC 与 DI §8](@spring-核心基础-IoC与DI)。
 
 ---
 
 ## 12. 启动期介入的扩展点（简表 + 引用）
 
-> 📖 详细用法、代码示例见 [Spring 扩展点详解](04-Spring扩展点详解.md)。本节只列出**启动期**的介入时机对照表。
+> 📖 详细用法、代码示例见 [Spring 扩展点详解](@spring-核心基础-Spring扩展点详解)。本节只列出**启动期**的介入时机对照表。
 
 | 扩展点 | 介入时机（对应 `refresh()` 步骤或前置阶段） | 可做的事 |
 | :-- | :-- | :-- |
