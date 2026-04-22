@@ -9,7 +9,7 @@ title: DDD 领域驱动设计
 
 ---
 
-## 为什么需要 DDD？
+## 1. 为什么需要 DDD？
 
 **问题根源**：传统三层架构（Controller → Service → DAO）中，业务逻辑全部堆在 Service 层，Entity 只有 getter/setter，这就是**贫血模型**。
 
@@ -53,7 +53,7 @@ public class Order {
 **贫血模型的典型症状**：
 
 | 症状 | 表现 | 后果 |
-|------|------|------|
+| :-- | :-- | :-- |
 | Service 类膨胀 | 一个 OrderService 几千行 | 难以理解和维护 |
 | 逻辑分散 | 取消订单的校验在 3 个 Service 中都有 | 修改时容易遗漏 |
 | Entity 无行为 | Order 只有 getter/setter | 违反 OOP 封装原则 |
@@ -61,27 +61,27 @@ public class Order {
 
 ---
 
-# 一、战略设计（Strategic Design）
+## 2. 战略设计（Strategic Design）
 
 战略设计解决的是**如何划分系统边界**的问题，是 DDD 中最重要的部分。
 
-## 1.1 统一语言（Ubiquitous Language）
+### 2.1 统一语言（Ubiquitous Language）
 
 **核心思想**：开发团队和业务专家使用同一套词汇，代码中的命名直接反映业务概念。
 
-```
+```txt
 ❌ 技术语言：UserDO、OrderDTO、updateStatusById()
 ✅ 统一语言：Customer、PurchaseOrder、order.cancel()
 ```
 
 | 业务概念 | 错误命名 | 正确命名 | 原因 |
-|---------|---------|---------|------|
+| :-- | :-- | :-- | :-- |
 | 下单 | insertOrder() | placeOrder() | "下单"不是"插入" |
 | 取消订单 | updateStatus(CANCELLED) | order.cancel() | 业务动作，不是字段更新 |
 | 支付 | setPayStatus(1) | payment.complete() | 支付完成是业务事件 |
 | 退款 | updateRefundFlag(true) | order.refund(reason) | 退款有原因，不是改标记 |
 
-## 1.2 限界上下文（Bounded Context）
+### 2.2 限界上下文（Bounded Context）
 
 **核心思想**：同一个业务概念在不同上下文中含义不同，每个上下文有自己的模型。
 
@@ -105,12 +105,12 @@ flowchart LR
 
 > **关键洞察**：不要试图用一个 `Product` 类满足所有上下文的需求，这会导致 God Class。每个上下文有自己的 `Product` 定义，通过防腐层（Anti-Corruption Layer）进行转换。
 
-## 1.3 上下文映射（Context Mapping）
+### 2.3 上下文映射（Context Mapping）
 
 限界上下文之间的关系模式：
 
 | 关系模式 | 说明 | 示例 |
-|---------|------|------|
+| :-- | :-- | :-- |
 | **合作关系（Partnership）** | 两个团队共同演进，互相协调 | 订单团队和支付团队紧密合作 |
 | **客户-供应商（Customer-Supplier）** | 上游提供服务，下游消费 | 商品服务（上游）→ 订单服务（下游） |
 | **防腐层（ACL）** | 下游通过适配层隔离上游模型变化 | 对接第三方支付 API |
@@ -120,11 +120,11 @@ flowchart LR
 
 ---
 
-# 二、战术设计（Tactical Design）
+## 3. 战术设计（Tactical Design）
 
 战术设计解决的是**如何在代码层面实现 DDD**的问题。
 
-## 2.1 核心概念全景
+### 3.1 核心概念全景
 
 ```mermaid
 flowchart TB
@@ -145,10 +145,10 @@ flowchart TB
     Factory --> AR
 ```
 
-## 2.2 实体 vs 值对象
+### 3.2 实体 vs 值对象
 
 | 特性 | 实体（Entity） | 值对象（Value Object） |
-|------|---------------|---------------------|
+| :-- | :-- | :-- |
 | **标识** | 有唯一 ID | 无 ID，通过属性值判等 |
 | **可变性** | 状态可变 | 不可变（Immutable） |
 | **相等性** | ID 相同即相等 | 所有属性相同即相等 |
@@ -188,7 +188,7 @@ public final class Money {
 }
 ```
 
-## 2.3 聚合与聚合根
+### 3.3 聚合与聚合根
 
 **聚合**是一组相关对象的集合，作为数据修改的单元。**聚合根**是聚合的入口，外部只能通过聚合根访问聚合内的对象。
 
@@ -232,13 +232,13 @@ public class Order {
 **聚合设计原则**：
 
 | 原则 | 说明 | 示例 |
-|------|------|------|
+| :-- | :-- | :-- |
 | **小聚合** | 聚合尽量小，只包含必须保持一致性的对象 | Order 包含 OrderItem，但不包含 Product |
 | **通过 ID 引用** | 聚合之间通过 ID 引用，不持有对象引用 | Order 存 customerId，不存 Customer 对象 |
 | **一个事务一个聚合** | 一个事务只修改一个聚合 | 下单和扣库存在不同事务中 |
 | **最终一致性** | 聚合之间通过领域事件实现最终一致性 | OrderSubmittedEvent → 库存服务扣减库存 |
 
-## 2.4 领域事件
+### 3.4 领域事件
 
 领域事件用于解耦聚合之间的依赖，实现最终一致性。
 
@@ -259,7 +259,7 @@ sequenceDiagram
 
 > **为什么用事件而不是直接调用**：如果 Order.submit() 直接调用 InventoryService.deduct()，那么订单聚合就依赖了库存服务，耦合度高。通过事件解耦后，订单聚合不需要知道谁会处理这个事件。
 
-## 2.5 仓储（Repository）
+### 3.5 仓储（Repository）
 
 仓储是聚合的持久化接口，**只为聚合根定义仓储**。
 
@@ -285,9 +285,9 @@ public class JpaOrderRepository implements OrderRepository {
 
 ---
 
-# 三、DDD 分层架构
+## 4. DDD 分层架构
 
-```
+```txt
 ┌─────────────────────────────────────────┐
 │  用户接口层（Interfaces）                 │  Controller、DTO
 ├─────────────────────────────────────────┤
@@ -302,7 +302,7 @@ public class JpaOrderRepository implements OrderRepository {
 ```
 
 | 层次 | 职责 | 包含内容 | 不应包含 |
-|------|------|---------|---------|
+| :-- | :-- | :-- | :-- |
 | **用户接口层** | 接收请求，返回响应 | Controller、DTO、参数校验 | 业务逻辑 |
 | **应用层** | 编排领域对象，协调业务流程 | ApplicationService、事务管理 | 业务规则（应在领域层） |
 | **领域层** | 核心业务逻辑 | 聚合根、实体、值对象、领域事件 | 技术细节（如 SQL、HTTP） |
@@ -310,20 +310,20 @@ public class JpaOrderRepository implements OrderRepository {
 
 ---
 
-# 四、CQRS（命令查询职责分离）
+## 5. CQRS（命令查询职责分离）
 
 当读写模型差异较大时，可以将命令（写）和查询（读）分离。
 
 ```mermaid
 flowchart LR
-    subgraph 写端（Command）
+    subgraph "写端（Command）"
         CMD["Command"] --> AS["Application Service"]
         AS --> AGG["聚合根"]
         AGG --> WDB["写库<br>MySQL"]
         AGG --> EVT["领域事件"]
     end
 
-    subgraph 读端（Query）
+    subgraph "读端（Query）"
         Q["Query"] --> QS["Query Service"]
         QS --> RDB["读库<br>ES / Redis"]
     end
@@ -332,7 +332,7 @@ flowchart LR
 ```
 
 | 场景 | 是否需要 CQRS | 原因 |
-|------|-------------|------|
+| :-- | :-- | :-- |
 | 简单 CRUD | 不需要 | 读写模型一致，引入 CQRS 是过度设计 |
 | 复杂查询 + 简单写入 | 考虑 | 读模型可以用 ES 优化查询性能 |
 | 读写比例悬殊（读 >> 写） | 推荐 | 读写分离，各自优化 |
@@ -340,7 +340,7 @@ flowchart LR
 
 ---
 
-# 五、DDD 落地常见问题
+## 6. DDD 落地常见问题
 
 **Q：贫血模型和充血模型哪个更好？**
 

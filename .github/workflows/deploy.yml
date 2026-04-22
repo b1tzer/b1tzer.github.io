@@ -57,6 +57,19 @@ jobs:
             git push origin main
           fi
 
+      # 5.5 Mermaid 语法预校验（使用官方 @mermaid-js parser，无 Chromium 依赖）
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci || npm install
+
+      - name: Validate Mermaid syntax
+        run: npm run check:mermaid
+
       # 6. 构建静态站点
       - name: Build MkDocs site
         env:

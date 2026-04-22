@@ -60,3 +60,10 @@ site/
 # ===== 项目内部 =====
 # CodeBuddy 计划文件（不纳入版本管理）
 .codebuddy/
+
+# ===== Node.js（Mermaid 语法校验工具依赖） =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# package-lock.json 保留版本追踪，便于 CI 走 `npm ci`（更快更稳）

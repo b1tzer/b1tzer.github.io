@@ -21,3 +21,19 @@ git add mkdocs.yml docs/index.md
 git commit --no-verify -m "chore: auto-update nav and index [skip ci]"
 
 echo "✅ [pre-push] commit 完成，继续 push"
+
+# ---------- Mermaid 语法预检（使用官方 @mermaid-js parser） ----------
+if [ -f "$REPO_ROOT/package.json" ]; then
+    echo "🔧 [pre-push] 运行 Mermaid 语法校验..."
+    if [ ! -d "$REPO_ROOT/node_modules" ]; then
+        echo "   检测到 node_modules 缺失，自动运行 npm install..."
+        (cd "$REPO_ROOT" && npm install --silent) || {
+            echo "❌ [pre-push] npm install 失败，push 终止"
+            exit 1
+        }
+    fi
+    (cd "$REPO_ROOT" && npm run --silent check:mermaid) || {
+        echo "❌ [pre-push] Mermaid 语法校验失败，push 已终止"
+        exit 1
+    }
+fi

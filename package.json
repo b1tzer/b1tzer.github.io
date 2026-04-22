@@ -1,0 +1,14 @@
+{
+  "name": "b1tzer-docs-tools",
+  "version": "1.0.0",
+  "description": "构建期辅助工具：Mermaid 语法预校验等（MkDocs 站点 thestack.xpro.wang）",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:mermaid": "node tools/check_mermaid.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^29.0.2",
+    "mermaid": "^11.4.0"
+  }
+}
