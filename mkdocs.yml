@@ -187,7 +187,7 @@ nav:
       - Spring 事务管理: 02-spring/01-核心基础/06-Spring事务管理.md
       - Spring Boot 自动配置原理: 02-spring/01-核心基础/07-SpringBoot自动配置原理.md
       - Spring 常用注解全解: 02-spring/01-核心基础/08-Spring常用注解全解.md
-      - Spring 配置加载与属性绑定: 02-spring/01-核心基础/09-Spring配置加载与属性绑定.md
+      - Spring 配置加载与属性绑定 —— 从 17 层 PropertySource 到 Binder 松散绑定: 02-spring/01-核心基础/09-Spring配置加载与属性绑定.md
     - Web与通信:
       - Spring MVC 请求处理流程: 02-spring/02-Web与通信/01-SpringMVC请求处理流程.md
       - Feign 声明式 HTTP 客户端: 02-spring/02-Web与通信/02-Feign声明式HTTP客户端.md
@@ -201,7 +201,7 @@ nav:
       - Spring 数据访问高级技巧: 02-spring/04-数据与消息/01-Spring数据访问高级技巧.md
       - Spring 响应式编程深度解析: 02-spring/04-数据与消息/02-Spring响应式编程深度解析.md
       - Spring 消息驱动架构深度解析: 02-spring/04-数据与消息/03-Spring消息驱动架构深度解析.md
-      - 配置中心与动态刷新: 02-spring/04-数据与消息/04-配置中心与动态刷新.md
+      - 配置中心与动态刷新 —— Nacos / Apollo / Config + K8s 的工程落地: 02-spring/04-数据与消息/04-配置中心与动态刷新.md
     - 进阶与调优:
       - Spring 监控与内存优化: 02-spring/05-进阶与调优/01a-监控与内存优化.md
       - Spring 启动与并发性能优化: 02-spring/05-进阶与调优/01b-启动与并发优化.md
@@ -301,3 +301,10 @@ nav:
     - 代码质量与重构: 09-software-engineering/05-代码质量与重构.md
     - CI/CD 持续集成与持续交付: 09-software-engineering/06-CICD持续集成与交付.md
     - 系统设计方法论: 09-software-engineering/07-系统设计方法论.md
+  - Ai Engineering:
+    - AI 工程概览 —— Java 工程师视角下的大模型应用地图: 10-ai-engineering/00-AI工程概览.md
+    - LLM 接口与提示词工程 —— 调 API 的协议契约与 Prompt 设计套路: 10-ai-engineering/01-LLM接口与提示词工程.md
+    - RAG 架构与工程落地 —— 让大模型"有据可依"的检索增强生成系统: 10-ai-engineering/02-RAG架构与工程落地.md
+    - Function Calling 与 Agent 范式 —— 让大模型从"聊天"升级为"干活": 10-ai-engineering/03-FunctionCalling与Agent范式.md
+    - Spring AI 入门与 MCP 集成 —— 让 LLM 变成 @Bean 的 Java 最短路径: 10-ai-engineering/04-SpringAI入门与MCP集成.md
+    - MCP 协议与 OpenClaw Skill 实战 —— 从协议规范到"网易云歌单 Skill"全流程: 10-ai-engineering/05-MCP协议与OpenClawSkill实战.md
