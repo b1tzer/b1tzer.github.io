@@ -6,9 +6,9 @@ title: Spring 扩展点详解
 # Spring 扩展点详解
 
 > **一句话记忆口诀**：
-> 
+>
 > 扩展点按"作用对象"二分
-> 
+>
 > - **改元数据**（`BeanFactoryPostProcessor` / `BeanDefinitionRegistryPostProcessor`）
 > - **改实例**（`BeanPostProcessor` 及其子类 `InstantiationAwareBPP` / `MergedBeanDefinitionPostProcessor` / `SmartInstantiationAwareBPP`）；  
 >
@@ -22,7 +22,6 @@ title: Spring 扩展点详解
 >
 > 注册方式的铁律：**早于 `refresh()` 走 SPI，晚于 `refresh()` 可 `@Component`**；排序只认 `PriorityOrdered` → `Ordered` → 注册顺序，`@Order` 对 BPP/BFPP 无效。
 
-
 > 📖 **边界声明**：本文只讲"**扩展点本身**"的契约、陷阱、源码实现。
 >
 > - `refresh()` 12 步的宏观时序与 `SpringFactoriesLoader` SPI 细节 → [Spring 容器启动流程深度解析](@spring-核心基础-Spring容器启动流程深度解析)
@@ -32,7 +31,6 @@ title: Spring 扩展点详解
 ---
 
 ## 1. 引入：扩展点视角的定位
-
 
 高级开发者必须对扩展点的四件事给出精确答案：
 

@@ -35,7 +35,6 @@ title: Spring Boot 自动配置原理
 | **按你的偏好设置** | `@ConditionalOnProperty` 读取配置 | 支持个性化定制 |
 | **管家手里的设备清单** | `.imports` 文件中的 130+ 自动配置类 | 知道能自动配置哪些组件 |
 
-
 ---
 
 ## 2. 为什么需要自动配置：从 XML 到零配置
@@ -92,7 +91,8 @@ public class AppConfig {
 }
 ```
 
-**Spring Boot（自动配置）**
+**Spring Boot（自动配置）**：
+
 ```xml
 <!-- pom.xml -->
 <dependency>
@@ -576,6 +576,7 @@ com.other                                ← 不在启动类包下
 ```
 
 **解决方案三选一**：
+
 1. 把类移到启动类包或子包下（推荐）；
 2. 在启动类上加 `@ComponentScan(basePackages = {"com.example.app", "com.other"})`；
 3. 把 `ExtConfig` 做成**自动配置类**：在自己的 jar 里加 `META-INF/spring/....imports` 并把它登记进去——这样就绕开了 `@ComponentScan` 的包限制，走 §5 的链路加载。
@@ -610,46 +611,46 @@ public class MyDataSourceAutoConfiguration {
 
 **Q1：自动配置是怎么知道我需要哪些组件的？**
 > **答**：通过**条件注解**智能判断。比如：
-> 
+>
 > - `@ConditionalOnClass`：检测类路径有没有某个类（如检测到 `DataSource.class` 存在，就自动配置数据源）
 > - `@ConditionalOnMissingBean`：检测容器里是否已有用户自定义的 Bean（如没有 `DataSource` Bean，才自动配置默认数据源）
 > - `@ConditionalOnProperty`：检测配置文件中的属性值
-> 
+>
 > **生活比喻**：管家通过扫描你的行李（依赖包）和听你的要求（配置文件），决定要启动哪些设备。
 
 **Q2：为什么我自定义的配置会覆盖自动配置？**
 > **答**：因为自动配置使用了**延迟决策**机制。`DeferredImportSelector` 会等所有用户 `@Configuration` 类解析完，再决定是否激活自动配置。
-> 
+>
 > **工作流程**：
-> 
+>
 > 1. 先解析你的自定义配置类 → 注册你的 Bean
 > 2. 再检查自动配置条件 → 发现容器已有 Bean（`@ConditionalOnMissingBean` 返回 false）
 > 3. 跳过自动配置 → 避免冲突
-> 
+>
 > **生活比喻**：管家等你把所有家具摆好，再决定要不要启动智能设备。
 
 **Q3：自动配置会影响启动性能吗？**
 > **答**：Spring Boot 做了大量优化：
-> 
+>
 > - **批量过滤**：先快速筛选 130+ 个候选类，避免全部加载
 > - **延迟求值**：只在需要时才执行条件判断
 > - **并行处理**：大项目中条件检查会并行化
-> 
+>
 > **实际效果**：对启动时间影响很小，但大大减少了配置工作量。
 
 **Q4：如何查看哪些自动配置生效了？**
 > **答**：两种方法：
-> 
+>
 > 1. **启动参数**：`java -jar app.jar --debug`，控制台会打印条件评估报告
 > 2. **Actuator 端点**：访问 `/actuator/conditions` 查看 JSON 格式的详细报告
-> 
+>
 > **生活比喻**：管家给你一份设备启动报告，告诉你哪些设备已激活、哪些被跳过。
 
 ---
 
 ## 11. 核心原理总结
 
-**自动配置的核心思想：智能管家模式**
+**自动配置的核心思想：智能管家模式**：
 
 1. **智能感知**：通过条件注解（`@ConditionalOnXxx`）检测你的项目需要什么
 2. **用户优先**：延迟决策（`DeferredImportSelector`）保证你的自定义配置永远优先

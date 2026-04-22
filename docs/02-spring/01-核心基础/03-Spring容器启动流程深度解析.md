@@ -14,7 +14,7 @@ title: Spring 容器启动流程深度解析
 
 > 📖 **边界声明**：
 >
-> - 单个 Bean 从 `createBean()` 到 `destroy()` 之间的阶段（属性注入、Aware、BPP before/after、初始化、销毁）见 [Bean 生命周期与循环依赖](@spring-核心基础-Bean生命周期与循环依赖)。 
+> - 单个 Bean 从 `createBean()` 到 `destroy()` 之间的阶段（属性注入、Aware、BPP before/after、初始化、销毁）见 [Bean 生命周期与循环依赖](@spring-核心基础-Bean生命周期与循环依赖)。
 > - `BeanFactoryPostProcessor` / `BeanPostProcessor` / `Aware` / `ApplicationListener` / `ImportBeanDefinitionRegistrar` 的使用方式与代码示例见 [Spring 扩展点详解](@spring-核心基础-Spring扩展点详解)。  
 > - 懒加载、组件扫描范围裁剪、AOT / Native Image 构建实战见 [Spring 启动与并发优化](@spring-进阶与调优-启动与并发优化)。  
 > 本文**只讲启动时序与顺序约束**，不与上述文档重复。
