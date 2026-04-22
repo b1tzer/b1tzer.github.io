@@ -1,4 +1,10 @@
 {
+  "ai-engineering-AI工程概览": "10-ai-engineering/00-AI工程概览.md",
+  "ai-engineering-FunctionCalling与Agent范式": "10-ai-engineering/03-FunctionCalling与Agent范式.md",
+  "ai-engineering-LLM接口与提示词工程": "10-ai-engineering/01-LLM接口与提示词工程.md",
+  "ai-engineering-MCP协议与OpenClawSkill实战": "10-ai-engineering/05-MCP协议与OpenClawSkill实战.md",
+  "ai-engineering-RAG架构与工程落地": "10-ai-engineering/02-RAG架构与工程落地.md",
+  "ai-engineering-SpringAI入门与MCP集成": "10-ai-engineering/04-SpringAI入门与MCP集成.md",
   "dp-代理模式": "08-design-pattern/04-代理模式.md",
   "dp-创建型补充-原型模式": "08-design-pattern/11-创建型补充-原型模式.md",
   "dp-单例模式": "08-design-pattern/01-单例模式.md",
