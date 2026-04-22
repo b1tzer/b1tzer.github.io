@@ -286,7 +286,7 @@ spring:
 
 ```mermaid
 flowchart LR
-    A["@Value(\"${db.url}\")"] --> B["BeanPostProcessor<br>AutowiredAnnotationBeanPostProcessor"]
+    A["@Value(&quot;${db.url}&quot;)"] --> B["BeanPostProcessor<br>AutowiredAnnotationBeanPostProcessor"]
     B --> C["EmbeddedValueResolver<br>（AbstractBeanFactory 内置）"]
     C --> D["PropertyPlaceholderHelper<br>递归解析 ${...:default}"]
     D --> E["Environment.getProperty(key)"]
@@ -343,8 +343,8 @@ spring:
 
 ```mermaid
 flowchart LR
-    A["@ConfigurationProperties(prefix=\"app\")<br>标注在 Bean / @Bean 方法"] --> B["ConfigurationPropertiesBinder<br>容器内的单例"]
-    B --> C["Binder.bind(<br>  ConfigurationPropertyName.of(\"app\"),<br>  Bindable.ofInstance(bean))"]
+    A["@ConfigurationProperties(prefix=&quot;app&quot;)<br>标注在 Bean / @Bean 方法"] --> B["ConfigurationPropertiesBinder<br>容器内的单例"]
+    B --> C["Binder.bind(<br>  ConfigurationPropertyName.of(&quot;app&quot;),<br>  Bindable.ofInstance(bean))"]
     C --> D["遍历所有可枚举 PropertySource"]
     D --> E["用 ConfigurationPropertyName<br>做 **松散匹配**"]
     E --> F["JavaBeanBinder / ValueObjectBinder<br>（setter 注入 / 构造器注入）"]
@@ -497,7 +497,7 @@ flowchart TD
     A["配置不生效"] --> B["① 优先级被更高层覆盖<br>（环境变量 / 命令行盖了 YAML）"]
     A --> C["② @PropertySource 加载时机晚<br>排在 application.yml 之后，盖不住"]
     A --> D["③ @Value vs @ConfigurationProperties<br>底层是两条链，一个生效另一个未必"]
-    A --> E["④ 松散绑定只对 @ConfigurationProperties 生效<br>@Value(\"${MAX_POOL_SIZE}\") 不认 max-pool-size"]
+    A --> E["④ 松散绑定只对 @ConfigurationProperties 生效<br>@Value(&quot;${MAX_POOL_SIZE}&quot;) 不认 max-pool-size"]
     A --> F["⑤ 非 RefreshScope Bean 缓存了旧值<br>（启动期注入过就不会再回填）"]
     A --> G["⑥ @ConfigurationProperties 忘了<br>@EnableConfigurationProperties 或 @Component"]
 ```

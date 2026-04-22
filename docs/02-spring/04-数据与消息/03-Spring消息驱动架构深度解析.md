@@ -29,8 +29,8 @@ graph TB
     C --> C3[Event Sourcing]
     C --> C4[CQRS]
     
-    D --> D1[@Async]
-    D --> D2[@EventListener]
+    D --> D1["@Async"]
+    D --> D2["@EventListener"]
     D --> D3[Reactive Streams]
     D --> D4[Batch Processing]
     

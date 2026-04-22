@@ -419,9 +419,10 @@ public class TransactionDebugger {
 ### 案例1：理解 @Autowired 注解实现
 
 #### 阅读路径
+
 ```mermaid
 graph LR
-    A[@Autowired] --> B[AutowiredAnnotationBeanPostProcessor]
+    A["@Autowired"] --> B[AutowiredAnnotationBeanPostProcessor]
     B --> C[postProcessProperties]
     C --> D[inject]
     D --> E[resolveDependency]
@@ -429,6 +430,7 @@ graph LR
 ```
 
 #### 关键代码分析
+
 ```java
 // AutowiredAnnotationBeanPostProcessor.java
 public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationAwareBeanPostProcessor {
