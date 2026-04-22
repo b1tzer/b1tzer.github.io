@@ -1,6 +1,6 @@
 ---
 doc_id: spring-核心基础-Spring配置加载与属性绑定
-title: Spring 配置加载与属性绑定 —— 从 17 层 PropertySource 到 Binder 松散绑定
+title: Spring 配置加载与属性绑定
 ---
 
 # Spring 配置加载与属性绑定

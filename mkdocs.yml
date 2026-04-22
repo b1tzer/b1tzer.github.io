@@ -187,7 +187,7 @@ nav:
       - Spring 事务管理: 02-spring/01-核心基础/06-Spring事务管理.md
       - Spring Boot 自动配置原理: 02-spring/01-核心基础/07-SpringBoot自动配置原理.md
       - Spring 常用注解全解: 02-spring/01-核心基础/08-Spring常用注解全解.md
-      - Spring 配置加载与属性绑定 —— 从 17 层 PropertySource 到 Binder 松散绑定: 02-spring/01-核心基础/09-Spring配置加载与属性绑定.md
+      - Spring 配置加载与属性绑定: 02-spring/01-核心基础/09-Spring配置加载与属性绑定.md
     - Web与通信:
       - Spring MVC 请求处理流程: 02-spring/02-Web与通信/01-SpringMVC请求处理流程.md
       - Feign 声明式 HTTP 客户端: 02-spring/02-Web与通信/02-Feign声明式HTTP客户端.md
@@ -201,7 +201,7 @@ nav:
       - Spring 数据访问高级技巧: 02-spring/04-数据与消息/01-Spring数据访问高级技巧.md
       - Spring 响应式编程深度解析: 02-spring/04-数据与消息/02-Spring响应式编程深度解析.md
       - Spring 消息驱动架构深度解析: 02-spring/04-数据与消息/03-Spring消息驱动架构深度解析.md
-      - 配置中心与动态刷新 —— Nacos / Apollo / Config + K8s 的工程落地: 02-spring/04-数据与消息/04-配置中心与动态刷新.md
+      - 配置中心与动态刷新: 02-spring/04-数据与消息/04-配置中心与动态刷新.md
     - 进阶与调优:
       - Spring 监控与内存优化: 02-spring/05-进阶与调优/01a-监控与内存优化.md
       - Spring 启动与并发性能优化: 02-spring/05-进阶与调优/01b-启动与并发优化.md
