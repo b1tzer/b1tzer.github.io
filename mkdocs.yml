@@ -301,3 +301,10 @@ nav:
     - 代码质量与重构: 09-software-engineering/05-代码质量与重构.md
     - CI/CD 持续集成与持续交付: 09-software-engineering/06-CICD持续集成与交付.md
     - 系统设计方法论: 09-software-engineering/07-系统设计方法论.md
+  - Ai Engineering:
+    - AI 工程概览 —— Java 工程师视角下的大模型应用地图: 10-ai-engineering/00-AI工程概览.md
+    - LLM 接口与提示词工程 —— 调 API 的协议契约与 Prompt 设计套路: 10-ai-engineering/01-LLM接口与提示词工程.md
+    - RAG 架构与工程落地 —— 让大模型"有据可依"的检索增强生成系统: 10-ai-engineering/02-RAG架构与工程落地.md
+    - Function Calling 与 Agent 范式 —— 让大模型从"聊天"升级为"干活": 10-ai-engineering/03-FunctionCalling与Agent范式.md
+    - Spring AI 入门与 MCP 集成 —— 让 LLM 变成 @Bean 的 Java 最短路径: 10-ai-engineering/04-SpringAI入门与MCP集成.md
+    - MCP 协议与 OpenClaw Skill 实战 —— 从协议规范到"网易云歌单 Skill"全流程: 10-ai-engineering/05-MCP协议与OpenClawSkill实战.md
