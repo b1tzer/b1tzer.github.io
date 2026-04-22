@@ -5,13 +5,16 @@ title: Spring 事务管理 —— 从声明式注解到源码级机制
 
 # Spring 事务管理
 
-> **一句话记忆口诀**：
->
-> `@Transactional` 是**AOP 的一个具体应用**——由 `TransactionInterceptor`（一个 `MethodInterceptor`）织入代理链，底层委托给 `PlatformTransactionManager` 的"三位一体"契约（`TransactionManager` + `TransactionDefinition` + `TransactionStatus`）；  
-> 事务边界实质上是对 `TransactionSynchronizationManager` 这个 **ThreadLocal 注册表**的"绑定资源—执行业务—提交或回滚—解绑资源"四步操作；  
-> 绕过代理（`this` 自调用 / 非 Spring Bean / 非 `public` 方法）= 绕过事务拦截器 = 事务不生效；  
-> 默认只回滚 `RuntimeException` + `Error`，Checked Exception 必须 `rollbackFor` 显式声明；  
-> Spring 6 / Boot 3 起支持响应式事务 `ReactiveTransactionManager`，AOT 下事务代理改为构建期预生成。
+!!! info "**Spring 事务管理一句话口诀**："
+    `@Transactional` 是**AOP 的一个具体应用**——由 `TransactionInterceptor`（一个 `MethodInterceptor`）织入代理链，底层委托给 `PlatformTransactionManager` 的"三位一体"契约（`TransactionManager` + `TransactionDefinition` + `TransactionStatus`）；
+
+    事务边界实质上是对 `TransactionSynchronizationManager` 这个 **ThreadLocal 注册表**的"绑定资源—执行业务—提交或回滚—解绑资源"四步操作；
+    
+    绕过代理（`this` 自调用 / 非 Spring Bean / 非 `public` 方法）= 绕过事务拦截器 = 事务不生效；
+    
+    默认只回滚 `RuntimeException` + `Error`，Checked Exception 必须 `rollbackFor` 显式声明；
+
+    Spring 6 / Boot 3 起支持响应式事务 `ReactiveTransactionManager`，AOT 下事务代理改为构建期预生成。
 
 > 📖 **边界声明**：本文聚焦"**Spring 事务的抽象层与 AOP 织入机制**"，以下主题请见对应专题：
 >

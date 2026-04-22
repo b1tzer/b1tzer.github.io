@@ -87,6 +87,7 @@ mindmap
 > - **AOP 注解织入机制**（`@Aspect` / `@Around` 的代理生成与通知顺序） → [AOP面向切面编程](@spring-核心基础-AOP面向切面编程)
 > - **Web 层注解请求处理链路**（`@RequestMapping` / `@RequestBody` 的 `HandlerMapping` 匹配） → [Spring MVC 请求处理流程](@spring-Web与通信-SpringMVC请求处理流程)
 > - **事务注解源码链路**（`@Transactional` 的 `TransactionInterceptor` 织入） → [Spring 事务管理](@spring-核心基础-Spring事务管理)
+> - **配置注解底层机制**（`@Value` vs `@ConfigurationProperties` 两条链、`@Profile` 求值、`PropertySource` 17 层优先级、`@RefreshScope` 动态刷新） → [Spring 配置加载与属性绑定](@spring-核心基础-Spring配置加载与属性绑定)
 
 ---
 
@@ -114,7 +115,7 @@ public FileService linuxFileService() {
 ### Spring Boot 派生条件注解（面试高频）
 
 | 注解 | 条件 | 典型场景 |
-|------|------|---------|
+| :-- | :-- | :-- |
 | `@ConditionalOnClass` | 类路径存在指定类 | 有 Redis 依赖才自动配置 Redis |
 | `@ConditionalOnMissingClass` | 类路径不存在指定类 | 缺少某依赖时提供默认实现 |
 | `@ConditionalOnBean` | 容器中存在指定 Bean | 依赖其他 Bean 才生效 |
@@ -155,9 +156,11 @@ public CacheManager defaultCacheManager() {
 
 ---
 
-## 3. @ConfigurationProperties —— 类型安全的属性绑定
+## 3. @ConfigurationProperties / @Value —— 配置属性绑定（语义速查）
 
-比 `@Value` 更强大，支持批量绑定、类型转换、校验：
+> 📖 **本节只讲语义速查**。`@Value` / `@ConfigurationProperties` 两条链的底层差异（占位符解析器 vs `Binder`）、17 层 `PropertySource` 加载优先级、松散绑定算法、`@RefreshScope` 动态刷新原理等机制层内容，详见 [Spring 配置加载与属性绑定](@spring-核心基础-Spring配置加载与属性绑定)。
+
+### @ConfigurationProperties 速用
 
 ```yaml
 # application.yml
@@ -165,96 +168,80 @@ app:
   datasource:
     url: jdbc:mysql://localhost:3306/mydb
     username: root
-    password: 123456
     max-pool-size: 20
-    connection-timeout: 30000
+    connection-timeout: 30s   # Duration 直接用字符串
 ```
 
 ```java
 @Data
 @Component
 @ConfigurationProperties(prefix = "app.datasource")
-@Validated  // 开启校验
+@Validated
 public class DataSourceProperties {
-    @NotBlank
-    private String url;
-
-    @NotBlank
-    private String username;
-
-    private String password;
-
-    @Min(1) @Max(100)
-    private int maxPoolSize = 10;  // 有默认值
-
-    private Duration connectionTimeout = Duration.ofSeconds(30);  // 支持 Duration 类型
+    @NotBlank private String url;
+    @NotBlank private String username;
+    @Min(1) @Max(100) private int maxPoolSize = 10;
+    private Duration connectionTimeout = Duration.ofSeconds(30);
 }
 ```
 
-**`@Value` vs `@ConfigurationProperties` 对比**：
+### `@Value` vs `@ConfigurationProperties` 选型速查
 
 | 特性 | `@Value` | `@ConfigurationProperties` |
-|------|---------|---------------------------|
+| :-- | :-- | :-- |
 | 绑定方式 | 单个属性 | 批量绑定到对象 |
-| 类型转换 | 基本类型 | 支持复杂类型（List、Map、Duration） |
-| 松散绑定 | 不支持 | 支持（`max-pool-size` = `maxPoolSize`） |
-| JSR-303 校验 | 不支持 | 支持（配合 `@Validated`） |
-| SpEL 表达式 | 支持 | 不支持 |
-| 适用场景 | 少量属性 | 一组相关属性 |
+| 类型转换 | 基本类型 | 完整类型栈（`Duration` / `DataSize` / `List` / `Map`） |
+| 松散绑定 | ❌ 不支持 | ✅ 支持（`max-pool-size` = `maxPoolSize` = `MAX_POOL_SIZE`） |
+| JSR-303 校验 | ❌ | ✅（配合 `@Validated`） |
+| SpEL 表达式 | ✅（`#{...}`） | ❌ |
+| `@RefreshScope` 热刷 | ⚠️ 需 Bean 进 `RefreshScope` + 重建 | ✅ 原生支持 in-place rebind |
+| 适用场景 | 散装一两个值 / 需要 SpEL | 一组相关属性（**默认首选**） |
 
-!!! tip "Spring Boot 2.2+ 构造器绑定"
-    从 `Spring Boot 2.2` 起，`@ConfigurationProperties` 支持**构造器绑定**，配合 `@ConstructorBinding` 可让属性类声明为**不可变**（字段 `final`、无 setter），从 `Spring Boot 3.0` 起，只要类上标注 `@ConfigurationProperties`，**默认**使用构造器绑定，`@ConstructorBinding` 不再必需。
+!!! tip "Spring Boot 2.2+ / 3.0+ 构造器绑定"
+    Boot 2.2+ 起 `@ConfigurationProperties` 支持构造器绑定（配合 `@ConstructorBinding`）实现不可变（`final` 字段、无 setter）；**Boot 3.0 起**，类上只要标注 `@ConfigurationProperties` 就**默认**用构造器绑定，`@ConstructorBinding` 不再必需。Java 17 `record` 与之天然契合：
 
     ```java
     @ConfigurationProperties(prefix = "app.datasource")
-    public record DataSourceProperties(   // Java 17 record，字段天然 final
-            String url,
-            String username,
-            String password,
-            int maxPoolSize) {}
+    public record DataSourceProperties(
+            String url, String username,
+            int maxPoolSize, Duration connectionTimeout) {}
     ```
 
 ---
 
-## 4. @Profile —— 多环境配置
+## 4. @Profile —— 多环境配置（语义速查）
+
+> 📖 **`@Profile` 的求值时机**（`ProfileCondition` 在 `@Configuration` 解析阶段 vs `ConfigDataActivationContext` 在 yaml 加载阶段）、`spring.profiles.active` / `include` / `group` 的冲突检测，详见 [Spring 配置加载与属性绑定 §7](@spring-核心基础-Spring配置加载与属性绑定)。
 
 ```java
-// 只在 dev 环境下注册
 @Bean
 @Profile("dev")
 public DataSource devDataSource() {
-    return new EmbeddedDatabaseBuilder()
-        .setType(EmbeddedDatabaseType.H2)
-        .build();
+    return new EmbeddedDatabaseBuilder().setType(EmbeddedDatabaseType.H2).build();
 }
 
-// 只在 prod 环境下注册
 @Bean
-@Profile("prod")
-public DataSource prodDataSource() {
-    DruidDataSource ds = new DruidDataSource();
-    ds.setUrl("jdbc:mysql://prod-server:3306/mydb");
-    return ds;
-}
+@Profile("prod & us-east")     // Spring 5.1+ 逻辑表达式
+public DataSource prodDataSource() { /* ... */ }
 ```
 
 ```yaml
 # application.yml 激活 profile
 spring:
   profiles:
-    active: dev  # 或通过启动参数 --spring.profiles.active=prod
+    active: dev   # 或启动参数 --spring.profiles.active=prod
 ```
 
-**多 Profile 文件**：
-```
+**Profile 文件约定**：
+
+```txt
 application.yml          # 公共配置
 application-dev.yml      # 开发环境
 application-test.yml     # 测试环境
 application-prod.yml     # 生产环境
 ```
 
-!!! tip "Spring 5.1+ Profile 表达式"
-    `Spring 5.1+` 起 `@Profile` 支持逻辑表达式：`@Profile("prod & us-east")`（同时满足）、`@Profile("dev | test")`（任一满足）、`@Profile("!prod")`（非生产）。`Spring Boot 2.4+` 起 `spring.profiles.active` 与 `spring.profiles.include` 不可与 `spring.profiles.group` 混用，迁移时需注意。
+**表达式语法（Spring 5.1+）**：`@Profile("prod & us-east")`（同时满足）、`@Profile("dev | test")`（任一满足）、`@Profile("!prod")`（非生产）。
 
 ---
 
@@ -409,6 +396,7 @@ public class ServiceA {
 ```
 
 **`@Lazy` 的两个用途**：
+
 1. **延迟初始化**：启动时不创建，第一次使用时才创建，加快启动速度
 2. **解决循环依赖**：构造器注入的循环依赖，加 `@Lazy` 注入代理对象打破循环
 
@@ -568,6 +556,7 @@ public class LogAspect {
 > **注解 = 贴在 Bean 自己身上的标签**：声明式、元数据高内聚、编译期类型安全。
 >
 > **三条选型主线**：
+>
 > 1. **条件装配用 `@ConditionalOn*`**：“有什么 / 没什么 / 配了什么”三隆用法覆盖所有自动配置场景
 > 2. **属性绑定首选 `@ConfigurationProperties`**：一组属性批量绑定 > 散装 `@Value`
 > 3. **注入仲裁优先用 `@Qualifier`**，语义最清晰；`@Primary` 留给默认主跃场景
