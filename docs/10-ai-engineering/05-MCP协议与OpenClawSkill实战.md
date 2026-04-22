@@ -767,8 +767,6 @@ resilience4j:
 
 ## 7. Q&A：排查与选型
 
-> 📖 按 [Java 技术文档编写风格规范](../README.md) §5.1 原则 ③，源码机制题（MCP JSON-RPC 字段细节、Spring AI SDK 调用链路）已外链到未来的《MCP 源码深度解析》篇，本节专注**排查 / 选型 / 调优**题。
-
 **Q1（选型）：Tool / Resource / Prompt 怎么选？**
 
 > 三步决策：**有副作用 → Tool；只读且有稳定 URI → Resource；是可复用 Prompt 模板 → Prompt**。最常见的误用是把"只读查询"塞到 Tool 里——这让 Client 失去了缓存、批量预取、按 URI 引用的能力。
