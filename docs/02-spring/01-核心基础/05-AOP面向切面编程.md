@@ -360,7 +360,7 @@ public class OrderService {
 | **能拦截的连接点** | Spring Bean 的 **public 方法** | 构造器、字段读写、静态块、`private` 方法、本地调用、第三方 class |
 | **性能** | 每次调用都走拦截器链 | 字节码直接内联增强，调用零额外开销 |
 | **使用门槛** | 加注解即用 | 需要 `ajc` 或 Java Agent |
-| **注解语法** | 用的是 `@Aspect` / `@Before` / `@Around`（来自 `org.aspectj.lang.annotation`）| 原生支持 |
+| **注解语法** | 用的是 `@Aspect` / `@Before` / `@Around`（来自 `org.aspectj.lang.annotation`） | 原生支持 |
 
 ### 8.1 AspectJ 三种织入时机
 

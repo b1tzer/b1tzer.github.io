@@ -1,4 +1,10 @@
 {
   "default": true,
-  "MD046": { "style": "fenced" }
+  "MD007": { "indent": 4 },
+  "MD046": false,
+  "MD013": false,
+  "MD025": { "front_matter_title": "" },
+  "MD028": false,
+  "MD033": false,
+  "MD041": false
 }

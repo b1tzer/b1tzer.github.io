@@ -59,7 +59,7 @@ flowchart LR
 
 > **阶段与源码方法的一一对应**（全部位于 `AbstractAutowireCapableBeanFactory`）：
 >
-> ```
+> ```txt
 > doCreateBean()
 >   ├─ createBeanInstance()              ← 第 ① 步
 >   ├─ applyMergedBeanDefinitionPostProcessors()  ← 合并元数据

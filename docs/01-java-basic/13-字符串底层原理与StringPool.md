@@ -231,7 +231,7 @@ public final class String {        // final：不可被继承
 
 String 不可变的三大设计原因：
 
-**① 线程安全**
+**① 线程安全**：
 
 ```java
 // 多线程共享同一个 String 对象，无需同步
@@ -239,7 +239,7 @@ String url = "https://example.com";
 // 线程 A 和线程 B 同时读取 url，不会有并发问题
 ```
 
-**② 字符串常量池共享**
+**② 字符串常量池共享**：
 
 ```java
 // 如果 String 可变，常量池共享就会出问题
@@ -248,7 +248,7 @@ String s2 = "hello";  // s1 和 s2 指向同一个 Pool 对象
 // 假设 String 可变：修改 s1 会同时影响 s2，破坏程序正确性
 ```
 
-**③ hashCode 缓存**
+**③ hashCode 缓存**：
 
 ```java
 // String 的 hashCode 只计算一次，之后缓存在 hash 字段

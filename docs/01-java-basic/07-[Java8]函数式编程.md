@@ -9,11 +9,11 @@ title: "[Java8] 函数式编程"
 
 ---
 
-## 一、Lambda 表达式
+## 1. Lambda 表达式
 
 ---
 
-### 1. 引入：它解决了什么问题？
+### 1.1 引入：它解决了什么问题？
 
 Java 8 之前，传递"行为"需要写冗长的匿名内部类。Lambda 表达式让代码更简洁，将行为作为参数传递。
 
@@ -38,7 +38,7 @@ Collections.sort(names, String::compareTo);
 
 ---
 
-### 2. Lambda 语法
+### 1.2 Lambda 语法
 
 ```txt
 (参数列表) -> { 方法体 }
@@ -53,7 +53,7 @@ Collections.sort(names, String::compareTo);
 
 ---
 
-### 3. 四大函数式接口
+### 1.3 四大函数式接口
 
 | 接口 | 方法签名 | 用途 | 示例 | 记忆口诀 |
 | :----- | :----- | :----- | :----- | :----- |
@@ -82,7 +82,7 @@ boolean valid = notEmpty.test("Java"); // true
 
 ---
 
-### 4. 方法引用四种形式
+### 1.4 方法引用四种形式
 
 | 类型 | 语法 | 等价 Lambda | 使用场景 |
 | :----- | :----- | :----- | :----- |
@@ -93,7 +93,7 @@ boolean valid = notEmpty.test("Java"); // true
 
 ---
 
-### 5. Lambda 的限制：effectively final
+### 1.5 Lambda 的限制：effectively final
 
 ```java
 int count = 0;
@@ -110,7 +110,7 @@ list.forEach(item -> count.incrementAndGet());
 
 ---
 
-### 6. Lambda 常见问题
+### 1.6 Lambda 常见问题
 
 **Q：Lambda 表达式能访问外部变量吗？**
 
@@ -122,7 +122,7 @@ list.forEach(item -> count.incrementAndGet());
 
 ---
 
-### 7. Lambda 工作中常见坑
+### 1.7 Lambda 工作中常见坑
 
 #### ❌ 坑1：在 Lambda 中修改外部变量（effectively final 问题）
 
@@ -219,11 +219,9 @@ public class OrderService {
 
 ---
 
-## 二、Stream API
+## 2.Stream API
 
----
-
-### 1. 引入：它解决了什么问题？
+### 2.1 引入：它解决了什么问题？
 
 Stream API 让集合操作（过滤、转换、聚合）从命令式循环变为声明式链式调用，代码更简洁、可读性更强。
 
@@ -248,7 +246,7 @@ List<String> result = names.stream()
 
 ---
 
-### 2. Stream 操作分类
+### 2.2 Stream 操作分类
 
 ```mermaid
 flowchart LR
@@ -281,7 +279,7 @@ flowchart LR
 
 ---
 
-### 3. 常用操作示例
+### 2.3 常用操作示例
 
 ```java
 List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
@@ -315,7 +313,7 @@ List<Integer> flat = nested.stream()
 
 ---
 
-### 4. 综合实战
+### 2.4 综合实战
 
 **需求**：从用户列表中找出年龄大于18岁的活跃用户，取其邮箱，去重后按字母排序。
 
@@ -334,10 +332,10 @@ List<String> getActiveUserEmails(List<User> users) {
 
 ---
 
-### 5. Stream 工作中常见坑
+### 2.5 Stream 工作中常见坑
 
 | 坑点 | 问题描述 | 根本原因 | 解决方案 |
-|------|---------|---------|---------|
+| :--- | :--- | :--- | :--- |
 | Stream 只能消费一次 | 对同一个 Stream 调用两次终止操作会抛异常 | Stream 是一次性的流水线，消费后状态变为"已关闭" | 每次从数据源重新创建 Stream |
 | 并行流线程安全 | `parallelStream()` 操作非线程安全集合会出错 | 并行流在 ForkJoinPool 中多线程执行，共享状态会竞争 | 使用 `collect()` 而非直接 `add()` |
 | 空指针异常 | `map()` 返回 null 后续操作 NPE | Stream 不会自动处理 null 值 | 使用 `filter(Objects::nonNull)` 或 Optional |
@@ -392,7 +390,7 @@ list.stream()
 
 ---
 
-### 6. Stream 常见问题
+### 2.6 Stream 常见问题
 
 **Q：Stream 的惰性求值是什么意思？**
 > 中间操作（filter/map/sorted）不会立即执行，它们只是构建了一个操作流水线。只有当终止操作（collect/forEach/count）被调用时，整个流水线才会被触发执行。好处是可以进行短路优化（如 `findFirst()` 找到第一个就停止）。
@@ -405,11 +403,9 @@ list.stream()
 
 ---
 
-## 三、Optional
+## 3. Optional
 
----
-
-### 1. 引入：它解决了什么问题？
+### 3.1 引入：它解决了什么问题？
 
 Optional 将"可能为空"这个语义显式化，强制调用方处理空值情况，减少 NullPointerException。
 
@@ -434,7 +430,7 @@ String city = Optional.ofNullable(user)
 
 ---
 
-### 2. Optional 核心 API
+### 3.2 Optional 核心 API
 
 ```java
 // 创建
@@ -459,7 +455,7 @@ opt1.flatMap(s -> Optional.of(s + "!")); // Optional["value!"]
 
 ---
 
-### 3. Optional 使用原则（误区分析）
+### 3.3 Optional 使用原则（误区分析）
 
 ```java
 // ✅ 正确：用于方法返回值，表达"可能没有结果"
@@ -487,7 +483,7 @@ opt.ifPresent(val -> System.out.println(val));
 
 ---
 
-### 4. Optional 常见问题
+### 3.4 Optional 常见问题
 
 **Q：Optional 为什么不能用于方法参数？**
 > 如果方法参数是 `Optional<T>`，调用方可能传入 `Optional.empty()`，也可能传入 `null`（忘记包装），反而增加了处理复杂度。方法参数应该直接用 `@Nullable` 注解或重载方法来表达可选性。
@@ -500,7 +496,7 @@ opt.ifPresent(val -> System.out.println(val));
 
 ---
 
-### 5. Optional 工作中常见坑
+### 3.5 Optional 工作中常见坑
 
 #### ❌ 坑1：Optional 嵌套（Optional 套 Optional）
 

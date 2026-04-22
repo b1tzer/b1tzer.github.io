@@ -17,7 +17,7 @@ title: 注解（Annotation）
 
 注解（Annotation）本质上是一种**元数据标签**，它本身**没有任何行为**，只是在代码上打了一个"标记"。
 
-```
+```txt
 注解 = 标签 + 元数据
 ```
 
@@ -77,7 +77,7 @@ mindmap
 ```
 
 | ElementType 值 | 作用位置 | 典型使用场景 |
-|---|---|---|
+| :--- | :--- | :--- |
 | `TYPE` | 类、接口、枚举 | `@Component`、`@Entity`、`@RestController` 标注在类上，Spring 扫描注册 Bean 或 JPA 映射表 |
 | `METHOD` | 方法 | `@Transactional`、`@GetMapping`、`@Cacheable` 标注在方法上，AOP 拦截或路由映射 |
 | `FIELD` | 字段 | `@Autowired`、`@Value`、`@Column` 标注在字段上，注入依赖或映射数据库列 |
@@ -112,19 +112,20 @@ public class OrderService {
 ### @Retention —— 注解保留到什么阶段
 
 | RetentionPolicy 值 | 保留阶段 | 典型使用场景 |
-|---|---|---|
+| :--- | :--- | :--- |
 | `SOURCE` | 仅源码，编译后丢弃 | `@Override`（编译器检查是否真的覆盖父类方法）、`@SuppressWarnings`（压制警告）、Lombok 的 `@Data`（APT 生成代码后注解本身没用了） |
 | `CLASS` | 保留到字节码，运行时不可见 | 字节码增强工具使用，如 AspectJ 的编译时织入、某些代码分析工具（FindBugs 的 `@NonNull`）。日常开发几乎用不到 |
 | `RUNTIME` | 保留到运行时，反射可读 | Spring 全家桶几乎所有注解（`@Transactional`、`@Autowired`、`@RequestMapping`）、自定义业务注解，需要在运行时被 AOP 或框架读取 |
 
 **三个阶段的生命周期**：
 
-```
+```txt
 源码(.java) ──编译──▶ 字节码(.class) ──类加载──▶ 运行时(JVM)
    SOURCE 止步于此 ↑        CLASS 止步于此 ↑        RUNTIME 到达这里
 ```
 
 **选择原则**：
+
 - 自定义注解需要被 Spring AOP / 反射读取 → **必须用 `RUNTIME`**
 - 只是给编译器看的（如检查、代码生成） → 用 `SOURCE`
 - 给字节码工具看的 → 用 `CLASS`（极少用到）
@@ -217,7 +218,7 @@ public @interface RequiresPermission {
 ### 注解属性支持的类型
 
 | 支持类型 | 示例 |
-|---|---|
+| :--- | :--- |
 | 基本类型 | `int`, `long`, `boolean` 等 |
 | `String` | `String name()` |
 | `Class<?>` | `Class<?> targetClass()` |
@@ -367,7 +368,7 @@ public class UserService extends BaseService {
 ### 注解能做什么
 
 | 能力 | 说明 |
-|---|---|
+| :--- | :--- |
 | **声明元数据** | 给代码打标签，描述意图 |
 | **编译期代码生成** | 配合 APT（如 Lombok、MapStruct） |
 | **运行期行为增强** | 配合 AOP（如 `@Transactional`、`@Cacheable`） |
@@ -377,7 +378,7 @@ public class UserService extends BaseService {
 ### 注解不能做什么
 
 | 限制 | 说明 |
-|---|---|
+| :--- | :--- |
 | **注解本身没有行为** | 必须有处理器配合才能产生效果 |
 | **属性类型受限** | 不支持 `Object`、`List`、`Map` |
 | **不能继承其他注解** | Java 注解没有继承体系（只有元注解组合） |
@@ -405,6 +406,7 @@ public class OrderService {
 **根本原因**：Spring AOP 是通过**代理对象**拦截方法调用的，`this.saveOrder()` 直接调用的是原始对象，绕过了代理。
 
 **解决方案**：
+
 ```java
 // 方案1：拆分到不同的 Bean（推荐）
 @Autowired
@@ -426,7 +428,7 @@ self.saveOrder();  // 通过代理调用
 ### Bean 管理
 
 | 注解 | 作用 |
-|---|---|
+| :--- | :--- |
 | `@Component` | 通用组件，注册为 Bean |
 | `@Service` | 业务层组件（语义化的 `@Component`） |
 | `@Repository` | 数据层组件，额外处理持久化异常 |
@@ -438,7 +440,7 @@ self.saveOrder();  // 通过代理调用
 ### 依赖注入
 
 | 注解 | 作用 |
-|---|---|
+| :--- | :--- |
 | `@Autowired` | 按类型注入（Spring 原生） |
 | `@Qualifier` | 配合 `@Autowired`，按名称区分多个实现 |
 | `@Resource` | 按名称注入（JDK 标准） |
@@ -447,7 +449,7 @@ self.saveOrder();  // 通过代理调用
 ### AOP 相关
 
 | 注解 | 作用 |
-|---|---|
+| :--- | :--- |
 | `@Transactional` | 声明式事务 |
 | `@Cacheable` | 方法结果缓存 |
 | `@Async` | 异步执行方法 |
@@ -461,19 +463,21 @@ self.saveOrder();  // 通过代理调用
 **Q：注解和 XML 配置相比有什么优缺点？**
 
 | 对比项 | 注解 | XML |
-|---|---|---|
+| :--- | :--- | :--- |
 | 可读性 | 高，和代码在一起 | 低，需要跳转文件 |
 | 侵入性 | 高，代码和配置耦合 | 低，配置与代码分离 |
 | 修改成本 | 需要重新编译 | 不需要重新编译 |
 | 适用场景 | 业务代码配置 | 需要外部化的配置 |
 
 **Q：`@Autowired` 和 `@Resource` 的区别？**
+
 - `@Autowired`：Spring 提供，**先按类型**，有多个实现时配合 `@Qualifier` 按名称
 - `@Resource`：JDK 标准（JSR-250），**先按名称**，找不到再按类型
 
 **Q：`@Component`、`@Service`、`@Repository`、`@Controller` 有什么区别？**
 
 本质上都是 `@Component` 的语义化别名，功能几乎相同。区别在于：
+
 - `@Repository`：Spring 会将持久层抛出的原生异常（如 JDBC 异常）转换为 Spring 的 `DataAccessException`
 - `@Controller`：配合 Spring MVC 的请求映射机制
 - `@Service`：纯语义，无额外功能，但表达了"这是业务层"的意图，便于团队理解和 AOP 切点定义
