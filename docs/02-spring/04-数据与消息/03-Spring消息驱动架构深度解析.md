@@ -50,6 +50,7 @@ graph TB
 ### 1. RabbitMQ 深度集成
 
 #### 高级配置和用法
+
 ```java
 @Configuration
 @EnableRabbit
@@ -292,6 +293,7 @@ public class AdvancedMessageConsumer {
 ### 2. Kafka 深度集成
 
 #### Spring Kafka 高级配置
+
 ```java
 @Configuration
 @EnableKafka
@@ -493,6 +495,7 @@ public class AdvancedKafkaConsumer {
 ### 1. Spring Events 深度使用
 
 #### 自定义事件和监听器
+
 ```java
 // 自定义领域事件
 public abstract class DomainEvent {
@@ -627,6 +630,7 @@ public class AsyncConfig {
 ### 1. @Async 深度使用
 
 #### 高级异步配置
+
 ```java
 @Configuration
 @EnableAsync
@@ -810,6 +814,7 @@ public class AdvancedAsyncService {
 ### 1. 本地事务与消息一致性
 
 #### 事务消息模式实现
+
 ```java
 @Service
 @Transactional
@@ -1019,6 +1024,7 @@ public class TransactionalMessageService {
 ### 1. 消息系统监控
 
 #### Spring Boot Actuator 集成
+
 ```yaml
 # application.yml
 management:
@@ -1056,6 +1062,7 @@ spring:
 ```
 
 #### 自定义监控指标
+
 ```java
 @Component
 public class MessageMetrics {
@@ -1202,6 +1209,7 @@ public class MonitoredMessageConsumer {
 ### 2. 运维最佳实践
 
 #### 健康检查端点
+
 ```java
 @Component
 public class MessageHealthIndicator implements HealthIndicator {
@@ -1252,6 +1260,7 @@ public class MessageHealthIndicator implements HealthIndicator {
 ```
 
 #### 配置管理
+
 ```java
 @ConfigurationProperties(prefix = "message")
 @Component
@@ -1314,12 +1323,14 @@ public class MessageProperties {
 Spring 消息驱动架构提供了完整的异步处理解决方案：
 
 ### 核心优势
+
 1. **解耦系统组件**：通过消息队列实现系统间松耦合
 2. **提高系统吞吐量**：异步处理避免阻塞，提升并发能力
 3. **增强系统可靠性**：重试机制、死信队列保证消息不丢失
 4. **支持水平扩展**：消费者可以水平扩展处理能力
 
 ### 关键技术点
+
 1. **消息队列集成**：RabbitMQ、Kafka 深度集成
 2. **事件驱动架构**：Spring Events、领域事件、事务事件
 3. **异步处理模式**：@Async、CompletableFuture、响应式编程
@@ -1327,6 +1338,7 @@ Spring 消息驱动架构提供了完整的异步处理解决方案：
 5. **监控与运维**：健康检查、指标监控、配置管理
 
 ### 最佳实践
+
 1. **合理选择消息队列**：根据业务场景选择 RabbitMQ（复杂路由）或 Kafka（高吞吐）
 2. **设计幂等消费**：确保消息重复消费不会产生副作用
 3. **实现死信处理**：为重要消息设置死信队列和告警

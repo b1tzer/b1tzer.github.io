@@ -117,7 +117,7 @@ flowchart TB
 | 接口 | 存在的理由 | 典型使用方 | 源码依据 |
 | :-- | :-- | :-- | :-- |
 | `BeanFactory` | 最小可用容器，定义"按名/按类型取 Bean"的契约 | 所有容器使用方 | `BeanFactory#getBean(String)` |
-| `HierarchicalBeanFactory` | 支持父子容器——子容器找不到时向上查找，但父容器看不到子 | Spring MVC：Root Context 装 Service/DAO，DispatcherServlet 的 WebApplicationContext 装 Controller | `HierarchicalBeanFactory#getParentBeanFactory()` |
+| `HierarchicalBeanFactory` | 暴露父容器引用（`getParentBeanFactory`）并提供"仅查本地"的判断（`containsLocalBean`）——构成 Spring MVC 父子容器遮蔽查找的基础（真正"找不到就向上委托"的实现在 `AbstractBeanFactory#doGetBean`） | Spring MVC：Root Context 装 Service/DAO，DispatcherServlet 的 WebApplicationContext 装 Controller | `HierarchicalBeanFactory#getParentBeanFactory()` / `containsLocalBean(String)` |
 | `ListableBeanFactory` | 支持批量操作（`getBeansOfType(Xxx.class)`），是 `@Autowired List<T>` 的基础 | `@Autowired Map<String, MessageSender>` 的实现依赖此接口 | `ListableBeanFactory#getBeansOfType(Class)` |
 | `AutowireCapableBeanFactory` | 对**容器外**的对象（如手动 `new` 出来的）执行依赖注入 | Spring 与其他框架整合：`ctx.getAutowireCapableBeanFactory().autowireBean(obj)` | `AutowireCapableBeanFactory#autowireBean(Object)` |
 | `ConfigurableBeanFactory` | 允许运行时注册单例、添加 `BeanPostProcessor` | 框架二次开发 | `ConfigurableBeanFactory#addBeanPostProcessor` |

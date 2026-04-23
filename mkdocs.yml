@@ -213,6 +213,8 @@ nav:
     - 测试与实战:
       - Spring 实战应用题: 02-spring/06-测试与实战/07-Spring实战应用题.md
       - Spring 测试框架深度使用: 02-spring/06-测试与实战/20-Spring测试框架深度使用.md
+    - 产品经理视角看spring:
+      - Bean 生命周期与循环依赖的设计哲学: 02-spring/99-产品经理视角看spring/01-Bean生命周期与循环依赖的产品视角.md
   - MySQL:
     - MySQL 核心知识体系概览: 03-mysql/00-mysql-overview.md
     - 数据类型与表设计规范: 03-mysql/01-数据类型与表设计规范.md
