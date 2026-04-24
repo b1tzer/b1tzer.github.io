@@ -36,6 +36,14 @@ mindmap
             GC 算法
             G1 vs CMS
             OOM 排查
+        类加载机制
+            双亲委派模型
+            破坏委派：SPI / Tomcat / OSGi
+        底层原理专题
+            字符串与 StringPool
+            泛型与类型擦除
+            反射与 MethodHandle
+            NIO 与 IO 模型
         异常处理
             Checked vs Unchecked
             最佳实践
@@ -70,6 +78,11 @@ mindmap
 | 09 | **[Java9-17] 新特性** | var 局部变量推断、Record、Sealed Classes、Pattern Matching 等 | [Java9-17新特性](@java-Java9-17新特性) |
 | 10 | **注解** | 元注解定义注解行为，自定义注解 + 反射/APT 实现框架功能 | [注解Annotation](@java-注解Annotation) |
 | 11 | **数据结构精讲** | 红黑树自平衡 O(log n)、B+树磁盘友好、跳表概率平衡、布隆过滤器判存在 | [数据结构精讲](@java-数据结构精讲) |
+| 12 | **类加载机制与双亲委派模型** | Boot → Ext/Platform → App 三级委派；SPI / Tomcat / OSGi 破坏委派的典型场景 | [类加载机制与双亲委派模型](@java-类加载机制与双亲委派模型) |
+| 13 | **字符串底层原理与 StringPool** | 字符串不可变的本质、`intern()` 与运行时常量池、JDK 9+ 紧凑字符串 | [字符串底层原理与StringPool](@java-字符串底层原理与StringPool) |
+| 14 | **泛型底层原理与类型擦除** | 编译期检查 + 运行期擦除；桥接方法与通配符的底层机制 | [泛型底层原理与类型擦除](@java-泛型底层原理与类型擦除) |
+| 15 | **反射性能与 MethodHandle** | `Method.invoke` 的开销来源、`MethodHandle` 与 `invokedynamic` 的优势 | [反射与MethodHandle](@java-反射与MethodHandle) |
+| 16 | **NIO 与 IO 模型深度解析** | BIO/NIO/AIO 对比、Reactor 模型、epoll 与 Netty 的关系 | [NIO与IO模型深度解析](@java-NIO与IO模型深度解析) |
 
 ---
 
@@ -88,6 +101,11 @@ mindmap
 | 双重检查锁的单例为什么需要 volatile？ | [AQS与CAS](@java-AQS与CAS) |
 | AQS 等待队列原理？ReentrantLock vs synchronized？ | [AQS与CAS](@java-AQS与CAS) |
 | CAS 的 ABA 问题如何解决？ | [AQS与CAS](@java-AQS与CAS) |
+| Tomcat / SPI / 线程上下文类加载器为什么要破坏双亲委派？ | [类加载机制与双亲委派模型](@java-类加载机制与双亲委派模型) |
+| `String s = new String("a")` 创建了几个对象？`intern()` 在 JDK 6/7+ 有什么区别？ | [字符串底层原理与StringPool](@java-字符串底层原理与StringPool) |
+| 泛型擦除下的桥接方法是干什么的？泛型数组为什么不能 `new T[]`？ | [泛型底层原理与类型擦除](@java-泛型底层原理与类型擦除) |
+| 反射为什么慢？MethodHandle / LambdaMetafactory 快在哪里？ | [反射与MethodHandle](@java-反射与MethodHandle) |
+| select / poll / epoll 的区别？Netty 的 Reactor 模型怎么回事？ | [NIO与IO模型深度解析](@java-NIO与IO模型深度解析) |
 
 ---
 
@@ -101,8 +119,10 @@ flowchart TD
     D --> E[AQS / ReentrantLock]
     E --> F[JVM 内存模型]
     F --> G[GC 算法与调优]
-    G --> H[Java 8 新特性]
-    H --> I[泛型与注解]
+    G --> H[类加载机制 & StringPool]
+    H --> I[泛型/注解/反射]
+    I --> J[NIO 与 IO 模型]
+    J --> K[Java 8 / 9-17 新特性]
 ```
 
 > **推荐实践**：
