@@ -127,7 +127,7 @@ flowchart LR
 
 **为什么 JDK 7 将常量池从永久代迁移到堆？**
 
-- 永久代大小固定（默认 64MB），大量使用 `String.intern()` 或动态生成字符串时容易触发 `java.lang.OutOfMemoryError: PermGen space`
+- 永久代大小有限（HotSpot 默认值随版本与 Client/Server 模式有差，Server 模式约 64MB，上限由 `-XX:MaxPermSize` 控制），大量使用 `String.intern()` 或动态生成字符串时容易触发 `java.lang.OutOfMemoryError: PermGen space`
 - 迁移到堆后，常量池中的字符串对象可以被 GC 正常回收，不再受永久代大小限制
 
 ### 3.2 字符串字面量的创建过程
@@ -352,7 +352,7 @@ String result = list.stream()
 | 可变性 | 不可变 | 可变 | 可变 |
 | 线程安全 | ✅ | ❌ | ✅ |
 | 性能 | 拼接慢 | 最快 | 较快 |
-| 底层 | `byte[]`（final） | `byte[]`（可扩容） | `byte[]`（可扩容） |
+| 底层（JDK 9+） | `byte[] value`（final，长度不可变） | `byte[] value`（非final，可扩容，默认初始容量 16） | `byte[] value`（非final，可扩容，默认初始容量 16） |
 
 ### 6.2 字符串常量池相关题目
 
@@ -384,9 +384,9 @@ System.out.println(s1 == s4);  // true
 
 选择 31 的原因：
 
-- `31` 是奇素数，减少哈希碰撞
+- `31` 是奇素数，且是奇数：**偶数作乘数在溢出时会丢失信息**（相当于左移，低位被补 0），质数则对任意数的映射都不存在建立在整除上的碰撞规律，能使散列分布更均匀
 - `31 * i == (i << 5) - i`，JVM 可以将乘法优化为位移和减法，性能更好
-- 实践证明 31 对英文字符串的哈希分布效果良好
+- 其他候选（17 / 37 / 57 等）在常见英文字符串上实测碰撞率大同小异，选 31 是经验权衡下的惯例（Joshua Bloch《Effective Java》也沿用此设定）
 
 ---
 

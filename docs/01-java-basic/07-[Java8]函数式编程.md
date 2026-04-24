@@ -101,7 +101,10 @@ int count = 0;
 list.forEach(item -> count++); // Variable used in lambda should be effectively final
 
 // 原因：Lambda 可能在不同线程中执行，如果允许修改外部变量会有并发问题
-// Lambda 捕获的是变量的副本（值），而非引用，所以要求变量不可变
+// 捕获语义：Lambda 捕获的是局部变量的“快照”：
+//   - 基本类型 → 复制值
+//   - 引用类型 → 复制“引用”（还是指向同一个对象，可以调用其方法修改对象内部状态，但不能再将变量指向另一个对象）
+// 所以要求“局部变量引用本身”不可变，而不是对象内部不可变。
 
 // ✅ 正确：使用 AtomicInteger（线程安全的可变容器）
 AtomicInteger count = new AtomicInteger(0);
@@ -114,7 +117,7 @@ list.forEach(item -> count.incrementAndGet());
 
 **Q：Lambda 表达式能访问外部变量吗？**
 
-> 可以，但外部变量必须是 **effectively final**（事实上不可变）。原因：Lambda 可能在不同线程中执行，如果允许修改外部变量会有并发问题；Lambda 捕获的是变量的副本（值），而非引用，所以要求变量不可变。
+> 可以，但外部局部变量必须是 **effectively final**（事实上不可变）。捕获语义：**基本类型捕获值，引用类型捕获引用的副本（还是同一个对象，可以修改对象内部状态）**。要求 final 是针对“局部变量引用本身”而非对象内容——目的是避免将“处于高速变化的栈帧局部变量”告诉一个可能在别的线程、别的时间执行的 Lambda。
 
 **Q：Lambda 和匿名内部类有什么区别？**
 
@@ -337,7 +340,7 @@ List<String> getActiveUserEmails(List<User> users) {
 | 坑点 | 问题描述 | 根本原因 | 解决方案 |
 | :--- | :--- | :--- | :--- |
 | Stream 只能消费一次 | 对同一个 Stream 调用两次终止操作会抛异常 | Stream 是一次性的流水线，消费后状态变为"已关闭" | 每次从数据源重新创建 Stream |
-| 并行流线程安全 | `parallelStream()` 操作非线程安全集合会出错 | 并行流在 ForkJoinPool 中多线程执行，共享状态会竞争 | 使用 `collect()` 而非直接 `add()` |
+| 并行流线程安全 | `parallelStream()` 操作非线程安全集合会出错 | 并行流在 ForkJoinPool 中多线程执行，共享状态会竞争（可能丢失元素或抛 `ArrayIndexOutOfBoundsException`） | 使用 `collect()` 而非直接 `add()` |
 | 空指针异常 | `map()` 返回 null 后续操作 NPE | Stream 不会自动处理 null 值 | 使用 `filter(Objects::nonNull)` 或 Optional |
 | 性能误区 | 小数据量用 Stream 反而更慢 | Stream 有创建流水线的开销，数据量小时开销占比大 | 数据量小时用普通 for 循环 |
 
@@ -352,14 +355,13 @@ List<String> result = stream.collect(Collectors.toList()); // 抛 IllegalStateEx
 long count = list.stream().filter(s -> s.length() > 3).count();
 List<String> result = list.stream().filter(s -> s.length() > 3).collect(Collectors.toList());
 
-// ❌ 坑2：parallelStream 操作非线程安全集合
+// ❌ 坑 2：parallelStream 操作非线程安全集合
 List<Integer> result = new ArrayList<>();
-IntStream.range(0, 1000).parallel().forEach(result::add); // 数据丢失！
+IntStream.range(0, 1000).parallel().forEach(result::add); // 可能丢失数据或抛 ArrayIndexOutOfBoundsException！
 // ✅ 用 collect 收集，线程安全
 List<Integer> result = IntStream.range(0, 1000).parallel()
     .boxed()
     .collect(Collectors.toList());
-
 // ❌ 坑3：map 返回 null 导致后续 NPE
 List<String> names = Arrays.asList("Alice", "Bob", "Charlie");
 List<Integer> lengths = names.stream()
@@ -396,7 +398,7 @@ list.stream()
 > 中间操作（filter/map/sorted）不会立即执行，它们只是构建了一个操作流水线。只有当终止操作（collect/forEach/count）被调用时，整个流水线才会被触发执行。好处是可以进行短路优化（如 `findFirst()` 找到第一个就停止）。
 
 **Q：Stream 和 for 循环哪个性能更好？**
-> 数据量大时 Stream（尤其是 parallelStream）有优势；数据量小时 for 循环更快，因为 Stream 有创建流水线的额外开销。
+> 在**单线程、数据量小**的场景，for 循环更快——Stream 有创建流水线、封装/拆封装基本类型、虚方法调用等额外开销。在**多线程、数据量大**的场景，`parallelStream` 的多核加速可能显著趁过 for 循环；但即使如此也受任务划分成本与 ForkJoinPool 共享者影响，严谨对比请用 JMH 自测。**遵从的原则**：优先选择可读性更好的写法，通常是 Stream；只有在证实为热点的紧密循环中再考虑改为 for。
 
 **Q：parallelStream 一定比 stream 快吗？**
 > 不一定。parallelStream 使用 ForkJoinPool 多线程执行，适合 CPU 密集型、数据量大的场景。如果任务本身很轻量或数据量小，线程切换的开销反而会使性能更差。

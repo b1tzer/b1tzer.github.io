@@ -246,11 +246,14 @@ flowchart TD
     E --> E1["@Transactional 开启事务<br>@PreAuthorize 权限校验<br>@Cacheable 缓存处理"]
 ```
 
-### 方式一：编译期注解处理器（APT）
+### 方式一：编译期注解处理器（APT / AST 改写）
+
+典型代表：**MapStruct**（标准 JSR-269 APT，生成新的 `.java` 源文件）、**Lombok**（滥用 `javac` 内部 AST API 直接改写已有的树，严格说并非标准 APT，但对使用者行为上一致）。
 
 ```java
 // Lombok 就是这么工作的
-// 你写 @Data，编译时 Lombok 的 APT 处理器自动生成 getter/setter/equals/hashCode
+// 你写 @Data，编译时 Lombok 在 “注解处理” 阶段直接修改 javac 的 AST，
+// 给 User 类添加 getter/setter/equals/hashCode/toString 节点
 @Data
 public class User {
     private String name;
@@ -348,18 +351,27 @@ public void createOrder() { ... }
 ### @Inherited 类继承传递
 
 ```java
-// 父类上的注解，子类能否继承取决于注解是否有 @Inherited
+// 父类的类级别注解 vs 方法级别注解，行为不同
 @Transactional  // @Transactional 没有 @Inherited
 public class BaseService {
     public void save() { ... }
+
+    @Transactional
+    public void update() { ... }
 }
 
 public class UserService extends BaseService {
-    // 子类调用 save()，@Transactional 是否生效？
-    // → 方法上的注解不继承，但 Spring 的 AnnotationUtils 会向上查找父类方法
-    // → Spring 事务是生效的（Spring 做了特殊处理）
+    // 问题 1：父类类级 @Transactional 会被继承到子类吗？
+    //   → JDK 角度：@Transactional 没有 @Inherited，Child.class.getAnnotation(Transactional.class) 返回 null
+    //   → Spring 角度：Spring 不依赖 JDK 的继承机制，而是用 AnnotationUtils.findAnnotation()
+    //             主动沿超类链与实现接口查找，因此父类类级事务仍然生效
+    // 问题 2：父类方法 update() 上的 @Transactional 继承吗？
+    //   → JDK 角度：方法级注解从不继承
+    //   → Spring 角度：同样通过 findAnnotation 沿查找父类方法，子类不覆盖时继续生效
 }
 ```
+
+> 💡 **结论**：JDK 原生的 `@Inherited` 只对**类级**注解生效且需注解自己声明 `@Inherited`；Spring 不依赖这一机制，而是用 `AnnotationUtils.findAnnotation()` / `AnnotatedElementUtils.findMergedAnnotation()` **沿超类链与接口主动查找**，所以父类类上与父类方法上的 `@Transactional` 在子类中都能生效。
 
 ---
 
@@ -408,16 +420,39 @@ public class OrderService {
 **解决方案**：
 
 ```java
-// 方案1：拆分到不同的 Bean（推荐）
-@Autowired
-private OrderRepository orderRepository;  // 把 saveOrder 移到 Repository 层
+// 方案1：拆分到另一个 Spring Bean（最推荐；跟层级无关，核心是“跨 Bean 调用”触发代理）
+@Service
+public class OrderService {
+    @Autowired
+    private OrderTxService orderTxService;  // 事务方法抽到另一个 Bean
 
-// 方案2：注入自身代理（不推荐，有循环依赖风险）
-@Autowired
-private OrderService self;
-self.saveOrder();  // 通过代理调用
+    public void createOrder() {
+        orderTxService.saveOrder();  // ✅ 跨 Bean 调用 → 走代理 → @Transactional 生效
+    }
+}
 
-// 方案3：通过 ApplicationContext 获取代理（不推荐）
+@Service
+public class OrderTxService {
+    @Transactional
+    public void saveOrder() { ... }
+}
+
+// 方案2：注入自身代理（Spring 三级缓存会处理循环依赖，实践可行，但需注意语义清晰度）
+@Service
+public class OrderService {
+    @Autowired @Lazy
+    private OrderService self;  // @Lazy 避免构造期交互问题
+
+    public void createOrder() {
+        self.saveOrder();  // ✅ 通过代理调用
+    }
+
+    @Transactional
+    public void saveOrder() { ... }
+}
+
+// 方案3：通过 AopContext 获取当前代理
+// 前提：必须开启 @EnableAspectJAutoProxy(exposeProxy = true)，否则抛 IllegalStateException
 ((OrderService) AopContext.currentProxy()).saveOrder();
 ```
 

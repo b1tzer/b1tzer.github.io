@@ -165,7 +165,8 @@ ZonedDateTime next = dt.plusHours(1); // 夏令时切换，实际跳过了一小
 // DATETIME    → LocalDateTime  ✅
 // DATE        → LocalDate      ✅
 // TIMESTAMP   → Instant / ZonedDateTime  ✅（TIMESTAMP 存储 UTC）
-// BIGINT      → Instant.toEpochMilli()   ✅（推荐，时区无关）
+// BIGINT      → Instant.toEpochMilli()   ⚠️（时区无关，但可读性差、难以在 SQL 端直接调试；
+//                                       严谨的生产建议仍首选 TIMESTAMP / TIMESTAMPTZ）
 
 // ❌ 常见错误：用 String 存储时间
 // "2024-01-15 14:00:00" 存为 VARCHAR，无法利用数据库的时间函数和索引
@@ -252,9 +253,9 @@ class C implements A, B {
 
 **三条优先级规则**：
 
-1. **类优先**：类中定义的方法优先于接口默认方法
-2. **子接口优先**：更具体的接口（子接口）优先于父接口
-3. **显式覆盖**：若仍有歧义，必须在实现类中显式覆盖并指定调用哪个接口的方法
+1. **父类（class）优先于接口**：如果父类中已有同名实例方法，则父类方法胜出（即使接口有 default 方法）
+2. **子接口优先于父接口**：更具体的接口（子接口）优先于父接口；上面的 `class C implements A, B` 示例属于这一条——`B extends A`，`B.hello()` 胜出
+3. **横向平级冲突必须显式消除**：如果实现的多个接口是平级的（互不继承）且有同名 default 方法，编译器报错，必须在实现类中显式覆盖并用 `X.super.m()` 指定来源
 
 ---
 
@@ -297,7 +298,7 @@ public abstract class AbstractUserService {
 }
 ```
 
-#### ❌ 坑2：default 方法与实现类方法的优先级混淆
+#### ❌ 坅2：default 方法与实现类方法的优先级混淆
 
 ```java
 public interface Greeting {
@@ -309,13 +310,24 @@ public class MyService implements Greeting {
     // 如果这里不写 greet()，调用的是接口的 default 方法
     // 如果这里写了 greet()，调用的是这里的方法（覆盖了 default）
 }
-
-// ⚠️ 工作中的坑：升级第三方库时，库的接口新增了 default 方法
-// 如果你的实现类恰好有同名方法，行为可能发生变化！
-// 例如：你的类有 default void close() {}，库接口新增了 default void close() {}
-// 你的类方法会覆盖库的 default 方法，可能导致资源未正确关闭
 ```
 
+**库升级冲突的真实案例**：
+
+```java
+// 情境：你的类已经有一个同名方法，没有 @Override 标注
+public class MyBatch implements Processor {
+    // 原本只是一个工具方法，与接口无关
+    public int summary() { return 0; }
+}
+
+// 升级第三方库后，Processor 接口新增了：
+// default int summary() { return computeExpensiveSummary(); }
+// 你的 summary() 没有 @Override 也未报错，但恶意“覆盖”了库设计的默认实现，
+// 导致返回值突变、逻辑缺失。
+```
+
+> 💡 **防御建议**：所有实现类中的 public 方法都加 `@Override` 显式标注来源；无法标注 @Override 的方法要重新审视命名和语义，避免与未来的接口演化擞车。
 #### ❌ 坑3：接口静态方法不能被继承
 
 ```java

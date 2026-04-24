@@ -140,14 +140,16 @@ obj.hello()
   ↓ JIT 内联后
 // "hello" 方法体直接展开在调用处，无跳转开销
 
-// 反射调用 —— JIT 无法内联
+// 反射调用 —— JIT 难以内联
 method.invoke(obj, args)
-  ↓ 实际执行链
+  ↓ Java 17 及之前的实际执行链
 Method.invoke()
   → DelegatingMethodAccessorImpl.invoke()
-    → NativeMethodAccessorImpl.invoke()  // 前15次：JNI 本地调用
-      → (第16次起) GeneratedMethodAccessorXXX.invoke()  // 字节码生成的访问器
+    → NativeMethodAccessorImpl.invoke()  // 前 15 次：JNI 本地调用
+      → (第 16 次起) GeneratedMethodAccessorXXX.invoke()  // 字节码生成的访问器
 ```
+
+> 📌 **版本差异提醒**：上图的“前 15 次 JNI + 第 16 次生成字节码”属于 **JDK 17 及之前** 的 Oracle/OpenJDK 实现。**JDK 18 起 (JEP 416：以 `MethodHandle` 重实现反射)**，`Method.invoke` 已改为统一走 `MethodHandle` 连接器路径，不再存在 JNI 阶段。
 
 反射调用经过多层委托，JIT 难以追踪真实调用目标，**无法做内联优化**，每次调用都有额外的方法分派开销。
 
@@ -258,6 +260,8 @@ ReflectionBenchmark.withAccessible avgt   10   18.5 ±  0.5  ns/op
 ReflectionBenchmark.noAccessible   avgt   10   35.2 ±  1.2  ns/op
 MethodHandleBenchmark.mh           avgt   10    2.1 ±  0.1  ns/op
 ```
+
+> 📌 **声明**：以上数据仅为示意性量级（来自社区综合基准的经验值），具体数字因 JVM 版本、硬件、方法签名而异，实际基准请自行跑 JMH 验证。
 
 !!! tip "结论"
     - 直接调用：~1 ns（基准）
@@ -402,21 +406,24 @@ int value = (int) countHandle.get(obj);  // 性能接近直接访问
 countHandle.getAndAdd(obj, 1);          // 原子操作，无锁
 ```
 
-### 4.3 VarHandle 的核心价值：替代 Unsafe
+### 4.3 VarHandle 的核心价值：提供 `Unsafe` 的官方替代
 
-在 Java 9 之前，JDK 内部大量使用 `sun.misc.Unsafe` 进行字段的原子操作（CAS）。`Unsafe` 是非公开 API，存在安全风险。Java 9 引入 `VarHandle` 作为官方替代。
+在 Java 9 之前，JDK 内部大量使用 `sun.misc.Unsafe` 进行字段的原子操作（CAS）。`sun.misc.Unsafe` 是非公开 API，存在安全风险，且在 Java 9 模块系统下对用户代码逐步关闭。Java 9 引入 `VarHandle` 作为官方等价替代。
+
+> ⚠️ **一个容易被传错的细节**：并非所有 `Atomic*` 类都在 JDK 9+ 迁移到了 `VarHandle`。截至 JDK 21，`java.util.concurrent.atomic.AtomicInteger` / `AtomicLong` / `AtomicReference` 的 OpenJDK 源码**仍然使用 `jdk.internal.misc.Unsafe`**（注意不是 `sun.misc.Unsafe`，而是 JDK 内部特权版本），没有改用 `VarHandle`。**真正完全使用 `VarHandle` 的典型代表**是：`StampedLock`、`ConcurrentHashMap` 的部分字段原子操作、以及 JDK 9+ 新增/重写的 `VarHandle.VarForm` 相关类。
+
+下面用一个 **自定义的 `MyAtomicInteger`** 对比两种写法（而不直接以 JDK 自带类命名，避免误导）：
 
 ```java
-// ===== JDK 8：基于 Unsafe（危险） =====
-public class AtomicInteger {
-    private static final Unsafe unsafe = Unsafe.getUnsafe();
+// ===== JDK 8 户多见的写法：基于 Unsafe（仅可在 JDK 内部或通过反射获取） =====
+public class MyAtomicInteger {
+    private static final Unsafe unsafe = Unsafe.getUnsafe();  // 需 Bootstrap ClassLoader
     private static final long valueOffset;
 
     static {
         try {
-            // 通过 Unsafe 获取字段的内存偏移量
             valueOffset = unsafe.objectFieldOffset(
-                AtomicInteger.class.getDeclaredField("value")
+                MyAtomicInteger.class.getDeclaredField("value")
             );
         } catch (Exception ex) { throw new Error(ex); }
     }
@@ -424,28 +431,24 @@ public class AtomicInteger {
     private volatile int value;
 
     public final boolean compareAndSet(int expect, int update) {
-        // 直接操作内存偏移量，绕过 Java 类型系统
         return unsafe.compareAndSwapInt(this, valueOffset, expect, update);
     }
 }
 
-// ===== JDK 9+：基于 VarHandle（安全） =====
-public class AtomicInteger {
-    // VarHandle 指向 AtomicInteger.value 字段
+// ===== JDK 9+ 推荐写法：基于 VarHandle（用户代码的官方途径） =====
+public class MyAtomicInteger {
     private static final VarHandle VALUE;
 
     static {
         try {
-            MethodHandles.Lookup l = MethodHandles.lookup();
-            // 通过标准 API 获取字段句柄，无需内存偏移量
-            VALUE = l.findVarHandle(AtomicInteger.class, "value", int.class);
+            VALUE = MethodHandles.lookup()
+                .findVarHandle(MyAtomicInteger.class, "value", int.class);
         } catch (ReflectiveOperationException e) { throw new Error(e); }
     }
 
     private volatile int value;
 
     public final boolean compareAndSet(int expectedValue, int newValue) {
-        // 类型安全的 CAS 操作
         return VALUE.compareAndSet(this, expectedValue, newValue);
     }
 }
@@ -658,7 +661,7 @@ flowchart TD
 
 **Q3：VarHandle 是什么？为什么要替代 Unsafe？**
 
-> `VarHandle`（Java 9+）是对变量（字段、数组元素）进行原子操作的标准 API，用于替代 `sun.misc.Unsafe`。`Unsafe` 是非公开 API，通过内存偏移量直接操作内存，绕过了 Java 类型系统，存在安全风险，且在 Java 9 模块系统下受到限制。`VarHandle` 提供了类型安全的 CAS、volatile 读写、原子加法等操作，JDK 9+ 的 `AtomicInteger` 等类已从 `Unsafe` 迁移到 `VarHandle`。
+> `VarHandle`（Java 9+）是对变量（字段、数组元素）进行原子操作的标准 API，用于提供 `sun.misc.Unsafe` 的官方替代。`sun.misc.Unsafe` 是非公开 API，通过内存偏移量直接操作内存，绕过了 Java 类型系统，存在安全风险，且在 Java 9 模块系统下对用户代码逐步关闭。`VarHandle` 提供了类型安全的 CAS、volatile 读写、原子加法等操作。**需注意**：截至 JDK 21，`java.util.concurrent.atomic.AtomicInteger` / `AtomicLong` 等经典原子类并未迁移到 `VarHandle`，而是改用 JDK 内部的 `jdk.internal.misc.Unsafe`；完全使用 `VarHandle` 的典型代表是 `StampedLock` 与 `ConcurrentHashMap` 的部分字段。
 
 **Q4：JDK 动态代理为什么只能代理接口？**
 
