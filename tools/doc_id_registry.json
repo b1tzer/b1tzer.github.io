@@ -127,6 +127,7 @@
   "spring-测试与实战-Spring实战应用题": "02-spring/06-测试与实战/07-Spring实战应用题.md",
   "spring-测试与实战-Spring测试框架深度使用": "02-spring/06-测试与实战/20-Spring测试框架深度使用.md",
   "spring-设计哲学-Bean生命周期与循环依赖": "02-spring/99-产品经理视角看spring/01-Bean生命周期与循环依赖的产品视角.md",
+  "spring-设计哲学-Spring容器启动流程": "02-spring/99-产品经理视角看spring/02-Spring容器启动流程的产品视角.md",
   "spring-进阶与调优-Spring6-Boot3新特性深度解析": "02-spring/05-进阶与调优/02-Spring6-Boot3新特性深度解析.md",
   "spring-进阶与调优-Spring源码阅读与调试技巧": "02-spring/05-进阶与调优/03-Spring源码阅读与调试技巧.md",
   "spring-进阶与调优-启动与并发优化": "02-spring/05-进阶与调优/01b-启动与并发优化.md",
