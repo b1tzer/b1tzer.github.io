@@ -5,7 +5,23 @@ title: MySQL 8.0 与 8.4 新特性精讲
 
 # MySQL 8.0 与 8.4 新特性精讲
 
-> **核心问题**：MySQL 8.0 相比 5.7 有哪些值得关注的变化？8.4 LTS 又新增了什么？面试常考"MySQL 8 新特性"到底该答哪些？
+!!! info "**MySQL 8.0 与 8.4 新特性精讲 一句话口诀**"
+    **生产只走 LTS**：`5.7` 已 EOL、`8.0` 扩展支持收尾、`8.4` 是当前推荐、`9.x` 是 Innovation 禁止生产。
+
+    **8.0 相对 5.7 的灵魂变化**：移除 Query Cache、Data Dictionary 全进 InnoDB、默认字符集 `utf8mb4`、支持 CTE / 窗口函数 / 直方图 / Invisible Index / Instant DDL。
+
+    **8.4 相对 8.0 最大的坑**：默认认证插件改为 `caching_sha2_password`，`mysql_native_password` 彻底移除——老客户端升级前必测。
+
+    **面试必答 Top 10**：CTE / 窗口函数 / 降序索引 / 隐藏索引 / 直方图 / Instant DDL / 角色 / Resource Group / 原子 DDL / JSON 增强。
+
+    **5.7 → 8.0 升级顺序**：先升从库 → 验证 → 再升主库，永远不要跨两级 LTS 直接升（`5.6 → 8.0` 必出事）。
+
+> 📖 **边界声明**：本文聚焦 **5.7 → 8.0 → 8.4 的版本差异、默认值变更、升级路径**，以下主题请见对应专题：
+>
+> - 窗口函数 / CTE / 直方图在执行计划层面的代价估算 → [SQL执行与性能优化](@mysql-SQL执行与性能优化)
+> - Invisible Index / Instant DDL 的使用规范与决策 → [在线DDL与大表变更](@mysql-在线DDL与大表变更)
+> - 升级踩坑的**完整线上排查 checklist**（具体报错信息、监控指标）→ [实战问题与避坑指南](@mysql-实战问题与避坑指南)
+> - Data Dictionary 全进 InnoDB 的底层改造 → [InnoDB存储引擎深度剖析](@mysql-InnoDB存储引擎深度剖析)
 
 ---
 

@@ -18,8 +18,6 @@ title: Spring 配置加载与属性绑定
 
     AOT / 原生镜像下需注册 `@ConfigurationProperties` 的反射 Hints，Spring Boot 3 已自动生成。
 
-<!-- -->
-
 > 📖 **边界声明**：本文聚焦"**配置从磁盘 / 环境变量到 Bean 字段的完整机制**"，以下主题请见对应专题：
 >
 > - `@Value` / `@ConfigurationProperties` / `@Profile` 的**注解语义速查**（一张对比表、构造器绑定、Profile 激活语法） → [Spring 常用注解全解](@spring-核心基础-Spring常用注解全解) §3~§4
