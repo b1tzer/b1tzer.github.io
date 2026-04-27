@@ -146,8 +146,8 @@ synchronized(lock) { ... }  // JDK 24+ 已修复
     - ✅ **I/O 密集型应用**：积极采用虚拟线程，显著提升吞吐量
     - ⚖️ **CPU 密集型应用**：评估收益，可能仍需传统线程池（虚拟线程调度到少量载体线程，CPU 密集不会提速）
     - 🔄 **现有代码（JDK 21~23）**：逐步替换，注意同步块和 `ThreadLocal` 的使用（虚拟线程下 `ThreadLocal` 变成百万份，内存飙升）
-- 🔄 **现有代码（JDK 24+）**：`synchronized` 无需改写，直接受益；`ThreadLocal` 可关注 `ScopedValue`（JEP 487，JDK 24 仍为 Preview）的演进，但 API 未冻结前暂不建议在生产代码大面积替换
-- 🆕 **JDK 24+ 预览尝鲜**：`ScopedValue`（JEP 487 Fourth Preview）需 `--enable-preview` 开启，未来正式发布后将在虚拟线程场景替代 `ThreadLocal` 主导地位
+    - 🔄 **现有代码（JDK 24+）**：`synchronized` 无需改写，直接受益；`ThreadLocal` 可关注 `ScopedValue`（JEP 487，JDK 24 仍为 Preview）的演进，但 API 未冻结前暂不建议在生产代码大面积替换
+    - 🆕 **JDK 24+ 预览尝鲜**：`ScopedValue`（JEP 487 Fourth Preview）需 `--enable-preview` 开启，未来正式发布后将在虚拟线程场景替代 `ThreadLocal` 主导地位
 
     🚀 **技术优势**：虚拟线程支持百万级并发，创建成本极低，显著减少内存占用。
 
