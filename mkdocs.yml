@@ -163,7 +163,14 @@ nav:
     - 面向对象（OOP）: 01-java-basic/01-面向对象.md
     - 集合框架（Collections Framework）: 01-java-basic/02-集合框架.md
     - 并发编程（Concurrent Programming）: 01-java-basic/03-并发编程.md
+    - 并发基础：JMM 与线程同步（Concurrency Fundamentals）: 01-java-basic/03a-并发基础：JMM与线程同步.md
+    - 并发工具：Lock、AQS 与线程池（Concurrency Tools）: 01-java-basic/03b-并发工具：Lock、AQS与线程池.md
+    - 并发集合与实战陷阱（Concurrent Collections & Practical Pitfalls）: 01-java-basic/03c-并发集合与实战陷阱.md
     - JVM 内存结构与 GC: 01-java-basic/04-JVM内存结构与GC.md
+    - JVM 内存分区与对象布局 —— 堆栈元空间三驾马车 + 对象头/Mark Word 深度解析: 01-java-basic/04a-JVM内存分区与对象布局.md
+    - GC 核心机制与收集器演进 —— 可达性分析、三色标记、写屏障与收集器全景: 01-java-basic/04b-GC核心机制与收集器演进.md
+    - GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排查与设计原因: 01-java-basic/04c-GC调优实战与常见误区.md
+    - JVM 现代实践与前沿技术 —— 容器化、虚拟线程、JFR、JIT 与云原生落地: 01-java-basic/04d-JVM现代实践与前沿技术.md
     - 异常处理（Exception Handling）: 01-java-basic/05-异常处理.md
     - AQS 与 CAS: 01-java-basic/06-AQS与CAS.md
     - "[Java8] 函数式编程": 01-java-basic/07-[Java8]函数式编程.md
