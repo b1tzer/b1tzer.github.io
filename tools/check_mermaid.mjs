@@ -12,9 +12,10 @@
  *
  * 使用：
  *   npm install
- *   npm run check:mermaid
+ *   npm run check:mermaid                    # 全量扰描 docs/
+ *   node tools/check_mermaid.mjs --files a.md,b.md  # 仅校验指定文件（供 dev_serve.py 调用）
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
 
@@ -62,6 +63,32 @@ try {
     console.error('   请先运行 `npm install`');
     process.exit(2);
 }
+
+// ---------- ②.5 解析 CLI 参数 ----------
+// 支持：
+//   --files a.md,b.md
+//   --files a.md --files b.md
+//   --files=a.md,b.md
+function parseFilesArg(argv) {
+    const out = [];
+    for (let i = 2; i < argv.length; i++) {
+        const a = argv[i];
+        let raw = null;
+        if (a === '--files' && i + 1 < argv.length) {
+            raw = argv[++i];
+        } else if (a.startsWith('--files=')) {
+            raw = a.slice('--files='.length);
+        }
+        if (raw) {
+            for (const p of raw.split(',')) {
+                const t = p.trim();
+                if (t) out.push(t);
+            }
+        }
+    }
+    return out;
+}
+const specifiedFiles = parseFilesArg(process.argv);
 
 // ---------- ③ 扫描并校验 ----------
 const DOCS_DIR = 'docs';
@@ -122,9 +149,22 @@ async function walkAsync(dir) {
     }
 }
 
-console.log('🔍 扫描 docs/ 下所有 Mermaid 代码块...');
-await walkAsync(DOCS_DIR);
-
+console.log(
+    specifiedFiles.length > 0
+        ? `🔍 增量校验 ${specifiedFiles.length} 个文件的 Mermaid 代码块...`
+        : '🔍 扰描 docs/ 下所有 Mermaid 代码块...'
+);
+if (specifiedFiles.length > 0) {
+    // 增量模式：仅校验指定文件（dev_serve 在保存时调用）
+    // 不存在的文件静默跳过（md 删除事件会传一个不存在的路径）
+    for (const p of specifiedFiles) {
+        if (existsSync(p) && p.endsWith('.md')) {
+            await checkFile(p);
+        }
+    }
+} else {
+    await walkAsync(DOCS_DIR);
+}
 if (failCount > 0) {
     console.error('');
     for (const f of failures) {
