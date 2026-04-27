@@ -355,6 +355,36 @@ class ReusableTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     allow_reuse_address = True
 
 
+def run_check_mermaid_full() -> None:
+    """冷启动全量校验 docs/ 下所有 mermaid 代码块。失败只打红日志，不阻塞启动。
+
+    复用 check_mermaid.mjs 的无参全量分支（与 pre-push 一致的校验范围）。
+    没装 node / node_modules 时静默跳过，与增量路径保持同步策略。
+    """
+    if not CHECK_MERMAID_SCRIPT.exists():
+        return
+    if not (ROOT / "node_modules" / "mermaid").exists():
+        return
+    print("[init] 全量校验 docs/ 下 mermaid 语法（冷启动）...", flush=True)
+    start = time.time()
+    try:
+        res = subprocess.run(
+            [NODE_EXE, str(CHECK_MERMAID_SCRIPT)],
+            cwd=str(ROOT),
+        )
+    except FileNotFoundError:
+        print("[init] 未找到 node 命令，跳过 mermaid 全量校验（安装 Node 后运行 `npm install` 即可启用）", flush=True)
+        return
+    cost = time.time() - start
+    if res.returncode == 0:
+        print(f"[init] mermaid 全量校验通过 ({cost:.1f}s)", flush=True)
+    else:
+        print(
+            f"[init] ❌ mermaid 全量校验未通过 ({cost:.1f}s)，详见上方错误日志；仍继续启动，保存相关文件时会再次提醒。",
+            flush=True,
+        )
+
+
 def main():
     print(f"[init] 项目根目录: {ROOT}")
 
@@ -367,7 +397,10 @@ def main():
             check=False,
         )
 
-    # 2. 首次构建
+    # 2. 冷启动全量校验 mermaid（不阻塞后续步骤）
+    run_check_mermaid_full()
+
+    # 3. 首次构建
     if not SITE_DIR.exists() or not any(SITE_DIR.iterdir()):
         print("[init] 首次构建 site/ ...")
         subprocess.run(["mkdocs", "build"], cwd=str(ROOT), check=False)
@@ -375,7 +408,7 @@ def main():
     builder = Builder()
     builder._last_ts = time.time()
 
-    # 2. 启动文件监听
+    # 4. 启动文件监听
     handler = EventHandler(builder)
     observer = Observer()
     for p in (DOCS_DIR, OVERRIDES_DIR):
@@ -389,7 +422,7 @@ def main():
         print(f"[watch] 监听文件（仅 mkdocs.yml）: {CONFIG_FILE}")
     observer.start()
 
-    # 3. 启动 HTTP 服务器
+    # 5. 启动 HTTP 服务器
     ServerHandler.builder = builder
     httpd = ReusableTCPServer((HOST, PORT), ServerHandler)
     print(f"[serve] http://{HOST}:{PORT}/  (Ctrl+C 退出)")

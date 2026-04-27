@@ -12,7 +12,7 @@
  *
  * 使用：
  *   npm install
- *   npm run check:mermaid                    # 全量扰描 docs/
+ *   npm run check:mermaid                    # 全量扫描 docs/
  *   node tools/check_mermaid.mjs --files a.md,b.md  # 仅校验指定文件（供 dev_serve.py 调用）
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
@@ -127,12 +127,15 @@ async function checkFile(path) {
             await mermaid.parse(code);
         } catch (err) {
             const raw = (err && err.message) ? err.message : String(err);
-            const firstLine = raw.split('\n')[0].trim();
+            // 从 mermaid 错误信息里抠出块内行号（形如 "Parse error on line 41:"）
+            // 叠加块在文件中的起始行号，给出文件级行号，方便点击日志直接跳转
+            const m = raw.match(/on line (\d+)/);
+            const fileLine = m ? startLine + Number(m[1]) : null;
             failures.push({
                 path,
                 blockIdx,
                 startLine,
-                message: firstLine,
+                fileLine,
                 detail: raw,
             });
             failCount++;
@@ -152,7 +155,7 @@ async function walkAsync(dir) {
 console.log(
     specifiedFiles.length > 0
         ? `🔍 增量校验 ${specifiedFiles.length} 个文件的 Mermaid 代码块...`
-        : '🔍 扰描 docs/ 下所有 Mermaid 代码块...'
+        : '🔍 扫描 docs/ 下所有 Mermaid 代码块...'
 );
 if (specifiedFiles.length > 0) {
     // 增量模式：仅校验指定文件（dev_serve 在保存时调用）
@@ -168,10 +171,17 @@ if (specifiedFiles.length > 0) {
 if (failCount > 0) {
     console.error('');
     for (const f of failures) {
-        console.error(`❌ ${f.path}:${f.startLine}  (第 ${f.blockIdx} 个 mermaid 块)`);
-        console.error(`   ${f.message}`);
+        // 第一行：文件 + 双坐标（块内行号 → 文件级行号）+ 块序号
+        const loc = f.fileLine
+            ? `${f.path}:${f.fileLine}  (第 ${f.blockIdx} 个 mermaid 块，块起始行 ${f.startLine})`
+            : `${f.path}:${f.startLine}  (第 ${f.blockIdx} 个 mermaid 块)`;
+        console.error(`❌ ${loc}`);
+        // 后续行：完整错误栈（包含 "Expecting X got Y" 和指针 ^），统一缩进 3 空格
+        for (const line of String(f.detail).split('\n')) {
+            console.error(`   ${line}`);
+        }
+        console.error('');
     }
-    console.error('');
     console.error(`🚨 共扫描 ${totalCount} 个代码块，发现 ${failCount} 处语法错误`);
     process.exit(1);
 }
