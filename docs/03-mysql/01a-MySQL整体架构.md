@@ -31,6 +31,12 @@ title: MySQL 整体架构 —— Server 层 × 存储引擎层的双层模型
 
 很多人学 MySQL，上来就啃 B+ 树、啃 MVCC、啃间隙锁，结果**树看清了但森林没看见**：不知道优化器是何时介入的、不知道 Binlog 是谁写的、不知道 `SELECT` 和 `UPDATE` 走的路径差在哪。
 
+先打个比方建立直觉——**MySQL ≈ 一家"翻译社 + 档案馆"的合体**：
+
+- **前台（Server 层）**懂中英日法的语法，帮你把需求翻成"取哪份档案的第几页"
+- **后台（存储引擎层）**只管档案的存取搬运，但不管你说的是哪国话
+- 两层之间通过"取件小票"（**Handler API**）交接——前台不关心后台是纸质档案还是电子档案，后台也不关心前台接的是什么语言的客户
+
 先把架构骨架搞清楚，后续所有细节都能"挂"到这张图上：
 
 - 看到 Redo/Undo 时，知道它是**引擎层**的日志
@@ -370,7 +376,37 @@ flowchart LR
 
 ---
 
-## 7. 源码模块地图（按 MySQL 源码树）
+## 7. 不理解分层架构会踩的坑
+
+双层架构与 2PC 的分工看似抽象，但一旦理解错层次，很容易在生产环境留下**静默隐患**——这类坑的共同特点是：**MySQL 不会立即报错，错误以数据不一致、偶发慢查询、kill 无效等形式滞后出现**。
+
+### 7.1 坑 1：以为 Query Cache 还能用，8.0 启动失败
+
+- **现象**：从 5.7 迁到 8.0，配置文件沿用 `query_cache_size=128M` / `query_cache_type=1`，mysqld 启动直接报 `unknown variable 'query_cache_size'`。
+- **根因**：§3.2 讲过的 `Query_cache`（`sql/sql_cache.cc`）在 8.0 已彻底移除，所有 `query_cache_*` 参数一并废弃。这是**Server 层组件级别**的删除，不是"默认关闭"。
+- **解决**：删除配置文件里所有 `query_cache_*` 行；若业务确实依赖 SQL 层缓存，请在应用层走 Redis 做短 TTL 热点缓存——生产调优细节见 [实战问题与避坑指南](@mysql-实战问题与避坑指南)。
+
+### 7.2 坑 2：为提升 TPS 改"双 1"，断电后主从静默分裂
+
+- **现象**：压测时为冲 TPS 把 `innodb_flush_log_at_trx_commit=2` + `sync_binlog=0`，生产运行数月相安无事；某次机房断电后从库报 1062 主键冲突，一查主从数据已分叉。
+- **根因**：这两个参数直接破坏了 §6.3 的 2PC 对账规则——Redo 的 commit 记录**还在 OS Page Cache 没 fsync**，Binlog 也**积攒在内核缓冲区**，断电时主库认为"事务已提交"却连 Redo prepare 都没落盘，从库永远收不到 dump 事件；主库重启 crash recovery 时看到 Redo 无 commit 标记会回滚，**主库回滚、从库没收到 → 两边都没这条事务**，但在断电前业务已经读过这条事务的结果，静默不一致由此产生。
+- **解决**：生产库死守"双 1"（`innodb_flush_log_at_trx_commit=1 & sync_binlog=1`）；想提升 TPS 走**组提交**（`binlog_group_commit_sync_delay`）或**写放大优化**（增大 `innodb_log_file_size`），不碰持久性参数——完整调优流程见 [实战问题与避坑指南](@mysql-实战问题与避坑指南)。
+
+### 7.3 坑 3：`kill query` 对 MyISAM 表不生效
+
+- **现象**：慢查询卡住业务，DBA `SHOW PROCESSLIST` 找到线程 ID 后 `KILL QUERY 12345`，语句仍执行到自然结束。
+- **根因**：§4.1 讲过 Handler 可插拔——`kill` 信号由 Server 层设置 `THD::killed` 标志位，但**是否响应取决于引擎自己 `ha_*` 方法里轮询这个标志的频率**。MyISAM 在做 `REPAIR TABLE` 或批量 `UPDATE` 时持有**表级写锁**且极少检查 `killed` 标志，导致 kill 形同虚设；InnoDB 的 `ha_innobase::general_fetch` 等核心循环每次都会查 `trx_is_interrupted`，所以响应及时。
+- **解决**：MyISAM 场景用 `KILL CONNECTION <id>` 直接断连接（一定生效）；长期方案是把 MyISAM 表迁移到 InnoDB——MySQL 8.0 已经把系统表全切到 InnoDB，业务表没理由留 MyISAM。
+
+### 7.4 坑 4：大表批量导入后 EXPLAIN 走错索引
+
+- **现象**：给订单表批量导入 500 万行后，同一条 `WHERE user_id=? AND status=?` 查询从 10ms 劣化到 3s，`EXPLAIN` 显示走了低区分度的 `idx_status` 而非高区分度的 `idx_user_id`。
+- **根因**：§3.4 `!!! tip` 明确指出——**优化器做决定时不读数据行，只读统计信息**（`INFORMATION_SCHEMA.STATISTICS` 的 Cardinality、直方图）。InnoDB 默认开启 `innodb_stats_auto_recalc`，但触发阈值是**累计改动行数超过表行数的 10%**；500 万行一次性导入时统计信息采样瞬间可能还未完成，优化器拿到的仍是旧 Cardinality，于是把 `status` 的区分度估算得远高于实际值。
+- **解决**：大批量 DML 后**手动** `ANALYZE TABLE orders`（纯元数据操作，不锁表）；长期方案是对倾斜列建**直方图**（`ANALYZE TABLE ... UPDATE HISTOGRAM ON status WITH 100 BUCKETS`），给优化器补上分布形状信息——详细排查流程见 [SQL执行与性能优化](@mysql-SQL执行与性能优化)。
+
+---
+
+## 8. 源码模块地图（按 MySQL 源码树）
 
 方便你后续读源码时按图索骥：
 
@@ -405,7 +441,7 @@ mysql-server/
 
 ---
 
-## 8. 关键版本的架构演进
+## 9. 关键版本的架构演进
 
 | 版本 | 架构变化 | 影响 |
 | :-- | :-- | :-- |
@@ -420,7 +456,7 @@ mysql-server/
 
 ---
 
-## 9. 常见问题 Q&A
+## 10. 常见问题 Q&A
 
 **Q1：为什么 MySQL 既有 Redo 又有 Binlog？只留一个不行吗？**
 
@@ -459,6 +495,6 @@ mysql-server/
 
 ---
 
-## 10. 一句话口诀
+## 11. 一句话口诀
 
 > **Server 层懂 SQL、引擎层管数据，`handler` 把两层解耦；Redo/Undo 是 InnoDB 私有、Binlog 是 Server 公有，2PC 是它俩能共存的唯一原因。**

@@ -233,6 +233,153 @@ stateDiagram-v2
 | `WAITING` | `wait()` / `join()` / `park()` | ✅ 立即响应，抛 `InterruptedException`（`wait`/`join`）或 `park()` 返回 | ❌（wait 会释放锁） |
 | `TIMED_WAITING` | `sleep(n)` / `wait(n)` / `parkNanos(n)` | ✅ 立即响应，抛 `InterruptedException`（sleep/wait）或 parkNanos 返回 | `sleep` 不释放锁，`wait` 释放锁 |
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as 线程A(wait方)
+    participant M as Monitor锁
+    participant B as 线程B(notify方)
+
+    A->>M: synchronized获取锁
+    A->>M: lock.wait()
+    Note over A: ⚠️释放锁+进WaitSet<br/>状态变为WAITING
+
+    B->>M: synchronized获取锁(抢到)
+    Note over B: B现在持锁
+    B->>M: lock.notify()
+    Note over M: 把A从WaitSet<br/>移到EntryList
+    Note over A: A状态仍是BLOCKED<br/>还没拿到锁!
+
+    rect rgba(255, 230, 200, 0.5)
+        Note over B: ⭐关键:B并没有释放锁<br/>继续执行synchronized块内的剩余代码
+        B->>B: doOtherWork()
+        B->>B: moreCode()
+    end
+
+    B->>M: 退出synchronized(真正释放锁)
+    Note over A: A从EntryList<br/>竞争并抢到锁
+    M-->>A: wait()返回
+    Note over A: A恢复RUNNING<br/>继续执行wait后的代码
+```
+
+`park/unpark` 的精髓在于它的 "许可（permit）信号量" 语义——和 `wait/notify` 完全不同的模型
+
+```mermaid
+flowchart LR
+    subgraph "每个 Thread 都自带一个 Parker 对象"
+        P["许可 permit<br/>二元信号量：0 或 1<br/>（最多只累积 1 个）"]
+    end
+
+    U[LockSupport.unpark<br/>t] -->|"permit = 1<br/>（已是 1 则保持）"| P
+    PK[LockSupport.park] -->|"检查 permit"| P
+    P -->|permit == 1| R1["立即消费<br/>permit=0, 返回"]
+    P -->|permit == 0| R2["阻塞<br/>进 WAITING"]
+```
+
+三条核心公理：
+
+1. 许可不累积：unpark 调用多次，permit 也最多是 1
+2. unpark 可先发制人：即使 unpark 先于 park 调用，permit 会被保存，后续 park 直接返回
+3. 精确唤醒：unpark(Thread t) 指定到某个具体线程，不走任何公共队列
+
+详细时序图：覆盖 6 中典型场景
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Caller as 调用方<br/>（其他线程）
+    participant T as 目标线程 T
+    participant Permit as T 的 permit<br/>（0/1）
+    participant OS as 操作系统<br/>内核态
+
+    rect rgba(220, 240, 255, 0.4)
+        Note over Caller,OS: 场景 ①：最基本流程 —— park 先,unpark 后
+        Note over Permit: permit = 0 (初始)
+        T->>Permit: LockSupport.park() 检查 permit
+        Permit-->>T: permit == 0
+        T->>OS: 陷入内核,调用 pthread_cond_wait<br/>线程状态 RUNNABLE → WAITING
+        Note over T: 🛌 阻塞中...
+        Caller->>Permit: LockSupport.unpark(t) 设置 permit=1
+        Caller->>OS: pthread_cond_signal 唤醒 T
+        OS-->>T: 内核唤醒
+        T->>Permit: 消费许可 permit=1 → 0
+        Note over T: 🏃 WAITING → RUNNABLE<br/>park() 返回
+    end
+
+    rect rgba(220, 255, 220, 0.4)
+        Note over Caller,OS: 场景 ②：unpark 先发制人 —— park 根本不阻塞
+        Note over Permit: permit = 0
+        Caller->>Permit: LockSupport.unpark(t) 设置 permit=1
+        Note over T: T 此时还在干别的事
+        Note over Permit: permit = 1 (保存着)
+        T->>Permit: LockSupport.park() 检查 permit
+        Permit-->>T: permit == 1
+        T->>Permit: 直接消费 permit=1 → 0
+        Note over T: ✅ 根本没进内核,立即返回<br/>零系统调用开销!
+    end
+
+    rect rgba(255, 240, 200, 0.4)
+        Note over Caller,OS: 场景 ③：多次 unpark 只累积到 1(关键!)
+        Note over Permit: permit = 0
+        Caller->>Permit: unpark(t) permit=0 → 1
+        Caller->>Permit: unpark(t) permit=1 → 1 (不变!)
+        Caller->>Permit: unpark(t) permit=1 → 1 (还是不变!)
+        Note over Permit: ⚠️ permit 最大值就是 1<br/>这就是"二元信号量"语义
+        T->>Permit: park() 消费
+        Permit-->>T: permit == 1 → 0
+        Note over T: park() 返回一次
+        T->>Permit: 再次 park() 检查
+        Permit-->>T: permit == 0
+        T->>OS: ❌ 前面那 2 次 unpark 丢了!<br/>线程还是会阻塞
+        Note over T: 🛌 阻塞...
+    end
+
+    rect rgba(255, 220, 220, 0.4)
+        Note over Caller,OS: 场景 ④：虚假唤醒 —— park 可能无故返回
+        Note over Permit: permit = 0
+        T->>Permit: park() 检查
+        Permit-->>T: permit == 0
+        T->>OS: 陷入内核阻塞
+        Note over OS: ⚡ 未知原因(信号/底层实现)<br/>内核直接把 T 唤醒
+        OS-->>T: 莫名其妙醒了
+        T->>Permit: 检查 permit
+        Permit-->>T: permit == 0 (没人 unpark 过!)
+        Note over T: ⚠️ park() 竟然也返回了!<br/>这就是 spurious wakeup<br/>必须在 while 循环里检查业务条件
+    end
+
+    rect rgba(255, 200, 255, 0.4)
+        Note over Caller,OS: 场景 ⑤：中断响应 —— park 可被 interrupt 唤醒
+        Note over Permit: permit = 0,中断标志 = false
+        T->>Permit: park() 检查
+        Permit-->>T: permit == 0
+        T->>OS: 陷入内核阻塞
+        Note over T: 🛌 阻塞中...
+        Caller->>T: t.interrupt() 设置中断标志=true
+        Caller->>OS: 内核唤醒 T
+        OS-->>T: 唤醒
+        T->>Permit: 检查
+        Note over T: ⚠️ park() 返回<br/>但不抛异常(与 wait 不同!)<br/>需手动 Thread.interrupted() 检查
+    end
+
+    rect rgba(200, 220, 255, 0.4)
+        Note over Caller,OS: 场景 ⑥：带超时的 parkNanos
+        Note over Permit: permit = 0
+        T->>Permit: parkNanos(1_000_000_000) 1 秒
+        Permit-->>T: permit == 0
+        T->>OS: pthread_cond_timedwait(1s)
+        Note over T: 🛌 阻塞,等待 unpark 或超时
+        alt unpark 先到
+            Caller->>Permit: unpark(t)
+            Caller->>OS: 唤醒
+            OS-->>T: 提前返回
+            Note over T: ✅ park 正常返回
+        else 1 秒超时
+            OS-->>T: 内核超时返回
+            Note over T: ⏰ park 超时返回<br/>permit 仍为 0
+        end
+    end
+```
+
 ### 3.2 线程中断机制
 
 Java 的线程中断是**协作式**的，不是强制停止：
@@ -281,7 +428,7 @@ try {
 │                                                  │
 │  _WaitSet     -> threads called wait()           │
 │  ┌────────────────────────────────────────────┐  │
-│  │ Thread-5 │ Thread-6 │ ...                  │
+│  │ Thread-5 │ Thread-6 │ ...                  │  │
 │  └────────────────────────────────────────────┘  │
 │                                                  │
 │  _cxq         -> contention queue (LIFO stack,   │
@@ -370,7 +517,26 @@ GC Marked (lock=11):
 !!! note "锁只能升级，不能降级——但可以被 GC 膨胀回收（deflation）"
     **应用线程视角**：锁升级是单向的（无锁 → 偏向锁 → 轻量级锁 → 重量级锁），偏向锁撤销后不会回退为"无锁后再升偏向锁"，重量级锁在应用运行期也不会主动降回轻量级锁。
 
+    ```mermaid
+    flowchart LR
+        A[无锁] --> B[偏向锁]
+        B --> C[轻量级锁]
+        C --> D[重量级锁]
+        D -.->|应用视角：不能降级| C
+    ```
+
     **HotSpot 内部视角**：重量级锁对应的 `ObjectMonitor` 在长期无人竞争时，HotSpot 的 **monitor deflation**（JEP 384 引入、JDK 18 改为并发执行）会把不活跃的 monitor 回收、把对象头从重量级锁指针**还原成无锁状态**。这是 JVM 内部的资源回收，对应用代码透明，不影响"锁只能升级"的语义。
+
+    ```mermaid
+    flowchart TD
+        A[对象处于重量级锁状态] --> B{长期无人竞争？}
+        B -->|是| C[JVM后台线程检测到]
+        B -->|否| D[保持重量级锁]
+        C --> E[执行Monitor Deflation]
+        E --> F[释放ObjectMonitor资源]
+        F --> G[对象头还原为无锁状态]
+        G --> H[下次加锁从无锁重新开始]
+    ```
 
 ### 4.3 synchronized 的字节码
 

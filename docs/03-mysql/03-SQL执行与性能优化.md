@@ -28,18 +28,18 @@ title: SQL 执行与性能优化
 
 ## 1. 类比：SQL 执行像餐厅下单
 
-你在餐厅点一份"半糖铁观音奋斗大杯波霸长岛冰茶"（多表 JOIN 的复杂 SQL）——亲眼见证设计给人的骚操：
+你在餐厅点一份招牌菜（一条稍复杂的多表 JOIN SQL），从进门到菜上桌，会经过 6 个岗位的流水线——MySQL 执行 SQL 的过程几乎一模一样：
 
 | 餐厅环节 | MySQL 对应 | 关键点 |
 | :-- | :-- | :-- |
-| **门口领位员**验班、带位 | 连接器 认证 / 权限 / 绑 THD | 不负责點菜，只负责让你进店 |
-| **服务生**听懂你的點菜词（不管做不做得出来） | 解析器 词法/语法 分析 | 只管语法对不对，不管菜有没有 |
-| **领班**查后厨有没有材料、巴台有没有杆子、你有没有克位 | 预处理器 查表/列/权限 | 语义校验，不做就变「报错给你」 |
-| **主厨**规划办菜顺序：这菜最快 / 那菜先做 | 优化器 代价模型 选计划 | 指挥走哪条索引、谁 Join 谁 |
-| **小工**逐个切菜、炒菜、传菜 | 执行器 调 Handler API | 几步执行，输出结果 |
-| **小工**把菜拿到备菜区，再交给服务员 | 存储引擎 读写页 | Buffer Pool / 磁盘 |
+| **门口领位员**查预订、带位 | 连接器：认证 / 权限 / 分配 `THD` | 只决定你进不进得了店，不点菜 |
+| **服务生**听懂你的点菜口令 | 解析器：词法 / 语法分析，生成 AST | 只管你说的话语法对不对 |
+| **领班**去后厨核对：这菜单上有没有、材料够不够、你有没有资格点 | 预处理器：表名 / 列名 / 权限校验 | 语义校验，校验失败立刻报错 |
+| **主厨**规划做菜顺序：先炖哪道、后炒哪道最省时 | 优化器：代价模型选执行计划 | 选走哪条索引、谁 Join 谁 |
+| **厨师团队**按顺序切配、烹饪、装盘 | 执行器：调用 Handler API | 逐步执行、汇聚结果 |
+| **传菜员**从后厨取菜端上桌 | 存储引擎：读写数据页 | Buffer Pool / 磁盘 IO |
 
-**关键认知**：同一道菜可以有**很多种做法**——老师傅会按“哪种最快”选，但前提是他“猜出来哪条索引压力小”。这个“猜”就是**代价模型 + 统计信息**的职责——统计信息一旦过期，老师傅就会猜错，走的计划就很慢。下文每一节都在围绕“代价模型怎么算 / 怎么看 / 怎么干预”。
+**关键认知**：同一道菜可以有**多种做法**，主厨会按"哪种最快"选——但前提是他"猜得准哪条索引压力最小"，这个"猜"就是**代价模型 + 统计信息**的职责。统计信息一旦过期，主厨就会猜错、走的计划就慢。本文每一节都在围绕"**代价模型怎么算 / 怎么看 / 怎么干预**"展开。
 
 ---
 
@@ -57,18 +57,34 @@ title: SQL 执行与性能优化
 
 ## 3. SQL 执行全链路
 
-```mermaid
-flowchart TD
-    Client["客户端"] -->|TCP 连接| Conn["连接器\n（认证、权限、连接池）"]
-    Conn --> Cache["查询缓存\n（MySQL 8.0 已移除）"]
-    Cache -->|未命中| Parser["解析器\n（词法分析、语法分析）"]
-    Parser --> PreProc["预处理器\n（表名/列名校验、权限检查）"]
-    PreProc --> Optimizer["查询优化器\n（生成执行计划）"]
-    Optimizer --> Executor["执行器\n（调用存储引擎接口）"]
-    Executor --> InnoDB["InnoDB 存储引擎\n（Buffer Pool、磁盘）"]
-```
+!!! note "📖 术语家族：`MySQL SQL 执行链路`"
+    **字面义**：SQL 从客户端进入、到结果返回客户端，沿途经过的 6 个固定岗位的流水线。
+    **在 MySQL 中的含义**：Server 层 4 个岗位（`Connector` / `Parser` / `Preprocessor` / `Optimizer` / `Executor`）+ 存储引擎层 1 个岗位（`Handler API → InnoDB`），构成 MySQL 执行 SQL 的完整链路。
+    **同家族成员**：
+
+    | 成员 | 职责 | 源码位置 |
+    | :-- | :-- | :-- |
+    | `Connector`（连接器） | 认证、权限分配、THD 会话上下文 | `sql/sql_connect.cc` |
+    | `Parser`（解析器） | 词法/语法分析，输出 `LEX` 语法树 | `sql/sql_parse.cc`、`sql/sql_yacc.yy` |
+    | `Preprocessor`（预处理器） | 表/列存在性、权限校验，视图展开 | `sql/sql_resolver.cc` |
+    | `Optimizer`（优化器） | 代价模型选执行计划，生成 `JOIN` 对象 | `sql/sql_optimizer.cc`、`JOIN::optimize()` |
+    | `Executor`（执行器） | 调 `handler::index_read` 等引擎接口 | `sql/sql_executor.cc` |
+    | `Storage Engine`（存储引擎） | 真正读写页、管理 Buffer Pool | `storage/innobase/` |
+
+    **命名规律**：Server 层的 5 个组件都是**名词化的角色**（`-or` 后缀：Connect-**or** / Pars-**er** / Optimiz-**er** / Execut-**or**），表示"**看着 `THD` 上下文干活的人**"；数据结构名用 **去 `-or`/`-er`** 的原形（`LEX` 语法树、`JOIN` 执行对象、`THD` 会话）。看到以 `-or`/`-er` 结尾的类名就知道它在做动作、其他名词都是状态。**作为该家族的源头文档**，后续文档涉及某一层时以 `📖` 引用本节。
 
 ### 3.1 各层职责
+
+```mermaid
+flowchart TD
+    Client["客户端"] -->|TCP 连接| Conn["连接器\n认证/权限/连接池"]
+    Conn --> Cache["查询缓存\nMySQL 8.0 已移除"]
+    Cache -->|未命中| Parser["解析器\n词法/语法分析"]
+    Parser --> PreProc["预处理器\n表名/列名校验/权限"]
+    PreProc --> Optimizer["优化器\n生成执行计划"]
+    Optimizer --> Executor["执行器\n调用存储引擎接口"]
+    Executor --> InnoDB["InnoDB 存储引擎\nBuffer Pool / 磁盘"]
+```
 
 | 层次 | 职责 | 常见问题 |
 | :--- | :--- | :--- |
@@ -106,18 +122,49 @@ ANALYZE TABLE user;
 ```sql
 -- 场景：明明有更好的索引，优化器却选了全表扫描
 SELECT * FROM orders WHERE status = 1 ORDER BY create_time;
-
 -- 原因：优化器估算走索引后需要大量回表，代价比全表扫描还高
-
--- 解决方案1：强制指定索引
-SELECT * FROM orders FORCE INDEX(idx_create_time) WHERE status = 1 ORDER BY create_time;
-
--- 解决方案2：更新统计信息
-ANALYZE TABLE orders;
-
--- 解决方案3：优化索引设计（覆盖索引避免回表）
-ALTER TABLE orders ADD INDEX idx_status_time(status, create_time);
 ```
+
+**机制角度的三种干预手段**（本文只给出 SQL 示例，工程侧的"选型流程 / 压测对比"见实战篇）：
+
+| 手段 | SQL / 动作 | 生效层 |
+| :-- | :-- | :-- |
+| 更新统计信息 | `ANALYZE TABLE orders;` | 让优化器**重估** Cardinality |
+| 强制指定索引 | `SELECT ... FORCE INDEX(idx_create_time) ...` | **绕过**优化器决策 |
+| 优化索引设计 | `ALTER TABLE orders ADD INDEX idx_status_time(status, create_time);` | 提供**更优**候选项 |
+
+> 📖 线上"优化器选错索引"的完整排查清单（如何确认真选错、直方图 `ANALYZE TABLE ... UPDATE HISTOGRAM` 何时用、`FORCE INDEX` 的副作用）见 [实战问题与避坑指南](@mysql-实战问题与避坑指南)。
+
+### 4.3 Optimizer Trace：透视优化器决策的黄金工具
+
+当 `EXPLAIN` 告诉你"优化器选了 A 索引"却无法告诉你"为什么不选 B"时，**Optimizer Trace**（MySQL 5.6+）能把整个代价估算过程以 JSON 形式吐出来——每条候选索引的估算代价、`rows` 估算来源、Join 顺序枚举过程、ICP 是否启用，全部可见。
+
+```sql
+-- 1. 开启 Optimizer Trace（会话级）
+SET optimizer_trace = 'enabled=on';
+SET optimizer_trace_max_mem_size = 1000000;  -- 避免 trace 被截断
+
+-- 2. 执行目标 SQL
+SELECT * FROM orders WHERE status = 1 ORDER BY create_time LIMIT 10;
+
+-- 3. 读取 trace
+SELECT * FROM information_schema.OPTIMIZER_TRACE\G
+
+-- 4. 关闭
+SET optimizer_trace = 'enabled=off';
+```
+
+**trace 关键字段**：
+
+| JSON 节点 | 看什么 |
+| :-- | :-- |
+| `rows_estimation` | 每个候选访问路径预估扫描的行数——**与 `EXPLAIN` 的 `rows` 对应** |
+| `considered_access_paths` | 优化器枚举了哪些访问路径（全表、各个索引、range 扫描），每个路径的 `cost` 对比 |
+| `chosen` | 最终选中的路径 + 被淘汰的路径及淘汰原因 |
+| `attached_conditions_summary` | WHERE 条件被如何拆解（下推到索引 / 留在 Server 层） |
+
+!!! tip "一句话用法"
+    **`EXPLAIN` 看结论，`OPTIMIZER_TRACE` 看推理**。线上选错索引时，先看 trace 的 `rows_estimation`：如果估算值与真实值相差 10 倍以上，99% 是统计信息过期——立即 `ANALYZE TABLE`。
 
 ---
 
@@ -197,6 +244,21 @@ flowchart LR
 
 ## 6. Join 算法
 
+!!! note "📖 术语家族：`MySQL Join 算法`"
+    **字面义**：把两张表按匹配条件拼成一张的算法。
+    **在 MySQL 中的含义**：优化器根据"**被驱动表 Join 列是否有索引**"和"**MySQL 版本**"，在 3 种循环算法 + 2 种 Semi/Anti-Join 转换之间选择。
+    **同家族成员**：
+
+    | 成员 | 触发条件 | 时间复杂度 | 源码依据 |
+    | :-- | :-- | :-- | :-- |
+    | `NLJ`（Nested Loop Join） | 被驱动表 Join 列**有索引** | O(N·log M) | `sql/sql_executor.cc::do_select()` |
+    | `BNL`（Block Nested Loop） | 被驱动表 Join 列**无索引**，MySQL ≤ 8.0.17 默认 | O(N·M) | `join_buffer_size` 控制 |
+    | `Hash Join` | 被驱动表 Join 列**无索引**，MySQL **8.0.18+** 默认 | O(N+M) | `sql/hash_join_iterator.cc` |
+    | `Semi-Join` | `IN` / `EXISTS` 子查询被优化器转换，仅判**存在性**（不重复、不带子查询列） | 取决于策略 | MySQL 5.6+ 自动转换 |
+    | `Anti-Join` | `NOT IN` / `NOT EXISTS` 子查询被转换，仅判**不存在性** | 取决于策略 | MySQL 8.0.17+ 显式支持 |
+
+    **命名规律**：Join 算法名前缀都是"**循环/连接方式**"（Nested / Block Nested / Hash），后缀固定为 `Join`；Semi/Anti 不是并列第 4、5 种算法，而是 `IN`/`NOT IN` 子查询**被改写**后最终仍用 NLJ/BNL/Hash 执行，只是**语义**上只判存在/不存在。
+
 ### 6.1 Nested Loop Join（NLJ，嵌套循环）
 
 最基础的 Join 算法，适合驱动表数据量小、被驱动表有索引的场景：
@@ -255,9 +317,70 @@ ALTER TABLE orders ADD INDEX idx_user_id(user_id);
 
 ---
 
-## 7. 子查询优化
+## 7. 不理解底层会踩的坑
 
-### 7.1 IN 子查询的陷阱
+深度理解优化器机制后，才能识别这几个**看起来正常、实际踩坑**的场景——它们不是 SQL 写错，而是**优化器的隐性决策**在悄悄拖慢查询。
+
+### 7.1 坑一：统计信息过期导致"突然选错索引"
+
+```sql
+-- 凌晨批量导入 500 万新订单后，线上 SQL 突然从 10ms 恶化到 5s
+SELECT * FROM orders WHERE status = 1 AND city = 'BJ' ORDER BY create_time LIMIT 20;
+```
+
+**根因链**：
+
+1. MySQL 的 Cardinality 估算基于**随机页采样**（`innodb_stats_persistent_sample_pages`，默认 20 页）
+2. 大批量新增 / 删除后，**样本分布严重偏离真实分布**，优化器以为 `city='BJ'` 只有 1% 的数据、实际是 30%
+3. 优化器选了 `idx_city` 单列索引，回表 150 万行后再排序
+
+**识别方式**：
+
+- `EXPLAIN` 的 `rows` 列与 `COUNT(*)` 的真实值**相差 ≥ 10 倍** → 统计信息过期
+- `OPTIMIZER_TRACE` 的 `rows_estimation` 节点异常小
+
+**处置**：`ANALYZE TABLE orders;` 立刻重新采样；频繁写入场景设置 `innodb_stats_auto_recalc = ON` + 提高 `innodb_stats_persistent_sample_pages` 到 100+。
+
+### 7.2 坑二：BNL 被静默触发，线上 CPU 飙高
+
+```sql
+-- 开发同学给新表 order_log 忘记建索引
+SELECT * FROM orders o JOIN order_log l ON o.id = l.order_id WHERE o.status = 1;
+```
+
+**根因链**：
+
+1. `order_log.order_id` 无索引
+2. MySQL ≤ 8.0.17：**静默**退化为 BNL，`EXPLAIN` 的 `Extra` 出现 `Using join buffer (Block Nested Loop)`——**SQL 本身不会报错、不会变慢警告**
+3. 驱动表扫出 10 万行，BNL 把 10 万行分批塞进 `join_buffer`，对 `order_log` 做 N 次**全表扫描**，CPU 100%
+
+**识别方式**：`EXPLAIN` 的 `Extra` 含 `Using join buffer`——**不论是 `(Block Nested Loop)` 还是 `(hash join)`，都是被驱动表缺索引的红灯**。
+
+**处置**：
+
+- 短期：给被驱动表 Join 列加索引（NLJ 恢复）
+- 长期：MySQL 升级到 8.0.18+，即便漏加索引，至少自动走 Hash Join，复杂度从 O(N·M) 降到 O(N+M)
+
+### 7.3 坑三：WHERE 条件顺序"看起来应该走索引"却不走
+
+```sql
+-- INDEX(a, b, c)，看起来三列都用上了
+SELECT * FROM t WHERE a = 1 AND b > 100 AND c = 5;
+```
+
+**根因**：`b > 100` 是**范围查询**，破坏了 `c` 列在索引中的有序性——优化器只能用到 `(a, b)` 前缀，`c = 5` 退化为**回表后过滤**。`key_len` 会明显短于"(a, b, c) 全部用上"时的字节数。
+
+**识别方式**：`EXPLAIN` 的 `key_len` 对比"理论全部命中"的长度——短于预期即说明后续列未真正走索引。
+
+**处置**：调整联合索引顺序为 `(a, c, b)`（等值列前置、范围列后置），或把 `c = 5` 改写为覆盖索引。
+
+> 📖 索引失效的剩余 4 大场景（函数、隐式转换、前缀通配、OR 杂糅）已在 [索引详解](@mysql-索引详解) §7 系统展开，本文聚焦"优化器机制层面"的坑，不重复。
+
+---
+
+## 8. 子查询优化
+
+### 8.1 IN 子查询的陷阱
 
 ```sql
 -- ❌ 可能很慢：子查询每次都执行
@@ -273,7 +396,7 @@ WHERE u.city = '北京';
 
 MySQL 5.6+ 优化器会自动将 IN 子查询转换为 Semi-Join，性能已大幅改善。但复杂子查询仍建议手动改写为 JOIN。
 
-### 7.2 EXISTS vs IN
+### 8.2 EXISTS vs IN
 
 ```sql
 -- 外表小、内表大：用 EXISTS（外表驱动，内表走索引）
@@ -289,11 +412,11 @@ SELECT * FROM orders WHERE user_id IN (
 
 ---
 
-## 8. 常见优化案例
+## 9. 机制层典型案例
 
-> 📖 **索引失效的 5 大场景（函数 / 隐式转换 / LIKE 前缀 / OR / 最左前缀）** 和 **覆盖索引基础案例** 已在 [索引详解](@mysql-索引详解) 系统展开，本章只保留与 **EXPLAIN / Extra / Join / 分页** 强相关的案例。
+> 📖 **索引失效的 5 大场景（函数 / 隐式转换 / LIKE 前缀 / OR / 最左前缀）** 和 **覆盖索引基础案例** 已在 [索引详解](@mysql-索引详解) 系统展开；线上实战案例（N+1 查询、大 IN 列表炸库、燎原型 SQL）见 [实战问题与避坑指南](@mysql-实战问题与避坑指南)。本章只保留**从优化器机制角度解释"为什么这样写更快"**的两个经典案例。
 
-### 8.1 案例1：ORDER BY 导致文件排序
+### 9.1 案例 1：ORDER BY 文件排序 —— 索引的"顺序"本是现成的
 
 ```sql
 -- ❌ 问题 SQL：排序字段不在索引中
@@ -304,7 +427,9 @@ SELECT * FROM user WHERE status = 1 ORDER BY create_time DESC;
 -- EXPLAIN 显示 Extra=Using index condition（无 filesort）
 ```
 
-### 8.2 案例2：大偏移量分页优化
+**机制解释**：B+ 树的叶子节点**天然按索引列升序链接**。`INDEX(status, create_time)` 在 `status=1` 的等值过滤后，`create_time` 在该子区间内是**物理有序**的——MySQL 直接**顺序遍历叶子链表**即可得到排好序的结果，零排序开销。没有这个联合索引时，MySQL 必须把所有 `status=1` 的行**装进排序缓冲区**（`sort_buffer_size`）做归并排序，`Using filesort` 本质是"缓冲区放不下就落盘排序"的警报。
+
+### 9.2 案例 2：深分页延迟关联 —— 用覆盖索引减少回表次数
 
 ```sql
 -- ❌ 深分页，offset 很大时性能极差（需要扫描并丢弃大量数据）
@@ -317,69 +442,49 @@ INNER JOIN (
 ) t ON o.id = t.id;
 ```
 
----
+**机制解释**：`SELECT *` + `LIMIT 1000000, 10` 的执行动作是"**扫描前 1,000,010 行完整行数据、丢弃前 1,000,000 行、返回后 10 行**"——**前 100 万行的回表全是白做**（InnoDB 要把每一行的所有列字段从聚簇索引的叶子页读出）。延迟关联先让内层子查询在**覆盖索引 `PRIMARY`** 上走（叶子即主键值、无需回表），扫完 1,000,010 个主键只要 1/10 的代价；外层只对最终 10 行做回表。**回表次数从 1,000,010 降到 10**，这是"回表代价 × 行数"的直接节省。
 
-## 9. SQL 优化技巧汇总
-
-| 优化方向 | 具体做法 |
-| :--- | :--- |
-| **避免全表扫描** | 给 WHERE 条件列建索引，避免索引失效 |
-| **避免回表** | 使用覆盖索引，SELECT 只查需要的列 |
-| **避免文件排序** | ORDER BY 的列加入联合索引 |
-| **减少扫描行数** | 精确查询条件，避免 `SELECT *` |
-| **分页优化** | 大偏移量分页用延迟关联（先查主键，再 JOIN） |
-| **批量操作** | 批量 INSERT 比逐条 INSERT 快 10 倍以上 |
+> 📖 分页优化的完整工程方案（基于游标的 seek method、业务层"只显示前 100 页"、`Keyset Pagination` 模式）见 [实战问题与避坑指南](@mysql-实战问题与避坑指南)。
 
 ---
 
-## 10. 慢查询分析
+## 10. SQL 优化技巧汇总
 
-### 10.1 开启慢查询日志
+> 📖 **完整 checklist（18 条优化清单、配置参数建议、压测对比数据）** 见 [实战问题与避坑指南](@mysql-实战问题与避坑指南)。本文作为深度源码型文档，只从**优化器机制**角度归纳六条"为什么要这样做"的硬核规则：
+
+| 优化方向 | 底层机制依据 |
+| :-- | :-- |
+| **避免全表扫描** | `type=ALL` 意味着优化器认为走索引代价更高——要么没索引，要么统计信息过期；先修根因再谈干预 |
+| **避免回表** | 二级索引叶子存主键、不存完整行；回表 = 多一次 B+ 树查找。覆盖索引让叶子即结果 |
+| **避免文件排序** | B+ 树叶子天然有序，联合索引的"等值列+排序列"组合让 ORDER BY 零成本 |
+| **减少扫描行数** | `EXPLAIN rows` 是代价模型核心输入；`SELECT *` 让覆盖索引失效、强制回表 |
+| **分页优化** | 深分页的代价 = 回表次数 × 行数，延迟关联把回表次数从 offset+limit 降到 limit |
+| **批量操作** | 逐条 INSERT 每次都要过连接器→解析器→优化器→执行器→刷 redo log；批量 INSERT 复用前 4 层 + 合并 WAL 刷盘 |
+
+---
+
+## 11. 慢查询日志：MySQL 内部的写入机制
+
+**写入机制**：当 SQL 执行耗时超过 `long_query_time`（默认 10s，线上一般设 1s）时，MySQL 在 SQL 返回给客户端**之前**把 `THD` 里的执行统计（耗时、扫描行数、Lock time、返回行数、full_scan 标志等）追加写入 `slow_query_log_file`。这是**同步写**——慢日志本身的 IO 也会计入这条 SQL 的耗时，因此生产环境 `long_query_time` 不能设得过低，否则大量 1~10ms 的查询反而因频繁写日志进一步恶化。
 
 ```sql
--- 查看慢查询配置
+-- 查看 / 开启慢查询
 SHOW VARIABLES LIKE 'slow_query%';
 SHOW VARIABLES LIKE 'long_query_time';
 
--- 开启慢查询日志（超过 1 秒的查询记录）
 SET GLOBAL slow_query_log = ON;
 SET GLOBAL long_query_time = 1;
 SET GLOBAL slow_query_log_file = '/var/log/mysql/slow.log';
 
--- 记录未走索引的查询（开发环境有用）
+-- 记录未走索引的查询（开发环境开启，生产慎用——可能刷屏）
 SET GLOBAL log_queries_not_using_indexes = ON;
 ```
 
-### 9.2 pt-query-digest 分析
-
-```bash
-# 分析慢查询日志，按总耗时排序
-pt-query-digest /var/log/mysql/slow.log
-
-# 输出示例：
-# Rank  Query ID    Response time  Calls  R/Call  Item
-#    1  0xABC...    120.0000 45.2%   1000  0.1200  SELECT orders WHERE...
-```
-
-### 9.3 慢查询排查步骤
-
-```mermaid
-flowchart TD
-    Slow["发现慢查询"] --> Explain["EXPLAIN 分析执行计划"]
-    Explain --> CheckType{"type 是 ALL？"}
-    CheckType -->|是| AddIndex["添加合适的索引"]
-    CheckType -->|否| CheckExtra{"Extra 有警告？"}
-    CheckExtra -->|Using filesort| OptOrder["优化 ORDER BY，利用索引排序"]
-    CheckExtra -->|Using temporary| OptGroup["优化 GROUP BY / DISTINCT"]
-    CheckExtra -->|Using join buffer| AddJoinIndex["给被驱动表 Join 列加索引"]
-    CheckExtra -->|正常| CheckRows{"rows 很大？"}
-    CheckRows -->|是| OptQuery["优化查询条件，减少扫描行数"]
-    CheckRows -->|否| CheckApp["检查应用层（N+1 查询等）"]
-```
+> 📖 **线上慢查询排查流程图、`pt-query-digest` 用法、按 QPS / R-Call 聚合分析** 见 [实战问题与避坑指南](@mysql-实战问题与避坑指南)。本文只讲 MySQL 内部的写入机制，不展开运维工具链。
 
 ---
 
-## 11. 常见问题
+## 12. 常见问题
 
 **Q：优化器为什么会选错索引？如何解决？**
 
@@ -404,3 +509,11 @@ flowchart TD
 **Q：什么情况下 IN 子查询会很慢？**
 
 > MySQL 5.5 及以前，IN 子查询不会被优化，每次外层查询都执行一次子查询，复杂度 O(n*m)。MySQL 5.6+ 已优化为 Semi-Join。但如果子查询结果集很大（超过几万行），仍建议改写为 JOIN。
+
+> 📖 **排查题 / 选型题 / 调优题**（"线上突然选错索引怎么办"、"EXISTS vs IN 在具体业务中如何选"、"深分页业务层还有什么替代方案"）已归入 [实战问题与避坑指南](@mysql-实战问题与避坑指南)，本文专注"源码机制"题。
+
+---
+
+## 13. 一句话口诀
+
+> **SQL 走四层：连接器 → 解析器 → 优化器 → 执行器**——8.0 删除了查询缓存，出问题先按层定位；**优化器靠代价模型选计划，代价模型靠统计信息喂数据**——`ANALYZE TABLE` / `FORCE INDEX` / 覆盖索引是三张干预底牌，选错索引的根因 90% 是统计信息过期；**`EXPLAIN` 看结论、`OPTIMIZER_TRACE` 看推理**，`type` / `key` / `key_len` / `rows` / `Extra` 五列是刷牌顺序；**Join 算法三兄弟：NLJ（有索引）/ BNL（无索引·旧）/ Hash Join（无索引·8.0.18+）**，`Extra` 里出现 `Using join buffer` 无论哪种都是红灯；**深分页慢的不是 LIMIT、是回表**，延迟关联用覆盖索引把回表次数从百万降到十。
