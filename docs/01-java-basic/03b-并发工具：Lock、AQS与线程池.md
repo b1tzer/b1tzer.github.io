@@ -18,7 +18,22 @@ title: 并发工具：Lock、AQS 与线程池（Concurrency Tools）
 
 ## 1. ReentrantLock 源码深度解析
 
-### 1.1 Lock 接口与 synchronized 对比
+### 1.1 公平锁 vs 非公平锁
+
+非公平锁（默认）：
+
+- 新来的线程先尝试 CAS 抢锁，抢到就直接执行
+- 抢不到再排队
+- 优点：吞吐量高（减少线程切换）
+- 缺点：可能导致队列中的线程长期等待（饥饿）
+
+公平锁：
+
+- 新来的线程直接排队，按顺序获取锁
+- 优点：公平，无饥饿
+- 缺点：吞吐量低（每次都要唤醒队列头部线程，涉及线程切换）
+
+### 1.2 Lock 接口与 synchronized 对比
 
 | 特性 | synchronized | Lock |
 | :----- | :----- | :----- |
@@ -30,7 +45,7 @@ title: 并发工具：Lock、AQS 与线程池（Concurrency Tools）
 | **条件变量** | wait()/notify() | Condition.await()/signal() |
 | **锁状态** | 无法查询 | isLocked(), getQueueLength() |
 
-### 1.2 ReentrantLock 核心结构
+### 1.3 ReentrantLock 核心结构
 
 ```txt
 ReentrantLock Structure:
@@ -59,7 +74,7 @@ ReentrantLock Structure:
 └───────────────────────────────────────────────────────────────┘
 ```
 
-### 1.3 非公平锁获取流程（lock()）
+### 1.4 非公平锁获取流程（lock()）
 
 ```mermaid
 flowchart TD
@@ -117,7 +132,7 @@ protected final boolean tryAcquire(int acquires) {
 !!! tip "非公平锁的"插队"机制"
     非公平锁在 `lock()` 时**先尝试 CAS 抢锁**，不管队列中是否有等待线程。这种"插队"行为在高并发下能减少线程切换，提升吞吐量，但可能导致队列中的线程长期等待（饥饿）。
 
-### 1.4 公平锁获取流程
+### 1.5 公平锁获取流程
 
 公平锁与非公平锁的唯一区别在于 `tryAcquire()` 方法：
 
@@ -148,7 +163,7 @@ public final boolean hasQueuedPredecessors() {
 !!! note "公平锁的代价"
     公平锁每次获取锁都要检查队列，增加了开销。在竞争激烈时，吞吐量通常低于非公平锁。生产环境**默认使用非公平锁**，除非有明确的公平性需求。
 
-### 1.5 锁释放流程（unlock()）
+### 1.6 锁释放流程（unlock()）
 
 ```mermaid
 flowchart TD
@@ -196,21 +211,6 @@ private void unparkSuccessor(Node node) {
 }
 ```
 
-### 1.6 公平锁 vs 非公平锁
-
-```txt
-非公平锁（默认）：
-  新来的线程先尝试 CAS 抢锁，抢到就直接执行
-  抢不到再排队
-  优点：吞吐量高（减少线程切换）
-  缺点：可能导致队列中的线程长期等待（饥饿）
-
-公平锁：
-  新来的线程直接排队，按顺序获取锁
-  优点：公平，无饥饿
-  缺点：吞吐量低（每次都要唤醒队列头部线程，涉及线程切换）
-```
-
 ---
 
 ## 2. AQS（AbstractQueuedSynchronizer）核心机制
@@ -253,6 +253,32 @@ CLH 队列（双向链表）：
 每个节点通过 prev 指向前驱，通过前驱节点的 waitStatus 判断是否需要唤醒。
 ```
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant TB as 线程 B<br/>（要加锁）
+    participant AQS as AQS 的<br/>CLH 等待队列
+    participant Permit as B 的 permit
+    participant TA as 线程 A<br/>（持有锁）
+
+    Note over TA: A 正持有 ReentrantLock
+    TB->>AQS: lock() → acquireQueued
+    AQS->>AQS: CAS 抢锁失败<br/>把 B 包装成 Node<br/>入队到 CLH tail
+    AQS->>Permit: LockSupport.park(this)
+    Note over TB: B 阻塞 (WAITING)<br/>this=AQS,用于监控
+
+    Note over TA: A 执行 unlock()
+    TA->>AQS: release() → unparkSuccessor
+    AQS->>AQS: 找到 head.next = B
+    AQS->>Permit: LockSupport.unpark(B) permit=1
+    Note over TB: B 被唤醒
+
+    TB->>Permit: park 返回,consume permit
+    TB->>AQS: 重新 tryAcquire(CAS 抢锁)
+    AQS-->>TB: 成功! B 变成 head
+    Note over TB: 🎉 B 真正拿到锁<br/>从 lock() 返回
+```
+
 !!! note "head 是哨兵节点，不指向持锁线程"
     AQS 采用的是 **CLH 的变体**，其 `head` 节点是一个 **dummy 哨兵节点**（`thread == null`），它并不存储当前持锁线程的信息——**当前持锁线程由 AQS.state + `exclusiveOwnerThread` 记录，与 CLH 队列无关**。真正的等待线程从 `head.next` 开始排队；`unparkSuccessor()` 唤醒的也是 `head.next` 而非 head 本身。这个哨兵设计简化了防止空队列和删除的边界检查。
 
@@ -268,6 +294,19 @@ CLH 队列（双向链表）：
 | `CountDownLatch` | 剩余计数 | 共享模式 |
 | `ReentrantReadWriteLock` | 高 16 位=读锁计数，低 16 位=写锁计数 | 读写分离 |
 | `CyclicBarrier` | 内部使用 ReentrantLock + Condition | 组合实现 |
+
+!!! note "📖 术语家族：`AQS*`（AbstractQueuedSynchronizer 与同步器）"
+    **字面义**：Abstract Queued Synchronizer = 抽象的 / 带队列的 / 同步器——顾名思义：一个用 FIFO 队列来排队线程的同步原语框架。
+    **在本框架中的含义**：JUC 包的基石，高层锁（`ReentrantLock` / `Semaphore` / `CountDownLatch` 等）均基于 AQS 实现——子类只需实现 `tryAcquire` / `tryRelease` 的语义，AQS 负责线程排队与阻塞/唤醒。
+    **同家族成员**：
+
+    | 成员 | 作用 | 源码位置 |
+    | :-- | :-- | :-- |
+    | `AbstractQueuedSynchronizer` | 独占 + 共享模式的同步原语框架（int `state`） | `java.util.concurrent.locks.AbstractQueuedSynchronizer` |
+    | `AbstractQueuedLongSynchronizer` | 与 AQS 结构相同，`state` 为 long，用于需要 64 位状态的场景 | `java.util.concurrent.locks.AbstractQueuedLongSynchronizer` |
+    | `AbstractOwnableSynchronizer` | AQS 的父类，只提供 `exclusiveOwnerThread` 字段，记录"当前独占线程是谁" | `java.util.concurrent.locks.AbstractOwnableSynchronizer` |
+
+    **命名规律**：`Abstract*Synchronizer` = 抽象类框架，子类通常命名为同步器内部的 `Sync`（如 `ReentrantLock.Sync` / `Semaphore.Sync`）。
 
 ---
 
@@ -519,19 +558,6 @@ if (queueUsage > 0.8) {
 ```
 
 ---
-
-!!! note "📖 术语家族：`AQS*`（AbstractQueuedSynchronizer 与同步器）"
-    **字面义**：Abstract Queued Synchronizer = 抽象的 / 带队列的 / 同步器——顾名思义：一个用 FIFO 队列来排队线程的同步原语框架。
-    **在本框架中的含义**：JUC 包的基石，高层锁（`ReentrantLock` / `Semaphore` / `CountDownLatch` 等）均基于 AQS 实现——子类只需实现 `tryAcquire` / `tryRelease` 的语义，AQS 负责线程排队与阻塞/唤醒。
-    **同家族成员**：
-
-    | 成员 | 作用 | 源码位置 |
-    | :-- | :-- | :-- |
-    | `AbstractQueuedSynchronizer` | 独占 + 共享模式的同步原语框架（int `state`） | `java.util.concurrent.locks.AbstractQueuedSynchronizer` |
-    | `AbstractQueuedLongSynchronizer` | 与 AQS 结构相同，`state` 为 long，用于需要 64 位状态的场景 | `java.util.concurrent.locks.AbstractQueuedLongSynchronizer` |
-    | `AbstractOwnableSynchronizer` | AQS 的父类，只提供 `exclusiveOwnerThread` 字段，记录"当前独占线程是谁" | `java.util.concurrent.locks.AbstractOwnableSynchronizer` |
-
-    **命名规律**：`Abstract*Synchronizer` = 抽象类框架，子类通常命名为同步器内部的 `Sync`（如 `ReentrantLock.Sync` / `Semaphore.Sync`）。
 
 ## 5. ThreadLocal 深度解析
 

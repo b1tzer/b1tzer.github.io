@@ -1,5 +1,5 @@
 ---
-doc_id: mysql-新特性精讲-MySQL8.0与8.4新特性精讲
+doc_id: mysql-MySQL8.0与8.4新特性精讲
 title: MySQL 8.0 与 8.4 新特性精讲 —— 从 5.7 EOL 到 LTS 双轨制
 ---
 
