@@ -388,7 +388,14 @@ def run_check_mermaid_full() -> None:
 def main():
     print(f"[init] 项目根目录: {ROOT}")
 
-    # 1. 首次启动先跑一次 gen_nav.py，保证冷启动时 nav 与 docs/ 实际文件一致
+    # 1. 首次启动时删除 site 目录，确保干净的构建环境
+    if SITE_DIR.exists():
+        print("[init] 删除旧的 site/ 目录...")
+        import shutil
+        shutil.rmtree(SITE_DIR, ignore_errors=True)
+        print("[init] site/ 目录已删除")
+
+    # 2. 首次启动先跑一次 gen_nav.py，保证冷启动时 nav 与 docs/ 实际文件一致
     if GEN_NAV_SCRIPT.exists():
         print("[init] 同步 nav（首次启动）...")
         subprocess.run(
@@ -397,10 +404,10 @@ def main():
             check=False,
         )
 
-    # 2. 冷启动全量校验 mermaid（不阻塞后续步骤）
+    # 3. 冷启动全量校验 mermaid（不阻塞后续步骤）
     run_check_mermaid_full()
 
-    # 3. 首次构建
+    # 4. 首次构建
     if not SITE_DIR.exists() or not any(SITE_DIR.iterdir()):
         print("[init] 首次构建 site/ ...")
         subprocess.run(["mkdocs", "build"], cwd=str(ROOT), check=False)
