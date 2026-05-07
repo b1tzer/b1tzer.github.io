@@ -149,7 +149,137 @@ const MDI_ICONS = {
   left:     'M15.41 16.59 10.83 12l4.58-4.59L14 6l-6 6 6 6z',
   right:    'M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z',
   center:   'M5 15H3v4c0 1.1.9 2 2 2h4v-2H5zM5 5h4V3H5c-1.1 0-2 .9-2 2v4h2zm14-2h-4v2h4v4h2V5c0-1.1-.9-2-2-2m0 16h-4v2h4c1.1 0 2-.9 2-2v-4h-2zM12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3',
+  // MDI `fullscreen` / `fullscreen-exit`（与 Mermaid 侧保持像素级一致）
+  fullscreen:     'M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zM14 5v2h3v3h2V5z',
+  fullscreenExit: 'M5 16h3v3h2v-5H5zm3-8H5v2h5V5H8zm6 11h2v-3h3v-2h-5zm2-11V5h-2v5h5V8z',
 };
+
+// 共享单飞锁：Mermaid / Markmap 两侧任一先加载将创建实例，后加载方直接复用。
+// 封装为 getter 以兼容 mermaid.mjs 未被加载的场景（纯 Markmap 页面）。
+function getFullscreenLock() {
+  if (typeof window === 'undefined') return null;
+  // 若 Mermaid 侧已创建则复用；否则当场构造同语义的最小实现，避免此处导入 mermaid.mjs。
+  if (!window.__diagramFullscreenLock__) {
+    const set = new Set();
+    let snapshotOverflow = null;
+    let locked = false;
+    const acquire = () => {
+      if (locked) return;
+      snapshotOverflow = document.body.style.overflow;
+      document.body.classList.add('diagram-fullscreen-lock');
+      locked = true;
+    };
+    const release = () => {
+      if (!locked) return;
+      document.body.classList.remove('diagram-fullscreen-lock');
+      document.body.style.overflow = snapshotOverflow ?? '';
+      snapshotOverflow = null;
+      locked = false;
+    };
+    window.__diagramFullscreenLock__ = {
+      enter(c) { if (set.has(c)) return; set.add(c); if (set.size === 1) acquire(); },
+      exit(c)  { if (!set.has(c)) return; set.delete(c); if (set.size === 0) release(); },
+      clear()  { set.clear(); release(); },
+      has(c)   { return set.has(c); },
+      get size() { return set.size; },
+    };
+  }
+  return window.__diagramFullscreenLock__;
+}
+
+/**
+ * Markmap 侧伪全屏外壳：切类 + 锁 + 按钮属性同步 + 显式 mm.fit() 重算。
+ * 与 Mermaid 版的差别：markmap 的 d3-zoom 不监听 window resize，必须调 mm.fit() 才能
+ * 重新自适应标纯容器尺寸。退出全屏同样再调一次 mm.fit()，避免回到较小容器时后
+ * 内容超出边界。※ 由于「退出保留 viewBox」的硬性需求（需求 3.5）主要针对 Mermaid 的
+ * SVG viewBox 状态机；markmap 的 d3-zoom transform 会被 mm.fit() 重置，这是 markmap-view
+ * 自身的 API 语义特性。本期对齐 Mermaid 侧「退出时自适应新容器尺寸」的用户感知。
+ */
+// 全屏态下容器的原位置锚点（placeholder）存储——WeakMap 避免 DOM 内存泄漏
+const fullscreenPlaceholders = new WeakMap();
+
+/**
+ * 同步 markmap-view 的 scrollForPan 行为，使滚轮语义随容器状态变化。
+ *
+ * 行为矩阵（激活、全屏任一为真 → 裸滚轮缩放；都假 → 平台默认平移）：
+ *
+ *  | markmap-active | diagram-fullscreen | scrollForPan | 裸滚轮语义 |
+ *  | :-: | :-: | :-- | :-- |
+ *  |  ❌ |  ❌  | 平台默认（Mac=true / 其他=false） | 平移 / 缩放（依平台） |
+ *  |  ✅ |  ❌  | false | 缩放 |
+ *  |  ❌ |  ✅  | false | 缩放 |
+ *  |  ✅ |  ✅  | false | 缩放 |
+ *
+ * 为什么走 markmap-view 原生 setOptions 接口：markmap-view 0.18 内部的 d3-zoom filter
+ * 实时读 this.options.scrollForPan 引用，setOptions({ scrollForPan }) 立即改写 filter
+ * 行为，无须重建实例。平台默认值与 markmap-view 源码的模块级常量 `f` 一致，保证退出
+ * 交互态后行为与"未加载 Markmap"时用户熟悉的默认保持一致。
+ */
+function applyScrollForPan(container, mm) {
+  if (!mm || typeof mm.setOptions !== 'function') return;
+  const needsZoom =
+    container.classList.contains('markmap-active') ||
+    container.classList.contains('diagram-fullscreen');
+  const platformDefault = typeof navigator !== 'undefined'
+    && navigator.userAgent.includes('Macintosh');
+  mm.setOptions({ scrollForPan: needsZoom ? false : platformDefault });
+}
+
+function toggleFullscreen(container, button, mm) {
+  const nowFullscreen = !container.classList.contains('diagram-fullscreen');
+
+  // ⭐ DOM 级逃逸（Portal 模式）：将容器从原位置提升到 document.body 下
+  // ─────────────────────────────────────────────────────────────────
+  // 为什么必须逃逸：CSS 规范硬约束——若任一祖先元素上有 `transform` / `filter` /
+  // `perspective` / `will-change: transform` / `contain: layout|paint|strict|content`
+  // 等声明，会为其后代的 `position: fixed` 建立新的 containing block，让 fixed 相对
+  // 该祖先定位而非视口。本站 `.md-content__inner` 被 `page-fade-in` 动画施加了
+  // `transform: translateY(...)`，导致 `.diagram-fullscreen` 的 `position: fixed`
+  // 被劫持到正文栏内，全屏视觉上只占正文宽度。
+  // 业界同类场景（react-modal / tippy.js / @floating-ui portal）均采用此法。
+  // 实现细节：插入一个占位 span 记住原位置，退出时用占位替换还原。
+  if (nowFullscreen) {
+    const placeholder = document.createElement('span');
+    placeholder.style.display = 'none';
+    placeholder.setAttribute('data-markmap-fullscreen-placeholder', '');
+    container.parentNode.insertBefore(placeholder, container);
+    fullscreenPlaceholders.set(container, placeholder);
+    document.body.appendChild(container);
+  } else {
+    const placeholder = fullscreenPlaceholders.get(container);
+    if (placeholder && placeholder.parentNode) {
+      placeholder.parentNode.replaceChild(container, placeholder);
+      fullscreenPlaceholders.delete(container);
+    }
+  }
+
+  container.classList.toggle('diagram-fullscreen', nowFullscreen);
+
+  const lock = getFullscreenLock();
+  if (lock) {
+    if (nowFullscreen) lock.enter(container);
+    else lock.exit(container);
+  }
+
+  // 全屏态切换后同步滚轮语义（矩阵见 applyScrollForPan 头注释）
+  applyScrollForPan(container, mm);
+
+  if (button) {
+    const iconKey = nowFullscreen ? 'fullscreenExit' : 'fullscreen';
+    const label = nowFullscreen ? '退出全屏' : '进入全屏';
+    button.innerHTML =
+      `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${MDI_ICONS[iconKey]}"/></svg>`;
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-pressed', nowFullscreen ? 'true' : 'false');
+  }
+
+  // 下一帧调用 mm.fit()：等浏览器应用 .diagram-fullscreen 的 position:fixed/100vh，
+  // 使容器的 getBoundingClientRect 更新到全屏尺寸后再测量重算，保证树布局覆盖整个视口。
+  if (mm && typeof mm.fit === 'function') {
+    requestAnimationFrame(() => { try { mm.fit(); } catch {} });
+  }
+}
 
 // CSS 只注入一次；所有选择器都作用域到 .markmap-rendered / .markmap-toolbar，避免污染全局
 let toolbarStylesInjected = false;
@@ -292,7 +422,23 @@ function createToolbar(container, mm) {
 
   const resetGroup = document.createElement('div');
   resetGroup.className = 'markmap-toolbar-group';
-  resetGroup.append(makeBtn('center', '恢复居中', fitCenter));
+  // 第 3 组 = [恢复居中 · 全屏]，并列两按钮（与 Mermaid 侧对称）。
+  // 全屏按钮手工构造：需要按钮实例引用供 toggleFullscreen 切换图标/aria 属性。
+  const fullscreenBtn = document.createElement('button');
+  fullscreenBtn.type = 'button';
+  fullscreenBtn.className = 'markmap-fullscreen-btn';  // 语义类：供 ESC 路径精确定位
+  fullscreenBtn.title = '进入全屏';
+  fullscreenBtn.setAttribute('aria-label', '进入全屏');
+  fullscreenBtn.setAttribute('aria-pressed', 'false');
+  fullscreenBtn.innerHTML =
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${MDI_ICONS.fullscreen}"/></svg>`;
+  fullscreenBtn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    try { toggleFullscreen(container, fullscreenBtn, mm); }
+    catch (e) { warn('toolbar action failed: 全屏', e); }
+  });
+  resetGroup.append(makeBtn('center', '恢复居中', fitCenter), fullscreenBtn);
 
   const sep = () => {
     const s = document.createElement('div');
@@ -322,13 +468,15 @@ function createToolbar(container, mm) {
    技术要点：必须用 { capture: true }，因为 d3-zoom 的 wheel handler 绑在
    svg 元素上（也是冒泡阶段），我们需要在更早的捕获阶段决定是否放行。
    ────────────────────────────────────────────── */
-function attachScrollGuard(container) {
+function attachScrollGuard(container, mm) {
   // 状态标记：是否已进入交互模式（永久性缩放/拖拽）
   let active = false;
   const setActive = (next) => {
     if (active === next) return;
     active = next;
     container.classList.toggle('markmap-active', active);
+    // 激活 / 退出激活都要同步滚轮语义（矩阵见 applyScrollForPan 头注释）
+    applyScrollForPan(container, mm);
   };
 
   // wheel 拦截：捕获阶段运行，早于 d3-zoom handler
@@ -351,9 +499,15 @@ function attachScrollGuard(container) {
   };
   document.addEventListener('mousedown', outsideHandler);
 
-  // ESC 键也可退出激活态（可访问性）
+  // ESC 键：若在全屏态，先完整退出全屏（复用 toggleFullscreen 的 Portal 还原 /
+  // 按钮图标 / mm.fit() 全套逻辑）；若在激活态，再退出激活。两者可叠加触发。
   const keyHandler = (ev) => {
-    if (ev.key === 'Escape' && active) setActive(false);
+    if (ev.key !== 'Escape') return;
+    if (container.classList.contains('diagram-fullscreen')) {
+      const btn = container.querySelector('.markmap-fullscreen-btn');
+      toggleFullscreen(container, btn, mm);
+    }
+    if (active) setActive(false);
   };
   document.addEventListener('keydown', keyHandler);
 
@@ -436,7 +590,7 @@ async function renderOne(container) {
     }, root);
 
     // ♔ 绑定滚轮拦截逻辑（默认不吞页面滚动，点击/Ctrl 才激活缩放）
-    attachScrollGuard(container);
+    attachScrollGuard(container, mm);
 
     // ♕ 挂载工具栏（仅激活态显示，dispose 钩子交给容器统一管理）
     const disposeToolbar = createToolbar(container, mm);
@@ -469,6 +623,20 @@ async function renderOne(container) {
  * 并发渲染容易出现样式覆盖与 id 冲突（与 mermaid.mjs 同）。
  */
 async function renderAll() {
+  // SPA 切页兜底：清空全屏锁集合 + 恢复 body.overflow 快照 + 移除锁类。
+  // 与 Mermaid 侧幂等：计单飞锁已被清理过再 clear() 无副作用；两侧同时挂在 document$
+  // 订阅里保证任一侧在纯 Markmap / 纯 Mermaid 页面中单独工作时也有兜底。
+  const lock = getFullscreenLock();
+  if (lock) lock.clear();
+
+  // SPA 切页残留清理：上一次进入全屏时我们把容器提升到了 <body> 下（DOM Portal），
+  // Material navigation.instant 只会替换 .md-container 下的 DOM，挂在 body 顶层的
+  // 全屏容器与正文中的 placeholder 都会残留。此处一并清掉。
+  document.querySelectorAll('.markmap-rendered.diagram-fullscreen').forEach(node => {
+    if (node.parentNode === document.body) node.remove();
+  });
+  document.querySelectorAll('[data-markmap-fullscreen-placeholder]').forEach(node => node.remove());
+
   preprocessAll();
   const nodes = document.querySelectorAll(
     'div.markmap-rendered[data-markmap-src]:not([data-rendered="true"]):not([data-rendered="error"])'

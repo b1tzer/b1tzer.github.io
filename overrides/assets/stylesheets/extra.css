@@ -450,3 +450,79 @@ pre.mermaid-src {
     transition: none !important;
   }
 }
+
+/* ================================================================
+   Diagram 伪全屏共享样式（Markmap + Mermaid 通用）
+   ----------------------------------------------------------------
+   策略：方案 B 伪全屏（CSS position:fixed 铺满视口），不使用浏览器
+   Fullscreen API。详见 .codebuddy/plan/diagram-fullscreen/requirements.md §1.1。
+
+   本块设计原则：
+   - 同时作用于 .markmap-rendered.diagram-fullscreen 与 .mermaid-rendered.diagram-fullscreen，
+     一套规则服务两类图，避免"两处各写一套"。
+   - 全屏态是激活态（.mermaid-active / .markmap-active）的叠加层：容器类 toggle +
+     body 滚动锁，不引入新状态机，复用既有工具栏显示规则与 ViewBoxController。
+   - 背景色使用 var(--md-default-bg-color)，自动跟随 Material 明暗主题，
+     不与 Markmap 的 .markmap-dark 暗色类冲突（后者作为祖先加在同一容器上）。
+   ================================================================ */
+
+/* 容器层：铺满视口、覆盖在最顶层；min-height/height 用 !important 覆盖激活态
+   的 max(400px, 50vh) 规则，避免两套高度规则打架导致 SVG 仅占屏幕上半部。
+   ⚠️ 额外声明 display: block + align/justify-content: initial：
+   覆盖 .mermaid-rendered.mermaid-active 的 `display: flex; align-items: center;
+   justify-content: center`——flex 布局下 SVG 作为 flex item 的 width/height: 100%
+   行为依赖 flex-basis 计算，与全屏的"块级铺满"预期会打架。
+   ⚠️ 另外显式提示：JS 已把容器从原位置移到 <body> 下（DOM 级 Portal），
+   否则祖先 `.md-content__inner` 上的 `transform` 动画会让 position:fixed 相对
+   正文栏而非视口定位——这是 CSS 硬约束，无法靠 CSS 单方面解决。 */
+.markmap-rendered.diagram-fullscreen,
+.mermaid-rendered.diagram-fullscreen {
+  position: fixed;
+  inset: 0;                               /* = top:0; right:0; bottom:0; left:0 */
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;           /* 覆盖 .mermaid-active 的 max(400px, 50vh) */
+  max-height: 100vh;
+  margin: 0 !important;
+  border-radius: 0;
+  z-index: 9999;
+  background: var(--md-default-bg-color);
+  display: block !important;              /* 覆盖 .mermaid-active 的 display: flex */
+  /* 不显式覆写 box-shadow / outline：继承激活态高亮边框在全屏下不可见（铺满视口），
+     但保留规则以便 SPA 退出全屏后回到普通激活态时视觉一致。 */
+}
+
+/* SVG 层：必须同时作用于两类容器在全屏态下的直接子 SVG。
+   ⚠️ 直接子选择器 > svg 必须保留：与激活态同样的理由，避免规则穿透到工具栏按钮图标。 */
+.markmap-rendered.diagram-fullscreen > svg,
+.mermaid-rendered.diagram-fullscreen > svg {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* 提示条 override：全屏态下提示文案切换为"按 ESC 退出全屏 · 滚轮缩放 · 拖拽平移"，
+   其余样式（位置、字号、颜色）复用激活态规则，只覆盖 content。 */
+.markmap-rendered.diagram-fullscreen::after,
+.mermaid-rendered.diagram-fullscreen::after {
+  content: "按 ESC 退出全屏 · 滚轮缩放 · 拖拽平移";
+  opacity: 1;
+}
+
+/* body 滚动锁：进入全屏时由 JS 单飞锁给 body 加此类，冻结页面滚动；
+   退出时移除类并恢复 overflow 快照值（见 window.__diagramFullscreenLock__）。 */
+body.diagram-fullscreen-lock {
+  overflow: hidden !important;
+}
+
+/* 尊重减少动效偏好：全屏切换不播过渡（进入/退出即刻生效）。
+   与前文 @media (prefers-reduced-motion) 块保持一致的短路处置。 */
+@media (prefers-reduced-motion: reduce) {
+  .markmap-rendered.diagram-fullscreen,
+  .mermaid-rendered.diagram-fullscreen,
+  .markmap-rendered.diagram-fullscreen::after,
+  .mermaid-rendered.diagram-fullscreen::after {
+    transition: none !important;
+  }
+}

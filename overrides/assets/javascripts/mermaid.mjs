@@ -107,6 +107,21 @@ async function renderOne(container) {
 }
 
 async function renderAll() {
+  // SPA 切页兜底：清空全屏锁集合 + 恢复 body.overflow 快照 + 移除锁类。
+  // 场景：读者在全屏态下点侧栏切到新文章 → Material Instant Navigation 直接替换 DOM，
+  // 旧容器没机会走 toggleFullscreen 的 exit 分支，body.overflow 会残留导致新页面无法滚动。
+  // 单飞集合 clear() 与后续 disposeMermaidContainer 幂等，重复执行无副作用。
+  if (fullscreenLock) fullscreenLock.clear();
+
+  // SPA 切页残留清理：上一次进入全屏时我们把容器提升到了 <body> 下（DOM Portal），
+  // Material navigation.instant 只会替换 .md-container 下的 DOM，挂在 body 顶层的
+  // 全屏容器与其在正文中的 placeholder 都会残留——前者残留为"新文章第一屏遮罩"，
+  // 后者残留为"新文章里一个 display:none 的空 span"（无害但肮脏）。此处一并清掉。
+  document.querySelectorAll('.mermaid-rendered.diagram-fullscreen').forEach(node => {
+    if (node.parentNode === document.body) node.remove();
+  });
+  document.querySelectorAll('[data-mermaid-fullscreen-placeholder]').forEach(node => node.remove());
+
   // SPA 切页清理：遍历旧容器，若已脱离 DOM（不在当前 document 树中）则释放其 document 级监听
   // 典型场景：Material Instant Navigation 切换文章后，旧文章的 .mermaid-rendered 被整块替换，
   // 需要释放 disposeMap 中登记的 outsideHandler / keyHandler 派发表条目。
@@ -163,6 +178,68 @@ export function getMermaidApi(container) {
   return apiMap.get(container);
 }
 
+/* ──────────────────────────────────────────────
+   共享：Diagram 伪全屏 body 滚动锁单飞集合（Mermaid + Markmap 通用）
+   ─────────────────────────────────────────────
+   语义：
+   - enter(container)：把 container 加入锁集合；若集合从空→非空，快照 body.style.overflow
+     原值并给 body 加 .diagram-fullscreen-lock；否则仅登记（幂等）。
+   - exit(container)：把 container 从集合移除；若集合从非空→空，移除类名并恢复 overflow
+     快照值；否则仅登记（幂等）。
+   - clear()：SPA 切页兜底，清空集合 + 恢复快照 + 移除类（无论集合是否为空都执行）。
+
+   为什么挂载到 window 单例：Mermaid 与 Markmap 两个模块在同一页面加载时，任一模块先
+   执行 `window.__diagramFullscreenLock__ ??= createLock()` 即可拿到同一实例，避免
+   两套各自维护的集合互相覆盖 body.overflow 导致锁失效或残留。
+   ────────────────────────────────────────────── */
+function createDiagramFullscreenLock() {
+  const set = new Set();
+  let snapshotOverflow = null;
+  let locked = false;
+
+  function acquire() {
+    if (locked) return;
+    // 读 style.overflow 而非 getComputedStyle，保证退出时还原的是
+    // "其他脚本/行内样式显式设置的值"，若本来就没设置则还原为空字符串（让 UA 默认接管）
+    snapshotOverflow = document.body.style.overflow;
+    document.body.classList.add('diagram-fullscreen-lock');
+    locked = true;
+  }
+  function release() {
+    if (!locked) return;
+    document.body.classList.remove('diagram-fullscreen-lock');
+    // 恢复快照值（可能是空字符串，意即清掉我们留下的任何痕迹）
+    document.body.style.overflow = snapshotOverflow ?? '';
+    snapshotOverflow = null;
+    locked = false;
+  }
+
+  return {
+    enter(container) {
+      if (set.has(container)) return;
+      set.add(container);
+      if (set.size === 1) acquire();
+    },
+    exit(container) {
+      if (!set.has(container)) return;
+      set.delete(container);
+      if (set.size === 0) release();
+    },
+    clear() {
+      set.clear();
+      release();
+    },
+    has(container) { return set.has(container); },
+    get size() { return set.size; },
+  };
+}
+
+// 懒初始化 window 单例；Markmap 侧同样用 `??=` 取到同一实例
+if (typeof window !== 'undefined') {
+  window.__diagramFullscreenLock__ ??= createDiagramFullscreenLock();
+}
+const fullscreenLock = (typeof window !== 'undefined') ? window.__diagramFullscreenLock__ : null;
+
 // 容器失效时调用：移出激活集合 + 执行 dispose 钩子 + 清理 WeakMap 登记
 function disposeMermaidContainer(container) {
   const dispose = disposeMap.get(container);
@@ -172,6 +249,12 @@ function disposeMermaidContainer(container) {
   disposeMap.delete(container);
   apiMap.delete(container);
   activeContainers.delete(container);
+  // 容器被释放时一并退出全屏锁集合：防止 SPA 切页时 DOM 已离开但容器仍在锁里
+  // 导致 body.overflow 残留（归一到共享单飞锁的「集合空时解锁」语义）。
+  if (fullscreenLock && fullscreenLock.has(container)) {
+    fullscreenLock.exit(container);
+    container.classList.remove('diagram-fullscreen');
+  }
 }
 
 // 全模块唯一的 document 级监听——无论页面有多少张图，监听数恒为 2
@@ -188,6 +271,13 @@ document.addEventListener('mousedown', (ev) => {
 document.addEventListener('keydown', (ev) => {
   if (ev.key !== 'Escape') return;
   activeContainers.forEach(container => {
+    // ESC 键：若在全屏态，先完整退出全屏（复用 toggleFullscreen 的 Portal 还原 /
+    // 按钮图标 / resize 派发全套逻辑）再走激活退出。
+    // 顺序要求：先退全屏才能让后续 recenter 在「已回到文中尺寸」下重算 viewBox。
+    if (container.classList.contains('diagram-fullscreen')) {
+      const btn = container.querySelector('.mermaid-fullscreen-btn');
+      toggleFullscreen(container, btn);
+    }
     const api = apiMap.get(container);
     api?.exitActive();
   });
@@ -233,6 +323,9 @@ const MDI_ICONS = {
   left:     'M15.41 16.59 10.83 12l4.58-4.59L14 6l-6 6 6 6z',
   right:    'M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z',
   center:   'M5 15H3v4c0 1.1.9 2 2 2h4v-2H5zM5 5h4V3H5c-1.1 0-2 .9-2 2v4h2zm14-2h-4v2h4v4h2V5c0-1.1-.9-2-2-2m0 16h-4v2h4c1.1 0 2-.9 2-2v-4h-2zM12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3',
+  // MDI `fullscreen` / `fullscreen-exit`（与 zoomIn / zoomOut 同一家族，视觉粗细一致）
+  fullscreen:     'M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zM14 5v2h3v3h2V5z',
+  fullscreenExit: 'M5 16h3v3h2v-5H5zm3-8H5v2h5V5H8zm6 11h2v-3h3v-2h-5zm2-11V5h-2v5h5V8z',
 };
 
 /* 工具栏样式运行时注入（复用 markmap 的策略，避免 extra.css 与 JS 逻辑两处散落）：
@@ -310,8 +403,80 @@ function ensureToolbarStyle() {
   document.head.appendChild(style);
 }
 
+/* ──────────────────────────────────────────────
+   伪全屏外壳：toggleFullscreen(container, button)
+   ─────────────────────────────────────────────
+   职责：
+   - 切换容器的 .diagram-fullscreen 类
+   - 通过共享单飞锁 enter/exit，管理 body.overflow 与 .diagram-fullscreen-lock
+   - 同步工具栏按钮的 icon（fullscreen ↔ fullscreenExit）/ title / aria-label / aria-pressed
+   - 切换后派发一次 window resize，让 ViewBoxController 的 getBoundingClientRect
+     重算（滚轮缩放步长、拖拽位移都依赖 rect，进入/退出视口尺寸变化需要重新测量）
+
+   不做的事（与架构契约一致）：
+   - 不触碰 createViewBoxController：全屏只是外壳层，viewBox 逻辑零感知
+   - 不 recenter：按钮退出全屏时 viewBox 当前缩放/平移状态**完整保留**（需求 3.5）
+   - 不处理激活态：按钮退出仅退出全屏；ESC 退出全屏由模块级 keydown 里走
+     exitActive 自然带 recenter（那是激活退出的副作用，不是全屏退出的）
+   ────────────────────────────────────────────── */
+// 全屏态下容器的原位置锚点（placeholder）存储——WeakMap 避免 DOM 内存泄漏
+const fullscreenPlaceholders = new WeakMap();
+
+function toggleFullscreen(container, button) {
+  const nowFullscreen = !container.classList.contains('diagram-fullscreen');
+
+  // ⭐ DOM 级逃逸（Portal 模式）：将容器从原位置提升到 document.body 下
+  // ─────────────────────────────────────────────────────────────────
+  // 为什么必须逃逸：CSS 规范硬约束——若任一祖先元素上有 `transform` / `filter` /
+  // `perspective` / `will-change: transform` / `contain: layout|paint|strict|content`
+  // 等声明，会为其后代的 `position: fixed` 建立新的 containing block，让 fixed 相对
+  // 该祖先定位而非视口。本站 `.md-content__inner` 被 `page-fade-in` 动画施加了
+  // `transform: translateY(...)`，导致 `.diagram-fullscreen` 的 `position: fixed`
+  // 被劫持到正文栏内，全屏视觉上只占正文宽度。
+  // 业界同类场景（react-modal / tippy.js / @floating-ui portal）均采用此法。
+  // 实现细节：插入一个占位 span 记住原位置，退出时用占位替换还原。
+  if (nowFullscreen) {
+    const placeholder = document.createElement('span');
+    placeholder.style.display = 'none';
+    placeholder.setAttribute('data-mermaid-fullscreen-placeholder', '');
+    container.parentNode.insertBefore(placeholder, container);
+    fullscreenPlaceholders.set(container, placeholder);
+    document.body.appendChild(container);
+  } else {
+    const placeholder = fullscreenPlaceholders.get(container);
+    if (placeholder && placeholder.parentNode) {
+      placeholder.parentNode.replaceChild(container, placeholder);
+      fullscreenPlaceholders.delete(container);
+    }
+  }
+
+  container.classList.toggle('diagram-fullscreen', nowFullscreen);
+
+  if (fullscreenLock) {
+    if (nowFullscreen) fullscreenLock.enter(container);
+    else fullscreenLock.exit(container);
+  }
+
+  if (button) {
+    const iconKey = nowFullscreen ? 'fullscreenExit' : 'fullscreen';
+    const label = nowFullscreen ? '退出全屏' : '进入全屏';
+    button.innerHTML =
+      `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${MDI_ICONS[iconKey]}"/></svg>`;
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-pressed', nowFullscreen ? 'true' : 'false');
+  }
+
+  // 派发 resize：viewBox 算子里的 fitViewBoxToContainer / zoomAt / drag 都依赖 getBoundingClientRect，
+  // 视口尺寸从 "正文栏宽" 瞬变为 "整屏" 或反之，必须触发一次重算才能保证后续交互步长正确。
+  // 下一帧派发：等待浏览器应用 .diagram-fullscreen 的 position:fixed/100vh 规则后再测量。
+  requestAnimationFrame(() => {
+    window.dispatchEvent(new Event('resize'));
+  });
+}
+
 /**
- * 创建 7 按钮工具栏并绑定点击 handler。
+ * 创建 8 按钮工具栏并绑定点击 handler（第 8 个为「全屏」，与「居中」并列在第 3 组末尾）。
  * @param {HTMLElement} container .mermaid-rendered 容器
  * @param {object}      api       { recenter, zoomAt, panByRatio } 容器级 API
  * @returns {() => void} dispose 钩子（移除工具栏 DOM）
@@ -382,9 +547,25 @@ function createToolbar(container, api) {
     makeBtn('right', '向右平移', panRight),
   );
 
+  // 第 3 组 = [恢复居中 · 全屏]，并列两按钮（不新建第 4 组，与 Markmap 对称）。
+  // 全屏按钮不经 makeBtn：需要按钮实例引用供 toggleFullscreen 切换图标 / aria / title。
   const resetGroup = document.createElement('div');
   resetGroup.className = 'mermaid-toolbar-group';
-  resetGroup.append(makeBtn('center', '恢复居中', fitCenter));
+  const fullscreenBtn = document.createElement('button');
+  fullscreenBtn.type = 'button';
+  fullscreenBtn.className = 'mermaid-fullscreen-btn';  // 语义类：供 ESC 路径精确定位
+  fullscreenBtn.title = '进入全屏';
+  fullscreenBtn.setAttribute('aria-label', '进入全屏');
+  fullscreenBtn.setAttribute('aria-pressed', 'false');
+  fullscreenBtn.innerHTML =
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${MDI_ICONS.fullscreen}"/></svg>`;
+  fullscreenBtn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    try { toggleFullscreen(container, fullscreenBtn); }
+    catch (e) { console.warn('[mermaid] toolbar action failed: 全屏', e); }
+  });
+  resetGroup.append(makeBtn('center', '恢复居中', fitCenter), fullscreenBtn);
 
   toolbar.append(zoomGroup, sep(), panGroup, sep(), resetGroup);
   container.appendChild(toolbar);
