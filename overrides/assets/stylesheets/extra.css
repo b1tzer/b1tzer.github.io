@@ -357,9 +357,12 @@ pre.mermaid-src {
 .markmap-rendered {
   position: relative;
   width: 100%;
-  /* 给足高度：markmap 大图在首屏能铺开 2 层节点不被压缩 */
-  min-height: 500px;
-  height: 500px;
+  /* 视口自适应：最低 640px 保证节点不被压扁，最高 min(70vh, 720px) 避免超大屏下整页被图吃掉。
+     小屏（height < 915px）时走 70vh，大屏（height ≥ 1028px）时被 720px 顶住，
+     其余落在 640px 下限——大多数笔电 13–14 寸（864~900px）会稳定命中 70vh ≈ 605–630px 区间，
+     因此实际生效为 640px（下限兜底），视觉上比旧 500px 提升 28%，节点字号随 fit 等比变大。 */
+  min-height: 640px;
+  height: min(70vh, 720px);
   margin: 1em 0;
   overflow: hidden;
   background: var(--md-default-bg-color, #fff);

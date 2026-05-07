@@ -13,52 +13,61 @@ title: Java 基础知识与 JVM 原理
 
 ## 整体知识地图
 
-```mermaid
-mindmap
-    root((Java 基础))
-        面向对象
-            封装 / 继承 / 多态 / 抽象
-            接口 vs 抽象类
-            设计原则入门
-        集合框架
-            List: ArrayList / LinkedList
-            Map: HashMap / TreeMap / LinkedHashMap
-            Set: HashSet / TreeSet
-            并发集合: ConcurrentHashMap
-        并发编程
-            线程生命周期
-            synchronized / volatile
-            ThreadLocal
-            线程池 ThreadPoolExecutor
-            AQS / ReentrantLock
-        JVM
-            内存分区
-            GC 算法
-            G1 vs CMS
-            OOM 排查
-        类加载机制
-            双亲委派模型
-            破坏委派：SPI / Tomcat / OSGi
-        底层原理专题
-            字符串与 StringPool
-            泛型与类型擦除
-            反射与 MethodHandle
-            NIO 与 IO 模型
-        异常处理
-            Checked vs Unchecked
-            最佳实践
-        Java 8 新特性
-            Lambda 表达式
-            Stream 流式编程
-            Optional 空值处理
-            新日期 API
-            接口默认方法
-        泛型与注解
-            泛型擦除与边界
-            元注解与自定义注解
-        数据结构
-            红黑树 / B+树 / 跳表
-            布隆过滤器
+```markmap
+# Java 基础
+
+## 面向对象
+- 封装 / 继承 / 多态 / 抽象
+- 接口 vs 抽象类
+- 设计原则入门
+
+## 集合框架
+- List：ArrayList / LinkedList
+- Map：HashMap / TreeMap / LinkedHashMap
+- Set：HashSet / TreeSet
+- 并发集合：ConcurrentHashMap
+
+## 并发编程
+- 线程生命周期
+- synchronized / volatile
+- ThreadLocal
+- 线程池 ThreadPoolExecutor
+- AQS / ReentrantLock
+
+## JVM
+- 内存分区
+- GC 算法
+- G1 vs CMS
+- OOM 排查
+
+## 类加载机制
+- 双亲委派模型
+- 破坏委派：SPI / Tomcat / OSGi
+
+## 底层原理专题
+- 字符串与 StringPool
+- 泛型与类型擦除
+- 反射与 MethodHandle
+- NIO 与 IO 模型
+
+## 异常处理
+- Checked vs Unchecked
+- 最佳实践
+
+## Java 8 新特性
+- Lambda 表达式
+- Stream 流式编程
+- Optional 空值处理
+- 新日期 API
+- 接口默认方法
+
+## 泛型与注解
+- 泛型擦除与边界
+- 元注解与自定义注解
+
+## 数据结构
+- 红黑树 / B+树 / 跳表
+- 布隆过滤器
 ```
 
 ---
