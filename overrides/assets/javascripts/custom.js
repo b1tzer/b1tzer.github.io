@@ -270,7 +270,7 @@
     elements.forEach(function (el) {
       // 跳过隐藏元素、代码块内容、空文本
       if (!isVisible(el)) return;
-      if (el.closest('pre') || el.closest('code') || el.closest('.mermaid')) return;
+      if (el.closest('pre') || el.closest('code') || el.closest('.mermaid') || el.closest('.mermaid-rendered') || el.closest('.mermaid-src')) return;
       if (el.closest('.md-source') || el.closest('.md-feedback')) return;
 
       // 去重：跳过其祖先已经被选中的节点

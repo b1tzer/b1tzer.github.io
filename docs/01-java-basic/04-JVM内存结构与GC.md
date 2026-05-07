@@ -101,82 +101,88 @@ DirectMem --> OS
 
 ## 3. JVM 知识地图
 
-```mermaid
-mindmap
-  root((JVM<br>内存与GC))
-    内存分区
-      堆 Heap
-        新生代Eden+S0+S1
-        老年代
-        TLAB零锁分配
-      线程私有
-        虚拟机栈与栈帧五件套
-        程序计数器PC
-        本地方法栈
-      堆外
-        元空间MetaSpace
-        Code Cache
-        直接内存DirectMemory
-      对象布局
-        对象头MarkWord
-        实例数据与对齐
-        压缩指针CompressedOops
-    GC机制
-      可达性分析
-        GC Roots六种
-      三色标记
-        增量更新CMS
-        SATB快照G1/ZGC
-      写屏障
-        CMS dirty card
-        G1/ZGC SATB queue
-      GC算法
-        Mark-Sweep
-        Mark-Compact
-        Copying
-      逃逸分析
-        NoEscape/ArgEscape
-        标量替换
-        锁消除
-      Safepoint
-        主动轮询
-        Safe Region
-    收集器演进
-      经典
-        Serial/Serial Old
-        Parallel Scavenge/Old
-      并发开端
-        CMS 增量更新
-      现代
-        G1 Region可控停顿
-        ZGC 染色指针亚毫秒
-      未来
-        分代ZGC JDK21
-        Shenandoah
-    调优与实战
-      方法论
-        目标→测量→分析→验证
-      GC日志分析
-        统一日志Xlog
-      OOM排查
-        堆/栈/元空间/直接内存
-      生产checklist
-    现代实践
-      容器化JVM
-        UseContainerSupport
-        MaxRAMPercentage
-      虚拟线程Loom
-        JEP 444/491
-      性能工具链
-        JFR首选
-        async-profiler
-      云原生
-        K8s配置
-        健康检查
-      前沿趋势
-        GraalVM Native
-        CRaC
-        Valhalla/Panama
+JVM 专题的知识结构共分**五大主干**（内存分区 / GC 机制 / 收集器演进 / 调优与实战 / 现代实践）。
+
+```markmap
+# JVM 内存与 GC
+
+## 内存分区
+- 堆 Heap
+  - 新生代 Eden + S0 + S1
+  - 老年代
+  - TLAB 零锁分配
+- 线程私有
+  - 虚拟机栈与栈帧五件套
+  - 程序计数器 PC
+  - 本地方法栈
+- 堆外
+  - 元空间 MetaSpace
+  - Code Cache
+  - 直接内存 DirectMemory
+- 对象布局
+  - 对象头 Mark Word
+  - 实例数据与对齐
+  - 压缩指针 CompressedOops
+
+## GC 机制
+- 可达性分析
+  - GC Roots 六种
+- 三色标记
+  - 增量更新（CMS）
+  - SATB 快照（G1 / ZGC）
+- 写屏障
+  - CMS dirty card
+  - G1 / ZGC SATB queue
+- GC 算法
+  - Mark-Sweep
+  - Mark-Compact
+  - Copying
+- 逃逸分析
+  - NoEscape / ArgEscape
+  - 标量替换
+  - 锁消除
+- Safepoint
+  - 主动轮询
+  - Safe Region
+
+## 收集器演进
+- 经典
+  - Serial / Serial Old
+  - Parallel Scavenge / Old
+- 并发开端
+  - CMS 增量更新
+- 现代
+  - G1 Region 可控停顿
+  - ZGC 染色指针亚毫秒
+- 未来
+  - 分代 ZGC（JDK 21）
+  - Shenandoah
+
+## 调优与实战
+- 方法论
+  - 目标 → 测量 → 分析 → 验证
+- GC 日志分析
+  - 统一日志 Xlog
+- OOM 排查
+  - 堆 / 栈 / 元空间 / 直接内存
+- 生产 checklist
+
+## 现代实践
+- 容器化 JVM
+  - UseContainerSupport
+  - MaxRAMPercentage
+- 虚拟线程 Loom
+  - JEP 444 / 491
+- 性能工具链
+  - JFR（首选）
+  - async-profiler
+- 云原生
+  - K8s 配置
+  - 健康检查
+- 前沿趋势
+  - GraalVM Native
+  - CRaC
+  - Valhalla / Panama
 ```
 
 ---

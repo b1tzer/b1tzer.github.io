@@ -86,6 +86,7 @@ extra_css:
 # 自定义JavaScript文件
 extra_javascript:
   - assets/javascripts/mermaid.mjs
+  - assets/javascripts/markmap.mjs
   - assets/javascripts/custom.js
 
 plugins:
@@ -134,10 +135,13 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - admonition                 # 提示框（note/warning/tip 等）
   - pymdownx.details           # 折叠块
-  - pymdownx.superfences:      # 代码围栏（支持 mermaid）
+  - pymdownx.superfences:      # 代码围栏（支持 mermaid / markmap）
       custom_fences:
         - name: mermaid
-          class: mermaid
+          class: mermaid-src
+          format: !!python/name:pymdownx.superfences.fence_code_format
+        - name: markmap
+          class: markmap-src
           format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:        # 代码高亮
       anchor_linenums: true

@@ -220,3 +220,233 @@ th.tts-reading {
     transition: none !important;
   }
 }
+
+/* ── N. Mermaid 渲染容器样式 ──
+   - pre.mermaid-src 是 superfences 原始输出（保存源码），页面加载早期会短暂
+     存在，若不隐藏会出现"源码文本 → SVG"的闪烁。mermaid.mjs 渲染完会替换为
+     <div class="mermaid-rendered">，此时 pre.mermaid-src 已不存在。
+   - 类名刻意避开 .mermaid，防止 Material 主题自动接管并用 Shadow DOM 包装 SVG。
+*/
+pre.mermaid-src {
+  display: none !important;
+}
+
+.mermaid-rendered {
+  text-align: center;
+  margin: 1em 0;
+  overflow: hidden;          /* 缩放后 SVG 不溢出到页面外 */
+  position: relative;
+  border-radius: 6px;
+  transition: box-shadow 200ms ease, background 200ms ease;
+}
+
+/* ⚠️ 必须用直接子选择器 `> svg`（而非后代 `svg`）：
+   容器内部除了图表本身的 svg，还有工具栏按钮 `.mermaid-toolbar button svg`（孙级）。
+   若用后代选择器，这里的 max-width/height/user-select/cursor 会全部穿透到工具栏图标上，
+   和按钮自己的 18×18 尺寸规则打架（尤其 .mermaid-active 分支叠了 !important 时会压垮按钮尺寸，
+   导致工具栏图标被放大到 28×28，与 markmap 视觉不一致）。直接子选择器把作用域锁在图表本体。 */
+.mermaid-rendered > svg {
+  max-width: 100%;
+  height: auto;
+  /* 禁止触摸手势映射为浏览器默认行为（如长按选择文本），让 pointer 事件完整派发 */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+/* ⭐ A1 档：缩放态撑开容器，给 SVG 更多施展空间
+   ─────────────────────────────────────────────
+   痛点（为什么需要撑开）：
+   mermaid 的 mindmap 等横向铺开的图渲染出来常常是"宽 800 × 高 85"这种扁片，
+   SVG 自带 viewBox="0 0 800 85" 固定宽高比，即使 CSS 把 width 设为 100%，
+   浏览器也会按比例把高度压回 1200 × 85/800 ≈ 128px。结果：
+   放大时只是"字变大"，内容覆盖面没变大——失去"像看地图一样多显示内容"的意义。
+
+   解法：进入缩放态后，给容器一个合理的 min-height。
+   因为 SVG 默认 preserveAspectRatio="xMidYMid meet"（保持比例 + 居中 + 留白补齐），
+   当容器被撑高后，SVG 会自动垂直居中、左右依然按 viewBox 比例展示，
+   不会发生图形变形，只是"画布更大、可缩放漫游空间更大"。
+
+   min-height 取值 max(400px, 50vh)：
+     - 400px 保底，防止桌面大屏浏览时 50vh 也不够用
+     - 50vh 响应式，小屏（如笔记本）占半屏，不至于把内容挤没
+     - 对"本身就很高的图"（如长流程图）无影响——自然高度 > 400px 时不触发
+
+   背景 + 拖拽手型保留：给读者"进入了缩放模式"的视觉反馈。
+*/
+/* 撑高触发条件 = data-zoomed="true" 或 .mermaid-active：
+   - data-zoomed 场景：用户已通过滚轮/拖拽/按钮操作过 viewBox
+   - .mermaid-active 场景：用户点击激活但尚未操作，此时也应立刻撑高，
+     让读者一进入激活态就看到"放大了显示区域"的明确反馈（对应原问题 1、2）
+   两个触发条件并列，顺序无关；任一满足即撑高。 */
+.mermaid-rendered[data-zoomed="true"],
+.mermaid-rendered.mermaid-active {
+  background: var(--md-code-bg-color, #f5f5f5);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  min-height: max(400px, 50vh);
+  display: flex;              /* 让 SVG 在容器内垂直居中（短图不挤在顶部） */
+  align-items: center;
+  justify-content: center;
+}
+
+/* 同样只作用于图表本体（直接子 svg），避免 !important 的 width/height:100% 穿透到工具栏按钮图标 */
+.mermaid-rendered[data-zoomed="true"] > svg,
+.mermaid-rendered.mermaid-active > svg {
+  /* 撑满容器宽度，消除左右空白（对 useMaxWidth 限制的反制） */
+  max-width: none !important;
+  width: 100% !important;
+  /* 高度也撑满容器，配合 preserveAspectRatio 让图形按比例居中展示 */
+  height: 100% !important;
+  max-height: max(400px, 50vh);
+  cursor: grab;
+}
+
+.mermaid-rendered[data-zoomed="true"] > svg:active,
+.mermaid-rendered.mermaid-active > svg:active {
+  cursor: grabbing;
+}
+
+/* ── 提示条双文案（与 markmap 同构） ──
+   - 默认态（:hover 时淡入）：提示读者"点击启用缩放 · Ctrl/⌘ + 滚轮临时缩放 · 拖拽平移"
+   - 激活态（.mermaid-active，常驻）：提示读者"已激活缩放 · 点击图外或按 ESC 退出"
+   文案、位置、字号、淡入过渡与 markmap ::after 完全对齐，保证两类图在读者视角的一致性。
+*/
+.mermaid-rendered::after {
+  content: "点击启用缩放 · Ctrl/⌘ + 滚轮临时缩放 · 拖拽平移";
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--md-default-fg-color--light, #6b6b6b);
+  background: var(--md-default-bg-color, #fff);
+  border: 1px solid var(--md-default-fg-color--lightest, #e0e0e0);
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease, color 200ms ease, border-color 200ms ease;
+  white-space: nowrap;
+}
+
+/* 默认态悬停或已缩放未激活时：淡入显示默认文案 */
+.mermaid-rendered:hover::after,
+.mermaid-rendered[data-zoomed="true"]::after {
+  opacity: 0.85;
+}
+
+/* ── 激活态（.mermaid-active） ──
+   读者点击容器后进入，容器本身加高亮边框 + 外发光；
+   ::after 切换为"已激活"文案并常驻显示，配色改为 accent，
+   让读者清楚"现在滚轮归图用"。退出激活态通过 JS 移除类触发复位。
+*/
+.mermaid-rendered.mermaid-active {
+  outline: 1px solid var(--md-accent-fg-color, #526cfe);
+  box-shadow: 0 0 0 3px rgba(82, 108, 254, 0.15),
+              0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.mermaid-rendered.mermaid-active::after {
+  content: "已激活缩放 · 点击图外或按 ESC 退出";
+  opacity: 1;
+  color: var(--md-accent-fg-color, #526cfe);
+  border-color: var(--md-accent-fg-color, #526cfe);
+}
+
+/* macOS 用户看到 Ctrl 会困惑——默认文案已使用 "Ctrl/⌘" 双符号适配；
+   JS 侧接受 ctrlKey || metaKey，无需再通过媒体查询区分平台。 */
+@media (hover: hover) {
+  /* 预留：未来如需按平台注入 data-platform 属性可在此扩展 */
+}
+
+/* 尊重减少动效偏好：去除过渡 */
+@media (prefers-reduced-motion: reduce) {
+  .mermaid-rendered,
+  .mermaid-rendered::after {
+    transition: none !important;
+  }
+}
+
+/* ================================================================
+   Markmap 容器样式（架构与 mermaid-rendered 对齐）
+   ----------------------------------------------------------------
+   markmap-view 内部的 SVG 默认没有固定尺寸，交互（折叠/展开/缩放/平移）全在
+   SVG 内部进行，不像 mermaid 那样需要外层容器介入缩放逻辑。因此本文件：
+   - 只给容器一个"合理的高度基线 + 视觉边界"
+   - 不重复实现缩放/拖拽交互（markmap-view 原生支持）
+   ================================================================ */
+
+.markmap-rendered {
+  position: relative;
+  width: 100%;
+  /* 给足高度：markmap 大图在首屏能铺开 2 层节点不被压缩 */
+  min-height: 500px;
+  height: 500px;
+  margin: 1em 0;
+  overflow: hidden;
+  background: var(--md-default-bg-color, #fff);
+  border: 1px solid var(--md-default-fg-color--lightest, #e0e0e0);
+  border-radius: 4px;
+}
+
+.markmap-rendered > svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 暗色主题适配：markmap-view 官方提供 .markmap-dark 类，内部重绑一整套
+   CSS 变量（--markmap-text-color / --markmap-code-bg / --markmap-circle-open-bg 等），
+   激活方式是在 <svg> 根元素上加 markmap-dark 类。
+   因此本处只需给容器本身做背景/边框与 Material 主题对齐，
+   SVG 内部的配色切换由 markmap.mjs 在主题切换时同步 markmap-dark 类完成，
+   不再在这里跟 markmap 内部 CSS 斗选择器优先级（前版那套 fill/stroke 覆写
+   实际并未生效，因为 markmap 的文字色通路走的是容器 color + 变量继承）。 */
+[data-md-color-scheme="slate"] .markmap-rendered {
+  background: var(--md-default-bg-color);
+  border-color: var(--md-default-fg-color--lightest);
+}
+
+/* 操作提示浮层：根据激活态切换文案与可见性
+   - 默认态：鼠标悬停才淡入，提示"点击启用缩放 · Ctrl+滚轮临时缩放"
+   - 激活态（.markmap-active）：始终显示，提示"已激活 · 点击外部或 ESC 退出"
+   这样读者一眼就能看出图是否吞滚轮，避免误会"页面怎么不动了"。 */
+.markmap-rendered::after {
+  content: "点击启用缩放 · Ctrl/⌘ + 滚轮临时缩放 · 拖拽平移";
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--md-default-fg-color--light, #6b6b6b);
+  background: var(--md-default-bg-color, #fff);
+  border: 1px solid var(--md-default-fg-color--lightest, #e0e0e0);
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+  white-space: nowrap;
+}
+
+.markmap-rendered:hover::after {
+  opacity: 0.85;
+}
+
+/* 激活态：边框变色 + 提示常驻 + 文案切换。视觉上告诉读者"滚轮现在归图用了"。 */
+.markmap-rendered.markmap-active {
+  border-color: var(--md-accent-fg-color, #526cfe);
+  box-shadow: 0 0 0 2px var(--md-accent-fg-color--transparent, rgba(82, 108, 254, 0.12));
+}
+
+.markmap-rendered.markmap-active::after {
+  content: "已激活缩放 · 点击图外或按 ESC 退出";
+  opacity: 0.95;
+  color: var(--md-accent-fg-color, #526cfe);
+  border-color: var(--md-accent-fg-color, #526cfe);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .markmap-rendered::after {
+    transition: none !important;
+  }
+}
