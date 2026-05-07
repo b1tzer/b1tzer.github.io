@@ -1,25 +1,10 @@
-/* Mermaid 运行时前端渲染（最终方案：物理隔离 Material 自动接管）
-   ──────────────────────────────────────────────
-   背景（为什么不用 class="mermaid"）：
-   Material for MkDocs 9.x 的 bundle.js 会在页面加载时扫描 .mermaid 元素，
-   一旦发现就自行 fetchScripts 下载一份 mermaid.min.js（UMD 版），然后用
-   attachShadow({mode:"closed"}) 把 SVG 塞进 declarative Shadow DOM。这会
-   导致 svg-pan-zoom / glightbox / 选择器 / 文本复制全部失效，且禁无可禁。
-
-   解决方案：
-   - 源码容器改用 <pre class="mermaid-src">（由 superfences 的 custom_fences
-     配置产出），Material 的扫描逻辑认 .mermaid 不认 .mermaid-src，完全发现
-     不了我们的容器。
-   - 渲染完成的容器使用 <div class="mermaid-rendered">，同样绕开 Material。
-   - 全程不触碰 window.mermaid、不调 mermaid.run()，只用 mermaid.render()
-     API 拿纯 SVG 字符串手动 innerHTML 到 light DOM。
-
-   superfences 输出结构：
-   ```mermaid ... ```  →  <pre class="mermaid-src"><code>源码</code></pre>
-
-   CDN 说明：
-   - 主包与所有 diagram chunk 走 jsdelivr CDN（部署到生产后国内 CDN 链路足够快）。
-   - 叠加 @mermaid-js/layout-elk 提供更紧凑的分层布局质量。 */
+/* Mermaid 运行时前端渲染
+   ─────────────────────────────────────
+   为何不用 class="mermaid"：Material for MkDocs 9.x 会扫描 .mermaid 元素并
+   用 Shadow DOM 包装 SVG，导致选择器 / 复制 / 渲染定制全部失效。
+   解决：容器改用 <pre class="mermaid-src"> (superfences) → 渲染后换为
+   <div class="mermaid-rendered">，全程用 mermaid.render() 拿 SVG 字符串手动
+   innerHTML 到 light DOM，物理隔离 Material 自动接管。 */
 import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
 import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0/dist/mermaid-layout-elk.esm.min.mjs';
 
@@ -37,19 +22,12 @@ mermaid.initialize({
   er: { useMaxWidth: true },
 });
 
-/* ──────────────────────────────────────────────
-   渲染调度：
-   1) 不使用 mermaid.run()，避免 Shadow DOM 包装。
-   2) 渲染流水线分成两阶段：
-      ① 预处理（preprocessAll）：把 <pre class="mermaid-src"><code>src</code></pre>
-        → 抽取 src → 替换为 <div class="mermaid-rendered" data-mermaid-src="src">（空 div）
-      ② 渲染（renderAll）：扫描带 data-mermaid-src 但未 rendered 的 <div>，
-        调 mermaid.render() 拿 SVG 字符串，innerHTML 写入
-   3) 两阶段分离的好处：预处理完成后，源码永久保存在 dataset，
-      即便后续渲染失败也能随时重试；且预处理极快（纯 DOM 替换），不阻塞首屏。
-   4) Material Instant Navigation 场景下，document$ 会在每次切页触发，
-      新页面的未处理节点会被重新识别。
-   ────────────────────────────────────────────── */
+/* 渲染调度：
+   1) 不用 mermaid.run()，避免 Shadow DOM 包装
+   2) 两阶段渲染：预处理（preprocessAll）把 <pre> 换成空 <div>、把源码存到 dataset；
+      渲染（renderAll）扫描未渲染的 <div>、调 mermaid.render() 拿 SVG 字符串 innerHTML 写入。
+   3) 拆分的好处：源码永久存在 dataset，渲染失败可重试；预处理纯 DOM 替换、不阻塞首屏。
+   4) Material Instant Navigation 场景：document$ 在切页时触发，新页面未处理节点会被重新识别。 */
 
 // 每次 render 需要唯一 id，避免 mermaid 内部 SVG id 冲突
 let renderSeq = 0;
@@ -94,8 +72,13 @@ async function renderOne(container) {
     if (bindFunctions) bindFunctions(container);
     container.dataset.rendered = 'true';
     // ⭐ 挂载 B1 档缩放/平移交互（Ctrl/⌘+滚轮缩放、拖拽平移、双击复位）
+    // 包一层 try-catch 做防御：交互层任何异常（签名变更、浏览器兼容等）都不应阻断
+    // 渲染链路——SVG 已经通过 innerHTML 写入，至少"能看到图"这一核心功能必须保住。
     const svgEl = container.querySelector(':scope > svg');
-    if (svgEl) enablePanZoom(svgEl, container);
+    if (svgEl) {
+      try { enablePanZoom(svgEl, container); }
+      catch (e) { console.warn('[mermaid] enablePanZoom failed:', e); }
+    }
   } catch (e) {
     console.warn('[mermaid] render error:', e, '\nsource:', source.slice(0, 200));
     container.dataset.rendered = 'error';
@@ -116,9 +99,11 @@ async function renderAll() {
   // SPA 切页残留清理：上一次进入全屏时我们把容器提升到了 <body> 下（DOM Portal），
   // Material navigation.instant 只会替换 .md-container 下的 DOM，挂在 body 顶层的
   // 全屏容器与其在正文中的 placeholder 都会残留——前者残留为"新文章第一屏遮罩"，
-  // 后者残留为"新文章里一个 display:none 的空 span"（无害但肮脏）。此处一并清掉。
+  // 后者残留为"新文章里一个 display:none 的空 span"（无害但肮脏）。
+  // 两类残留统一路径：body 顶层的 .diagram-fullscreen 走 disposeMermaidContainer（顺带清掉
+  // activeContainers / apiMap 等登记项再 remove），占位 span 直接 remove。
   document.querySelectorAll('.mermaid-rendered.diagram-fullscreen').forEach(node => {
-    if (node.parentNode === document.body) node.remove();
+    if (node.parentNode === document.body) disposeMermaidContainer(node);
   });
   document.querySelectorAll('[data-mermaid-fullscreen-placeholder]').forEach(node => node.remove());
 
@@ -154,20 +139,17 @@ if (typeof material$?.subscribe === 'function') {
   renderAll();
 }
 
-/* ──────────────────────────────────────────────
-   模块级容器注册表（取代向 DOM 节点挂自定义字段的反模式）
-   ─────────────────────────────────────────────
-   之前把 `_mermaidApi` / `_mermaidGuardDispose` 直接挂在 container 上存在三个问题：
+/* 模块级容器注册表（取代向 DOM 节点挂自定义字段的反模式）
+   ────────────────────────────────────────
+   旧方案把 `_mermaidApi` / `_mermaidGuardDispose` 直接挂在 container 上的三个问题：
    ① 污染 DOM 节点、TS 类型系统不友好；
-   ② 闭包跟随 DOM 引用存活，容器被 remove 后可能延迟回收；
-   ③ 每个容器各自向 document 注册一对 mousedown/keydown 监听，页面上有 N 张图就有 N 对监听，
-      典型 O(N) 监听泛滥。
+   ② 闭包跟随 DOM 引用存活，容器 remove 后可能延迟回收；
+   ③ 每个容器各自向 document 注册一对 mousedown/keydown，N 张图 = N 对监听。
 
    改造：
-   - apiMap: WeakMap<container, api> —— DOM 被 GC 时 api 随之失效，无需手动清理
-   - disposeMap: WeakMap<container, dispose> —— 同上
-   - activeContainers: Set<container> —— 当前处于激活态的容器集合
-   - document 级 mousedown / keydown **全模块唯一一对**，遍历 activeContainers 派发 ──────── */
+   - apiMap / disposeMap：WeakMap，DOM 被 GC 时自动失效。
+   - activeContainers：Set，当前处于激活态的容器集合。
+   - document 级 mousedown / keydown 全模块唯一一对，遍历 activeContainers 派发。 */
 
 const apiMap = new WeakMap();
 const disposeMap = new WeakMap();
@@ -178,20 +160,12 @@ export function getMermaidApi(container) {
   return apiMap.get(container);
 }
 
-/* ──────────────────────────────────────────────
-   共享：Diagram 伪全屏 body 滚动锁单飞集合（Mermaid + Markmap 通用）
+/* 共享：Diagram 伪全屏 body 滚动锁单飞集合（Mermaid + Markmap 通用）
    ─────────────────────────────────────────────
-   语义：
-   - enter(container)：把 container 加入锁集合；若集合从空→非空，快照 body.style.overflow
-     原值并给 body 加 .diagram-fullscreen-lock；否则仅登记（幂等）。
-   - exit(container)：把 container 从集合移除；若集合从非空→空，移除类名并恢复 overflow
-     快照值；否则仅登记（幂等）。
-   - clear()：SPA 切页兜底，清空集合 + 恢复快照 + 移除类（无论集合是否为空都执行）。
-
-   为什么挂载到 window 单例：Mermaid 与 Markmap 两个模块在同一页面加载时，任一模块先
-   执行 `window.__diagramFullscreenLock__ ??= createLock()` 即可拿到同一实例，避免
-   两套各自维护的集合互相覆盖 body.overflow 导致锁失效或残留。
-   ────────────────────────────────────────────── */
+   语义：enter/exit 维护一个容器集合，集合从空→非空时快照 body.overflow 并加锁类，
+         从非空→空时除类并恢复快照值；clear() 为 SPA 切页兜底。
+   为何挂 window 单例：Mermaid 与 Markmap 同页加载时，两模块通过 `??=` 拿到同一实例，
+         避免两套集合互相覆盖 body.overflow 导致锁失效或残留。 */
 function createDiagramFullscreenLock() {
   const set = new Set();
   let snapshotOverflow = null;
@@ -283,24 +257,18 @@ document.addEventListener('keydown', (ev) => {
   });
 });
 
-/* ──────────────────────────────────────────────
-   交互增强实现：分层架构
-   ─────────────────────────────────────────────
-   设计：
+/* 交互增强实现：分层架构
+   ────────────────────────────────────────
      enablePanZoom                       ← 协调器（组装各层）
-├── createViewBoxController       ← 纯状态机：viewBox 四元组 + 算子（fit/recenter/zoomAt/panByRatio）
+├── createViewBoxController       ← 纯状态机：viewBox 四元组 + 算子（recenter/zoomAt/panByRatio/applyViewBox）
        ├── attachWheelHandler            ← 三档滚轮
        ├── attachPointerHandlers         ← 鼠标拖拽 + 触屏双指/单指（统一 pointer 总线）
        ├── attachActivation              ← click 进入激活 / exitActive 出口
        └── attachDblclickReset           ← 双击复位
 
-   职责边界：
-     - ViewBoxController **不摸 DOM 事件**，只提供 viewBox 操纵算子
-     - 事件适配层接受 controller，绑定自身关注的事件，不直接改 cx/cy/cw/ch
-     - fit 策略：zoomAt / panByRatio 进入时先 fit（fitted 幂等守卫保证零重复成本），
-       因此 wheel / touch pinch 等走算子的路径**不再**显式调 fit；
-       拖拽路径不走算子（直接写 cx/cy），仍需在阈值临界点显式 fit。
-   ────────────────────────────────────────────── */
+   职责边界：ViewBoxController 不摸 DOM 事件，只提供算子；事件适配层不直接改 cx/cy/cw/ch。
+   SVG 的 viewBox 永远保持 mermaid 原始值，容器尺寸由 CSS min-height: 400 托底，
+   激活/退出激活不做任何几何变动，所有交互都只改 cx/cy/cw/ch 四元组。 */
 
 // ── 交互参数常量（全部归拢到模块顶层，避免魔数散落） ──
 const ZOOM_MIN = 0.5;                    // 视觉最小缩放（viewBox 最大 = iw/ZOOM_MIN）
@@ -310,9 +278,6 @@ const ZOOM_BTN_FACTOR_IN = 1.25;         // 工具栏放大按钮单次倍率
 const ZOOM_BTN_FACTOR_OUT = 0.8;         // 工具栏缩小按钮单次倍率（= 1/1.25，保证点一次大一次抵消）
 const PAN_STEP_RATIO = 0.15;             // 工具栏方向按钮：按当前 viewBox 尺寸的百分比平移
 const DRAG_THRESHOLD = 5;                // 拖拽阈值（像素）：越过此距离才视为"拖拽"而非"点击"
-const FIT_RATIO_EPSILON = 0.05;          // 比例匹配容忍度：viewBox 与容器比例差小于此值视作无需适配
-const ZOOM_ACTIVE_MIN_HEIGHT = 400;      // 激活态容器目标最小高度（与 extra.css 的 max(400px, 50vh) 对齐）
-const ZOOM_ACTIVE_MIN_VH_RATIO = 0.5;    // 激活态容器高度视口占比：与 extra.css 的 50vh 对齐
 
 // Material Design Icons SVG path（与 markmap 保持像素级一致）
 const MDI_ICONS = {
@@ -467,7 +432,7 @@ function toggleFullscreen(container, button) {
     button.setAttribute('aria-pressed', nowFullscreen ? 'true' : 'false');
   }
 
-  // 派发 resize：viewBox 算子里的 fitViewBoxToContainer / zoomAt / drag 都依赖 getBoundingClientRect，
+  // 派发 resize：viewBox 算子里的 zoomAt / drag 都依赖 getBoundingClientRect，
   // 视口尺寸从 "正文栏宽" 瞬变为 "整屏" 或反之，必须触发一次重算才能保证后续交互步长正确。
   // 下一帧派发：等待浏览器应用 .diagram-fullscreen 的 position:fixed/100vh 规则后再测量。
   requestAnimationFrame(() => {
@@ -509,8 +474,8 @@ function createToolbar(container, api) {
     const rect = container.getBoundingClientRect();
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   };
-  // 注意：工具栏只在 .mermaid-active 下可见，而进入激活态必经 click handler 的
-  // fitViewBoxToContainer 调用——因此工具栏所有按钮被点击时 fit 已发生，无需再保险调用。
+  // 工具栏按钮共享一套 api：zoomAt / panByRatio / recenter 都是对 ctrl 的纯算子调用，
+  // 不做任何额外的 "fit 容器" 预处理——SVG viewBox 契约保持 mermaid 原始值。
 
   const zoomIn  = () => { const { x, y } = centerXY(); api.zoomAt(x, y, ZOOM_BTN_FACTOR_IN); };
   const zoomOut = () => { const { x, y } = centerXY(); api.zoomAt(x, y, ZOOM_BTN_FACTOR_OUT); };
@@ -575,9 +540,8 @@ function createToolbar(container, api) {
 
 /**
  * ViewBoxController：围绕 SVG viewBox 四元组的纯状态机。
- * - 算子：recenter / zoomAt / panByRatio / applyViewBox / fitViewBoxToContainer
- * - 查询：isActive（委托给 container.classList）
- * - 状态：ix/iy/iw/ih（初始锚点）、cx/cy/cw/ch（当前）、fitted（是否已适配）
+ * - 算子：recenter / zoomAt / panByRatio / applyViewBox
+ * - 状态：ix/iy/iw/ih（初始锚点，= mermaid 原始 viewBox）、cx/cy/cw/ch（当前）
  *
  * 返回 `null` 表示 SVG 既无 viewBox 又无法通过 getBBox 兜底，调用方应放弃后续挂载。
  */
@@ -596,95 +560,25 @@ function createViewBoxController(svg, container) {
   }
   let [ix, iy, iw, ih] = initialVB.split(/\s+/).map(Number);
   let cx = ix, cy = iy, cw = iw, ch = ih;
-  let fitted = false;
 
   function applyViewBox() {
     svg.setAttribute('viewBox', `${cx} ${cy} ${cw} ${ch}`);
-    // data-zoomed 判定：以下任一为真即视为"已撑开态"
-    //  ① viewBox 已偏离初始锚点（常规缩放/平移触发）
-    //  ② 容器处于激活态（用户明确点击激活，即使还没动过 viewBox 也应保持撑高）
-    // 后者是修复"点击激活后显示框不放大"的关键——否则 fitViewBoxToContainer
-    // 把 ix/iw 重置为适配后的新值，紧跟的 applyViewBox 会把 cw-iw 判为 0，
-    // data-zoomed 被错置为 'false'，CSS 撑高规则失效。
-    const EPS = 0.5;
-    const geometryChanged =
-      Math.abs(cx - ix) >= EPS ||
-      Math.abs(cy - iy) >= EPS ||
-      Math.abs(cw - iw) >= EPS ||
-      Math.abs(ch - ih) >= EPS;
-    const active = container.classList.contains('mermaid-active');
-    container.dataset.zoomed = (geometryChanged || active) ? 'true' : 'false';
   }
 
-  /**
-   * 🗺️ 地图模式：首次进入缩放态时调整 viewBox 使其宽高比匹配容器，
-   * 这样 SVG 图形就能在被 CSS 撑高的容器里"居中填满高度"，消除上下大片空白。
-   *
-   * 原理：
-   *   - SVG 图形大小由 viewBox 决定，不是容器决定。
-   *   - 若 viewBox 比例（如 800:85 ≈ 9.4:1）与容器比例（如 1200:400 = 3:1）失配，
-   *     浏览器按 preserveAspectRatio=meet 只让 viewBox 等比例塞进容器，于是图形只占
-   *     容器顶部的 1200×128 区域，上下各 136px 空白。
-   *   - 解法：把 viewBox 的"画布"扩大到匹配容器比例（给短扁图的上下补虚空），
-   *     图形本身不变，但它在新 viewBox 里的相对"高度占比"提升 → 视觉上就撑开了。
-   *
-   * 重要：适配后把"初始态 ix/iy/iw/ih"替换为新值，这样 recenter() 和"是否回到原始态"
-   * 的判断都基于适配后的 viewBox——用户双击也不会回到那个压扁的短片状态。
-   *
-   * 幂等：fitted 守卫保证多次调用零成本，因此可以放心下沉到 zoomAt / panByRatio 开头。
-   */
-  function fitViewBoxToContainer() {
-    if (fitted) return;
-    const rect = container.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
-    // 与 CSS 保持一致的"缩放态目标高度"：max(400px, 50vh)
-    // 不能用 getComputedStyle(container).minHeight 读取——因为此刻 [data-zoomed="true"]
-    // 还没生效，读出来是 auto。这里 JS 硬编码同样公式，是"一套业务的两端表达"。
-    const targetMinH = Math.max(ZOOM_ACTIVE_MIN_HEIGHT, window.innerHeight * ZOOM_ACTIVE_MIN_VH_RATIO);
-    const targetH = Math.max(rect.height, targetMinH);
-    const containerRatio = rect.width / targetH;
-    const vbRatio = cw / ch;
-
-    if (Math.abs(vbRatio - containerRatio) < FIT_RATIO_EPSILON) {
-      fitted = true;
-      return;   // 比例已经接近，无需适配
-    }
-
-    if (vbRatio > containerRatio) {
-      // viewBox 比容器扁 → 扩展高度
-      const newCh = cw / containerRatio;
-      const padY = (newCh - ch) / 2;
-      cy -= padY;
-      ch = newCh;
-    } else {
-      // viewBox 比容器窄（高） → 扩展宽度
-      const newCw = ch * containerRatio;
-      const padX = (newCw - cw) / 2;
-      cx -= padX;
-      cw = newCw;
-    }
-    // 把"初始态"锚定到适配后的 viewBox——recenter 回到这里，而非原始压扁片
-    ix = cx; iy = cy; iw = cw; ih = ch;
-    fitted = true;
-  }
-
-  // 命名澄清：recenter 而非 reset——回到的是「fit 后的初始锚点」，不是 SVG 原始 viewBox。
-  // 用户首次 fit 后，ix/iy/iw/ih 已被改写为适配容器比例的新值；recenter 回到那个状态，
-  // 而不是回到 mermaid 最初渲染出的扁片 viewBox。双击复位、Esc 退出激活、工具栏「恢复居中」都走这里。
+  // recenter：回到初始 viewBox = mermaid 原始 viewBox，等价于"回到页面刚打开时的样子"。
+  // 双击复位、Esc 退出激活、工具栏「恢复居中」都走这里。
   function recenter() {
     cx = ix; cy = iy; cw = iw; ch = ih;
     applyViewBox();
   }
 
   /**
-   * 以"客户端坐标 (cx,cy)"为锚点，按 factor 倍率缩放。
+   * 以"客户端坐标 (clientX,clientY)"为锚点，按 factor 倍率缩放。
    * factor > 1 = 放大（viewBox 变小），factor < 1 = 缩小。
-   * 进入时先 fit（首次调用生效）：保证 zoomAt 的锚点计算基于已适配容器比例的 viewBox，
-   * 而不是原始扁片 viewBox；fit 后 rect 不变、px/py 归一化位置不变、cx/cw 已更新到新值，
-   * 锚点计算自洽。
+   * 锚点归一化基准用 svg rect：滚轮/双指的 clientX/Y 是鼠标在 SVG 元素盒内的物理坐标，
+   * 用 svg.getBoundingClientRect 才能正确映射到 "viewBox 内的那一点"（与拖拽的平移基准有意用 container 不同）。
    */
   function zoomAt(clientX, clientY, factor) {
-    fitViewBoxToContainer();
     const rect = svg.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
     const px = (clientX - rect.left) / rect.width;
@@ -703,13 +597,8 @@ function createViewBoxController(svg, container) {
     applyViewBox();
   }
 
-  /**
-   * 按当前 viewBox 尺寸的百分比平移。
-   * 进入时先 fit（首次调用生效）：保证工具栏方向键点击时 viewBox 已适配容器比例，
-   * 否则首次点击"向右平移"会在原始扁片 viewBox 上计算 cw*0.15，步长偏离预期。
-   */
+  /** 按当前 viewBox 尺寸的百分比平移。工具栏方向键 / 键盘方向键都走这里。 */
   function panByRatio(dxRatio, dyRatio) {
-    fitViewBoxToContainer();
     cx += cw * dxRatio;
     cy += ch * dyRatio;
     applyViewBox();
@@ -728,7 +617,6 @@ function createViewBoxController(svg, container) {
 
   return {
     applyViewBox,
-    fitViewBoxToContainer,
     recenter,
     zoomAt,
     panByRatio,
@@ -737,14 +625,17 @@ function createViewBoxController(svg, container) {
   };
 }
 
-/** 三档滚轮策略：默认态无修饰键让页面滚；Ctrl/⌘+滚轮缩放；激活态直接缩放。 */
+/**
+ * 三档滚轮策略：默认态无修饰键让页面滚；Ctrl/⌘+滚轮缩放；激活态直接缩放。
+ * 监听挂在 container：即使鼠标在 SVG 元素盒以外的容器空白区，滚轮缩放仍然生效，
+ * 与 container 上的 pointer 拖拽响应区统一。
+ */
 function attachWheelHandler(svg, container, ctrl) {
-  svg.addEventListener('wheel', (e) => {
+  container.addEventListener('wheel', (e) => {
     const isActive = container.classList.contains('mermaid-active');
     const hasModifier = e.ctrlKey || e.metaKey;
     if (!isActive && !hasModifier) return;
     e.preventDefault();
-    // 无需显式 fit：ctrl.zoomAt 内部已下沉调用
     const factor = e.deltaY < 0 ? 1 + ZOOM_STEP : 1 - ZOOM_STEP;
     ctrl.zoomAt(e.clientX, e.clientY, factor);
   }, { passive: false });
@@ -753,9 +644,13 @@ function attachWheelHandler(svg, container, ctrl) {
 /**
  * 桌面端鼠标拖拽 + 移动端触屏（双指捏合缩放 / 单指拖拽）。
  * 统一 pointer 事件总线：同类事件只挂一次监听，内部按 e.pointerType 分流。
- * 返回 dragMovedRef：供 attachActivation 判断"刚拖拽过需吞 click"。
+ * 事件挂在 container 而非 svg：容器尺寸固定（min-height: 400），即使 SVG 元素盒
+ * 只占容器一部分（扁图只占顶部一条），鼠标在容器任意位置都能发起拖拽，不会再出现
+ * "点击空白区无响应"的历史问题。
+ * 返回 { didDragThisGesture() }：供 attachActivation 判断"刚拖拽过需吞 click"
+ * ——"读即重置"语义，一次调用同时完成读取与清零，消除两步操作的时序隐患。
  */
-function attachPointerHandlers(svg, ctrl) {
+function attachPointerHandlers(svg, container, ctrl) {
   // 鼠标拖拽所需状态
   let dragging = false;
   let dragMoved = false;      // 本次 pointerdown 以来是否已超出阈值
@@ -767,11 +662,17 @@ function attachPointerHandlers(svg, ctrl) {
 
   const handleMouseDown = (e) => {
     if (e.button !== 0) return;              // 只响应主键
+    // ⭐ 关键守卫：若点击落在工具栏内（按钮、图标、分隔条等），不启动拖拽。
+    //   根因：container.setPointerCapture(pointerId) 会把后续 pointer 事件
+    //   全部劫持到 container，浏览器将不再对按钮派发合成 click 事件——
+    //   表现为"按钮能看到，但点击无反应"。工具栏内部的 click 由按钮自己的
+    //   click 监听处理，这里直接放行即可。
+    if (e.target.closest('.mermaid-toolbar')) return;
     dragging = true;
     dragMoved = false;
     dragStartX = e.clientX; dragStartY = e.clientY;
     dragCX = ctrl.state.cx; dragCY = ctrl.state.cy;
-    svg.setPointerCapture(e.pointerId);
+    container.setPointerCapture(e.pointerId);
     // 故意不 preventDefault：让文字 selection 在默认态拖拽下仍可用
   };
   const handleMouseMove = (e) => {
@@ -781,35 +682,30 @@ function attachPointerHandlers(svg, ctrl) {
     if (!dragMoved) {
       if (Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD) return;
       dragMoved = true;
-      svg.style.cursor = 'grabbing';
-      // 🗺️ 拖拽路径不走 zoomAt/panByRatio 算子（直接改 state），因此 fit 必须在此显式调用；
-      // 非激活态拖拽会通过 applyViewBox 把 data-zoomed 置为 'true'，容器 CSS 撑高到 400px，
-      // 但若 viewBox 仍是原始扁片比例，preserveAspectRatio=meet 只会让图形在高大容器里
-      // 居中塞一条，上下各留空白。fitted 幂等守卫保证与 click/算子路径不会重复适配。
-      ctrl.fitViewBoxToContainer();
-      // fit 会改写 state 的"初始锚点"并同步当前值，必须同步更新拖拽起点快照，
-      // 否则下一行按旧 dragCX/dragCY 反推位移会让图形瞬间跳一下。
-      dragCX = ctrl.state.cx; dragCY = ctrl.state.cy;
+      container.style.cursor = 'grabbing';
     }
-    const rect = svg.getBoundingClientRect();
-    const dx = deltaX / rect.width * ctrl.state.cw;
-    const dy = deltaY / rect.height * ctrl.state.ch;
-    ctrl.state.setXY(dragCX - dx, dragCY - dy);
+    // 拖拽归一化基准用 SVG rect 而非 container：
+    // viewBox 与 SVG 元素盒是 1:1 映射，像素→viewBox 换算比例 = cw / svgRect.width。
+    // 若用 container 尺寸归一化，瓦图某轴会出现"拖拽很涩"（X/Y 灵敏度不一致）。
+    // 响应区仍走 container（盖整个容器有效），与归一化基准正正好是两件独立的事。
+    const svgRect = svg.getBoundingClientRect();
+    const dx = deltaX / svgRect.width  * ctrl.state.cw;
+    const dy = deltaY / svgRect.height * ctrl.state.ch;    ctrl.state.setXY(dragCX - dx, dragCY - dy);
     ctrl.applyViewBox();
   };
   const handleMouseUp = (e) => {
     if (!dragging) return;
     dragging = false;
-    svg.style.cursor = '';
-    try { svg.releasePointerCapture(e.pointerId); } catch {}
+    container.style.cursor = '';
+    try { container.releasePointerCapture(e.pointerId); } catch {}
   };
 
   const handleTouchDown = (e) => {
+    // 同 handleMouseDown 的工具栏守卫：防止触屏在工具栏按钮上按下时被拖拽/捏合吞掉
+    if (e.target.closest('.mermaid-toolbar')) return;
     touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (touches.size === 2) {
-      // 双指缩放的锚点计算依赖 cw/ch，需先 fit 到容器比例后再快照起始 cw/ch；
-      // 后续 zoomAt 内的 fit 守卫已幂等，这里显式调一次是为了保证 pinchStartCW/CH 取的是 fit 后值
-      ctrl.fitViewBoxToContainer();
+      // 双指捏合初始化：快照起始双指距离与当前 cw/ch，后续 handleTouchMove 按倍率缩放
       const pts = [...touches.values()];
       pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
       pinchStartCW = ctrl.state.cw; pinchStartCH = ctrl.state.ch;
@@ -837,11 +733,13 @@ function attachPointerHandlers(svg, ctrl) {
     if (touches.size < 2) pinchAnchor = null;
   };
 
-  svg.addEventListener('pointerdown', (e) => {
+  // 事件统一挂 container（而非 svg）：容器任意位置都能发起拖拽，
+  // 避免扁图场景下 SVG 只占顶部一条、空白区点不响应的历史问题。
+  container.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch') handleTouchDown(e);
     else handleMouseDown(e);
   });
-  svg.addEventListener('pointermove', (e) => {
+  container.addEventListener('pointermove', (e) => {
     if (e.pointerType === 'touch') handleTouchMove(e);
     else handleMouseMove(e);
   }, { passive: false });
@@ -849,13 +747,17 @@ function attachPointerHandlers(svg, ctrl) {
     if (e.pointerType === 'touch') handleTouchUp(e);
     else handleMouseUp(e);
   };
-  svg.addEventListener('pointerup', handlePointerEnd);
-  svg.addEventListener('pointercancel', handlePointerEnd);
+  container.addEventListener('pointerup', handlePointerEnd);
+  container.addEventListener('pointercancel', handlePointerEnd);
 
-  // 返回引用对象：attachActivation 读 dragMoved 判断"刚拖拽过"；写 false 重置
+  // 返回单方法接口：attachActivation 在 click 回调里调一次
+  // —— "读即重置"，消除两步操作的时序隐患
   return {
-    get dragMoved() { return dragMoved; },
-    resetDragMoved() { dragMoved = false; },
+    didDragThisGesture() {
+      const moved = dragMoved;
+      dragMoved = false;
+      return moved;
+    },
   };
 }
 
@@ -866,35 +768,27 @@ function attachPointerHandlers(svg, ctrl) {
  */
 function attachActivation(container, ctrl, dragRef) {
   container.addEventListener('click', (e) => {
-    // 若本次 pointerdown-up 属于"拖拽"（dragMoved 为真），则吞掉本次 click，
+    // 若本次 pointerdown-up 属于"拖拽"（didDragThisGesture 返回 true），则吞掉本次 click，
     // 避免拖拽松手后误入激活态（需求 6.1、6.2）。
-    // 注意：click 会在 pointerup 之后触发，此时 dragMoved 仍保留上次拖拽的结果；
-    // 本轮吞掉后立即复位，不影响下一次真正的点击激活。
-    if (dragRef.dragMoved) {
-      dragRef.resetDragMoved();
+    // 注意：click 在 pointerup 之后触发，didDragThisGesture 内部"读即重置"，
+    //      天然保证本轮吞掉后标志位归零，不影响下一次真正的点击激活。
+    if (dragRef.didDragThisGesture()) {
       e.stopPropagation();
       return;
     }
+    // 激活态 = 纯视觉反馈：仅加高亮边框、显示工具栏、解锁无修饰键滚轮缩放。
+    // 绝不在此触碰几何（不改容器尺寸、不改 SVG 尺寸、不改 viewBox），
+    // 避免激活/退出瞬间的尺寸跳变——容器高度始终由 CSS min-height: 400 托底，
+    // SVG 元素盒尺寸由 mermaid 渲染后的 max-width + height:auto 锁定。
     if (!container.classList.contains('mermaid-active')) {
       container.classList.add('mermaid-active');
       activeContainers.add(container);
-      // ⭐ 激活态下 CSS 会把容器撑高到 max(400px, 50vh)，但若不主动 fit，viewBox 的宽高比
-      //   仍是原始扁片，图形依旧只占容器顶部一小条。此处主动适配一次：
-      //   1) 等容器被撑高（等下一帧 CSS 生效后 rect.height 才是撑高后的值）
-      //   2) 适配后 data-zoomed 会被 applyViewBox 置成 'true'，巩固 CSS 状态
-      requestAnimationFrame(() => {
-        ctrl.fitViewBoxToContainer();
-        // fit 只改 viewBox 四元组和初始锚点，不会写 DOM；
-        // 这里显式刷一次 applyViewBox，把适配后的 viewBox 写入 SVG 属性，
-        // 同时借 active 短路让 data-zoomed 翻到 'true'，触发 CSS 撑高规则。
-        ctrl.applyViewBox();
-      });
     }
   });
 
   // 退出激活态（由模块级 document 监听派发调用）
-  // 退出时必须同步把 viewBox 拉回初始状态（调 recenter），否则容器折回默认态但 viewBox
-  // 还停在 fit 后的"宽扁版"，文章里会留下一张压扁的奇怪图。
+  // 退出时 recenter 把 viewBox 拉回初始锚点（= mermaid 原始 viewBox），
+  // 激活期间的缩放/拖拽位移在退出时全部复位，图形回到页面刚加载时的样子。
   const exitActive = () => {
     if (!container.classList.contains('mermaid-active')) return;
     container.classList.remove('mermaid-active');
@@ -904,7 +798,7 @@ function attachActivation(container, ctrl, dragRef) {
   return exitActive;
 }
 
-/** 双击复位：回到 fit 后的初始锚点。 */
+/** 双击复位：回到 mermaid 原始 viewBox（等价于页面刚打开时的样子）。 */
 function attachDblclickReset(svg, ctrl) {
   svg.addEventListener('dblclick', (e) => {
     e.preventDefault();
@@ -919,7 +813,7 @@ function enablePanZoom(svg, container) {
   const ctrl = createViewBoxController(svg, container);
   if (!ctrl) return;   // SVG 无 viewBox 且 getBBox 失败，放弃交互挂载
 
-  const dragRef = attachPointerHandlers(svg, ctrl);
+  const dragRef = attachPointerHandlers(svg, container, ctrl);
   attachWheelHandler(svg, container, ctrl);
   attachDblclickReset(svg, ctrl);
   const exitActive = attachActivation(container, ctrl, dragRef);
@@ -930,14 +824,10 @@ function enablePanZoom(svg, container) {
     zoomAt: ctrl.zoomAt,
     panByRatio: ctrl.panByRatio,
     applyViewBox: ctrl.applyViewBox,
-    fitViewBoxToContainer: ctrl.fitViewBoxToContainer,
     getSvg: ctrl.getSvg,
     exitActive,
   };
   apiMap.set(container, api);
-
-  // 初始状态标记
-  container.dataset.zoomed = 'false';
 
   // 工具栏（激活态下显示）
   const disposeToolbar = createToolbar(container, api);

@@ -234,79 +234,66 @@ pre.mermaid-src {
 .mermaid-rendered {
   text-align: center;
   margin: 1em 0;
-  overflow: hidden;          /* 缩放后 SVG 不溢出到页面外 */
+  overflow: hidden;          /* 拖拽时 SVG 可被拖到容器外，由此裁剪；缩放同理 */
   position: relative;
   border-radius: 6px;
+  min-height: 400px;         /* 画布最小高度托底，最大高度由 SVG 自然高度撑开 */
+  /* 「画布 + 内容」分离模型：容器 = 画布（min-height 400 托底）；SVG = 画布上的图。
+     flex 关键点：align-items: center（非 stretch）——让 SVG 保持自然尺寸而非被横向拉满。
+     配合 SVG 侧 max-width: 100% + width: auto，实现"瘦长/宽扁图保原样、超大图等比缩小贴边"。 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;        /* ⚠️ 必须是 center，不能是 stretch */
+  justify-content: center;
   transition: box-shadow 200ms ease, background 200ms ease;
 }
 
-/* ⚠️ 必须用直接子选择器 `> svg`（而非后代 `svg`）：
-   容器内部除了图表本身的 svg，还有工具栏按钮 `.mermaid-toolbar button svg`（孙级）。
-   若用后代选择器，这里的 max-width/height/user-select/cursor 会全部穿透到工具栏图标上，
-   和按钮自己的 18×18 尺寸规则打架（尤其 .mermaid-active 分支叠了 !important 时会压垮按钮尺寸，
-   导致工具栏图标被放大到 28×28，与 markmap 视觉不一致）。直接子选择器把作用域锁在图表本体。 */
+/* ⭐ 尺寸策略（渲染阶段一次性定型）：
+     max-width: 100% + width/height: auto → 瓦长图保持原尺寸、超大图等比缩小贴边。
+     这是"画布+内容"分离模型的内容层契约：SVG 永不被动放大，只在必要时等比缩小。
+
+     直接子选择器 `> svg`（非后代 `svg`）：防止规则穿透到工具栏按钮图标。
+
+     overflow: visible 的根因：SVG 默认 overflow: hidden。当通过 viewBox 平移
+     内部图形时，超出 SVG 盒的部分会被 SVG 自己裁掉——这是"拖拽时上下/左右有遮挡"
+     的根本原因。改为 visible 后裁剪统一由外层容器 overflow: hidden 负责。
+
+     touch-action: none 禁止默认手势映射，让 pointer 事件完整派发。 */
 .mermaid-rendered > svg {
   max-width: 100%;
+  width: auto;
   height: auto;
-  /* 禁止触摸手势映射为浏览器默认行为（如长按选择文本），让 pointer 事件完整派发 */
+  overflow: visible;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   cursor: default;
+  display: block;
 }
-
-/* ⭐ A1 档：缩放态撑开容器，给 SVG 更多施展空间
-   ─────────────────────────────────────────────
-   痛点（为什么需要撑开）：
-   mermaid 的 mindmap 等横向铺开的图渲染出来常常是"宽 800 × 高 85"这种扁片，
-   SVG 自带 viewBox="0 0 800 85" 固定宽高比，即使 CSS 把 width 设为 100%，
-   浏览器也会按比例把高度压回 1200 × 85/800 ≈ 128px。结果：
-   放大时只是"字变大"，内容覆盖面没变大——失去"像看地图一样多显示内容"的意义。
-
-   解法：进入缩放态后，给容器一个合理的 min-height。
-   因为 SVG 默认 preserveAspectRatio="xMidYMid meet"（保持比例 + 居中 + 留白补齐），
-   当容器被撑高后，SVG 会自动垂直居中、左右依然按 viewBox 比例展示，
-   不会发生图形变形，只是"画布更大、可缩放漫游空间更大"。
-
-   min-height 取值 max(400px, 50vh)：
-     - 400px 保底，防止桌面大屏浏览时 50vh 也不够用
-     - 50vh 响应式，小屏（如笔记本）占半屏，不至于把内容挤没
-     - 对"本身就很高的图"（如长流程图）无影响——自然高度 > 400px 时不触发
-
-   背景 + 拖拽手型保留：给读者"进入了缩放模式"的视觉反馈。
+/* ───────────────────────────────────
+   mermaid 容器激活态视觉反馈
+   ────────────────────────────────────
+   原则：激活态 = 纯视觉反馈（背景、内阴影、边框高亮、外发光、工具栏淡入、鼠标手型），
+   不修改容器尺寸、不修改 SVG 几何、不触动 flex 布局。
+   容器尺寸契约：min-height 400 托底，最大高度由 SVG 自然高度撑开，
+   该契约在页面初渲染时完成，之后的任何交互（激活/缩放/拖拽）都不改变它。
 */
-/* 撑高触发条件 = data-zoomed="true" 或 .mermaid-active：
-   - data-zoomed 场景：用户已通过滚轮/拖拽/按钮操作过 viewBox
-   - .mermaid-active 场景：用户点击激活但尚未操作，此时也应立刻撑高，
-     让读者一进入激活态就看到"放大了显示区域"的明确反馈（对应原问题 1、2）
-   两个触发条件并列，顺序无关；任一满足即撑高。 */
-.mermaid-rendered[data-zoomed="true"],
 .mermaid-rendered.mermaid-active {
   background: var(--md-code-bg-color, #f5f5f5);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
-  min-height: max(400px, 50vh);
-  display: flex;              /* 让 SVG 在容器内垂直居中（短图不挤在顶部） */
-  align-items: center;
-  justify-content: center;
+  outline: 1px solid var(--md-accent-fg-color, #526cfe);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06),
+              0 0 0 3px rgba(82, 108, 254, 0.15),
+              0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
-/* 同样只作用于图表本体（直接子 svg），避免 !important 的 width/height:100% 穿透到工具栏按钮图标 */
-.mermaid-rendered[data-zoomed="true"] > svg,
+/* 激活态的 SVG：仅切换鼠标手型。设计原则同容器——不触碰任何几何属性。
+   拖拽响应区问题由 JS 解决（pointer 事件挂 container），与 CSS 无关。 */
 .mermaid-rendered.mermaid-active > svg {
-  /* 撑满容器宽度，消除左右空白（对 useMaxWidth 限制的反制） */
-  max-width: none !important;
-  width: 100% !important;
-  /* 高度也撑满容器，配合 preserveAspectRatio 让图形按比例居中展示 */
-  height: 100% !important;
-  max-height: max(400px, 50vh);
   cursor: grab;
 }
-
-.mermaid-rendered[data-zoomed="true"] > svg:active,
-.mermaid-rendered.mermaid-active > svg:active {
+.mermaid-rendered.mermaid-active:active > svg {
   cursor: grabbing;
 }
-
 /* ── 提示条双文案（与 markmap 同构） ──
    - 默认态（:hover 时淡入）：提示读者"点击启用缩放 · Ctrl/⌘ + 滚轮临时缩放 · 拖拽平移"
    - 激活态（.mermaid-active，常驻）：提示读者"已激活缩放 · 点击图外或按 ESC 退出"
@@ -329,25 +316,16 @@ pre.mermaid-src {
   white-space: nowrap;
 }
 
-/* 默认态悬停或已缩放未激活时：淡入显示默认文案 */
-.mermaid-rendered:hover::after,
-.mermaid-rendered[data-zoomed="true"]::after {
+/* 默认态悬停时：淡入显示默认文案 */
+.mermaid-rendered:hover::after {
   opacity: 0.85;
 }
 
-/* ── 激活态（.mermaid-active） ──
-   读者点击容器后进入，容器本身加高亮边框 + 外发光；
-   ::after 切换为"已激活"文案并常驻显示，配色改为 accent，
-   让读者清楚"现在滚轮归图用"。退出激活态通过 JS 移除类触发复位。
+/* ── 激活态提示文案切换 ──
+   激活态下提示条常驻显示为“已激活”文案，让读者清楚“现在滚轮归图用”。
+   容器自身的高亮边框 + 外发光已合并到上面的 .mermaid-rendered.mermaid-active 规则。
 */
-.mermaid-rendered.mermaid-active {
-  outline: 1px solid var(--md-accent-fg-color, #526cfe);
-  box-shadow: 0 0 0 3px rgba(82, 108, 254, 0.15),
-              0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.mermaid-rendered.mermaid-active::after {
-  content: "已激活缩放 · 点击图外或按 ESC 退出";
+.mermaid-rendered.mermaid-active::after {  content: "已激活缩放 · 点击图外或按 ESC 退出";
   opacity: 1;
   color: var(--md-accent-fg-color, #526cfe);
   border-color: var(--md-accent-fg-color, #526cfe);
@@ -466,8 +444,8 @@ pre.mermaid-src {
      不与 Markmap 的 .markmap-dark 暗色类冲突（后者作为祖先加在同一容器上）。
    ================================================================ */
 
-/* 容器层：铺满视口、覆盖在最顶层；min-height/height 用 !important 覆盖激活态
-   的 max(400px, 50vh) 规则，避免两套高度规则打架导致 SVG 仅占屏幕上半部。
+/* 容器层：铺满视口、覆盖在最顶层；min-height/height 用 !important 覆盖默认态
+   的 min-height: 400px，避免两套高度规则打架导致 SVG 仅占屏幕上半部。
    ⚠️ 额外声明 display: block + align/justify-content: initial：
    覆盖 .mermaid-rendered.mermaid-active 的 `display: flex; align-items: center;
    justify-content: center`——flex 布局下 SVG 作为 flex item 的 width/height: 100%
@@ -481,7 +459,7 @@ pre.mermaid-src {
   inset: 0;                               /* = top:0; right:0; bottom:0; left:0 */
   width: 100vw !important;
   height: 100vh !important;
-  min-height: 100vh !important;           /* 覆盖 .mermaid-active 的 max(400px, 50vh) */
+  min-height: 100vh !important;           /* 覆盖默认态的 min-height: 400px */
   max-height: 100vh;
   margin: 0 !important;
   border-radius: 0;
