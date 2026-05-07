@@ -274,10 +274,18 @@ document.addEventListener('keydown', (ev) => {
 const ZOOM_MIN = 0.5;                    // 视觉最小缩放（viewBox 最大 = iw/ZOOM_MIN）
 const ZOOM_MAX = 8;                      // 视觉最大缩放
 const ZOOM_STEP = 0.15;                  // 滚轮单步缩放比例
-const ZOOM_BTN_FACTOR_IN = 1.25;         // 工具栏放大按钮单次倍率
-const ZOOM_BTN_FACTOR_OUT = 0.8;         // 工具栏缩小按钮单次倍率（= 1/1.25，保证点一次大一次抵消）
-const PAN_STEP_RATIO = 0.15;             // 工具栏方向按钮：按当前 viewBox 尺寸的百分比平移
+// 工具栏单击步进——与滚轮单步 1.15 统一手感，避免两种交互方式切换时的跳变差异
+const ZOOM_BTN_FACTOR_IN = 1 + ZOOM_STEP;          // = 1.15
+const ZOOM_BTN_FACTOR_OUT = 1 / ZOOM_BTN_FACTOR_IN; // ≈ 0.87（保证点一次大一次完全抵消）
+const PAN_STEP_RATIO = 0.10;             // 工具栏方向按钮：按当前 viewBox 尺寸的百分比平移
 const DRAG_THRESHOLD = 5;                // 拖拽阈值（像素）：越过此距离才视为"拖拽"而非"点击"
+
+// 长按连发参数——pointerdown 先单触一次（= 单击语义），HOLD_DELAY_MS 后进入 rAF 连发
+// 连发步进刻意做小，累积到与屏幕刷新率同步，既丝滑又可控
+const HOLD_DELAY_MS = 400;               // 进入连发模式前的静默期（区分单击与长按）
+const HOLD_ZOOM_FACTOR_IN = 1.015;       // 连发每帧缩放因子——累积 ~120 帧（2s）≈ ×6
+const HOLD_ZOOM_FACTOR_OUT = 1 / HOLD_ZOOM_FACTOR_IN;
+const HOLD_PAN_RATIO = 0.006;            // 连发每帧平移比例（按 viewBox 尺寸百分比）
 
 // Material Design Icons SVG path（与 markmap 保持像素级一致）
 const MDI_ICONS = {
@@ -292,6 +300,126 @@ const MDI_ICONS = {
   fullscreen:     'M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zM14 5v2h3v3h2V5z',
   fullscreenExit: 'M5 16h3v3h2v-5H5zm3-8H5v2h5V5H8zm6 11h2v-3h3v-2h-5zm2-11V5h-2v5h5V8z',
 };
+
+/* ──────────────────────────────────────────────
+   attachHoldRepeat：按钮长按连发（rAF 驱动）
+   ─────────────────────────────────────────────
+   设计要点：
+   ① 交互契约：pointerdown → 立即触发 onceFn（保持单击语义）→ HOLD_DELAY_MS 后进入
+      rAF 循环，每帧触发 repeatFn；pointerup/cancel/leave 终止。
+   ② 性能：连发用 requestAnimationFrame 而非 setInterval——天然与屏幕刷新率同步
+      （60Hz=16.6ms / 120Hz=8.3ms），视觉无漂移；后台页面被浏览器自动暂停，零空转。
+   ③ 多键累加：当任意一个按钮进入连发时加入 activeHoldButtons，rAF 回调遍历所有
+      活跃按钮依次触发——支持「同时按住 右+下 做对角线平移」这类组合交互。
+   ④ 防御：container 级 pointerdown 里已跳过 .mermaid-toolbar 内的 target，这里
+      只处理 button 自身；visibilitychange→hidden 时主动释放防止后台继续空转。
+   ⑤ 生命周期：返回 dispose 闭包，托管 button 上的所有监听与 rAF/timer 句柄。
+   ────────────────────────────────────────────── */
+
+const activeHoldButtons = new Set();   // { button → repeatFn } 的轻量表达：Set<{btn, fn}>
+let holdRafId = 0;
+
+function holdTick() {
+  if (activeHoldButtons.size === 0) { holdRafId = 0; return; }
+  activeHoldButtons.forEach(entry => {
+    try { entry.fn(); } catch (e) { console.warn('[mermaid] hold repeat failed:', e); }
+  });
+  holdRafId = requestAnimationFrame(holdTick);
+}
+function ensureHoldLoop() {
+  if (holdRafId === 0) holdRafId = requestAnimationFrame(holdTick);
+}
+
+// 页面切入后台：直接清空活跃集合 + 取消 rAF，避免读者切 Tab 后图仍在疯狂缩放
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    activeHoldButtons.clear();
+    if (holdRafId) { cancelAnimationFrame(holdRafId); holdRafId = 0; }
+  }
+});
+
+/**
+ * 给按钮挂载"单击 + 长按连发"行为。
+ * @param {HTMLButtonElement} btn
+ * @param {() => void} onceFn     单击 / 首帧触发（= 原有 click handler 语义）
+ * @param {() => void} repeatFn   连发每帧触发（步进比 onceFn 小）
+ * @returns {() => void} dispose  解绑所有监听、清理定时器
+ */
+function attachHoldRepeat(btn, onceFn, repeatFn) {
+  let holdTimer = 0;
+  let repeating = false;   // 是否已进入连发模式（用于区分 pointerup 是"短按=单击"还是"长按结束"）
+  const entry = { btn, fn: repeatFn };
+
+  // stop：清理所有副作用（timer / 连发集合 / 高亮类）。幂等，可在任何终止路径调用。
+  const stop = () => {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = 0; }
+    activeHoldButtons.delete(entry);
+    btn.classList.remove('mermaid-btn-holding');
+    repeating = false;
+  };
+
+  const onDown = (ev) => {
+    if (ev.button !== undefined && ev.button !== 0) return;  // 仅主键
+    ev.preventDefault();
+    ev.stopPropagation();
+    // ⭐ 按下时不触发任何操作——避免长按场景的"先跳一下再连发"顿挫感。
+    //    单击 / 长按的分支判定延迟到 pointerup：
+    //      - HOLD_DELAY_MS 内松手 → 判定单击，此刻才触发 onceFn
+    //      - HOLD_DELAY_MS 到了还没松手 → 判定长按，进入 rAF 连发（repeating=true）
+    // 捕获后续 pointer 事件，即使指针滑出按钮也能在 pointerup 时正确收尾
+    try { btn.setPointerCapture(ev.pointerId); } catch {}
+    holdTimer = setTimeout(() => {
+      holdTimer = 0;
+      repeating = true;
+      activeHoldButtons.add(entry);
+      btn.classList.add('mermaid-btn-holding');
+      ensureHoldLoop();
+    }, HOLD_DELAY_MS);
+  };
+
+  // onUp：根据是否已进入连发模式走不同分支
+  //   - 未进入连发（短按） → 判定为单击，触发一次 onceFn
+  //   - 已进入连发（长按） → 仅停止连发，不补触发 onceFn（连发到哪就停到哪，避免尾部再跳一大步）
+  const onUp = () => {
+    const shouldFireOnce = !repeating && holdTimer !== 0;
+    stop();
+    if (shouldFireOnce) {
+      try { onceFn(); } catch (e) { console.warn('[mermaid] toolbar action failed:', e); }
+    }
+  };
+
+  // onCancel：pointercancel / blur 属于"被动中断"，与主动松手不同——不应视为单击意图，直接清理即可。
+  const onCancel = () => stop();
+
+  btn.addEventListener('pointerdown', onDown);
+  btn.addEventListener('pointerup', onUp);
+  btn.addEventListener('pointercancel', onCancel);
+  // 键盘可达性：Enter/Space 同样走"松开才触发"语义
+  const onKeyDown = (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    if (ev.repeat) return;          // 首次 keydown 启动计时器，后续 repeat 交给 rAF 处理
+    ev.preventDefault();
+    onDown({ pointerId: -1, button: 0, preventDefault() {}, stopPropagation() {} });
+  };
+  const onKeyUp = (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    onUp();
+  };
+  btn.addEventListener('keydown', onKeyDown);
+  btn.addEventListener('keyup', onKeyUp);
+  // blur 视为被动中断（而非"释放单击"）：切页、弹窗夺焦等场景不应当作单击触发
+  btn.addEventListener('blur', onCancel);
+
+  return () => {
+    stop();
+    btn.removeEventListener('pointerdown', onDown);
+    btn.removeEventListener('pointerup', onUp);
+    btn.removeEventListener('pointercancel', onCancel);
+    btn.removeEventListener('keydown', onKeyDown);
+    btn.removeEventListener('keyup', onKeyUp);
+    btn.removeEventListener('blur', onCancel);
+  };
+}
 
 /* 工具栏样式运行时注入（复用 markmap 的策略，避免 extra.css 与 JS 逻辑两处散落）：
    - 仅首次调用时注入一次，通过 <style data-mermaid-toolbar> 标签作唯一性标记
@@ -346,8 +474,10 @@ function ensureToolbarStyle() {
       background: var(--md-default-fg-color--lightest);
       color: var(--md-accent-fg-color);
     }
-    .mermaid-toolbar button:active {
+    .mermaid-toolbar button:active,
+    .mermaid-toolbar button.mermaid-btn-holding {
       background: var(--md-default-fg-color--lighter);
+      color: var(--md-accent-fg-color);
     }
     .mermaid-toolbar button:focus-visible {
       outline: 2px solid var(--md-accent-fg-color);
@@ -454,6 +584,10 @@ function createToolbar(container, api) {
   // 阻止工具栏 mousedown 被 document 级"外部点击退出"误判
   toolbar.addEventListener('mousedown', (ev) => ev.stopPropagation());
 
+  // 本工具栏内所有"长按连发"按钮的 dispose 句柄（container 级 dispose 时统一调用）
+  const holdDisposers = [];
+
+  // 普通单击按钮：用于"居中 / 全屏"这类状态切换型动作，无连发语义
   const makeBtn = (iconKey, title, handler) => {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -469,6 +603,22 @@ function createToolbar(container, api) {
     return btn;
   };
 
+  // 长按型按钮：单击 onceFn（大步进，保持当前手感）；按住 HOLD_DELAY_MS 后每帧 repeatFn（小步进）
+  // 禁用 click 分发——按下时 onceFn 已触发，否则松手还会再触发一次造成"多跳一步"
+  const makeHoldBtn = (iconKey, title, onceFn, repeatFn) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.title = title;
+    btn.setAttribute('aria-label', title);
+    btn.innerHTML =
+      `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${MDI_ICONS[iconKey]}"/></svg>`;
+    // 吞 click：onceFn 由 pointerdown 触发，pointerup 后的合成 click 不再重复
+    btn.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); });
+    const dispose = attachHoldRepeat(btn, onceFn, repeatFn);
+    holdDisposers.push(dispose);
+    return btn;
+  };
+
   // 以容器中心为锚点（需求 3.3 / 3.4）
   const centerXY = () => {
     const rect = container.getBoundingClientRect();
@@ -477,18 +627,25 @@ function createToolbar(container, api) {
   // 工具栏按钮共享一套 api：zoomAt / panByRatio / recenter 都是对 ctrl 的纯算子调用，
   // 不做任何额外的 "fit 容器" 预处理——SVG viewBox 契约保持 mermaid 原始值。
 
-  const zoomIn  = () => { const { x, y } = centerXY(); api.zoomAt(x, y, ZOOM_BTN_FACTOR_IN); };
-  const zoomOut = () => { const { x, y } = centerXY(); api.zoomAt(x, y, ZOOM_BTN_FACTOR_OUT); };
-  // 方向键：按 SVG 当前 viewBox 的 15% 平移（需求 3.5）
-  // ⚠️ 语义校正：操纵 viewBox 的方向与"内容视觉位移方向"相反。
-  //    点击"上" → 读者期望内容向上滑 → viewBox 的 y 要向下移（正值）
-  //    点击"下" → 内容向下滑 → viewBox y 向上移（负值）
-  //    点击"左" / "右" 同理。此处符号均为"viewBox 方向 = 视觉方向相反"。
-  const panUp    = () => api.panByRatio(0, +PAN_STEP_RATIO);   // 视觉向上 = viewBox 向下
-  const panDown  = () => api.panByRatio(0, -PAN_STEP_RATIO);
-  const panLeft  = () => api.panByRatio(+PAN_STEP_RATIO, 0);   // 视觉向左 = viewBox 向右
-  const panRight = () => api.panByRatio(-PAN_STEP_RATIO, 0);
-  const fitCenter = () => api.recenter();
+  // 单击动作（= 原先的 click handler 语义，步进 = 1.15 / 10%）
+  const zoomIn       = () => { const { x, y } = centerXY(); api.zoomAt(x, y, ZOOM_BTN_FACTOR_IN); };
+  const zoomOut      = () => { const { x, y } = centerXY(); api.zoomAt(x, y, ZOOM_BTN_FACTOR_OUT); };
+  // 方向键符号说明：操纵 viewBox 的方向与"内容视觉位移方向"相反。
+  //   点击"上" → 读者期望内容向上滑 → viewBox 的 y 向下移（正值）
+  //   其余方向同理，此处符号均为"viewBox 方向 = 视觉方向相反"
+  const panUp        = () => api.panByRatio(0, +PAN_STEP_RATIO);
+  const panDown      = () => api.panByRatio(0, -PAN_STEP_RATIO);
+  const panLeft      = () => api.panByRatio(+PAN_STEP_RATIO, 0);
+  const panRight     = () => api.panByRatio(-PAN_STEP_RATIO, 0);
+  const fitCenter    = () => api.recenter();
+
+  // 连发动作（= rAF 每帧触发的小步进，累积到与屏幕刷新率同步）
+  const zoomInTick   = () => { const { x, y } = centerXY(); api.zoomAt(x, y, HOLD_ZOOM_FACTOR_IN); };
+  const zoomOutTick  = () => { const { x, y } = centerXY(); api.zoomAt(x, y, HOLD_ZOOM_FACTOR_OUT); };
+  const panUpTick    = () => api.panByRatio(0, +HOLD_PAN_RATIO);
+  const panDownTick  = () => api.panByRatio(0, -HOLD_PAN_RATIO);
+  const panLeftTick  = () => api.panByRatio(+HOLD_PAN_RATIO, 0);
+  const panRightTick = () => api.panByRatio(-HOLD_PAN_RATIO, 0);
 
   const sep = () => {
     const s = document.createElement('div');
@@ -499,17 +656,17 @@ function createToolbar(container, api) {
   const zoomGroup = document.createElement('div');
   zoomGroup.className = 'mermaid-toolbar-group';
   zoomGroup.append(
-    makeBtn('zoomIn',  '放大', zoomIn),
-    makeBtn('zoomOut', '缩小', zoomOut),
+    makeHoldBtn('zoomIn',  '放大（可长按）', zoomIn,  zoomInTick),
+    makeHoldBtn('zoomOut', '缩小（可长按）', zoomOut, zoomOutTick),
   );
 
   const panGroup = document.createElement('div');
   panGroup.className = 'mermaid-toolbar-group';
   panGroup.append(
-    makeBtn('left',  '向左平移', panLeft),
-    makeBtn('up',    '向上平移', panUp),
-    makeBtn('down',  '向下平移', panDown),
-    makeBtn('right', '向右平移', panRight),
+    makeHoldBtn('left',  '向左平移（可长按）', panLeft,  panLeftTick),
+    makeHoldBtn('up',    '向上平移（可长按）', panUp,    panUpTick),
+    makeHoldBtn('down',  '向下平移（可长按）', panDown,  panDownTick),
+    makeHoldBtn('right', '向右平移（可长按）', panRight, panRightTick),
   );
 
   // 第 3 组 = [恢复居中 · 全屏]，并列两按钮（不新建第 4 组，与 Markmap 对称）。
@@ -535,7 +692,12 @@ function createToolbar(container, api) {
   toolbar.append(zoomGroup, sep(), panGroup, sep(), resetGroup);
   container.appendChild(toolbar);
 
-  return () => { toolbar.remove(); };
+  return () => {
+    // 先拆连发钩子（含 rAF 注销与按钮监听解绑），再移除 DOM，顺序反了会导致短暂泄漏
+    holdDisposers.forEach(dispose => { try { dispose(); } catch {} });
+    holdDisposers.length = 0;
+    toolbar.remove();
+  };
 }
 
 /**
