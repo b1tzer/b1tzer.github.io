@@ -467,10 +467,22 @@ pre.mermaid-src {
   margin: 0 !important;
   border-radius: 0;
   z-index: 9999;
-  background: var(--md-default-bg-color);
   display: block !important;              /* 覆盖 .mermaid-active 的 display: flex */
-  /* 不显式覆写 box-shadow / outline：继承激活态高亮边框在全屏下不可见（铺满视口），
+  /* 背景色按类型分流（见下方两条单独规则）：Mermaid 用 --md-code-bg-color 延续
+     激活态的灰底画布感；Markmap 无灰底概念，保留 --md-default-bg-color 白底。
+     不显式覆写 box-shadow / outline：继承激活态高亮边框在全屏下不可见（铺满视口），
      但保留规则以便 SPA 退出全屏后回到普通激活态时视觉一致。 */
+}
+
+/* 背景色分流：与激活态视觉契约保持一致。
+   - Mermaid：激活态用 --md-code-bg-color（#f5f5f5 灰），全屏沿用同一变量，暗色主题下自动跟随
+   - Markmap：激活态无专属背景（走默认白底），全屏同样用 --md-default-bg-color */
+.mermaid-rendered.diagram-fullscreen {
+  background: var(--md-code-bg-color, #f5f5f5);
+}
+
+.markmap-rendered.diagram-fullscreen {
+  background: var(--md-default-bg-color);
 }
 
 /* SVG 层：必须同时作用于两类容器在全屏态下的直接子 SVG。

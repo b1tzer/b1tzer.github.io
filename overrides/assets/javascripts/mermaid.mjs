@@ -737,14 +737,30 @@ function createViewBoxController(svg, container) {
   /**
    * 以"客户端坐标 (clientX,clientY)"为锚点，按 factor 倍率缩放。
    * factor > 1 = 放大（viewBox 变小），factor < 1 = 缩小。
-   * 锚点归一化基准用 svg rect：滚轮/双指的 clientX/Y 是鼠标在 SVG 元素盒内的物理坐标，
-   * 用 svg.getBoundingClientRect 才能正确映射到 "viewBox 内的那一点"（与拖拽的平移基准有意用 container 不同）。
+   *
+   * 锚点归一化基准 = 图形"真实渲染盒"（meet 缩放后的屏幕占位），而非 svg 元素盒。
+   * ────────────────────────────────────────────────────────
+   * 为什么不能直接用 svg.getBoundingClientRect 的 rect 归一化：
+   *   非全屏态下 SVG 自适应、rect 宽高比 = viewBox 宽高比，两者等价；
+   *   但全屏态 CSS 强制 width/height:100%! 把 SVG 非等比拉伸到视口尺寸，
+   *   而 preserveAspectRatio=meet 仍把图形等比缩放到 viewBox 盒内居中——
+   *   图形真实屏幕宽 = min(rect.w/cw, rect.h/ch) * cw（meet 缩放因子），
+   *   两侧或上下会留空白。若用 rect 归一化，鼠标指向图形某点时 px 被稀释，
+   *   缩放锚点会漂移到 svg 中心方向。
+   *
+   * 修复思路：先算出 meet 后的图形真实盒（居中对齐），再相对它归一化，
+   *   非全屏态下 realW===rect.width 自动退化为原逻辑，全屏态才真正校准。
    */
   function zoomAt(clientX, clientY, factor) {
     const rect = svg.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
-    const px = (clientX - rect.left) / rect.width;
-    const py = (clientY - rect.top) / rect.height;
+    const meet = Math.min(rect.width / cw, rect.height / ch);
+    const realW = cw * meet;
+    const realH = ch * meet;
+    const realLeft = rect.left + (rect.width  - realW) / 2;
+    const realTop  = rect.top  + (rect.height - realH) / 2;
+    const px = (clientX - realLeft) / realW;
+    const py = (clientY - realTop)  / realH;
     const vbX = cx + px * cw;
     const vbY = cy + py * ch;
     const scale = 1 / factor;
@@ -846,13 +862,23 @@ function attachPointerHandlers(svg, container, ctrl) {
       dragMoved = true;
       container.style.cursor = 'grabbing';
     }
-    // 拖拽归一化基准用 SVG rect 而非 container：
-    // viewBox 与 SVG 元素盒是 1:1 映射，像素→viewBox 换算比例 = cw / svgRect.width。
-    // 若用 container 尺寸归一化，瓦图某轴会出现"拖拽很涩"（X/Y 灵敏度不一致）。
-    // 响应区仍走 container（盖整个容器有效），与归一化基准正正好是两件独立的事。
+    // 拖拽归一化基准 = preserveAspectRatio=meet 的真实缩放因子，非 svg 元素盒宽高。
+    // ────────────────────────────────────────────────────────
+    // meet 缩放因子 = min(rect.w / cw, rect.h / ch)，含义是"viewBox 单位在屏幕上的像素大小"。
+    // 跟手条件：鼠标移动 1 px → 图形移动 1 px → dx(viewBox 单位) = deltaX / meet。
+    //
+    // 为什么不能直接用 deltaX/svgRect.width*cw：该公式隐含前提 rect 宽高比 == viewBox 宽高比，
+    //   非全屏态下 SVG 自适应成立，全屏态 CSS 强制 width/height:100%! 把 SVG 拉伸为
+    //   1920×1080 后该前提破坏——X/Y 方向像素/单位比例不一致，哪个方向拉伸得狠哪个方向就涩。
+    //
+    // X/Y 共用同一个 meet：天然保证两轴灵敏度一致，与 zoomAt 的归一化逻辑对齐。
+    // 非全屏态下 svgRect.w/cw === svgRect.h/ch，min 退化为原逻辑；全屏态才真正校准。
     const svgRect = svg.getBoundingClientRect();
-    const dx = deltaX / svgRect.width  * ctrl.state.cw;
-    const dy = deltaY / svgRect.height * ctrl.state.ch;    ctrl.state.setXY(dragCX - dx, dragCY - dy);
+    const meet = Math.min(svgRect.width / ctrl.state.cw, svgRect.height / ctrl.state.ch);
+    if (meet === 0) return;
+    const dx = deltaX / meet;
+    const dy = deltaY / meet;
+    ctrl.state.setXY(dragCX - dx, dragCY - dy);
     ctrl.applyViewBox();
   };
   const handleMouseUp = (e) => {
