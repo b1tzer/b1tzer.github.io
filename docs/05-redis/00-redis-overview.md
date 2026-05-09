@@ -13,45 +13,53 @@ title: Redis 缓存设计与高可用
 
 ## 整体知识地图
 
-```mermaid
-mindmap
-    root((Redis 知识体系))
-        数据结构
-            String / Hash / List / Set / ZSet
-            底层编码切换原理
-            跳表 vs 红黑树
-        持久化
-            RDB 快照
-            AOF 追加日志
-            混合持久化
-        缓存问题
-            穿透（布隆过滤器）
-            击穿（互斥锁/逻辑过期）
-            雪崩（随机TTL/多级缓存）
-        高可用
-            主从复制
-            哨兵模式
-            集群模式（16384 slot）
-        分布式锁
-            SETNX 手动实现
-            Redisson 看门狗
-            RedLock 红锁
-        应用场景
-            缓存一致性
-            排行榜 / 计数 / 限流
-            大 Key 与热 Key
-        内存管理
-            过期删除（惰性+定期）
-            8 种淘汰策略
-            LRU vs LFU
-        事务与脚本
-            MULTI/EXEC 事务
-            Lua 脚本原子性
-            Pipeline 批量操作
-        网络模型
-            单线程为什么快
-            epoll IO 多路复用
-            Redis 6.0 多线程网络 IO
+```markmap
+# Redis 知识体系
+
+## 数据结构
+- String / Hash / List / Set / ZSet
+- 底层编码切换原理
+- 跳表 vs 红黑树
+
+## 持久化
+- RDB 快照
+- AOF 追加日志
+- 混合持久化
+
+## 缓存问题
+- 穿透（布隆过滤器）
+- 击穿（互斥锁/逻辑过期）
+- 雪崩（随机TTL/多级缓存）
+
+## 高可用
+- 主从复制
+- 哨兵模式
+- 集群模式（16384 slot）
+
+## 分布式锁
+- SETNX 手动实现
+- Redisson 看门狗
+- RedLock 红锁
+
+## 应用场景
+- 缓存一致性
+- 排行榜 / 计数 / 限流
+- 大 Key 与热 Key
+
+## 内存管理
+- 过期删除（惰性+定期）
+- 8 种淘汰策略
+- LRU vs LFU
+
+## 事务与脚本
+- MULTI/EXEC 事务
+- Lua 脚本原子性
+- Pipeline 批量操作
+
+## 网络模型
+- 单线程为什么快
+- epoll IO 多路复用
+- Redis 6.0 多线程网络 IO
 ```
 
 ---
