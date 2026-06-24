@@ -11,6 +11,25 @@ title: Java 基础知识与 JVM 原理
 
 ---
 
+## 版本发展
+
+```mermaid
+timeline
+    title Java & JVM 版本发展
+    2004 : JDK 5.0 : 泛型、枚举、注解、自动装箱、foreach、JUC
+    2006 : JDK 6 : 脚本语言支持、JConsole、Compiler API
+    2011 : JDK 7 : try-with-resources、NIO.2、Fork/Join、G1 实验性
+    2014 : JDK 8 LTS : Lambda、Stream、Optional、新日期API、元空间取代永久代
+    2017 : JDK 9 : 模块系统 Jigsaw、G1 成为默认 GC、接口私有方法
+    2018 : JDK 11 LTS : var 类型推断、HTTP Client、ZGC 实验性、Epsilon GC
+    2021 : JDK 17 LTS : 封印类、模式匹配、ZGC 正式 GA、Foreign API 孵化
+    2023 : JDK 21 LTS : 虚拟线程 Virtual Threads、Record 模式、分代 ZGC
+```
+
+> 📌 本站聚焦 **JDK 8 / 17 / 21** 三个 LTS 版本。GC 演进路线：Serial → Parallel → CMS → G1（JDK 9+ 默认）→ ZGC（JDK 15+ 正式，JDK 21 分代模式）。JDK 21 起 Oracle 改为每 2 年一个 LTS，中间版本为非 LTS 短期支持。
+
+---
+
 ## 整体知识地图
 
 ```markmap

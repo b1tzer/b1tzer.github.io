@@ -11,6 +11,24 @@ title: Kafka 消息队列核心知识体系
 
 ---
 
+## 版本发展
+
+```mermaid
+timeline
+    title Kafka 版本发展
+    2011 : v0.7 : LinkedIn 开源、基础消息队列
+    2013 : v0.8 : 分布式架构、Producer/Consumer API
+    2015 : v0.10 : Kafka Streams 流处理
+    2017 : v0.11 : Exactly-Once 语义、事务消息
+    2019 : v2.0 : KRaft 模式预览
+    2022 : v3.0 : KRaft GA、彻底去 ZooKeeper
+    2023 : v3.6 : 分层存储（Tiered Storage）
+```
+
+> 📌 本站聚焦 **v2.x / v3.x** 版本，覆盖 KRaft 模式、事务消息、Exactly-Once 等核心特性。
+
+---
+
 ## 整体知识地图
 
 ```mermaid

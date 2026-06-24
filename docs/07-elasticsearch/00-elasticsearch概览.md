@@ -11,6 +11,24 @@ title: Elasticsearch 搜索引擎核心
 
 ---
 
+## 版本发展
+
+```mermaid
+timeline
+    title Elasticsearch 版本发展
+    2010 : v0.x : Shay Banon 创建、基于 Lucene
+    2014 : v1.x : Aggregation 聚合框架
+    2015 : v2.x : Pipeline 聚合、完善 DSL
+    2016 : v5.x : 性能大幅提升、Ingest Node
+    2017 : v6.x : 移除 Mapping Type、SQL 支持
+    2019 : v7.x : 默认 1 Shard、ESQL 预览
+    2022 : v8.x : 安全默认开启、ESQL GA、kNN 向量搜索
+```
+
+> 📌 本站聚焦 **v7.x / v8.x** 版本，覆盖倒排索引、Mapping 设计、查询 DSL、聚合查询等核心特性。
+
+---
+
 ## 整体知识地图
 
 ```mermaid

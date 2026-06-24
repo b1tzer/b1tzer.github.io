@@ -11,6 +11,28 @@ title: PostgreSQL 核心特性与选型
 
 ---
 
+## 版本发展
+
+```mermaid
+timeline
+    title PostgreSQL 版本发展
+    1996 : v6.0 : 正式命名 PostgreSQL
+    2005 : v8.0 : Windows 支持、表空间、Savepoint
+    2010 : v9.0 : 流复制、Hot Standby
+    2014 : v9.4 : JSONB 类型
+    2016 : v9.6 : 并行查询
+    2017 : v10 : 逻辑复制、声明式分区
+    2019 : v12 : 分区性能大幅提升
+    2021 : v14 : 存储过程 INOUT、JSON 便捷访问
+    2022 : v15 : MERGE 语句、WAL 压缩
+    2023 : v16 : 逻辑复制增强
+    2024 : v17 : 增量备份、MERGE 增强
+```
+
+> 📌 本站聚焦 **v14 / v15 / v16** 版本，覆盖 JSONB、窗口函数、CTE、MVCC/VACUUM 等核心特性。
+
+---
+
 ## 整体知识地图
 
 ```mermaid

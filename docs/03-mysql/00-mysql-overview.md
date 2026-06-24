@@ -11,6 +11,28 @@ title: MySQL 核心知识体系概览
 
 ---
 
+## 版本发展
+
+```mermaid
+timeline
+    title MySQL 版本发展
+    1995 : MySQL 3.x : 首个公开版本，仅 ISAM 引擎
+    2000 : MySQL 3.23 : MyISAM 引擎、全文索引、表级锁
+    2003 : MySQL 4.0 : InnoDB 可选、查询缓存、UNION
+    2005 : MySQL 5.0 : 存储过程、视图、触发器、游标
+    2008 : MySQL 5.1 : 分区表、事件调度器、行级复制
+    2010 : MySQL 5.5 GA : InnoDB 成为默认引擎、半同步复制
+    2013 : MySQL 5.6 GA : GTID 复制、Online DDL、ICP/MRR
+    2015 : MySQL 5.7 GA : JSON 原生支持、虚拟列、sys schema
+    2018 : MySQL 8.0 GA : CTE、窗口函数、原子 DDL、Instant DDL
+    2024 : MySQL 8.4 LTS : 首个 LTS 版本、版本策略改革（LTS + Innovation）
+    2024 : MySQL 9.0 Innovation : 短期创新版，仅支持至下个版本
+```
+
+> 📌 本站聚焦 **MySQL 5.7 / 8.0 / 8.4** 三个版本。8.0 是当前最广泛使用的版本，8.4 是首个 LTS 长期支持版。5.7 已停止官方支持但仍有大量存量系统。9.0 起 Oracle 改为 LTS + Innovation 双轨策略：LTS 每 2 年一版、支持 8 年；Innovation 每季度一版、只支持到下一版。
+
+---
+
 ## 整体知识地图
 
 ```markmap

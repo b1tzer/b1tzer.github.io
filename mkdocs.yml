@@ -257,6 +257,7 @@ nav:
     - Redis 缓存设计与高可用: 05-redis/00-redis-overview.md
     - Redis 数据结构与底层编码: 05-redis/01-数据结构与底层编码.md
     - Redis 持久化机制：RDB 与 AOF: 05-redis/02-持久化机制RDB与AOF.md
+    - Redis 指令解析与执行机制: 05-redis/02-指令解析与执行机制.md
     - Redis 缓存三大问题：穿透、击穿、雪崩: 05-redis/03-缓存三大问题.md
     - Redis 高可用架构：主从、哨兵、集群: 05-redis/04-高可用架构.md
     - Redis 分布式锁: 05-redis/05-分布式锁.md
