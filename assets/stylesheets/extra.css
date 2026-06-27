@@ -1,0 +1,521 @@
+/* ============================================================
+   The Stack — 动效样式
+   策略：克制、流畅，不过度
+   ============================================================ */
+
+/* 注意：横向滚动护栏已下沉到首页作用域（见 home.css），
+   此处不再对 html/body 设置 overflow-x，
+   因为全局裁剪会破坏 Material 移动端抽屉导航（.md-nav--primary）
+   从视口外部滑入的动画，导致点击汉堡按钮时只显示蒙版、
+   看不到导航文字。文章页的横向溢出依赖 Material 自身
+   对 table/pre 的滚动处理 + 下文触控设备禁用 translateX hover。 */
+
+/* ── 1. 页面切换淡入过渡（navigation.instant 模式） ── */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 页面主内容区淡入 */
+.md-content__inner {
+  animation: page-fade-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── 2. 导航 Tab 切换下划线过渡 ── */
+.md-tabs__link {
+  transition: color 200ms ease, opacity 200ms ease !important;
+}
+
+.md-tabs__indicator {
+  transition: width 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              left  250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* ── 3. 侧边栏导航项 hover 微动效 ── */
+.md-nav__link {
+  transition: color 180ms ease, padding-left 180ms ease !important;
+}
+
+.md-nav__link:hover {
+  padding-left: 4px;
+}
+
+/* ── 4. 代码块 / admonition 进入动效 ── */
+.md-typeset .admonition,
+.md-typeset details {
+  animation: page-fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── 5. 搜索框展开动效 ── */
+.md-search__form {
+  transition: box-shadow 200ms ease !important;
+}
+
+/* ── 6. 尊重用户的减少动效偏好 ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── 7. 宽屏适配（≥ 1280px）──
+   注意：首页 .hero-inner 本身 max-width 为 1320px，
+   这里只调整 Material 网格，不触及 hero，避免反向压缩 */
+@media screen and (min-width: 80em) {
+  .md-grid {
+    max-width: 76rem;
+  }
+}
+
+/* ── 超宽屏（≥ 1600px）── */
+@media screen and (min-width: 100em) {
+  .md-grid {
+    max-width: 88rem;
+  }
+
+  .hero-inner {
+    max-width: 88rem;
+  }
+}
+/* ── 8. 文章朗读功能样式 ── */
+
+/* 朗读按钮（标题旁）
+   移动端触控区延展至≥ 44×44px（WCAG AA 推荐），
+   视觉尺寸维持 2.1rem，通过 padding 扩展点击热区 */
+.tts-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin-left: 0.6rem;
+  padding: 0;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  cursor: pointer;
+  vertical-align: middle;
+  position: relative;
+  top: -3px;
+  transition:
+    background 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tts-btn:hover {
+  color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  background: var(--md-accent-fg-color--transparent);
+  transform: translateY(-1px);
+}
+
+.tts-btn:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.tts-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--md-accent-fg-color--transparent);
+}
+
+/* 激活态：主色填充，图标反白 */
+.tts-btn.tts-active {
+  background: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  color: var(--md-accent-bg-color);
+  box-shadow: 0 4px 12px var(--md-accent-fg-color--transparent);
+}
+
+.tts-btn.tts-active:hover {
+  background: var(--md-accent-fg-color);
+  color: var(--md-accent-bg-color);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px var(--md-accent-fg-color--transparent);
+}
+
+/* 三态 SVG 图标：默认全部隐藏，再根据 data-state 显示对应图标 */
+.tts-btn .tts-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: none;
+}
+
+.tts-btn[data-state="stopped"] .tts-icon-speaker,
+.tts-btn[data-state="playing"] .tts-icon-pause,
+.tts-btn[data-state="paused"]  .tts-icon-play {
+  display: block;
+}
+
+/* 播放时：暂停图标做一个极轻微的呼吸，暗示"正在朗读" */
+@keyframes tts-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+.tts-btn[data-state="playing"] .tts-icon-pause {
+  animation: tts-pulse 1.6s ease-in-out infinite;
+}
+
+/* 待机时：喇叭的声波做轻柔的脉冲淡入淡出（hover 时更明显） */
+@keyframes tts-wave-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}
+
+.tts-btn[data-state="stopped"]:hover .tts-wave-1 {
+  animation: tts-wave-pulse 1.4s ease-in-out infinite;
+}
+.tts-btn[data-state="stopped"]:hover .tts-wave-2 {
+  animation: tts-wave-pulse 1.4s ease-in-out 0.2s infinite;
+}
+
+/* 朗读时段落高亮（默认规则） */
+.tts-reading {
+  background: var(--md-accent-fg-color--transparent) !important;
+  border-left: 3px solid var(--md-accent-fg-color) !important;
+  padding-left: 0.75rem !important;
+  border-radius: 4px;
+  transition: background 300ms ease, border-left 300ms ease, padding-left 300ms ease;
+}
+
+/* 表格单元格内不使用左边条＋ padding，避免整行列宽跳变
+   改用背景色 + 内阴影的方式传达朗读位置 */
+td.tts-reading,
+th.tts-reading {
+  background: var(--md-accent-fg-color--transparent) !important;
+  border-left: none !important;
+  padding-left: inherit !important;
+  box-shadow: inset 3px 0 0 0 var(--md-accent-fg-color);
+  border-radius: 0;
+}
+
+/* 尊重减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .tts-reading {
+    transition: none !important;
+  }
+  .tts-btn,
+  .tts-btn .tts-icon,
+  .tts-btn[data-state="playing"] .tts-icon-pause,
+  .tts-btn[data-state="stopped"]:hover .tts-wave-1,
+  .tts-btn[data-state="stopped"]:hover .tts-wave-2 {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── N. Mermaid 渲染容器样式 ──
+   - pre.mermaid-src 是 superfences 原始输出（保存源码），页面加载早期会短暂
+     存在，若不隐藏会出现"源码文本 → SVG"的闪烁。mermaid.mjs 渲染完会替换为
+     <div class="mermaid-rendered">，此时 pre.mermaid-src 已不存在。
+   - 类名刻意避开 .mermaid，防止 Material 主题自动接管并用 Shadow DOM 包装 SVG。
+*/
+pre.mermaid-src {
+  display: none !important;
+}
+
+.mermaid-rendered {
+  text-align: center;
+  margin: 1em 0;
+  overflow: hidden;          /* 拖拽时 SVG 可被拖到容器外，由此裁剪；缩放同理 */
+  position: relative;
+  border-radius: 6px;
+  min-height: 400px;         /* 画布最小高度托底，最大高度由 SVG 自然高度撑开 */
+  /* 「画布 + 内容」分离模型：容器 = 画布（min-height 400 托底）；SVG = 画布上的图。
+     flex 关键点：align-items: center（非 stretch）——让 SVG 保持自然尺寸而非被横向拉满。
+     配合 SVG 侧 max-width: 100% + width: auto，实现"瘦长/宽扁图保原样、超大图等比缩小贴边"。 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;        /* ⚠️ 必须是 center，不能是 stretch */
+  justify-content: center;
+  transition: box-shadow 200ms ease, background 200ms ease;
+}
+
+/* ⭐ 尺寸策略（渲染阶段一次性定型）：
+     max-width: 100% + width/height: auto → 瓦长图保持原尺寸、超大图等比缩小贴边。
+     这是"画布+内容"分离模型的内容层契约：SVG 永不被动放大，只在必要时等比缩小。
+
+     直接子选择器 `> svg`（非后代 `svg`）：防止规则穿透到工具栏按钮图标。
+
+     overflow: visible 的根因：SVG 默认 overflow: hidden。当通过 viewBox 平移
+     内部图形时，超出 SVG 盒的部分会被 SVG 自己裁掉——这是"拖拽时上下/左右有遮挡"
+     的根本原因。改为 visible 后裁剪统一由外层容器 overflow: hidden 负责。
+
+     touch-action: none 禁止默认手势映射，让 pointer 事件完整派发。 */
+.mermaid-rendered > svg {
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+  display: block;
+}
+/* ───────────────────────────────────
+   mermaid 容器激活态视觉反馈
+   ────────────────────────────────────
+   原则：激活态 = 纯视觉反馈（背景、内阴影、边框高亮、外发光、工具栏淡入、鼠标手型），
+   不修改容器尺寸、不修改 SVG 几何、不触动 flex 布局。
+   容器尺寸契约：min-height 400 托底，最大高度由 SVG 自然高度撑开，
+   该契约在页面初渲染时完成，之后的任何交互（激活/缩放/拖拽）都不改变它。
+*/
+.mermaid-rendered.mermaid-active {
+  background: var(--md-code-bg-color, #f5f5f5);
+  outline: 1px solid var(--md-accent-fg-color, #526cfe);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06),
+              0 0 0 3px rgba(82, 108, 254, 0.15),
+              0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* 激活态的 SVG：仅切换鼠标手型。设计原则同容器——不触碰任何几何属性。
+   拖拽响应区问题由 JS 解决（pointer 事件挂 container），与 CSS 无关。 */
+.mermaid-rendered.mermaid-active > svg {
+  cursor: grab;
+}
+.mermaid-rendered.mermaid-active:active > svg {
+  cursor: grabbing;
+}
+/* ── 提示条双文案（与 markmap 同构） ──
+   - 默认态（:hover 时淡入）：提示读者"点击启用缩放 · Ctrl/⌘ + 滚轮临时缩放 · 拖拽平移"
+   - 激活态（.mermaid-active，常驻）：提示读者"已激活缩放 · 点击图外或按 ESC 退出"
+   文案、位置、字号、淡入过渡与 markmap ::after 完全对齐，保证两类图在读者视角的一致性。
+*/
+.mermaid-rendered::after {
+  content: "点击启用缩放 · Ctrl/⌘ + 滚轮临时缩放 · 拖拽平移";
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--md-default-fg-color--light, #6b6b6b);
+  background: var(--md-default-bg-color, #fff);
+  border: 1px solid var(--md-default-fg-color--lightest, #e0e0e0);
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease, color 200ms ease, border-color 200ms ease;
+  white-space: nowrap;
+}
+
+/* 默认态悬停时：淡入显示默认文案 */
+.mermaid-rendered:hover::after {
+  opacity: 0.85;
+}
+
+/* ── 激活态提示文案切换 ──
+   激活态下提示条常驻显示为“已激活”文案，让读者清楚“现在滚轮归图用”。
+   容器自身的高亮边框 + 外发光已合并到上面的 .mermaid-rendered.mermaid-active 规则。
+*/
+.mermaid-rendered.mermaid-active::after {  content: "已激活缩放 · 点击图外或按 ESC 退出";
+  opacity: 1;
+  color: var(--md-accent-fg-color, #526cfe);
+  border-color: var(--md-accent-fg-color, #526cfe);
+}
+
+/* macOS 用户看到 Ctrl 会困惑——默认文案已使用 "Ctrl/⌘" 双符号适配；
+   JS 侧接受 ctrlKey || metaKey，无需再通过媒体查询区分平台。 */
+@media (hover: hover) {
+  /* 预留：未来如需按平台注入 data-platform 属性可在此扩展 */
+}
+
+/* 尊重减少动效偏好：去除过渡 */
+@media (prefers-reduced-motion: reduce) {
+  .mermaid-rendered,
+  .mermaid-rendered::after {
+    transition: none !important;
+  }
+}
+
+/* ================================================================
+   Markmap 容器样式（架构与 mermaid-rendered 对齐）
+   ----------------------------------------------------------------
+   markmap-view 内部的 SVG 默认没有固定尺寸，交互（折叠/展开/缩放/平移）全在
+   SVG 内部进行，不像 mermaid 那样需要外层容器介入缩放逻辑。因此本文件：
+   - 只给容器一个"合理的高度基线 + 视觉边界"
+   - 不重复实现缩放/拖拽交互（markmap-view 原生支持）
+   ================================================================ */
+
+.markmap-rendered {
+  position: relative;
+  width: 100%;
+  /* 视口自适应：最低 640px 保证节点不被压扁，最高 min(70vh, 720px) 避免超大屏下整页被图吃掉。
+     小屏（height < 915px）时走 70vh，大屏（height ≥ 1028px）时被 720px 顶住，
+     其余落在 640px 下限——大多数笔电 13–14 寸（864~900px）会稳定命中 70vh ≈ 605–630px 区间，
+     因此实际生效为 640px（下限兜底），视觉上比旧 500px 提升 28%，节点字号随 fit 等比变大。 */
+  min-height: 640px;
+  height: min(70vh, 720px);
+  margin: 1em 0;
+  overflow: hidden;
+  background: var(--md-default-bg-color, #fff);
+  border: 1px solid var(--md-default-fg-color--lightest, #e0e0e0);
+  border-radius: 4px;
+}
+
+.markmap-rendered > svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 暗色主题适配：markmap-view 官方提供 .markmap-dark 类，内部重绑一整套
+   CSS 变量（--markmap-text-color / --markmap-code-bg / --markmap-circle-open-bg 等），
+   激活方式是在 <svg> 根元素上加 markmap-dark 类。
+   因此本处只需给容器本身做背景/边框与 Material 主题对齐，
+   SVG 内部的配色切换由 markmap.mjs 在主题切换时同步 markmap-dark 类完成，
+   不再在这里跟 markmap 内部 CSS 斗选择器优先级（前版那套 fill/stroke 覆写
+   实际并未生效，因为 markmap 的文字色通路走的是容器 color + 变量继承）。 */
+[data-md-color-scheme="slate"] .markmap-rendered {
+  background: var(--md-default-bg-color);
+  border-color: var(--md-default-fg-color--lightest);
+}
+
+/* 操作提示浮层：根据激活态切换文案与可见性
+   - 默认态：鼠标悬停才淡入，提示"点击启用缩放 · Ctrl+滚轮临时缩放"
+   - 激活态（.markmap-active）：始终显示，提示"已激活 · 点击外部或 ESC 退出"
+   这样读者一眼就能看出图是否吞滚轮，避免误会"页面怎么不动了"。 */
+.markmap-rendered::after {
+  content: "点击启用缩放 · Ctrl/⌘ + 滚轮临时缩放 · 拖拽平移";
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--md-default-fg-color--light, #6b6b6b);
+  background: var(--md-default-bg-color, #fff);
+  border: 1px solid var(--md-default-fg-color--lightest, #e0e0e0);
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+  white-space: nowrap;
+}
+
+.markmap-rendered:hover::after {
+  opacity: 0.85;
+}
+
+/* 激活态：边框变色 + 提示常驻 + 文案切换。视觉上告诉读者"滚轮现在归图用了"。 */
+.markmap-rendered.markmap-active {
+  border-color: var(--md-accent-fg-color, #526cfe);
+  box-shadow: 0 0 0 2px var(--md-accent-fg-color--transparent, rgba(82, 108, 254, 0.12));
+}
+
+.markmap-rendered.markmap-active::after {
+  content: "已激活缩放 · 点击图外或按 ESC 退出";
+  opacity: 0.95;
+  color: var(--md-accent-fg-color, #526cfe);
+  border-color: var(--md-accent-fg-color, #526cfe);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .markmap-rendered::after {
+    transition: none !important;
+  }
+}
+
+/* ================================================================
+   Diagram 伪全屏共享样式（Markmap + Mermaid 通用）
+   ----------------------------------------------------------------
+   策略：方案 B 伪全屏（CSS position:fixed 铺满视口），不使用浏览器
+   Fullscreen API。详见 .codebuddy/plan/diagram-fullscreen/requirements.md §1.1。
+
+   本块设计原则：
+   - 同时作用于 .markmap-rendered.diagram-fullscreen 与 .mermaid-rendered.diagram-fullscreen，
+     一套规则服务两类图，避免"两处各写一套"。
+   - 全屏态是激活态（.mermaid-active / .markmap-active）的叠加层：容器类 toggle +
+     body 滚动锁，不引入新状态机，复用既有工具栏显示规则与 ViewBoxController。
+   - 背景色使用 var(--md-default-bg-color)，自动跟随 Material 明暗主题，
+     不与 Markmap 的 .markmap-dark 暗色类冲突（后者作为祖先加在同一容器上）。
+   ================================================================ */
+
+/* 容器层：铺满视口、覆盖在最顶层；min-height/height 用 !important 覆盖默认态
+   的 min-height: 400px，避免两套高度规则打架导致 SVG 仅占屏幕上半部。
+   ⚠️ 额外声明 display: block + align/justify-content: initial：
+   覆盖 .mermaid-rendered.mermaid-active 的 `display: flex; align-items: center;
+   justify-content: center`——flex 布局下 SVG 作为 flex item 的 width/height: 100%
+   行为依赖 flex-basis 计算，与全屏的"块级铺满"预期会打架。
+   ⚠️ 另外显式提示：JS 已把容器从原位置移到 <body> 下（DOM 级 Portal），
+   否则祖先 `.md-content__inner` 上的 `transform` 动画会让 position:fixed 相对
+   正文栏而非视口定位——这是 CSS 硬约束，无法靠 CSS 单方面解决。 */
+.markmap-rendered.diagram-fullscreen,
+.mermaid-rendered.diagram-fullscreen {
+  position: fixed;
+  inset: 0;                               /* = top:0; right:0; bottom:0; left:0 */
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;           /* 覆盖默认态的 min-height: 400px */
+  max-height: 100vh;
+  margin: 0 !important;
+  border-radius: 0;
+  z-index: 9999;
+  display: block !important;              /* 覆盖 .mermaid-active 的 display: flex */
+  /* 背景色按类型分流（见下方两条单独规则）：Mermaid 用 --md-code-bg-color 延续
+     激活态的灰底画布感；Markmap 无灰底概念，保留 --md-default-bg-color 白底。
+     不显式覆写 box-shadow / outline：继承激活态高亮边框在全屏下不可见（铺满视口），
+     但保留规则以便 SPA 退出全屏后回到普通激活态时视觉一致。 */
+}
+
+/* 背景色分流：与激活态视觉契约保持一致。
+   - Mermaid：激活态用 --md-code-bg-color（#f5f5f5 灰），全屏沿用同一变量，暗色主题下自动跟随
+   - Markmap：激活态无专属背景（走默认白底），全屏同样用 --md-default-bg-color */
+.mermaid-rendered.diagram-fullscreen {
+  background: var(--md-code-bg-color, #f5f5f5);
+}
+
+.markmap-rendered.diagram-fullscreen {
+  background: var(--md-default-bg-color);
+}
+
+/* SVG 层：必须同时作用于两类容器在全屏态下的直接子 SVG。
+   ⚠️ 直接子选择器 > svg 必须保留：与激活态同样的理由，避免规则穿透到工具栏按钮图标。 */
+.markmap-rendered.diagram-fullscreen > svg,
+.mermaid-rendered.diagram-fullscreen > svg {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* 提示条 override：全屏态下提示文案切换为"按 ESC 退出全屏 · 滚轮缩放 · 拖拽平移"，
+   其余样式（位置、字号、颜色）复用激活态规则，只覆盖 content。 */
+.markmap-rendered.diagram-fullscreen::after,
+.mermaid-rendered.diagram-fullscreen::after {
+  content: "按 ESC 退出全屏 · 滚轮缩放 · 拖拽平移";
+  opacity: 1;
+}
+
+/* body 滚动锁：进入全屏时由 JS 单飞锁给 body 加此类，冻结页面滚动；
+   退出时移除类并恢复 overflow 快照值（见 window.__diagramFullscreenLock__）。 */
+body.diagram-fullscreen-lock {
+  overflow: hidden !important;
+}
+
+/* 尊重减少动效偏好：全屏切换不播过渡（进入/退出即刻生效）。
+   与前文 @media (prefers-reduced-motion) 块保持一致的短路处置。 */
+@media (prefers-reduced-motion: reduce) {
+  .markmap-rendered.diagram-fullscreen,
+  .mermaid-rendered.diagram-fullscreen,
+  .markmap-rendered.diagram-fullscreen::after,
+  .mermaid-rendered.diagram-fullscreen::after {
+    transition: none !important;
+  }
+}
