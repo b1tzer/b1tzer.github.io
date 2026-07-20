@@ -164,7 +164,6 @@ nav:
   - Home: index.md
   - Java:
     - Java 基础知识与 JVM 原理: 01-java-basic/00-Java基础与JVM概览.md
-    - Java 专题目录规划（老手回炉版）: 01-java-basic/0000-目录规划.md
     - 面向对象（OOP）: 01-java-basic/01-面向对象.md
     - 集合框架（Collections Framework）: 01-java-basic/02-集合框架.md
     - 并发编程（Concurrent Programming）: 01-java-basic/03-并发编程.md
