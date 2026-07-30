@@ -18,7 +18,7 @@ title: AOP —— 面向切面编程
 > - 事务失效的完整 5 种场景（异常被吞、异常类型不匹配、REQUIRES_NEW 传播等）→ [Spring 事务管理](@spring-核心基础-Spring事务管理)
 > - `@Configuration` Full/Lite 模式下 CGLIB 的使用 → [IoC 与 DI §7.2](@spring-核心基础-IoC与DI)
 > - `AbstractAutoProxyCreator` 作为 BPP 的契约与三级缓存提前暴露 → [Bean 生命周期与循环依赖](@spring-核心基础-Bean生命周期与循环依赖) / [扩展点详解 §4](@spring-核心基础-Spring扩展点详解)
-> - 注解属性类型、`@Retention` / `@Target` 的含义 → [注解（Annotation）](@java-注解Annotation)
+> - 注解属性类型、`@Retention` / `@Target` 的含义 → [注解（Annotation）](@java-字节码-注解)
 
 ---
 

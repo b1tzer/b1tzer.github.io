@@ -80,7 +80,7 @@ _TECH_STACKS: list[dict] = [
         "dir": "01-java-basic",
         "key": "java",
         "name": "Java",
-        "entry": "00-Java基础与JVM概览.md",
+        "entry": "00-Java 物理突围：从字节码格斗到 JVM 内存布局的二十四篇考古.md",
         "color": "#f89820",
         "tags": ["并发", "JVM", "集合", "NIO"],
         "in_home": True,
@@ -209,6 +209,26 @@ def _md_to_url(dir_name: str, md_file: str) -> str:
     return f"{dir_name}/{slug}/"
 
 
+def _assert_entry_exists(docs_dir: str, stack: dict) -> None:
+    """
+    校验技术栈的 entry 文件在 docs/ 下真实存在。
+
+    首页卡片跳转 / "开始阅读" 按钮 URL 均由 _TECH_STACKS.entry 拼接得到；
+    若 entry 与真实文件名不一致（例如综览页改名后忘了同步此处配置），
+    构建期不会有任何提示，但线上会产生死链。
+
+    此处强制在 mkdocs 构建期即 fail-fast，避免死链流入生产。
+    """
+    entry_path = os.path.join(docs_dir, stack["dir"], stack["entry"])
+    if not os.path.isfile(entry_path):
+        raise FileNotFoundError(
+            f"[gen_index] 技术栈 '{stack['name']}' (key={stack['key']}) "
+            f"配置的 entry 文件不存在：{entry_path}\n"
+            f"请在 hooks/gen_index.py 的 _TECH_STACKS 中把 entry 更新为 "
+            f"docs/{stack['dir']}/ 下的真实综览页文件名（不要漏掉 .md 后缀）。"
+        )
+
+
 def _latest_git_commit_time(repo, root: str) -> float:
     """
     使用 GitPython 查询指定目录下 .md 文件的最新一次提交时间戳（秒）。
@@ -322,6 +342,8 @@ def _build_tech_stacks_for_home(stats: dict, docs_dir: str) -> list[dict]:
     for stack in _TECH_STACKS:
         if not stack.get("in_home"):
             continue
+        # ⭐ fail-fast：entry 文件缺失时直接抛错，避免生成死链 URL
+        _assert_entry_exists(docs_dir, stack)
         stack_dir_path = os.path.join(docs_dir, stack["dir"])
         commit_time = _latest_git_commit_time(repo, stack_dir_path)
         items.append({
@@ -337,9 +359,12 @@ def _build_tech_stacks_for_home(stats: dict, docs_dir: str) -> list[dict]:
     return items
 
 
-def _build_home_cta_url() -> str:
+def _build_home_cta_url(docs_dir: str) -> str:
     """
     取首个 in_home=True 的条目作为"开始阅读"按钮的默认目标 URL。
+
+    与首页卡片共用同一份 entry 存在性校验（_build_tech_stacks_for_home
+    已在遍历时校验过所有 in_home 条目，此处直接返回首个即可）。
     """
     for stack in _TECH_STACKS:
         if stack.get("in_home"):
@@ -400,7 +425,7 @@ def on_pre_build(config, **kwargs):
         # 2. 构建并注入首页数据
         stats = _build_home_stats(docs_dir)
         tech_stacks = _build_tech_stacks_for_home(stats, docs_dir)
-        cta_url = _build_home_cta_url()
+        cta_url = _build_home_cta_url(docs_dir)
 
         if "extra" not in config:
             config["extra"] = {}

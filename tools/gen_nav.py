@@ -153,7 +153,15 @@ def get_article_title(file_path: str) -> str:
                 if line.strip() == "---":
                     break
                 if line.strip().startswith("title:"):
-                    return line.split(":", 1)[1].strip()
+                    raw = line.split(":", 1)[1].strip()
+                    # 用 YAML 解析器剥离引号/转义（PyYAML 认识 "..." '...' plain 三种风格）
+                    try:
+                        parsed = yaml.safe_load(raw)
+                        if isinstance(parsed, str):
+                            return parsed
+                    except yaml.YAMLError:
+                        pass
+                    return raw
 
         for line in content.split("\n"):
             if line.strip().startswith("# "):
@@ -245,7 +253,8 @@ def collect_articles() -> tuple[list[dict], list[dict]]:
 # ── nav 数字前缀提取 ─────────────────────────────────────────────────────────
 
 # 匹配文件名或目录名开头的数字前缀，如 "01-"、"01a-"
-_NUM_PREFIX = re.compile(r"^(\d+)[a-z]?-")
+# group(1) = 数字；group(2) = 可选字母后缀（''、'a'、'b'...）
+_NUM_PREFIX = re.compile(r"^(\d+)([a-z]*)-")
 
 
 def _nav_sort_key(path_str: str) -> tuple:
@@ -253,13 +262,17 @@ def _nav_sort_key(path_str: str) -> tuple:
     从 nav 条目的路径字符串中提取排序键。
     路径格式："dir/file.md" 或 "dir/subdir/file.md"
     取最后一段（文件名或子目录名）的数字前缀作为排序依据。
-    有数字前缀 → (0, 数字值)；无前缀 → (1, 0)（排到有前缀的后面）
+
+    排序规则（三级键）：
+      1. 有无数字前缀：有 → 0，无 → 1（无前缀排到末尾）
+      2. 数字值：升序
+      3. 字母后缀：空串 < 'a' < 'b' < 'c' ...，保证 10 排在 10a-10d 之前
     """
     last_seg = path_str.rstrip("/").rsplit("/", 1)[-1]
     m = _NUM_PREFIX.match(last_seg)
     if m:
-        return (0, int(m.group(1)))
-    return (1, 0)
+        return (0, int(m.group(1)), m.group(2))
+    return (1, 0, "")
 
 
 def _insert_into_section(section: list, new_entry: dict, new_path: str) -> None:
@@ -529,7 +542,7 @@ def _yaml_quote_scalar(s: str) -> str:
     if not isinstance(s, str):
         s = str(s)
     dumped = yaml.safe_dump(s, allow_unicode=True, default_flow_style=False,
-                            default_style=None).rstrip("\n")
+                            default_style=None, width=float("inf")).rstrip("\n")
     if dumped.endswith("\n..."):
         dumped = dumped[:-4]
 
