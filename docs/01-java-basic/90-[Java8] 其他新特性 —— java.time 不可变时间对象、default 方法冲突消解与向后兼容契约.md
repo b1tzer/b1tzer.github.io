@@ -1,199 +1,228 @@
 ---
-doc_id: java-Java8其他新特性
-title: "[Java8] 其他新特性"
+doc_id: java-番外-Java8其他新特性
+title: [Java8] 其他新特性 —— java.time 不可变时间对象、default 方法冲突消解与向后兼容契约
 ---
 
-# [Java8] 其他新特性
+# [Java8] 其他新特性 —— java.time 不可变时间对象、default 方法冲突消解与向后兼容契约
 
-> 本文涵盖 Java 8 的两个重要新特性：**新日期 API**（java.time）和**接口默认方法与静态方法**。
+!!! info "**Java 8 其他新特性 · 一句话口诀（番外）**"
+    - **本篇是"语法参考手册"而非"顿悟型深度源码文档"**——打开时机应该是：写代码想不起 `LocalDate` / `LocalDateTime` / `ZonedDateTime` 用哪个、`SimpleDateFormat` 多线程共享要不要改、`default` 方法多接口冲突怎么消除时——**进来查表、抄示范、抄坑清单即可**；不要期待字节码级别顿悟（那些在 [07 函数式编程](@java-字节码-函数式编程) / [01 面向对象](@java-字节码-面向对象) 里）。
+    - **新日期 API 的杀手锏是"不可变 + 时区显式"两条设计准则**——`LocalDate` / `LocalDateTime` / `ZonedDateTime` / `Instant` 全部是**不可变对象**（每次 `plusDays` / `withZone` 都返回新对象），因此天然线程安全；`ZonedDateTime` 把时区从 `LocalDateTime` 里显式拆出来，逼你在跨时区场景**主动决定时区归属**。这两条准则是"多线程共享 `SimpleDateFormat` 数据错乱"与"服务器时区不一致导致时间偏差"两大传统坑的根治方案。
+    - **接口默认方法（`default`）不是"接口有了实现能力"，是"接口可以在不破坏实现类的前提下追加新方法"的向后兼容工具**——JDK 8 要在 `Collection` 上加 `stream()` / `forEach()`，如果没有 `default` 就得改数万个实现类；`default` 让接口演化"零破坏"。**但滥用会退化成"畸形抽象类"**（接口没有实例字段，`default` 方法里存不了状态）。
+    - **`default` 方法冲突的三条优先级不需要死记，理解一句话就够**："**具体优先于抽象、类优先于接口、平级必须显式**"。类里的方法赢过接口 `default` 方法；子接口 `default` 方法赢过父接口 `default` 方法；两个平级接口的同名 `default` 方法冲突，编译器强制你在实现类里用 `X.super.m()` 显式指定来源。
 
----
+**你能立刻答上来吗？**
 
-## 一、新日期 API
+- `LocalDate` / `LocalDateTime` / `ZonedDateTime` / `Instant` 四个类的适用场景各是什么？为什么数据库存时间戳一律用 `Instant` 或 `TIMESTAMP` 而不是 `LocalDateTime`？
+- 为什么 `SimpleDateFormat` 是全 JDK 最著名的"多线程共享地雷"？`DateTimeFormatter` 为什么可以放心共享？
+- 一个类同时实现了 `interface A` 和 `interface B`，两个接口里都有 `default void hello()`，编译器会怎么处理？
+- Java 8 接口能有几种方法？Java 9 又加了什么？为什么 Java 9 要加"接口私有方法"？
+- 服务器时区北京、数据库时区 UTC，你用 `LocalDateTime.now()` 存进数据库会发生什么？
 
----
-
-### 1. 引入：为什么要替换 Date/Calendar？
-
-| 问题 | 旧 API（Date/Calendar） | 新 API（java.time） | 为什么新 API 更好 |
-| :----- | :----- | :----- | :----- |
-| 线程安全 | ❌ 非线程安全 | ✅ 不可变对象，天然线程安全 | 不可变对象无需同步，可安全共享 |
-| 月份从0开始 | ❌ 0=1月，极易出错 | ✅ 1=1月，符合直觉 | 历史遗留问题，新 API 修正了 |
-| 时区处理 | ❌ 混乱，容易出错 | ✅ ZonedDateTime 明确处理时区 | 时区和时间分离，语义清晰 |
-| API 设计 | ❌ 方法命名混乱 | ✅ 清晰的 of/from/with/plus/minus | 流式 API，链式调用 |
-
-> **为什么旧 `Date` 非线程安全**：`SimpleDateFormat` 内部有可变状态（`Calendar` 字段），多线程同时调用 `format()` 会互相覆盖状态，导致结果错误。新 API 的 `DateTimeFormatter` 是不可变的，天然线程安全。
+任何一个问题让你迟疑超过 3 秒——继续读。
 
 ---
 
-### 2. 三个核心类对比
-
-| 类 | 包含信息 | 适用场景 |
-| :----- | :----- | :----- |
-| `LocalDate` | 仅日期（年月日） | 生日、节假日、不涉及时间的日期 |
-| `LocalDateTime` | 日期+时间，无时区 | 单时区系统的业务时间 |
-| `ZonedDateTime` | 日期+时间+时区 | 跨时区系统、国际化应用 |
+> 📖 **边界声明**：本文是**番外语法参考页**，专注"能直接查表抄用"的 Java 8 剩余语法特性（`java.time` 新日期 API + 接口 `default` / `static` / `private` 方法）。以下主题请见对应专题：
+>
+> - **Lambda + 函数式接口 + Stream + `invokedynamic` 深度机制** → [07 函数式编程](@java-字节码-函数式编程)
+> - **`Optional` 使用范式与 `null` 治理设计哲学** → [07 函数式编程](@java-字节码-函数式编程) 附录
+> - **接口 `default` 方法背后的 `invokespecial` / `invokeinterface` 字节码差异与虚方法表演化** → [01 面向对象](@java-字节码-面向对象) §"`invoke*` 指令族"
+> - **`DateTimeFormatter` 内部的不可变对象 + 无锁并发原理** → [10a JMM 与线程同步](@java-并发-JMM与线程同步) §"不可变对象与安全发布"
+> - **`ThreadLocal` 内存泄漏与探测式清理** → [10a JMM 与线程同步](@java-并发-JMM与线程同步)
+> - **MyBatis / JPA / Hibernate 的时间类型 TypeHandler 配置细节** → 外部专题（`@mybatis-*` / `@spring-data-jpa-*`）
 
 ---
 
-### 3. 核心类使用
+## 1. 一、新日期 API（`java.time`）
+
+### 1.1 引入：为什么要替换 `Date` / `Calendar` —— 一张对比表说完
+
+| 问题 | 旧 API（`Date` / `Calendar`） | 新 API（`java.time`） | 根因 |
+| :-- | :-- | :-- | :-- |
+| **线程安全** | ❌ `SimpleDateFormat` 内部可变 `Calendar` 字段 | ✅ 全部不可变，天然线程安全 | 不可变对象无需同步，可安全共享 |
+| **月份从 0 开始** | ❌ `0 = 1 月`，极易出错 | ✅ `1 = 1 月`，符合直觉 | 历史遗留问题，新 API 修正 |
+| **时区处理** | ❌ 混乱、隐式依赖 JVM 默认时区 | ✅ `ZonedDateTime` 时区显式绑定 | 时区与时间语义分离 |
+| **API 设计** | ❌ 方法命名混乱、可变 | ✅ 清晰的 `of` / `from` / `with` / `plus` / `minus` 流式 API | 建造者式链式调用 |
+| **精度** | 毫秒（`long`） | 纳秒（`Instant.getNano()`） | 新 API 拆分秒 + 纳秒偏移 |
+
+**为什么旧 `SimpleDateFormat` 非线程安全**：内部持有可变的 `Calendar` 字段 + `format()` / `parse()` 无锁读写 → 多线程共享时 `Calendar` 状态互相覆盖，返回结果错乱。新 `DateTimeFormatter` 全部字段 `final` + 不可变模式对象，天然线程安全。
+
+> 📖 详细并发原理（不可变对象的安全发布语义 + `final` 字段的初始化屏障）见 [10a JMM 与线程同步](@java-并发-JMM与线程同步) §"不可变对象与安全发布"。
+
+---
+
+### 1.2 四个核心类的适用场景选择表
+
+| 类 | 包含信息 | 适用场景 | 典型 API |
+| :-- | :-- | :-- | :-- |
+| `LocalDate` | 仅日期（年月日） | 生日、节假日、账单日 | `now()` / `of(y,m,d)` / `plusWeeks()` |
+| `LocalDateTime` | 日期 + 时间，**无时区** | 单时区系统的业务时间 | `now()` / `of(...)` / `format(DateTimeFormatter)` |
+| `ZonedDateTime` | 日期 + 时间 + **时区** | 跨时区、国际化应用 | `now(ZoneId)` / `withZoneSameInstant()` |
+| `Instant` | UTC 时间戳（秒 + 纳秒） | **数据库存储 · 与旧 `Date` 互转 · API 序列化** | `now()` / `toEpochMilli()` / `Date.from(Instant)` |
+
+!!! note "📖 术语家族：`java.time` 不可变时间对象族 —— 新日期 API 8 大成员"
+    **字面义**：
+
+    - `Local*` = "本地"，字面就是"无时区信息、只表达日历上的时间"
+    - `Zoned*` = "带时区"，字面就是"绑定了 `ZoneId` 的时间"
+    - `Instant` = "瞬时"，字面就是"UTC 时间轴上的一个点"（秒 + 纳秒偏移）
+    - `Duration` / `Period` = "时长"，字面就是"两个时间点之间的差值"（秒级 vs 日历级）
+
+    **在本框架中的含义**：`java.time` 包内的**所有**时间类都是**不可变对象**（构造后不能修改，每次 `plusXxx()` / `withXxx()` 返回新对象），因此天然线程安全，天然可以放心共享。设计契约来自 JSR-310（Joda-Time 作者主导）。
+
+    **家族成员**（`java.time.*`）：
+
+    | 成员 | 精度 | 是否带时区 | 典型用途 |
+    | :-- | :-- | :-- | :-- |
+    | `LocalDate` | 日 | ❌ | 生日、账单日 |
+    | `LocalTime` | 纳秒 | ❌ | 每日闹钟时间 |
+    | `LocalDateTime` | 纳秒 | ❌ | 单时区业务时间 |
+    | `ZonedDateTime` | 纳秒 + `ZoneId` | ✅ | 跨时区应用 |
+    | `OffsetDateTime` | 纳秒 + `ZoneOffset` | ✅（偏移） | 序列化 · ISO-8601 |
+    | `Instant` | 纳秒（UTC） | ✅（隐式 UTC） | 数据库存储 · 时间戳 |
+    | `Duration` | 纳秒 | — | 秒级时长差值 |
+    | `Period` | 日 · 月 · 年 | — | 日历级时长差值（跨月不等长） |
+
+    **命名规律**：**`Local` = 无时区**、**`Zoned` / `Offset` = 有时区**、**`Instant` = UTC 时间轴单点**、**`Duration` / `Period` = 时长而非时刻**。
+
+    !!! warning "易混点：`Duration` vs `Period`"
+        `Duration` 是**基于秒**的时长（"2 小时 30 分钟" = 9000 秒），跨越夏令时也保持精确秒数；`Period` 是**基于日历**的时长（"1 个月 15 天"），受"月长度不等"影响（2 月 vs 8 月天数不同）。**计算精确时间差用 `Duration`，计算业务周期用 `Period`**。
+
+---
+
+### 1.3 核心类使用速查
 
 ```java
-// LocalDate：只有日期，无时间，无时区
+// LocalDate：仅日期，无时间，无时区
 LocalDate today = LocalDate.now();
-LocalDate birthday = LocalDate.of(1990, 6, 15);
-LocalDate nextWeek = today.plusWeeks(1);
+LocalDate birthday = LocalDate.of(1990, 6, 15);   // 月份从 1 开始
 long daysBetween = ChronoUnit.DAYS.between(birthday, today);
 
-// LocalDateTime：日期+时间，无时区
+// LocalDateTime：日期 + 时间，无时区
 LocalDateTime now = LocalDateTime.now();
-LocalDateTime meeting = LocalDateTime.of(2024, 3, 15, 14, 30, 0);
 String formatted = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-// ZonedDateTime：带时区的日期时间（跨时区系统必用）
-ZonedDateTime shanghaiTime = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"));
-ZonedDateTime newYorkTime = shanghaiTime.withZoneSameInstant(ZoneId.of("America/New_York"));
+// ZonedDateTime：带时区（跨时区必用）
+ZonedDateTime shanghai = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"));
+ZonedDateTime newYork = shanghai.withZoneSameInstant(ZoneId.of("America/New_York"));
 
-// Instant：时间戳（与旧 Date 互转）
+// Instant：UTC 时间戳（与旧 Date 互转 + 数据库存储首选）
 Instant instant = Instant.now();
-Date oldDate = Date.from(instant);          // 新转旧
-Instant fromOld = oldDate.toInstant();      // 旧转新
+Date oldDate = Date.from(instant);      // 新 → 旧
+Instant fromOld = oldDate.toInstant();  // 旧 → 新
 ```
 
 ---
 
-### 4. 新日期 API 常见问题
+### 1.4 新日期 API 常见问题（FAQ）
 
-**Q：LocalDate、LocalDateTime、ZonedDateTime 有什么区别？**
+**Q1**：`LocalDate` / `LocalDateTime` / `ZonedDateTime` / `Instant` 有什么区别？
 
-> `LocalDate` 只有日期，适合生日、节假日等场景；`LocalDateTime` 有日期和时间但无时区，适合单时区系统；`ZonedDateTime` 包含时区信息，适合跨时区的国际化应用。
+> `LocalDate` 只有日期，适合生日、节假日等场景；`LocalDateTime` 有日期和时间但**无时区**，适合单时区系统；`ZonedDateTime` 包含时区信息，适合跨时区的国际化应用；`Instant` 是 **UTC 时间轴上的一个点**（秒 + 纳秒），是数据库存储与 API 序列化的首选类型。
 
-**Q：为什么新日期 API 是线程安全的？**
+**Q2**：为什么新日期 API 是线程安全的？
 
-> 新日期 API 的所有类都是不可变对象，每次操作（如 `plusDays`）都返回新对象，不修改原对象，因此天然线程安全，无需同步。
+> 新日期 API 的所有类都是不可变对象，每次操作（如 `plusDays`）都返回新对象、不修改原对象，因此天然线程安全，无需同步。> 📖 详细并发原理见 [10a JMM 与线程同步](@java-并发-JMM与线程同步) §"不可变对象与安全发布"。
 
-**Q：如何将旧的 Date 转换为新的 LocalDateTime？**
+**Q3**：如何将旧的 `Date` 转换为新的 `LocalDateTime`？
 
-> ```java
-> Date date = new Date();
-> LocalDateTime ldt = date.toInstant()
->     .atZone(ZoneId.systemDefault())
->     .toLocalDateTime();
-> ```
+```java
+Date date = new Date();
+LocalDateTime ldt = date.toInstant()
+    .atZone(ZoneId.systemDefault())
+    .toLocalDateTime();
+```
 
 ---
 
-### 5. 新日期 API 工作中常见坑
+### 1.5 新日期 API 工作中常见坑
 
-#### ❌ 坑1：SimpleDateFormat 多线程共享导致数据错乱
+#### 坑 1：`SimpleDateFormat` 多线程共享导致数据错乱
 
 ```java
-// ❌ 危险：SimpleDateFormat 是非线程安全的，多线程共享会出错
+// ❌ 危险：SimpleDateFormat 是非线程安全的，静态共享会互相覆盖内部 Calendar 状态
 public class DateUtils {
-    // 静态共享，多线程并发调用 format/parse 会互相覆盖内部状态
     private static final SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd");
 
     public static String format(Date date) {
-        return SDF.format(date); // 多线程下结果不可预期！
+        return SDF.format(date);   // 💥 多线程下结果不可预期
     }
 }
 
-// ✅ 方案1：使用新 API 的 DateTimeFormatter（不可变，线程安全）
+// ✅ 方案 1（推荐）：迁移到 DateTimeFormatter，不可变 + 线程安全
 private static final DateTimeFormatter FORMATTER =
     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
 public static String format(LocalDateTime dateTime) {
-    return dateTime.format(FORMATTER); // 线程安全
+    return dateTime.format(FORMATTER);
 }
 
-// ✅ 方案2：如果必须用旧 API，用 ThreadLocal 隔离
-private static final ThreadLocal<SimpleDateFormat> SDF_THREAD_LOCAL =
+// ✅ 方案 2（必须用旧 API 时）：ThreadLocal 隔离
+private static final ThreadLocal<SimpleDateFormat> SDF_TL =
     ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd"));
-
-public static String format(Date date) {
-    return SDF_THREAD_LOCAL.get().format(date); // 每个线程独立实例
-}
 ```
 
-#### ❌ 坑2：月份从 0 开始的历史遗留坑
+#### 坑 2：月份从 0 开始的历史遗留坑
 
 ```java
 // ❌ 旧 API：月份从 0 开始，极易出错
 Calendar cal = Calendar.getInstance();
-cal.set(2024, 1, 15); // 这是 2024年2月15日，不是1月！（1月是0）
+cal.set(2024, 1, 15);   // 💥 这是 2 月 15 日（1 才代表 2 月），不是 1 月！
 
 // ✅ 新 API：月份从 1 开始，符合直觉
-LocalDate date = LocalDate.of(2024, 1, 15); // 这才是 2024年1月15日
-LocalDate date2 = LocalDate.of(2024, Month.JANUARY, 15); // 更清晰
+LocalDate date = LocalDate.of(2024, 1, 15);              // ✅ 2024-01-15
+LocalDate date2 = LocalDate.of(2024, Month.JANUARY, 15); // ✅ 更清晰
 ```
 
-#### ❌ 坑3：时区处理不当导致时间偏差
+#### 坑 3：时区处理不当导致时间偏差（跨时区部署首要坑）
 
 ```java
-// ❌ 危险：服务器时区和数据库时区不一致时，存储/读取时间会偏差
-LocalDateTime now = LocalDateTime.now(); // 依赖 JVM 默认时区，不同服务器可能不同
+// ❌ 危险：LocalDateTime.now() 依赖 JVM 默认时区
+// 北京服务器存入 2024-01-15 14:00:00 → 美国服务器读出 2024-01-15 14:00:00
+// 但语义完全不同！相差 13 小时
+LocalDateTime now = LocalDateTime.now();
 
-// ❌ 危险：数据库存储 LocalDateTime，跨时区部署时数据混乱
-// 北京服务器存入 2024-01-15 14:00:00（北京时间）
-// 美国服务器读出 2024-01-15 14:00:00（美国时间）→ 相差13小时！
-
-// ✅ 方案：统一使用 UTC 时间戳存储，展示时再转换为用户时区
-Instant now = Instant.now(); // UTC 时间戳，与时区无关
-// 存入数据库：now.toEpochMilli()（毫秒时间戳）
-
-// 展示时转换为用户时区
-ZonedDateTime userTime = now.atZone(ZoneId.of("Asia/Shanghai"));
-String display = userTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+// ✅ 标准范式：UTC 时间戳存储 + 展示时转用户时区
+Instant nowUtc = Instant.now();                                // 存 UTC
+long epochMilli = nowUtc.toEpochMilli();                       // 存数据库
+ZonedDateTime userView = nowUtc.atZone(ZoneId.of("Asia/Shanghai"));  // 展示
+String display = userView.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 ```
 
-#### ❌ 坑4：日期计算忽略夏令时
+#### 坑 4：日期计算忽略夏令时（用错类型的连锁反应）
 
 ```java
-// ❌ 危险：某些国家有夏令时，直接加减小时数可能不准确
+// ❌ 危险：LocalDateTime 不感知时区，无法处理夏令时切换
+// 美国 2024-03-10 是夏令时切换日，凌晨 2 点直接跳到凌晨 3 点
+
+// ✅ 用 ZonedDateTime，自动处理夏令时
 ZonedDateTime dt = ZonedDateTime.of(2024, 3, 10, 1, 30, 0, 0,
-    ZoneId.of("America/New_York")); // 美国夏令时切换日
-ZonedDateTime next = dt.plusHours(1); // 夏令时切换，实际跳过了一小时
-
-// ✅ 新 API 会自动处理夏令时，但要用 ZonedDateTime 而非 LocalDateTime
-// LocalDateTime 不感知时区，无法处理夏令时
+    ZoneId.of("America/New_York"));
+ZonedDateTime next = dt.plusHours(1);   // ✅ 跳过夏令时被吞掉的一小时
 ```
 
-#### ❌ 坑5：数据库与 Java 时间类型的映射
+#### 坑 5：数据库与 Java 时间类型的映射表
 
-```java
-// MySQL DATETIME ↔ Java 类型映射（MyBatis/JPA）
-// DATETIME    → LocalDateTime  ✅
-// DATE        → LocalDate      ✅
-// TIMESTAMP   → Instant / ZonedDateTime  ✅（TIMESTAMP 存储 UTC）
-// BIGINT      → Instant.toEpochMilli()   ⚠️（时区无关，但可读性差、难以在 SQL 端直接调试；
-//                                       严谨的生产建议仍首选 TIMESTAMP / TIMESTAMPTZ）
-
-// ❌ 常见错误：用 String 存储时间
-// "2024-01-15 14:00:00" 存为 VARCHAR，无法利用数据库的时间函数和索引
-
-// ✅ MyBatis 配置（application.yml）
-// mybatis-plus.configuration.default-enum-type-handler: ...
-// Spring Boot 2.x 默认支持 LocalDateTime，无需额外配置
-```
+| MySQL 列类型 | Java 类型 | 场景 | 备注 |
+| :-- | :-- | :-- | :-- |
+| `DATETIME` | `LocalDateTime` | 单时区业务表 | ✅ Spring Boot 2.x 默认支持 |
+| `DATE` | `LocalDate` | 生日、账单日 | ✅ |
+| `TIMESTAMP` / `TIMESTAMPTZ` | `Instant` / `ZonedDateTime` | 跨时区业务 · 全球化系统 | ✅ 存储 UTC，读取时按 `session.timezone` 转换 |
+| `BIGINT` | `Instant.toEpochMilli()` | 高性能日志系统 | ⚠️ 可读性差、SQL 端难以直接调试 |
+| `VARCHAR("2024-01-15 14:00:00")` | `String` | — | ❌ **禁止**：无法利用数据库时间函数与索引 |
 
 ---
 
-## 二、接口默认方法与静态方法
+## 2. 二、接口默认方法与静态方法（Java 8 + Java 9 私有方法）
 
----
+### 2.1 引入：为什么需要 `default` 方法 —— `Collection.forEach` 演化案例
 
-### 1. 引入：为什么需要默认方法？
-
-**问题**：接口一旦发布，新增方法会破坏所有实现类（编译错误）。
+**问题**：接口一旦发布，新增方法会破坏所有实现类（编译错误）。Java 8 要给 `Collection` 加 `stream()` / `forEach()`——如果没有 `default`，全 JDK 数万个 `Collection` 实现类都得改。
 
 ```java
-// Java 8 之前：给接口加方法 = 所有实现类都要改
-// Java 8 之后：用 default 方法提供默认实现，向后兼容
-
+// Java 8 之后：default 方法 = 接口演化"零破坏"
 public interface Collection<E> {
-    // 新增 forEach，但不破坏已有实现类
-    // 为什么这样设计：Java 8 要给所有集合类加 forEach，
-    // 如果不用 default，所有 Collection 实现类都要改，影响面太大
     default void forEach(Consumer<? super E> action) {
         for (E e : this) {
             action.accept(e);
@@ -202,36 +231,35 @@ public interface Collection<E> {
 }
 ```
 
+**核心一句话**：**给 `Collection` 加 `forEach` 而不破坏数万个实现类 = `default` 方法的唯一存在理由**。
+
 ---
 
-### 2. 默认方法 vs 静态方法
+### 2.2 三类接口方法对照速查表
 
-| 特性 | 默认方法（default） | 静态方法（static） |
-| :----- | :----- | :----- |
-| 调用方式 | 通过实例调用，可被子类覆盖 | 通过接口名调用，不可被覆盖 |
-| 用途 | 为接口提供默认实现，保持向后兼容 | 提供工具方法，与接口强相关的静态工具 |
-| 示例 | `Collection.forEach()` | `Comparator.comparing()` |
+| 特性 | `default` 方法 | `static` 方法 | `private` 方法（Java 9+） |
+| :-- | :-- | :-- | :-- |
+| 调用方式 | 通过实例调用 · 可被子类覆盖 | 通过接口名调用 · 不可覆盖 | 接口内部调用 · 对外不可见 |
+| 是否继承 | ✅ 实现类自动获得 | ❌ 不能被子接口继承 | ❌ 仅接口内部 |
+| 用途 | 向后兼容 · 提供默认实现 | 工具方法（如 `Comparator.comparing`） | 提取多个 `default` 方法的公共逻辑 |
+| 版本 | Java 8+ | Java 8+ | **Java 9+** |
+| 代表案例 | `Collection.forEach` | `Comparator.comparing` | `DataProcessor.validate` |
 
 ```java
 public interface Validator<T> {
-    // 默认方法：提供默认实现，子类可覆盖
-    default boolean validate(T value) {
-        return value != null;
-    }
+    // default：默认实现，子类可覆盖
+    default boolean validate(T value) { return value != null; }
 
-    // 静态方法：工具方法，通过接口名调用
-    static <T> Validator<T> notNull() {
-        return value -> value != null;
-    }
+    // static：工具方法，通过接口名调用
+    static <T> Validator<T> notNull() { return v -> v != null; }
 }
 
-// 使用静态方法
 Validator<String> v = Validator.notNull();
 ```
 
 ---
 
-### 3. 多继承冲突解决规则
+### 2.3 `default` 方法多继承冲突的三条优先级规则
 
 ```java
 interface A {
@@ -241,123 +269,123 @@ interface B extends A {
     default void hello() { System.out.println("B"); }
 }
 class C implements A, B {
-    // 规则1：类中的方法优先于接口默认方法
-    // 规则2：子接口优先于父接口（B 优先于 A）
-    // 规则3：若仍有歧义，必须显式覆盖
     @Override
     public void hello() {
-        B.super.hello(); // 显式指定调用 B 的默认方法
+        B.super.hello();   // 显式指定调用 B 的 default 方法
     }
 }
 ```
 
-**三条优先级规则**：
+**三条优先级规则**（不用死记，理解一句话就够）：
 
-1. **父类（class）优先于接口**：如果父类中已有同名实例方法，则父类方法胜出（即使接口有 default 方法）
-2. **子接口优先于父接口**：更具体的接口（子接口）优先于父接口；上面的 `class C implements A, B` 示例属于这一条——`B extends A`，`B.hello()` 胜出
-3. **横向平级冲突必须显式消除**：如果实现的多个接口是平级的（互不继承）且有同名 default 方法，编译器报错，必须在实现类中显式覆盖并用 `X.super.m()` 指定来源
+1. **具体优先于抽象 · 类优先于接口**——如果父类中已有同名实例方法，父类方法**赢过**接口 `default` 方法
+2. **更近优先 · 子接口优先于父接口**——`B extends A` 时 `B.hello()` 赢过 `A.hello()`
+3. **平级冲突必须显式**——两个平级接口的同名 `default` 冲突时，编译器**强制**你在实现类里用 `X.super.m()` 显式指定来源
+
+#### `X.super.m()` 的字节码印记（`invokespecial InterfaceMethod`）
+
+```volt
+// class C implements A, B; C 内调用 B.super.hello() 的字节码
+public void hello();
+  Code:
+     0: aload_0
+     1: invokespecial #7  // InterfaceMethod B.hello:()V   ← 静态绑定到 B 的 default
+     4: return
+```
+
+**顿悟点（一句话）**：`X.super.m()` 语法糖会编译成 `invokespecial InterfaceMethod`（**接口级** `invokespecial`，Java 8 前只有类级）——这是"平级冲突必须显式消除"能被 JVM 精确识别的物理基础。
+
+> 📖 **深度分析**（`invokespecial` / `invokevirtual` / `invokeinterface` / `invokestatic` / `invokedynamic` 五条 `invoke*` 指令族的完整对比）见 [01 面向对象](@java-字节码-面向对象) §"`invoke*` 五条指令族"。
 
 ---
 
-### 4. 接口方法常见问题
+### 2.4 接口方法常见问题（FAQ）
 
-**Q：接口默认方法和抽象类有什么区别？**
+**Q1**：接口 `default` 方法和抽象类有什么区别？
 
-> 1. 接口可以多实现，抽象类只能单继承；2. 接口默认方法不能有状态（字段），抽象类可以有实例字段；3. 接口默认方法主要用于向后兼容，抽象类用于代码复用和模板方法模式。
+> 三个核心差异：
+>
+> 1. **多继承 vs 单继承**：接口可以多实现，抽象类只能单继承
+> 2. **有无状态**：接口没有实例字段，`default` 方法**不能存状态**；抽象类可以有实例字段
+> 3. **设计意图**：`default` 方法主要用于**向后兼容**（接口演化零破坏），抽象类用于**代码复用**（模板方法模式）
 
-**Q：Java 8 接口可以有哪些类型的方法？**
+**Q2**：Java 8 接口可以有哪些类型的方法？
 
-> Java 8 接口可以有：1. 抽象方法（必须实现）；2. 默认方法（`default`，有实现，可覆盖）；3. 静态方法（`static`，有实现，不可覆盖）。Java 9 还增加了私有方法（`private`）。
+> Java 8 接口可以有：**抽象方法**（必须实现）、**`default` 方法**（有实现、可覆盖）、**`static` 方法**（有实现、不可覆盖）。Java 9 再新增 **`private` 方法**（接口内部工具函数，对外不可见）。
 
-**Q：为什么 Java 8 要给接口加默认方法？**
+**Q3**：为什么 Java 8 要给接口加 `default` 方法？
 
-> 主要是为了向后兼容。Java 8 引入 Stream API 后，需要给 `Collection` 接口添加 `stream()`、`forEach()` 等方法。如果没有默认方法，所有实现了 `Collection` 的类都需要修改，影响面极大。
+> 主要是为了向后兼容。Java 8 引入 Stream API 后，需要给 `Collection` 接口添加 `stream()` / `forEach()` 等方法。**如果没有 `default` 方法，所有实现了 `Collection` 的类都需要修改，影响面极大**。
 
 ---
 
-### 5. 接口方法工作中常见坑
+### 2.5 接口方法工作中常见坑
 
-#### ❌ 坑1：把 default 方法当抽象类用（滥用）
+#### 坑 1：把 `default` 方法当抽象类用（滥用存状态）
 
 ```java
-// ❌ 错误：用 default 方法存储状态，接口不应该有状态
+// ❌ 错误：想用 default 方法存储状态
 public interface UserService {
-    // 接口没有实例字段，这里的 cache 是静态的！
-    // 所有实现类共享同一个 cache，可能导致数据混乱
+    // 接口没有实例字段，这里的 cache 根本存不下来！
+    // 每次调用都返回新 Map，毫无意义
     default Map<Long, User> getCache() {
-        return new HashMap<>(); // 每次调用都返回新 Map，毫无意义
+        return new HashMap<>();
     }
 }
 
-// ✅ 正确：default 方法只用于提供默认行为，不存储状态
-// 需要状态时，用抽象类
+// ✅ 正确：需要状态时改用抽象类
 public abstract class AbstractUserService {
-    private final Map<Long, User> cache = new ConcurrentHashMap<>(); // 有状态，用抽象类
-
+    private final Map<Long, User> cache = new ConcurrentHashMap<>();
     protected Map<Long, User> getCache() { return cache; }
 }
 ```
 
-#### ❌ 坅2：default 方法与实现类方法的优先级混淆
+**降维范式**：`default` 方法只用于**提供默认行为**，不存储状态。需要状态时改用抽象类。
+
+#### 坑 2：库升级后自己的方法被"恶意覆盖"
 
 ```java
-public interface Greeting {
-    default String greet() { return "Hello from Interface"; }
-}
-
-public class MyService implements Greeting {
-    // 类中的方法优先于接口 default 方法
-    // 如果这里不写 greet()，调用的是接口的 default 方法
-    // 如果这里写了 greet()，调用的是这里的方法（覆盖了 default）
-}
-```
-
-**库升级冲突的真实案例**：
-
-```java
-// 情境：你的类已经有一个同名方法，没有 @Override 标注
+// 情境：你的类原本有个同名工具方法，与接口无关，也没有 @Override
 public class MyBatch implements Processor {
-    // 原本只是一个工具方法，与接口无关
-    public int summary() { return 0; }
+    public int summary() { return 0; }   // 只是内部工具方法
 }
 
 // 升级第三方库后，Processor 接口新增了：
 // default int summary() { return computeExpensiveSummary(); }
-// 你的 summary() 没有 @Override 也未报错，但恶意“覆盖”了库设计的默认实现，
-// 导致返回值突变、逻辑缺失。
+//
+// 你的 summary() 没有 @Override 也未报错，
+// 但从此"恶意覆盖"了库设计的默认实现 —— 返回值突变、逻辑缺失。
 ```
 
-> 💡 **防御建议**：所有实现类中的 public 方法都加 `@Override` 显式标注来源；无法标注 @Override 的方法要重新审视命名和语义，避免与未来的接口演化擞车。
-#### ❌ 坑3：接口静态方法不能被继承
+**降维范式**：**所有实现类中的 public 方法都加 `@Override` 显式标注来源**；无法标注 `@Override` 的方法要重新审视命名和语义，避免与未来的接口演化撞车。
+
+#### 坑 3：接口 `static` 方法不能被继承
 
 ```java
 public interface Validator {
-    static Validator notNull() { return value -> value != null; }
+    static Validator notNull() { return v -> v != null; }
 }
-
 public interface StringValidator extends Validator {
-    // 接口静态方法不能被继承！
-    // StringValidator.notNull() 编译报错
+    // StringValidator.notNull() 编译报错 —— static 方法不继承
 }
 
-// ✅ 只能通过定义它的接口名调用
-Validator v = Validator.notNull(); // ✅
-// StringValidator.notNull(); // ❌ 编译报错
+Validator v = Validator.notNull();          // ✅ 只能通过定义它的接口名调用
+// StringValidator.notNull();               // ❌ 编译报错
 ```
 
-#### ❌ 坑4：Java 9 私有方法的使用场景
+#### 坑 4：Java 9 `private` 方法的使用场景
 
 ```java
-// Java 9 新增：接口私有方法，用于提取 default 方法的公共逻辑
+// Java 9+：提取多个 default 方法的公共逻辑，避免代码重复
 public interface DataProcessor {
     default void processText(String text) {
-        validate(text);  // 调用私有方法
-        // 处理文本...
+        validate(text);                     // 调用私有方法
+        // 处理文本 ...
     }
 
     default void processJson(String json) {
-        validate(json);  // 复用同一个私有方法
-        // 处理 JSON...
+        validate(json);                     // 复用同一个私有方法
+        // 处理 JSON ...
     }
 
     // 私有方法：只能在接口内部调用，不暴露给实现类
@@ -367,5 +395,36 @@ public interface DataProcessor {
         }
     }
 }
-// ⚠️ 注意：私有方法是 Java 9 特性，Java 8 不支持
 ```
+
+**降维范式**：`private` 方法专门用于**提取多个 `default` 方法的公共逻辑**；不要用它做接口对外契约（对外契约用 `default` / `static`）。
+
+---
+
+## 3. 何时来查这份附录
+
+按 `requirements.md §5.5` 契约，番外附录**不承担 Q&A 题目**（顿悟感任务由深度源码型承担）。改用"何时来查这份附录"使用说明表取代传统 Q&A：
+
+| 使用场景 | 应查阅本文哪一节 | 深度机制外链 |
+| :-- | :-- | :-- |
+| 迁移 `SimpleDateFormat` 到新 API | §1.5 · 坑 1 | [10a JMM 与线程同步](@java-并发-JMM与线程同步) §"不可变对象与安全发布" |
+| 数据库时间字段类型选型 | §1.5 · 坑 5 | 外部专题 `@mybatis-*` / `@spring-data-jpa-*` |
+| 跨时区服务时间存储混乱 | §1.5 · 坑 3 | 本文即答 |
+| 库升级后自己的方法被"覆盖" | §2.5 · 坑 2 | [01 面向对象](@java-字节码-面向对象) §"`invoke*` 指令族" |
+| 接口新增方法怎么不破坏实现类 | §2.1 引入 + §2.3 优先级 | [01 面向对象](@java-字节码-面向对象) §"`invoke*` 指令族" |
+| Lambda 使用与 Stream 深度 | ❌ 不在本文 | [07 函数式编程](@java-字节码-函数式编程) |
+| `Optional` 使用范式 | ❌ 不在本文 | [07 函数式编程](@java-字节码-函数式编程) 附录 |
+
+---
+
+## 4. 🗺️ 跨战役知识伏笔（埋眼管理）
+
+番外附录以**"埋伏笔为主 · 回收为零"**为定位，所有深度顿悟感任务下放给深度源码型 8 篇。本文向后续篇章埋下 4 条伏笔：
+
+| 本篇 → 目标篇 | 伏笔内容 | 优先级 |
+| :-- | :-- | :-- |
+| `90 Java8 其他新特性` → [07 函数式编程](@java-字节码-函数式编程) | `Optional` 与 `Stream` 深度机制 —— 本篇只做"何时来查附录"引导 | ★★ |
+| `90 Java8 其他新特性` → [01 面向对象](@java-字节码-面向对象) | 接口 `default` 方法走 `invokespecial InterfaceMethod` —— `01` 是 `invoke*` 五条指令族的首发承接篇 | ★★★ |
+| `90 Java8 其他新特性` → [10a JMM 与线程同步](@java-并发-JMM与线程同步) | `java.time` 不可变对象 · `DateTimeFormatter` 线程安全的原理 —— `10a` §"不可变对象与安全发布" | ★★ |
+| `90 Java8 其他新特性` → [91 Java9-17 关键新特性](@java-番外-Java9到17关键新特性) | Java 9 接口 `private` 方法是 Java 8 `default` 方法的自然演化 —— `91` §"Java 9 语法新增"承接 | ★★★ |
+

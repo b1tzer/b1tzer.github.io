@@ -1,665 +1,675 @@
 ---
-doc_id: java-JVM内存分区与对象布局
-title: JVM 内存分区与对象布局 —— 堆栈元空间三驾马车 + 对象头/Mark Word 深度解析
+doc_id: java-JVM-内存分区与对象布局
+title: JVM 内存分区与对象布局 —— 堆栈元空间三驾马车 + 对象头 Mark Word 的物理透视
 ---
 
-# JVM 内存分区与对象布局
+# JVM 内存分区与对象布局：堆栈元空间三驾马车 + 对象头 Mark Word 的物理透视
 
-!!! info "**JVM 内存分区 一句话口诀**"
-    1. **七大分区记忆法**：**三共享**（堆、元空间、Code Cache）+ **三私有**（虚拟机栈、本地方法栈、程序计数器）+ **一堆外补充**（直接内存）。**唯一不 OOM** 的是程序计数器。
-
-    2. **`-Xmx` 管不到的地方**：元空间、Code Cache、直接内存、线程栈全在堆外——容器 `memory.limit` 必须算上这些，否则 OOM Killer 伺候。
-
-    3. **堆分代结构**：Eden ∶ S0 ∶ S1 = 8∶1∶1；对象先进 Eden，Minor GC 后复制到 Survivor，年龄达 15（或动态判断）晋升老年代。
-
-    4. **TLAB** 是堆分配零锁的基础——每个线程在 Eden 预留私有小块，bump pointer 分配；`-XX:TLABWasteTargetPercent=1` 指的是**每次 refill 时可容忍的空间浪费目标**，TLAB 实际大小由 `TLABWasteTargetPercent × Eden / (期望 refill 次数 × 活跃线程数)` 动态计算，**并非固定 1%**。
-
-    5. **对象头 Mark Word**（64 位 8 字节）多态复用——存 hashCode / GC 年龄 / 锁状态 / 偏向线程 ID；**偏向锁 JEP 374 在 JDK 15 默认关闭并弃用、JDK 18 起命令行选项标记为 obsolete（接受但产生警告），至今尚未有 JEP 将其正式移除**，但可视为已退出历史舞台。
-
-    6. **字符串常量池（StringTable）从 JDK 7 起在堆里**，不在元空间——`intern()` 撑爆的是 `Java heap space`，不是 `Metaspace`。
+!!! info "**JVM 内存分区与对象布局 一句话口诀**"
+    - **七大分区两条主线记忆法**：`三共享（堆 / 元空间 / Code Cache）+ 三私有（虚拟机栈 / 本地方法栈 / PC 寄存器）+ 一堆外补充（直接内存）`。**唯一不 OOM** 的是 PC 寄存器 —— 它只存一个固定大小的字节码偏移，随线程生随线程死。
+    - **`-Xmx` 管不到的四大盲区**：元空间、Code Cache、直接内存、线程栈全在堆外，容器 `memory.limit` 必须算上这四块 —— 否则一个 `-Xmx=2g` 的 JVM RSS 常常 3~4g，被 K8s OOM Killer 直接干掉。
+    - **TLAB 的 "1%" 不是固定大小，是空间浪费目标**：`-XX:TLABWasteTargetPercent=1` 指的是**每次 refill 时可容忍的空间浪费比例**；TLAB 实际大小由 `TLABWasteTargetPercent × Eden / (期望 refill 次数 × 活跃线程数)` 动态计算，"每线程 1% Eden" 是流传最广的误读。
+    - **对象头 Mark Word 是 64 bit 多态复用的最小内存单元**：无锁态存 `hashCode(31) + GC 年龄(4) + 锁标志(2)`；偏向锁存 `线程 ID(54) + epoch(2)`；轻量级锁存 `栈中锁记录指针(62)`；重量级锁存 `Monitor 指针(62)`；GC 标记态复用低 2 bit 的 `11` 标志。**同一个 8 字节槽位、五种状态、共享低 2 位分派入口**。
+    - **偏向锁 JEP 374 已"事实退休"但未正式移除**：JDK 15 默认关闭 + 标记 deprecated；JDK 18 起 `-XX:+UseBiasedLocking` 标记为 obsolete（可用但产生警告）；**至今尚无 JEP 将其真正从代码中删除**，Mark Word 位布局里的偏向锁字段仍然存在 —— 但业务开发者可当作不存在。
+    - **StringTable 从 JDK 7 起在堆里、不在元空间**：类级别的运行时常量池（每 Class 一份，存字面量 + 符号引用）在元空间；**全局的字符串常量池（`StringTable`，Hashtable 结构）在堆里**。`intern()` 撑爆的是 `Java heap space`，不是 `Metaspace`。JDK 6 桶数 1009 → JDK 7+ 桶数 60013（约 60× 跨越）。
 
 <!-- -->
 
-> 📖 **边界声明**：本文聚焦"JVM 运行时数据区的结构与对象在堆中的内存布局"，以下主题请见对应专题：
+> 📖 **边界声明**：本文聚焦"JVM 运行时数据区的物理结构 + 对象在堆中的内存布局"，以下主题请见对应姊妹文档：
 >
-> - **GC 算法、三色标记、G1/ZGC 实现** → [GC 核心机制与收集器演进](@java-GC核心机制与收集器演进)
-> - **GC 调优参数、OOM 排查、生产 checklist** → [GC 调优实战与常见误区](@java-GC调优实战与常见误区)
-> - **容器化 JVM、JFR、虚拟线程** → [JVM 现代实践与前沿技术](@java-JVM现代实践与前沿技术)
-> - **`synchronized` 锁升级流程（偏向锁→轻量级锁→重量级锁）的运行时行为** → 见后续「并发编程」专题相关章节（拆分中）
+> - **GC 算法、三色标记、G1 / ZGC 实现** → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)
+> - **GC 调优参数、OOM 排查、生产 checklist** → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)
+> - **容器化 JVM、JFR、虚拟线程内存模型** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)
+> - **`synchronized` 锁升级完整流程（Mark Word 状态位跃迁：无锁 → 偏向 → 轻量 → 重量）** → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) §"锁升级四阶段"
+> - **`Klass` / `oop` 二元模型 + `invokevirtual` 查 vtable / itable 完整展开** → [面向对象（OOP）](@java-字节码-面向对象) §"对象头与 Klass Pointer"
+> - **`LinkedList` 节点 40 字节 / `HashMap.Node` 48 字节的完整推导** → [集合框架](@java-数据结构-集合框架) §"每元素内存物理构成图"
+> - **`String` 常量池的字节码考古（`ldc` 指令 + `CONSTANT_String_info`）+ Compact Strings** → [字符串底层原理](@java-字节码-字符串底层原理)
 
 ---
 
-## 1. 运行时数据区全景
+## 1. 第一层：业务痛点 —— 从"`-Xmx=2g` 却 RSS 4g 被 OOMKilled"到"`intern()` 打爆的到底是哪块内存"
 
-在深入每个分区的内部细节之前，先建立一个全局视角。JVM 的**运行时数据区**（即常说的"内存结构"）可以从两条主线来理解，掌握这两条主线后再逐个展开，思路会清晰很多。
+### 1.1 生产事故现场：容器内 `-Xmx=2g` 的 JVM，为什么 RSS 常常 3~4g？
 
-下面这张二维分组图把七大分区按两条主线铺开，一眼就能看到每个分区的"身份"（横向：线程维度；纵向：位置维度）：
+**痛点引子**（老手视角切入）：某 K8s 集群里一个 Java 服务的 Pod `memory.limit=3g`，JVM 参数 `-Xmx=2g` 看似留足了 1g 富余；但线上运行 30 分钟后被 OOM Killer 强制杀死，`kubectl describe pod` 显示 `Reason: OOMKilled`，同时 JVM 侧 `/actuator/heapdump` **完全正常**。运维怀疑内存泄漏，业务侧坚持"堆没用满"，两边扯了一下午 —— 老手接手后一句话定位：**`-Xmx` 只管堆，堆外还有四大盲区独立吃内存**。
+
+```yaml
+# ❌ 事故版部署配置
+resources:
+  limits:
+    memory: 3Gi   # 只留了 1Gi 给堆外
+env:
+  - name: JAVA_OPTS
+    value: "-Xmx2g"   # 只管堆
+# 结果：Metaspace 涨到 800m + CodeCache 240m + DirectMemory 512m + 500 线程 × Xss 1m = 500m
+# → 堆外累计 2G+，加上堆 2G，RSS 稳超 4G，被 OOM Killer 秒杀
+```
+
+**四大盲区**：
+
+- **元空间**：默认无上限（`MaxMetaspaceSize = 2^64 - 1`）—— 大量 CGLib / JSP / Groovy 动态生成的类会持续增长
+- **Code Cache**：默认 `-XX:ReservedCodeCacheSize=240m` —— JIT 编译热点方法后落盘
+- **直接内存**：默认与 `-Xmx` 相同 —— Netty / NIO ByteBuffer 的常驻缓冲
+- **线程栈**：每线程 `-Xss=1m` × 500 线程 = 500m —— Tomcat 大线程池的隐形消耗
+
+**顿悟点**：容器 `memory.limit` **必须** ≥ `-Xmx + MaxMetaspaceSize + ReservedCodeCacheSize + MaxDirectMemorySize + (Xss × 线程数) + 200m 兜底`，否则被 OOM Killer 干掉是**必然事件**，不是概率事件。
+
+### 1.2 反问引子：老手也未必答得上的 6 个内存布局悬案
+
+- **悬案 1**：`-Xmx=2g` 却 RSS 4g —— 差的 2g 藏在哪？为什么 `jmap -heap` 完全看不到？
+- **悬案 2**：`String.intern()` 循环调用 100 万次，抛的 OOM 是 `Java heap space` 还是 `Metaspace`？为什么 JDK 6 和 JDK 7+ 答案不一样？
+- **悬案 3**：`new Object()` 到底占多少字节？开启 `-XX:+UseCompressedOops` 和关闭它有多少差距？为什么 30GB 堆比 40GB 堆更省内存？
+- **悬案 4**：TLAB 的 `-XX:TLABWasteTargetPercent=1` 到底是"每线程占 1% Eden"还是别的意思？大家都在说的"1%"出处到底在哪？
+- **悬案 5**：Mark Word 才 8 字节 = 64 bit —— 怎么同时装下 hashCode、GC 年龄、锁状态、偏向线程 ID 这么多信息？"多态复用"的物理机制是什么？
+- **悬案 6**：栈帧里的"返回地址"存的是"下一条指令的 PC"还是"调用点 PC"？HotSpot 为什么这么选？异常栈打印的行号是怎么算出来的？
+
+任何一个问题让你迟疑超过 3 秒 —— 继续读。这六个悬案的答案全部藏在 `jmap` / `jcmd VM.native_memory` / `jol-cli` / `hotspot/share/oops/markWord.hpp` 里。
+
+### 1.3 痛点清单（3 条 · 与后三层强绑定）
+
+| 痛点 | 表象 | 承接 |
+| :-- | :-- | :-- |
+| **A** 容器内 JVM 被 OOM Killer 杀死，`-Xmx` 显然留了余量 | K8s Pod OOMKilled + JVM 堆正常 | §2.1 `-XX:+PrintFlagsFinal` 摸清四大盲区默认值 + §3.1 七大分区全景 + §4 红线 1 |
+| **B** 一个只有 1 个 `int` 字段的对象到底占几字节？ | `new Integer(0)` 占 16 字节，业务数据只 4 字节 | §2.2 `jol-cli` 打印真实字节布局 + §3.6 对象内存布局公式 + §3.7 压缩指针 32GB 边界 |
+| **C** `synchronized` 加锁到底往哪里写状态位？ | Mark Word 五态多态复用，看起来"不可能" | §2.3 `markWord.hpp` 源码考古 + §3.6 Mark Word 五态位分布表 + §4 红线 4（偏向锁事实退休） |
+
+---
+
+## 2. 第二层：JVM 内存三件套穿刺 —— `PrintFlagsFinal` + `jol-cli` + `markWord.hpp`
+
+> ⭐ **本层特殊说明**：内存布局的"字节码考古"不是抓 `javap -v` 字节码，而是抓 **JVM 内部三件观测工具**：`-XX:+PrintFlagsFinal` 摸清所有默认参数、`jol-cli` 打印对象在堆里的真实字节布局、`hotspot/share/oops/markWord.hpp` 看 Mark Word 64 bit 的物理定义。这三件套构成"JVM 内存物理真相"的三个入口。
+
+### 2.1 `-XX:+PrintFlagsFinal` 打印所有默认参数 —— 摸清"四大盲区"底数
+
+主考古样本：
+
+```bash
+java -XX:+PrintFlagsFinal -version | grep -E "TLAB|Metaspace|CodeCache|SurvivorRatio|MaxTenuring|UseCompressedOops|StringTable"
+```
+
+关键输出（JDK 17）：
+
+```volt
+uintx TLABSize                                = 0                      {product}
+double TLABWasteTargetPercent                 = 1.000000               {product}
+uintx MaxMetaspaceSize                        = 18446744073709551615   {product}   ← 事实上无上限（2^64 - 1）
+uintx ReservedCodeCacheSize                   = 251658240              {product}   ← 240 MB
+uintx SurvivorRatio                           = 8                      {product}   ← Eden : S = 8 : 1
+uintx MaxTenuringThreshold                    = 15                     {product}
+bool  UseCompressedOops                       = true                   {product}
+uintx StringTableSize                         = 65536                  {product}   ← JDK 7+ 桶数 60013 附近
+```
+
+**逐行破案**：
+
+1. **`TLABSize=0`** 说明 TLAB 默认走**自适应**（`-XX:+ResizeTLAB`），大家常说的"1%"出自 `TLABWasteTargetPercent`，是**每次 refill 时可容忍的空间浪费目标**，不是 TLAB 固定大小
+2. **`MaxMetaspaceSize=18446744073709551615`** 就是 `2^64 - 1`（`uint64` 最大值），事实上无上限 —— **生产必须显式设置**，否则 CGLib 动态代理会吃光本地内存
+3. **`ReservedCodeCacheSize=240 MB`** 是老手容易忽视的堆外常驻，JIT 编译密集应用（Groovy / Kotlin 反射 / Spring Boot 冷启动）容易顶到上限
+4. **`StringTableSize`** 从 JDK 6 的 1009 涨到 JDK 8+ 的 65536 —— 约 60× 跨越，是搬进堆之后顺带做的容量升级
+
+**顿悟点**：**所有"默认参数默认值"必须先摸清底数才能谈调优**。生产 JVM 上线前跑一次 `PrintFlagsFinal | grep -i` 命中关键字，比读 100 篇调优博客都实在。
+
+### 2.2 `jol-cli` 打印对象在堆里的真实字节布局 —— 一个 `Integer` 占几字节？
+
+主考古样本：
+
+```bash
+java -jar jol-cli.jar internals -cp . java.lang.Integer
+```
+
+输出（64 位 JVM · `-XX:+UseCompressedOops` · `-XX:+UseCompressedClassPointers` 默认开启）：
+
+```volt
+java.lang.Integer object internals:
+ OFFSET  SIZE   TYPE DESCRIPTION                    VALUE
+      0     4        (object header: mark)           0x0000000000000001 (non-biasable; age: 0)
+      4     4        (object header: class)          0x0000e2c0            ← 压缩 Klass Pointer
+      8     4    int Integer.value                   0                     ← 唯一字段
+     12     4        (object alignment/padding)                            ← 对齐填充
+Instance size: 16 bytes                                                    ← 总大小
+Space losses: 0 bytes internal + 4 bytes external = 4 bytes total
+```
+
+**逐行破案**：
+
+1. **OFFSET 0~7 · 8 字节 Mark Word**：`0x01` 低 2 bit 是 `01`（无锁/偏向标志态），高位无锁时存 hashCode（此时未算，全 0）+ GC 年龄
+2. **OFFSET 8~11 · 4 字节压缩 Klass Pointer**：指向元空间中 `Integer` 类的元数据（`InstanceKlass*`），压缩后 4 字节 —— 未压缩需 8 字节
+3. **OFFSET 12~15 · 4 字节 `int` value**：唯一的实例字段
+4. **对齐填充**：`8 + 4 + 4 = 16` 字节，恰好是 8 的倍数，本例无需额外 padding
+
+**顿悟点**：**一个 `new Integer(0)` 占 16 字节 —— 而它承载的 int 数据只有 4 字节**，对象头 + 对齐开销占 75%。这就是为什么 `int[]` 数组永远比 `Integer[]` 数组省内存 2~3 倍的物理根源，也是 [08 集合框架](@java-数据结构-集合框架) 讲 `HashMap.Node = 48 字节` 的对齐推导起点。
+
+### 2.3 `markWord.hpp` 源码考古 —— Mark Word 64 bit 的物理定义
+
+主考古样本（`hotspot/share/oops/markWord.hpp`）：
+
+```cpp
+//  32 bits:
+//  --------
+//             hash:25 ------------>| age:4    biased_lock:1 lock:2 (normal object)
+//             JavaThread*:23 epoch:2 age:4    biased_lock:1 lock:2 (biased object)
+//
+//  64 bits:
+//  --------
+//  unused:25 hash:31 -->| unused_gap:1   age:4    biased_lock:1 lock:2 (normal object)
+//  JavaThread*:54 epoch:2 unused_gap:1   age:4    biased_lock:1 lock:2 (biased object)
+//
+//    [ptr             | 00]  locked             ← 轻量级锁：低 2 bit = 00，高 62 bit 为栈锁记录指针
+//    [header      | 0 | 01]  unlocked           ← 无锁：低 2 bit = 01，第 3 bit = 0
+//    [header      | 1 | 01]  biased             ← 偏向锁：低 2 bit = 01，第 3 bit = 1
+//    [ptr             | 10]  monitor            ← 重量级锁：低 2 bit = 10，指向 ObjectMonitor
+//    [ptr             | 11]  marked             ← GC 标记态：低 2 bit = 11
+```
+
+**逐行破案**：
+
+- **锁标志位（低 2 bit）是所有状态的公共入口**：`00` 轻量锁、`01` 无锁/偏向、`10` 重量锁、`11` GC 标记 —— JVM 判断对象状态永远只读这 2 bit
+- **偏向锁标志（第 3 bit）区分"真无锁"和"偏向锁"**：低 3 bit `001` = 无锁、`101` = 偏向锁
+- **Mark Word 是 JVM 内存布局里最紧凑的多态设计**：8 字节槽位 + 低 2 bit 分派 + 五种状态共享同一物理空间
+
+> 📖 完整锁升级链路（Mark Word 状态位跃迁：无锁 → 偏向 → 轻量 → 重量）请见 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) §"锁升级四阶段"，本文只讲 Mark Word 的**物理位分布**。
+
+---
+
+## 3. 第三层：物理内存布局 —— 七大分区 + 五张核心物理图
+
+### 3.1 七大分区两条主线全景图
+
+**核心 Mermaid**（横轴：线程共享 vs 线程私有 · 纵轴：堆内 vs 堆外）：
 
 ```mermaid
 flowchart TB
-    Title["<b>JVM 运行时数据区 —— 两条主线交叉视图</b><br/>↔ 横向：线程共享vs线程私有</br>↕ 纵向：堆内 vs 堆外"]:::title
-
-    subgraph Shared["🔵 线程共享（随 JVM 启停）"]
-        direction TB
-        subgraph S_In["堆内 · 受 -Xmx 限制"]
-            Heap["🟦 <b>堆 Heap</b><br/>对象实例、数组<br/><i>↪ GC 主战场</i>"]:::heap
+    subgraph JVM["JVM 进程"]
+        subgraph Shared["🟦 线程共享"]
+            Heap["<b>Heap 堆</b><br/>对象实例 / 数组<br/>-Xmx 限制"]
+            MetaSpace["<b>Metaspace 元空间</b><br/>类元数据 / 字节码<br/>MaxMetaspaceSize 限制"]
+            CodeCache["<b>Code Cache</b><br/>JIT 机器码<br/>ReservedCodeCacheSize=240m"]
         end
-        subgraph S_Out["堆外 · 独立占用本地内存"]
-            Meta["🟪 <b>元空间 MetaSpace</b><br/>类元数据 / 字节码 / 常量池"]:::offheap
-            Code["🟪 <b>Code Cache</b><br/>JIT 编译后的机器码"]:::offheap
+        subgraph Private["🟩 线程私有"]
+            VMStack["<b>虚拟机栈</b><br/>栈帧 / 局部变量表<br/>-Xss=1m"]
+            NativeStack["<b>本地方法栈</b><br/>Native 方法调用栈"]
+            PC["<b>PC 寄存器</b><br/>字节码偏移<br/>💡 唯一不 OOM"]
         end
-    end
-
-    subgraph Private["🟢 线程私有（随线程创建/销毁，无需 GC）"]
-        direction TB
-        subgraph P_In["堆内 · 受 -Xmx 限制"]
-            Stack["🟩 <b>虚拟机栈</b><br/>栈帧、局部变量表"]:::private
-            NStack["🟩 <b>本地方法栈</b><br/>Native 方法调用栈"]:::private
-            PC["🟩 <b>程序计数器</b><br/>字节码指令地址<br/><i>（唯一不 OOM）</i>"]:::private
-        end
-        subgraph P_Out["堆外 · 独立占用本地内存"]
-            Direct["🟧 <b>直接内存</b><br/>NIO ByteBuffer / Netty<br/><i>（严格说不隶属任何线程，<br/>但由调用线程使用）</i>"]:::direct
+        subgraph OffHeap["🟧 堆外补充"]
+            Direct["<b>直接内存</b><br/>NIO / Netty ByteBuffer<br/>MaxDirectMemorySize 限制"]
         end
     end
 
-    Title ~~~ Shared
-    Title ~~~ Private
+    Heap -.->|"OOM: Java heap space"| ErrHeap["OOM"]
+    MetaSpace -.->|"OOM: Metaspace"| ErrMeta["OOM"]
+    CodeCache -.->|"CodeCache is full 警告"| ErrCC["Warning"]
+    VMStack -.->|"StackOverflowError<br/>OOM: unable to create new native thread"| ErrStack["Err"]
+    NativeStack -.->|"同虚拟机栈"| ErrNative["Err"]
+    Direct -.->|"OOM: Direct buffer memory"| ErrDirect["OOM"]
+
+    style Heap fill:#e6f3ff
+    style MetaSpace fill:#e6f3ff
+    style CodeCache fill:#e6f3ff
+    style VMStack fill:#e8ffe1
+    style NativeStack fill:#e8ffe1
+    style PC fill:#ffe1a8
+    style Direct fill:#ffe4b5
 ```
 
-图中的颜色含义：🟦 堆（GC 核心战场）、🟩 线程私有区（随线程创建/销毁、无需 GC）、🟪 堆外共享区（类/代码元数据）、🟧 堆外辅助区（直接内存）。
+**七大分区速览表**：
 
-下面把这两条主线各自展开讲清楚。
+| 分区 | 线程归属 | 位置 | 存什么 | 是否 GC | OOM 表现 | 关键参数 |
+| :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+| **Heap 堆** | 共享 | 堆内 | 对象实例 / 数组 | ✅ | `OOM: Java heap space` | `-Xmx` / `-Xms` |
+| **Metaspace 元空间** | 共享 | 堆外（本地内存） | 类元数据 / 字节码 / 类级常量池 | ⚠️ Full GC | `OOM: Metaspace` | `-XX:MaxMetaspaceSize` |
+| **Code Cache** | 共享 | 堆外 | JIT 编译后机器码 | ⚠️ Sweeper | `CodeCache is full` 警告 | `-XX:ReservedCodeCacheSize=240m` |
+| **虚拟机栈** | 私有 | 堆内 | 栈帧 / 局部变量表 | ❌ | `StackOverflowError` / `OOM: unable to create new native thread` | `-Xss=1m` |
+| **本地方法栈** | 私有 | 堆内 | Native 方法调用栈 | ❌ | 同虚拟机栈 | 同 `-Xss` |
+| **PC 寄存器** | 私有 | 堆内 | 字节码偏移 | ❌ | **不 OOM** | 无 |
+| **直接内存** | 共享 | 堆外 | NIO / Netty 缓冲 | ❌（Cleaner） | `OOM: Direct buffer memory` | `-XX:MaxDirectMemorySize` |
 
-### 1.1 线程维度 —— 线程共享 vs 线程私有
+**顿悟点**：
 
-| 分类 | 分区 | 生命周期 | GC 关注 |
-| :---- | :---- | :---- | :---- |
-| **线程共享** | 堆、元空间、Code Cache | 随 JVM 启停 | ✅ GC 核心战场 |
-| **线程私有** | 虚拟机栈、本地方法栈、程序计数器 | 随线程创建 / 销毁 | ❌ 无需 GC |
+- **PC 寄存器是唯一不会 OOM 的分区** —— 它只存一个固定大小的字节码偏移，随线程生随线程死
+- **元空间用完抛的是 `OOM: Metaspace`**，与堆的 `Java heap space` 是**两种不同类型**的 OOM —— 生产排查看错方向会浪费半天
+- **虚拟机栈"栈深过多"抛 `StackOverflowError`（递归失控），"线程过多"抛 `OOM: unable to create new native thread`**（本地内存不足）
 
-### 1.2 内存位置维度 —— 堆内 vs 堆外
+### 3.2 堆的三代结构 + Eden : S0 : S1 = 8 : 1 : 1
 
-| 分类 | 分区 | 是否受 `-Xmx` 限制 |
-| :---- | :---- | :---- |
-| **堆内（JVM 管理）** | 堆、虚拟机栈、本地方法栈、程序计数器 | ✅ 堆受 `-Xmx` 限制 |
-| **堆外（本地内存）** | 元空间、Code Cache、直接内存 | ❌ 独立占用物理内存 |
-
-!!! warning "生产事故最常见的盲区"
-    很多同学以为 `-Xmx2g` 就是 JVM 进程的总内存上限，其实**元空间、Code Cache、直接内存、线程栈**都在堆外独立占用内存。一个 Java 进程的 RSS（实际物理内存占用）常常远大于 `-Xmx`。
-
-    ⚠️ **容器内存限制必须把这些堆外部分都算上**，否则容易被 OOM Killer 直接干掉（参见 [JVM 现代实践与前沿技术](@java-JVM现代实践与前沿技术) §1）。
-
-### 1.3 七大分区速览表
-
-| 分区 | 线程 | 位置 | 存什么 | 是否 GC | OOM 表现 | 关键参数 |
-| :---- | :---- | :---- | :---- | :---- | :---- | :---- |
-| **堆 Heap** | 共享 | 堆内 | 对象实例、数组 | ✅ 主战场 | `Java heap space` | `-Xms` / `-Xmx` |
-| **元空间** | 共享 | 堆外 | 类元数据、字节码、运行时常量池 | ✅ 随 Full GC | `Metaspace` | `-XX:MaxMetaspaceSize` |
-| **Code Cache** | 共享 | 堆外 | JIT 编译后的机器码 | ⚠️ Sweeper 回收 | `CodeCache is full`（不抛 OOM） | `-XX:ReservedCodeCacheSize` |
-| **虚拟机栈** | 私有 | 堆内 | 栈帧（局部变量表、操作数栈等） | ❌ | `StackOverflowError` / `OOM` | `-Xss` |
-| **本地方法栈** | 私有 | 堆内 | Native 方法调用栈 | ❌ | `StackOverflowError` | 与 `-Xss` 类似 |
-| **程序计数器** | 私有 | 堆内 | 当前字节码指令地址 | ❌ | **唯一不会 OOM** | 无需配置 |
-| **直接内存** | — | 堆外 | NIO ByteBuffer、Netty 缓冲 | ❌（依赖 Cleaner） | `Direct buffer memory` | `-XX:MaxDirectMemorySize` |
-
-### 1.4 一次方法调用，各分区如何协作？
-
-以 `User u = new User("Tom")` 为例，把所有分区串起来：
-
-```txt
-1. 类加载器读取 User.class
-   └─→ 类元数据写入 【元空间】
-
-2. JVM 在 【堆】 的 Eden 区（通过 TLAB）分配 User 对象内存
-
-3. 执行构造方法时：
-   ├─→ 【虚拟机栈】 压入新栈帧
-   │    ├─ 局部变量表存 this 引用、参数 "Tom"
-   │    └─ 操作数栈作为字节码执行的工作区
-   └─→ 【程序计数器】 记录当前执行到哪条字节码
-
-4. 引用 u 存在栈帧的局部变量表中，指向堆中的对象
-
-5. 若该方法成为热点，JIT 编译它
-   └─→ 机器码存入 【Code Cache】
-
-6. 方法返回：栈帧弹出，u 不再被引用
-   └─→ 下次 GC 时，堆中的 User 对象可被回收
-```
-
-### 1.5 分区与 OOM 的对应关系
-
-这是面试与线上排障的高频考点，看到异常类型应立刻反应到对应分区：
-
-```mermaid
-flowchart LR
-    A["OOM 异常"] --> B["Java heap space<br/>→ 堆"]
-    A --> C["Metaspace<br/>→ 元空间"]
-    A --> D["StackOverflowError<br/>→ 虚拟机栈（深度）"]
-    A --> E["unable to create native thread<br/>→ 虚拟机栈（线程数）"]
-    A --> F["Direct buffer memory<br/>→ 直接内存"]
-    A --> G["GC overhead limit exceeded<br/>→ 堆（回收率过低）"]
-```
-
-!!! tip "记忆口诀"
-    - **三共享**：堆、元空间、Code Cache
-    - **三私有**：虚拟机栈、本地方法栈、程序计数器
-    - **一堆外补充**：直接内存（NIO / Netty 的命脉）
-    - **一个例外**：程序计数器——唯一不会 OOM 的区域
-    - **一个主战场**：堆——GC 的核心关注区域
-
-带着这份全局认知，下面逐个展开每个分区的内部结构与实现细节。
-
----
-
-## 2. 堆（Heap）
-
-堆是 JVM 中最大的内存区域，**所有线程共享**，几乎所有对象实例都在这里分配（逃逸分析例外，见 [GC 核心机制与收集器演进](@java-GC核心机制与收集器演进) §4）。
-
-### 2.1 堆的内部结构
+**核心 ASCII 图**：
 
 ```txt
 ┌─────────────────────────────────────────────────────────────┐
 │                         Heap                                │
 │  ┌──────────────────────────────┐  ┌──────────────────────┐ │
-│  │         Young Generation     │  │    Old Generation    │ │
-│  │  ┌──────────┬────┬────┐      │  │                      │ │
-│  │  │  Eden    │ S0 │ S1 │      │  │  Long-lived objects  │ │
-│  │  │  (80%)   │(10%)│(10%)│    │  │  Large objects direct│ │
+│  │        Young Generation      │  │    Old Generation    │ │
+│  │  ┌──────────┬────┬────┐      │  │  Long-lived objects  │ │
+│  │  │  Eden    │ S0 │ S1 │      │  │  Large objects direct│ │
+│  │  │  (80%)   │(10%)│(10%)│    │  │                      │ │
 │  │  └──────────┴────┴────┘      │  │                      │ │
 │  └──────────────────────────────┘  └──────────────────────┘ │
-│         Eden:S0:S1 = 8:1:1(default)                         │
 └─────────────────────────────────────────────────────────────┘
+
+对象生命周期：
+  new →  Eden  ──Minor GC──→  S0 ──Minor GC──→  S1 ──年龄≥15──→  Old Gen
+                          (age=1)          (age=2)                  (Tenured)
 ```
 
-**为什么要有 Survivor 区？**
+**顿悟点**（弱分代假说的物理根源）：
 
-如果只有 Eden 和 Old，Minor GC 后存活对象直接进老年代，老年代会很快被短命对象填满，触发 Full GC。Survivor 区的作用是**缓冲**：让对象在新生代多"熬"几轮 GC，确认它真的是长期存活对象，再晋升老年代，减少 Full GC 频率。
+- **大部分对象朝生夕死** → Minor GC 后存活率 < 10% → Eden 占 80% 保证分配速率
+- **S0/S1 各占 10%** 恰好容纳存活对象；两个 Survivor 交替使用是**复制算法**的物理前提（To 空间清空、From 空间存活对象复制过来）
+- **动态年龄判断**：Survivor 中相同年龄对象总大小超 50% 时提前晋升（`-XX:TargetSurvivorRatio=50`）—— 防止 Survivor 撑爆
+- **大对象直接进老年代**：`-XX:PretenureSizeThreshold=1m` 设置阈值，超过直接分配到 Old Gen，绕过 Eden
 
-**为什么 Survivor 要有两个（S0 和 S1）？**
+### 3.3 TLAB 零锁分配的物理图
 
-复制算法需要一块空闲空间作为目标区域。S0 和 S1 交替使用：每次 Minor GC，将 Eden + 当前 Survivor 中的存活对象复制到另一个 Survivor，然后清空 Eden 和原 Survivor。始终保持一个 Survivor 是空的。
-
-### 2.2 对象晋升流程
-
-```mermaid
-flowchart LR
-    A["new 对象"] --> B["TLAB 快速分配<br/>到 Eden 区"]
-    B --> C{"Eden 满？"}
-    C -->|"触发 Minor GC"| D["标记 Eden+S(from)<br/>中的存活对象"]
-    D --> E{"对象年龄<br/>>= 阈值(默认15)？<br/>或 Survivor 空间不足？<br/>或动态年龄判断？"}
-    E -->|"是"| F["晋升老年代"]
-    E -->|"否"| G["复制到 S(to)<br/>age++"]
-    G --> H["交换 S0/S1 角色"]
-    F --> I{"老年代满？"}
-    I -->|"触发 Full GC"| J["整堆 STW 回收"]
-```
-
-**动态年龄判断**：如果 Survivor 中相同年龄的对象总大小超过 Survivor 空间的 50%，则年龄 ≥ 该值的对象直接晋升老年代，不必等到 15 岁。这是为了防止 Survivor 空间被占满。
-
-### 2.3 TLAB（Thread-Local Allocation Buffer）
-
-堆是线程共享的，如果每次分配对象都要加锁，性能极差。JVM 的解决方案是 **TLAB**：
-
-- 每个线程在 Eden 区预先申请一小块私有内存（大小**自适应**，由 JVM 根据线程数、分配速率动态调整，非固定比例）
-- 线程内分配对象时直接在 TLAB 上 bump pointer，无需加锁
-- TLAB 用完后再申请新的，此时才需要同步
-
-!!! note "TLAB 相关参数"
-    - `-XX:+UseTLAB`：启用 TLAB（默认开启）
-    - `-XX:+ResizeTLAB`：开启 TLAB 自适应调整（默认开启）
-    - `-XX:TLABSize`：显式指定 TLAB 初始大小（一般无需手动设置）
-    - `-XX:TLABWasteTargetPercent`：TLAB 占 Eden 的目标浪费比例（默认 1%，这才是"1%"一说的真实出处——指的是**可容忍的空间浪费**，而非 TLAB 固定大小）。最终每个线程的 TLAB 实际大小由 `TLABWasteTargetPercent × Eden / (期望 refill 次数 × 活跃线程数)` 动态计算，并非固定 1%
+**核心 ASCII 图**：
 
 ```txt
 Eden Area
-┌──────────────────────────────────────────────────┐
-│  Thread-1 TLAB  │  Thread-2 TLAB  │  Shared Area │
-│  [obj][obj][  ] │  [obj][      ]  │              │
-└──────────────────────────────────────────────────┘
-                                    ↑ Large objects allocated in shared area
+┌──────────────────────────────────────────────────────────────┐
+│  Thread-1 TLAB    │  Thread-2 TLAB    │  ...  │  Shared Area │
+│  [obj][obj][    ] │  [obj][        ]  │       │              │
+│   ↑ top           │   ↑ top           │       │  ↑ 大对象走这里 │
+│   bump pointer    │   bump pointer    │       │   (CAS 分配)   │
+└──────────────────────────────────────────────────────────────┘
+
+分配流程：
+1. Thread-1 分配对象 → 走 TLAB → bump pointer 前移 → 零锁 O(1)
+2. TLAB 剩余空间 < 对象大小 → 触发 refill
+3. refill 时判断"当前 TLAB 剩余是否 < TLABWasteTargetPercent × TLAB 大小"
+   - 是 → 舍弃剩余，重新分配一整块新 TLAB
+   - 否 → 该对象走共享区 CAS 分配（避免频繁 refill 浪费空间）
 ```
 
----
+**顿悟点**（"1% 迷思"澄清）：
 
-## 3. 虚拟机栈（VM Stack）
+- **每线程在 Eden 预留私有小块** → `bump pointer` 分配 → **零锁**（无需 CAS，本线程独占）
+- **TLAB 用完走 refill**；`TLABWasteTargetPercent=1` 是**每次 refill 可容忍的空间浪费目标**
+- **TLAB 实际大小** = `TLABWasteTargetPercent × Eden / (期望 refill 次数 × 活跃线程数)` —— **动态自适应**，不是固定 1%
+- **`-XX:+ResizeTLAB`（默认开启）** 让 TLAB 大小随线程分配速率动态调整，热点线程拿到更大的 TLAB
 
-每个线程独有，线程创建时分配，线程结束时销毁。每次方法调用压入一个**栈帧（Stack Frame）**，方法返回时弹出。
+### 3.4 栈帧五件套 + PC 寄存器的物理协作图
 
-### 3.1 栈帧的内部结构
-
-一个栈帧由**五件套**组成，它们共同支撑起"一次方法调用"的全部运行时状态：
-
-```mermaid
-flowchart TB
-    subgraph Frame["🧱 Stack Frame（一次方法调用的运行时容器）"]
-        direction TB
-        LVT["① 局部变量表 (Local Variable Table)<br/>slot 数组: this / 参数 / 局部变量<br/>long、double 占 2 slot"]
-        OS["② 操作数栈 (Operand Stack)<br/>字节码执行的工作台（push/pop）"]
-        DL["③ 动态链接 (Dynamic Linking)<br/>指向运行时常量池中该方法的符号引用<br/>支持重写、多态、接口调用"]
-        RA["④ 返回地址 (Return Address)<br/>调用者的『调用点 PC』<br/>方法返回时靠它 + 指令长度找到下一条"]
-        EX["⑤ 附加信息 / 异常表引用<br/>（异常分派、调试信息等）"]
-        LVT --> OS --> DL --> RA --> EX
-    end
-
-    classDef box fill:#EEF2FF,stroke:#4F46E5,color:#1E1B4B
-    class LVT,OS,DL,RA,EX box
-```
-
-下面逐项展开这五件套的语义；其中 **④ 返回地址** 与 §4 程序计数器是一对孪生概念，读完本节再去看 §4 会更有体感。
-
-### 3.2 栈帧五件套详解
-
-| 组件 | 是什么 | 运行时作用 |
-| :---- | :---- | :---- |
-| **① 局部变量表** | slot 数组，存 `this`、方法参数、局部变量（long/double 占 2 slot） | 字节码通过 `iload_n` / `istore_n` 等指令读写；方法编译期就确定了 slot 数量 |
-| **② 操作数栈** | 字节码执行的"工作台"，所有计算都在这里完成（push/pop） | 每条字节码的本质就是：从操作数栈取输入、算出结果再压回去 |
-| **③ 动态链接** | 指向运行时常量池中该方法的**符号引用**，用于运行时解析被调用方法（支持重写/多态） | 执行 `invokevirtual` / `invokeinterface` 等 invoke 指令时，通过这个引用查到真正要调用的方法 |
-| **④ 返回地址** | **调用点的 PC**（见下面"返回地址的精确语义"） | 方法返回时，JVM 用它 + 指令长度恢复调用者的 PC |
-| **⑤ 附加信息** | 异常分派表引用、调试信息、本地方法接口状态等 | 抛异常时用于查找 `exception_table` 匹配 catch；调试器通过它定位帧 |
-
-**一次方法调用的完整运行时图景**（以 `main` 调 `sum(10, 0)` 为例）：
-
-```mermaid
-flowchart TB
-    subgraph Thread["🟢 线程私有区"]
-        direction TB
-        subgraph Stack["虚拟机栈（从底到顶）"]
-            direction TB
-            subgraph MF["main 栈帧"]
-                MLVT["局部变量表: args, r"]
-                MOS["操作数栈: (空)"]
-                MDL["动态链接 → main 方法"]
-                MRA["返回地址: (JVM 启动入口)"]
-            end
-            subgraph SF["sum 栈帧 (栈顶)"]
-                SLVT["局部变量表: a=10, b=0"]
-                SOS["操作数栈: 10, 0"]
-                SDL["动态链接 → sum 方法"]
-                SRA["返回地址: main 中 invoke 的 PC (例如 10)"]
-            end
-            MF --> SF
-        end
-        PC["📍 PC 寄存器<br/>= sum 里正在执行的字节码偏移<br/>（如 idiv 所在的 bci）"]
-    end
-
-    subgraph Meta["🟪 元空间（共享）"]
-        direction TB
-        MCode["main 方法字节码<br/>... pc=10: invokestatic sum ...<br/>pc=13: istore_1 ..."]
-        SCode["sum 方法字节码<br/>pc=0: iload_0<br/>pc=1: iload_1<br/>pc=2: idiv ← 抛异常！"]
-    end
-
-    MDL -.-> MCode
-    SDL -.-> SCode
-    PC -. 指向 .-> SCode
-
-    classDef frame fill:#EEF2FF,stroke:#4F46E5,color:#1E1B4B
-    classDef hot fill:#FEF2F2,stroke:#DC2626,color:#7F1D1D
-    class MF,SF frame
-    class PC hot
-```
-
-> 💡 这张图是理解栈帧的"总地图"：**栈顶栈帧的当前位置由 PC 寄存器持有；非栈顶栈帧的"曾经执行到哪儿"则快照在各自的『返回地址』字段里**。两者语义高度一致，都记录"当前正在执行的那条指令的偏移"——下面这节会把这个重要细节讲透。
-
-### 3.3 返回地址的精确语义 & 异常栈行号是怎么来的
-
-这是一个容易被教科书一笔带过、但面试和调试时极有价值的细节。
-
-**误区澄清**：很多资料会说"返回地址 = 下一条指令的 PC"，这在逻辑上说得通（返回时拿来就能用），但**不是 HotSpot 的真实实现**。
-
-**JVM 规范层面**：两种实现都合法——存"调用点 PC"或存"下一条 PC"都行。
-
-**HotSpot 实际做法**：
-
-> ✅ **返回地址字段存的是『调用点 PC』**——也就是 invoke 指令本身的偏移量，**不是**它的下一条。
-
-这意味着一条重要的心智模型：
-
-!!! important "统一的『当前执行位置』语义"
-    **无论栈顶还是非栈顶，JVM 中所有记录『执行位置』的字段，语义都是『正在执行的那条指令本身的偏移』，而不是『下一条』。**
-
-    - **栈顶栈帧**：由 PC 寄存器持有——抛异常瞬间，PC 停在**肇事指令本身**（如 `idiv`、`invokevirtual`）
-    - **非栈顶栈帧**：由栈帧的"返回地址"字段持有——值是**当时调用下级方法的 invoke 指令偏移**
-
-    "移动到下一条"（`PC += 指令长度`）这个动作，只发生在"指令执行完"或"方法返回"的瞬间，**不会提前写进存储**。
-
-**为什么 HotSpot 这样选？** 两种方案对比：
-
-| 方案 | 存的值 | 正常返回路径 | 异常栈打印路径 |
-| :---- | :---- | :---- | :---- |
-| A. 存"下一条" | 13 | `PC = 13`，直接用 | ❌ 需要回退到 10 才能查行号——但字节码是变长指令，回退需要从头扫描，很麻烦 |
-| **B. 存"调用点"** ✅ | 10 | `PC = 10 + 指令长度` | ✅ 直接用 10 查 `LineNumberTable` 就拿到行号 |
-
-HotSpot 选 B 的核心理由：**把"加指令长度"这个动作放在"正常返回"这条高频路径上，而不是放在"打印异常栈"这条低频路径上**，同时异常堆栈、调试器、`Thread.getStackTrace()` 等所有"需要知道调用位置"的场景都能直接复用这个值。
-
-**异常栈行号的完整打印过程**（以 `main → sum → idiv 抛 ArithmeticException` 为例）：
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant PC as PC 寄存器
-    participant S as sum 栈帧(栈顶)
-    participant M as main 栈帧
-    participant LT as LineNumberTable<br/>(元空间)
-
-    Note over PC,M: ⚡ sum 执行到 idiv，触发 ArithmeticException
-
-    rect rgba(254, 226, 226, 0.4)
-    Note over PC,LT: 📢 打印异常栈：逐帧翻译 bci → 源码行号
-    PC->>LT: ① 用 PC 寄存器当前值（sum 里 idiv 的 bci=2）<br/>查 sum 方法的 LineNumberTable
-    LT-->>S: 返回行号 10<br/>→ "at Demo.sum(Demo.java:10)"
-    S->>LT: ② 用 sum 栈帧里的返回地址（=main 中<br/>invoke 的 bci=10，不是下一条）<br/>查 main 方法的 LineNumberTable
-    LT-->>M: 返回行号 5<br/>→ "at Demo.main(Demo.java:5)"
-    end
-
-    Note over PC,M: ✅ 全程无需"回退指令"，因为存的本来就是调用点本身
-```
-
-**关键要点小结**：
-
-- 🎯 **PC 在抛异常那一刻是"冻结"在肇事指令上的**，不会被推进到下一条——所以栈顶栈帧的行号不需要任何调整
-- 🎯 **返回地址存的是『调用点 PC』**（HotSpot 实现），不是"下一条 PC"——所以非栈顶栈帧的行号也不需要回退
-- 🎯 **正常返回时**，JVM 读出返回地址（如 10），再 `+ invoke 指令长度（如 3）` 得到 13，从这里继续执行调用者
-- 🎯 **`LineNumberTable` 存放在元空间的方法 Code 属性里**，是一张 `bci → 源码行号` 的映射表，`javap -l` 可以打印出来
-
-### 3.4 `StackOverflowError` vs `OutOfMemoryError`
-
-- 递归调用过深 → 栈帧不断压栈 → 超过栈深度限制 → `StackOverflowError`
-- 线程数量过多 → 每个线程都要分配栈空间 → 内存耗尽 → `OutOfMemoryError`（创建线程时）
-
----
-
-## 4. 程序计数器（PC Register）
-
-- 每个线程独有，记录当前线程正在执行的字节码指令地址
-- 执行 Native 方法时值为 undefined
-- **唯一不会发生 OOM 的内存区域**（大小固定，只存一个地址）
-- CPU 多线程切换时，靠 PC 恢复执行位置
-
-!!! note "与栈帧的关系"
-    PC 寄存器可以理解为栈顶栈帧的一个"外置字段"——§3 中讲过的"返回地址"就是**非栈顶栈帧版的 PC**。两者本质上记录同一件事："正在执行的那条指令的偏移"；只是栈顶用 PC 寄存器保存，非栈顶用栈帧里的返回地址字段保存。建议先读完 §3 再回到这里。
-
-### 4.1 指令存在哪？PC 存的又是什么？
-
-PC 寄存器本身非常"轻"——它只保存一个数字，真正的问题是：**那这个数字指向的字节码指令，存放在哪里？** 答案是 **元空间**。
-
-字节码指令在类加载时被写入元空间中对应 `Method` 结构的 **Code 属性**里，是一段线性的字节数组。所有线程**共享**这份指令（类似多个演奏者共用一本乐谱），而每个线程通过"**栈帧 + PC**"这对组合来定位自己当前执行到哪一条：
-
-- **栈帧**（虚拟机栈）告诉你"**当前在哪个方法**"——里面有一个指向元空间中该 `Method` 的引用
-- **PC 寄存器**告诉你"**方法内的第几个字节**"——保存的是字节码数组中的**偏移量**（不是下标）
-
-两者合起来才能唯一定位一条正在执行的指令。
+**核心 Mermaid**（栈帧五件套结构）：
 
 ```mermaid
 flowchart LR
-    subgraph Meta["🟪 元空间（线程共享）"]
-        direction TB
-        Klass["Class: User"]
-        Method1["Method: sum(int,int)"]
-        Code["Code 属性（字节码数组）<br/>[0] iload_1<br/>[1] iload_2<br/>[2] iadd<br/>[3] ireturn"]
-        Klass --> Method1 --> Code
+    subgraph Frame["Stack Frame 栈帧"]
+        LVT["① 局部变量表<br/>slot 数组<br/>long/double 占 2 slot"]
+        OS["② 操作数栈<br/>字节码执行的工作台"]
+        DL["③ 动态链接<br/>指向元空间中<br/>该方法的符号引用"]
+        RA["④ 返回地址<br/>💡 调用点 PC<br/>(HotSpot 实现)"]
+        AI["⑤ 附加信息<br/>异常表引用 / debug 信息"]
     end
+    LVT --> OS
+    OS --> DL
+    DL --> RA
+    RA --> AI
 
-    subgraph ThreadA["🟢 线程 A 私有区"]
-        direction TB
-        FrameA["栈帧: sum()<br/>（含当前方法引用）"]
-        PCA["PC 寄存器: 2"]
-    end
-
-    subgraph ThreadB["🟢 线程 B 私有区"]
-        direction TB
-        FrameB["栈帧: sum()<br/>（含当前方法引用）"]
-        PCB["PC 寄存器: 0"]
-    end
-
-    FrameA -. 指向 .-> Method1
-    FrameB -. 指向 .-> Method1
-    PCA -. 偏移 2 → .-> Code
-    PCB -. 偏移 0 → .-> Code
+    style RA fill:#ffe1a8
 ```
 
-上图展示了两个线程同时执行 `sum()` 方法的场景：它们**共用元空间中同一份字节码**，但各自的栈帧和 PC 记录着"自己走到哪一步"（线程 A 执行到偏移 2 的 `iadd`，线程 B 刚开始执行偏移 0 的 `iload_1`）——这就是 PC 必须线程私有的根本原因。
-
-### 4.2 PC 为什么存"偏移量"而不是"下标"？
-
-字节码数组中不同指令占用的字节数不同（1~N 字节），PC 保存的是**字节偏移量**，而非逻辑下标：
+**一次方法调用完整运行时图**：
 
 ```txt
-偏移  指令             字节数
-[0]   aload_0          1
-[1]   invokespecial    3   （含 2 字节操作数 #Method）
-[4]   iload_1          1   ← 下一条指令直接跳到偏移 4
-[5]   ireturn          1
+Thread-1 (私有)
+┌────────────────────────────────────────┐
+│  PC Register: 42 (当前 method 的字节码偏移)│
+│                                        │
+│  VM Stack (栈帧从底往上生长):             │
+│  ┌─────────────────────────────────┐   │
+│  │ Frame 3: current method         │   │
+│  │  ├─ Locals: [this, arg1, arg2] │   │
+│  │  ├─ Stack:  [tmp1, tmp2]       │   │
+│  │  ├─ DynLink → 元空间 Method*    │   │
+│  │  ├─ Return: 调用点 PC = 38      │   │
+│  │  └─ ExHandler → 元空间 ExTable  │   │
+│  ├─────────────────────────────────┤   │
+│  │ Frame 2: caller method          │   │
+│  │  ...                            │   │
+│  ├─────────────────────────────────┤   │
+│  │ Frame 1: main()                 │   │
+│  └─────────────────────────────────┘   │
+└────────────────────────────────────────┘
+                 │
+                 ↓ 引用堆
+              Heap (共享)
 ```
 
-像 `if_icmpge`、`goto`、`tableswitch` 这类跳转指令，其语义就是**直接修改 PC 的值**，让执行流跳到目标偏移量——这正是所有控制流（if/for/while/switch）在字节码层面的实现方式。
+**核心顿悟点**（返回地址的精确语义 · 全站独家）：
 
-### 4.3 线程切换时 PC 的作用
+- **JVMS 规范允许两种实现**：存"调用点 PC"或存"下一条 PC"都合法
+- **HotSpot 选存"调用点 PC"**：把"加指令长度跳到下一条"放在**正常返回**的高频路径；把"用调用点 PC 直接查 LineNumberTable"放在**异常栈打印**的低频高价值路径 —— 复用同一个字段
+- **统一心智模型**：**JVM 中所有记录"执行位置"的字段（PC 寄存器 + 栈帧返回地址），语义都是"正在执行的那条指令本身的偏移"，不是"下一条"**
+- **异常行号的物理来源**：`Throwable.fillInStackTrace()` 遍历栈帧，逐帧取出"调用点 PC" → 查方法的 `Code` 属性下的 `LineNumberTable` → 得到源码行号
 
-这就回到了最初那句"CPU 多线程切换时靠 PC 恢复执行位置"的底层含义：
+> 📖 `Throwable.fillInStackTrace()` 的完整 native 栈帧遍历链路请见 [异常处理](@java-字节码-异常处理) §"fillInStackTrace 与栈展开"。
+
+### 3.5 元空间 + Code Cache + 直接内存三块堆外内存的物理分布
+
+**元空间**（本地内存 · 全局共享）：
+
+- **存什么**：类的结构信息（`InstanceKlass`）+ 方法字节码（`ConstMethod`）+ **类级**运行时常量池（每 Class 一份，存字面量 + 符号引用）
+- **回收时机**：Full GC 时可能卸载类加载器（配合 `-XX:+ClassUnloadingWithConcurrentMark`）
+- **不设上限的后果**：CGLib 动态代理 / Groovy 每次 eval / JSP 热部署每次都生成新 `Class` → 元空间无限增长 → 挤占本地内存 → 容器被 OOM Killer
+
+**Code Cache**（本地内存 · 全局共享）：
+
+- **存什么**：JIT 编译后的机器码（C1 + C2 分层编译产物）
+- **回收时机**：`-XX:+UseCodeCacheFlushing`（默认开）让 Sweeper 线程回收冷代码
+- **满了怎样**：不抛 OOM，而是 `CodeCache is full` 警告 → JIT 停止工作 → 应用退化到解释执行 → **性能悬崖式下跌**
+
+**直接内存**（Native Memory · NIO / Netty 命脉）：
+
+- **存什么**：`ByteBuffer.allocateDirect()` 分配的堆外缓冲
+- **回收时机**：靠 `Cleaner` 机制 —— `DirectByteBuffer` 被 GC 时触发 Cleaner，释放本地内存
+- **陷阱**：如果堆内 `DirectByteBuffer` 长时间不 GC，本地内存永远不会释放 —— **堆很轻但 RSS 爆炸**
+
+**顿悟澄清**（StringTable 位置变迁 · 全站独家表格）：
+
+| JDK 版本 | 字符串常量池位置 | `intern()` 行为 | 桶数（默认） |
+| :-- | :-- | :-- | :-- |
+| JDK 6 及以前 | **永久代（PermGen）** | 复制到永久代常量池 | 1009 |
+| JDK 7 | **堆** | 记录堆中已有字符串的引用 | 60013 |
+| JDK 8+ | **堆**（元空间取代永久代，但 StringTable 位置未变） | 同 JDK 7 | 60013+ |
+
+**顿悟点**：`intern()` 撑爆的是 `Java heap space`，**不是** `Metaspace` —— 因为**类级**运行时常量池在元空间，**全局** StringTable 在堆里，这两者经常被混为一谈。**JDK 8 元空间替代永久代**这件事和 **JDK 7 StringTable 搬到堆**是**两件独立的事**，很多老手也搞混。
+
+> 📖 `String` 的 `ldc` 字节码 + `CONSTANT_String_info` + Compact Strings 完整链路请见 [字符串底层原理](@java-字节码-字符串底层原理)。
+
+### 3.6 对象在堆中的完整内存布局（核心物理图 · Mark Word 三处穿刺首发源头）
+
+**核心 ASCII 图**：
 
 ```txt
-线程 A 正执行 sum() 第 2 字节处的 iadd
-        ↓ 时间片耗尽，被 OS 挂起
-JVM 保存：线程 A 的栈帧 + PC = 2
-        ↓
-CPU 切到线程 B 执行
-        ↓ ...  一段时间后 ...
-线程 A 重新获得 CPU
-        ↓
-JVM 读取：线程 A 的 PC = 2
-        ↓
-回到元空间 sum() 字节码数组[2] → 继续执行 iadd
+┌────────────────────────────────────────────────────────────┐
+│                    Object Header                           │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Mark Word (8 bytes, 64-bit JVM)                     │  │
+│  │  多态复用：hashCode / GC 年龄 / 锁状态 / 偏向线程 ID    │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Klass Pointer (4 字节压缩 / 8 字节未压缩)              │  │
+│  │  → 指向元空间中的类元数据（InstanceKlass*）             │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Array Length (仅数组对象，4 字节)                     │  │
+│  └──────────────────────────────────────────────────────┘  │
+├────────────────────────────────────────────────────────────┤
+│  Instance Data（字段值，JVM 重排以减少对齐损失）             │
+│  排序：long/double > int/float > short/char > byte/bool >  │
+│       reference                                            │
+├────────────────────────────────────────────────────────────┤
+│  Padding（对齐填充到 8 字节倍数）                            │
+└────────────────────────────────────────────────────────────┘
+
+通用大小公式：
+  对象大小 = 对象头 (12 或 16) + 实例数据 (字段实际字节) + 对齐填充 (0~7)
+        向上取整到 8 字节倍数
 ```
 
-如果 PC 是线程共享的，多个线程的"执行位置"就会互相覆盖，根本无法正确恢复——这就是 JVM 规范强制规定 PC 寄存器**线程私有**的根本原因。
+**Mark Word 五态多态复用表**（本篇为 Mark Word 三处穿刺的**首发源头**）：
 
-!!! tip "一句话总结"
-    **字节码在元空间（共享乐谱），栈帧指明当前方法（翻到哪一页），PC 指明方法内偏移（拉到哪一小节）**——三者配合，才能让任意数量的线程在同一份字节码上各自独立推进。
+| 锁状态 | 存储内容（按位拆解，合计 64 bit） | 标志位（低 3 bit） |
+| :-- | :-- | :-- |
+| **无锁** | `unused(25) + hashCode(31) + unused_gap(1) + GC 年龄(4) + 偏向标志(1)=0 + 锁标志(2)=01` | `001` |
+| **偏向锁** | `线程 ID(54) + epoch(2) + unused_gap(1) + GC 年龄(4) + 偏向标志(1)=1 + 锁标志(2)=01` | `101` |
+| **轻量级锁** | `指向栈中锁记录的指针(62) + 锁标志(2)=00` | `xx0` (低 2 bit=00) |
+| **重量级锁** | `指向 Monitor 对象(ObjectMonitor)的指针(62) + 锁标志(2)=10` | `xx0` (低 2 bit=10) |
+| **GC 标记** | 由 GC 使用，配合 forwarding pointer（复制算法转发指针） | `xx1` (低 2 bit=11) |
+
+**顿悟点**：
+
+- **8 字节槽位 + 低 2 bit 分派入口 + 五种状态共享同一物理空间** —— Mark Word 是 JVM 内存布局里最紧凑的多态设计
+- **同一个字段在五种状态下"存不同的东西"**，判断当前是哪种状态只需读低 2 bit + 第 3 bit（偏向标志）
+- **GC 标记态复用**：Serial / Parallel GC 用 forwarding pointer 记录转发地址；G1 / ZGC 有自己的着色指针，但同样借用 Mark Word 的低位分派
+
+> 📖 **Mark Word 三处穿刺**：本篇讲**位分布**（哪些位存什么）· [10a JMM 与线程同步](@java-并发-JMM与线程同步) 讲**状态位跃迁**（锁升级时机）· [12b GC 核心机制](@java-JVM-GC核心机制与收集器演进) 讲**GC 使用**（三色标记 + forwarding pointer）。
+
+> 📖 `Klass` / `oop` 二元模型 + `invokevirtual` 查 vtable 完整展开请见 [面向对象（OOP）](@java-字节码-面向对象) §"对象头与 Klass Pointer"。
+
+### 3.7 压缩指针（Compressed Oops）32GB 边界的数学推导
+
+**推导链**：
+
+```txt
+① 64 位指针压缩为 32 位无符号整数
+   → 最大表示 2^32 = 4G 个地址槽
+
+② JVM 对象 8 字节对齐（-XX:ObjectAlignmentInBytes=8）
+   → 每个对象地址都是 8 的倍数
+   → 低 3 bit 永远为 0，存"高 32 位"就够，低位自动补 0
+
+③ 可寻址空间 = 4G × 8 = 32GB
+   → 堆超过 32GB → 压缩失效 → 引用回到 8 字节
+```
+
+**顿悟点**（30GB 堆比 40GB 堆更省内存的反直觉现象）：
+
+- **堆 ≤ 32GB**：引用字段 4 字节 · Klass Pointer 4 字节 · 对象平均密度高
+- **堆 > 32GB**：引用字段 8 字节 · Klass Pointer 8 字节 · **每个对象平均多消耗 12~16 字节**
+- **临界结果**：32GB 压缩堆能装的对象数量 > 40GB 未压缩堆 —— 这是"生产宁可用 30GB 堆，不用 40GB 堆"的物理根源
+- **`-XX:ObjectAlignmentInBytes=16`** 可以把上限提到 64GB，代价是每个对象平均多浪费 4 字节 padding —— 非极端场景不建议动
+
+**降维建议**：
+
+- 堆需求 ≤ 32GB → 保持默认 `-XX:+UseCompressedOops`（自动开）
+- 堆需求略超 32GB → **优先降到 30GB**，保住压缩指针（配合 ZGC 减少 STW）
+- 堆需求 >> 32GB（如 128GB+）→ 直接上 ZGC，压缩指针失效但 STW 可控
 
 ---
 
-## 5. 元空间（MetaSpace）
+## 4. 第四层：工程红线 —— 5 条硬依据
 
-JDK 8 用元空间替换了永久代（PermGen），存储**类的元数据**：
+### 红线 1：容器化 JVM 的 `memory.limit` 必须包含堆外四大盲区
 
-| 存储内容 | 说明 |
-| :---- | :---- |
-| 类的结构信息 | 字段、方法、接口、父类等 |
-| 方法字节码 | 编译后的字节码指令 |
-| 运行时常量池 | 字面量、符号引用 |
+**物理根源**：`-Xmx` 只管堆，元空间 / Code Cache / 直接内存 / 线程栈全在堆外，独立占用本地内存。
 
-!!! note "JIT 编译后的机器码不在元空间"
-    **常见误区**：JIT 编译后的机器码并不存放在元空间，而是存放在独立的 **Code Cache（代码缓存）** 区域，同样使用本地内存，由 `-XX:ReservedCodeCacheSize` 控制（默认 240MB）。元空间只存放**字节码**和**类元数据**。
+**❌ 反模式**：
 
-!!! important "字符串常量池（String Table）的位置变迁"
-    **字符串常量池**（String Table，也叫 `StringTable`）的位置经过了几次重要变迁，这是高频面试考点，也直接影响 `String.intern()` 的行为：
+```yaml
+# K8s Pod 配置
+resources:
+  limits:
+    memory: 3Gi
+env:
+  - name: JAVA_OPTS
+    value: "-Xmx2g"   # 只留 1Gi 给堆外，完全不够
+# 结果：Metaspace 涨到 800m + CodeCache 240m + DirectMemory 512m + 500 线程栈 500m
+#     = 堆外 2G+，加上堆 2G → RSS 4G+ → OOM Killer
+```
 
-    | JDK 版本 | 字符串常量池位置 | `intern()` 行为 |
-    | :---- | :---- | :---- |
-    | JDK 6 及以前 | **永久代**（PermGen） | 将字符串**复制**到永久代常量池，返回常量池引用 |
-    | JDK 7 | **堆** | 若堆中已有该字符串，直接**记录引用**到 StringTable，不再复制 |
-    | JDK 8+ | **堆**（元空间取代永久代，但 StringTable 仍在堆中） | 同 JDK 7 |
+**✅ 标准范式**：
 
-    ⚠️ **关键澄清**：虽然上面"存储内容"表格中提到元空间里有"运行时常量池"，但这里的"运行时常量池"指**类级别**的常量池（每个 Class 一份，存字面量和符号引用），而**全局的字符串常量池（StringTable）从 JDK 7 起就已经移到堆中了**——这两者经常被混淆。
+```yaml
+resources:
+  limits:
+    memory: 3Gi
+env:
+  - name: JAVA_OPTS
+    value: >-
+      -Xmx1g
+      -XX:MaxMetaspaceSize=256m
+      -XX:ReservedCodeCacheSize=240m
+      -XX:MaxDirectMemorySize=256m
+      -Xss1m
+      -XX:+UseContainerSupport
+      -XX:MaxRAMPercentage=40.0
+# 堆 1g + Metaspace 256m + CodeCache 240m + Direct 256m + 200 线程 × 1m = ~2G
+# 加上 200m 兜底 → RSS 峰值 2.2G，安全落在 3Gi 内
+```
 
-    💡 **实战影响**：因为 StringTable 在堆中，大量调用 `intern()` 或存在海量重复字符串时，会直接撑大堆内存，可能触发 `Java heap space` OOM（而不是 `Metaspace` OOM）。JDK 7+ 可通过 `-XX:StringTableSize` 调整 StringTable 桶大小（默认 60013），对 `intern()` 密集场景可显著提升性能。
+**降维验证公式**：`memory.limit ≥ -Xmx + MaxMetaspaceSize + ReservedCodeCacheSize + MaxDirectMemorySize + (Xss × 线程数) + 200m 兜底`
 
-    📖 **版本冷知识**：JDK 6 及以前 StringTable 默认桶数仅为 **1009**，性能瓶颈明显；这也是 JDK 7 把字符串常量池搬到堆后顺带做的容量升级，60013 是一个约 60× 的跨越。
+### 红线 2：`-XX:MaxMetaspaceSize` 生产必设
 
-!!! warning "元空间关键区别"
-    **关键区别**：元空间使用**本地内存（Native Memory）**，不在 JVM 堆内，默认无上限（受物理内存限制）。
+**物理根源**：默认 `MaxMetaspaceSize = 2^64 - 1`，事实上无上限。CGLib 动态代理、JSP 热部署、Groovy `eval` 会持续生成新 Class 塞入元空间。
 
-    ⚠️ **生产环境必须设置** `-XX:MaxMetaspaceSize` 防止无限增长，否则可能导致系统内存耗尽。
+**❌ 反模式**：
 
-!!! warning "元空间泄漏风险"
-    **元空间泄漏的典型场景**：
+```bash
+java -Xmx2g -jar app.jar   # 完全不设 MaxMetaspaceSize，元空间无限增长
+```
 
-    - CGLib 动态代理：每次代理都生成新类，类卸载条件苛刻
-    - JSP 热部署：每次修改 JSP 都重新生成类
-    - OSGI 框架：频繁加载 / 卸载 Bundle
+**✅ 标准范式**：
 
-    ⚠️ 这些场景容易导致元空间持续增长，必须设置 `-XX:MaxMetaspaceSize` 进行限制。
+```bash
+# 非 hot-swap 场景（常规 Spring Boot 服务）
+java -Xmx2g -XX:MaxMetaspaceSize=256m -jar app.jar
 
----
+# 中等应用（含 CGLib / MyBatis 动态代理）
+java -Xmx4g -XX:MaxMetaspaceSize=512m -jar app.jar
 
-## 6. 直接内存（Direct Memory）
+# 大型 microservice / Spring Cloud 全家桶
+java -Xmx8g -XX:MaxMetaspaceSize=1g -jar app.jar
 
-不属于 JVM 规范定义的内存区域，但频繁使用：
+# ⚠️ 特殊：Groovy / JRuby / 频繁热部署场景
+# 需要 -XX:+ClassUnloadingWithConcurrentMark 配合，且 MaxMetaspaceSize 需 1.5~2 倍冗余
+```
+
+### 红线 3：堆 > 32GB 时压缩指针自动关闭 —— 优先选 30GB 而非 40GB
+
+**物理根源**：`-XX:+UseCompressedOops` 的 32GB 上限来自"32 位偏移 + 8 字节对齐"数学推导。堆超限后引用字段 4 字节 → 8 字节，对象密度骤降。
+
+**❌ 反模式**：
+
+```bash
+java -Xmx40g -jar app.jar   # 压缩指针失效，40G 堆装的对象数量 < 30G 压缩堆
+```
+
+**✅ 标准范式**：
+
+```bash
+# 需求 32~40GB 之间 → 优先降到 30GB 保住压缩指针
+java -Xmx30g -XX:+UseCompressedOops -jar app.jar
+
+# 确需 > 32GB → 直接上 ZGC（压缩指针失效但 STW < 10ms）
+java -Xmx64g -XX:+UseZGC -jar app.jar
+```
+
+### 红线 4：`-XX:+UseBiasedLocking` 在 JDK 15+ 不要再显式开启
+
+**物理根源**：JEP 374 在 JDK 15 默认关闭 + 标记 deprecated；JDK 18 起显式开启会产生 obsolete 警告。现代 JIT 的锁消除已足够优秀，偏向锁在低竞争场景收益微乎其微，反而增加锁升级复杂度。
+
+**❌ 反模式**：
+
+```bash
+# 从 JDK 8 迁移到 JDK 17 的老项目，运维盲目保留原参数
+java -XX:+UseBiasedLocking -Xmx2g -jar app.jar
+# JDK 18+ 会打印警告：Option UseBiasedLocking was deprecated in version 15.0
+```
+
+**✅ 标准范式**：
+
+```bash
+# JDK 15+：删掉 UseBiasedLocking，让 JVM 走默认（关闭偏向锁）
+java -Xmx2g -jar app.jar
+
+# 低竞争同步的现代姿势
+# 1) java.util.concurrent 优先（AQS + CAS）
+# 2) VarHandle 替代 Unsafe 做无锁编程
+# 3) 保留 synchronized 即可，靠 JIT 锁消除 + 轻量级锁
+```
+
+### 红线 5：`String.intern()` 密集调用抛的是 `Java heap space`，不是 `Metaspace`
+
+**物理根源**：StringTable 从 JDK 7 起在堆里，不在元空间。`intern()` 只是在 StringTable 里加一条"字符串 → 堆对象"的映射，被引用的字符串本身占用堆内存。
+
+**❌ 反模式**：
 
 ```java
-// NIO 直接内存分配
-ByteBuffer buffer = ByteBuffer.allocateDirect(1024 * 1024); // 1MB 直接内存
-
-// 底层调用 unsafe.allocateMemory()，绕过 JVM 堆，直接向 OS 申请内存
-// 好处：避免 Java 堆和 Native 堆之间的数据拷贝（零拷贝）
-// 坏处：不受 GC 管理，需要手动释放（或依赖 Cleaner 机制）
-```
-
-**为什么 Netty 大量使用直接内存？**
-
-传统 IO：`磁盘 → 内核缓冲区 → JVM 堆 → 网络`（两次拷贝）
-
-NIO 直接内存：`磁盘 → 直接内存 → 网络`（一次拷贝，零拷贝）
-
-!!! warning "直接内存 OOM 排查"
-    - 堆内内存正常但物理内存持续上涨 → 直接内存泄漏的强信号
-    - 排查工具：`-XX:NativeMemoryTracking=summary` + `jcmd <pid> VM.native_memory summary`
-    - 详细排查流程见 [GC 调优实战与常见误区](@java-GC调优实战与常见误区) §4.2
-
----
-
-## 7. 对象的内存布局
-
-理解对象在堆中的实际存储结构，是理解 GC、锁优化、内存占用的基础。
-
-### 7.1 对象头（Object Header）
-
-```txt
-┌──────────────────────────────────────────────────────────┐
-│                    Object Header                         │
-│                                                          │
-│  ┌──────────────────────────────────────────────────┐    │
-│  │  Mark Word(8 bytes, 64-bit JVM)                  │    │
-│  │  Stores: hashCode / GC age / lock state /        │    │
-│  │         biased lock thread ID                    │    │
-│  └──────────────────────────────────────────────────┘    │
-│  ┌──────────────────────────────────────────────────┐    │
-│  │  Klass Pointer(4 bytes with pointer compression; │    │
-│  │                8 bytes otherwise)                │    │
-│  │  Points to class metadata in method area         │    │
-│  └──────────────────────────────────────────────────┘    │
-│  ┌──────────────────────────────────────────────────┐    │
-│  │  Array length(array objects only, 4 bytes)       │    │
-│  └──────────────────────────────────────────────────┘    │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Mark Word 的多态复用**（64 位 JVM，共 64 bit）：
-
-| 锁状态 | 存储内容（按位拆解，合计 64 bit） | 标志位（低 2 bit） |
-| :---- | :---- | :---- |
-| 无锁 | unused(25) + hashCode(31) + unused(1) + GC 年龄(4) + 偏向标志(1) + 锁标志(2) | 01（偏向标志=0） |
-| 偏向锁 | 线程 ID(54) + epoch(2) + unused(1) + GC 年龄(4) + 偏向标志(1) + 锁标志(2) | 01（偏向标志=1） |
-| 轻量级锁 | 指向栈中锁记录的指针(62) + 锁标志(2) | 00 |
-| 重量级锁 | 指向 Monitor 对象的指针(62) + 锁标志(2) | 10 |
-| GC 标记 | 由 GC 使用，配合 forwarding pointer | 11 |
-
-!!! warning "偏向锁已被废弃（JDK 15+）"
-    **JEP 374** 在 JDK 15 中将偏向锁标记为 **deprecated** 并默认关闭；**JDK 18** 起命令行选项 `-XX:+UseBiasedLocking` 被标记为 **obsolete**（仍可使用但产生警告），**至今 OpenJDK 尚未发布任何 JEP 将其正式移除**，相关代码在源码中仍然存在——但对应用开发者而言，可视为已退出历史舞台。
-
-    - 废弃原因：现代 JVM 中无竞争同步已通过 JIT 的"锁消除"优化得很好，偏向锁带来的收益越来越小，而它的复杂性（撤销 / 批量重偏向）给 JVM 维护带来巨大负担。
-    - 现状：JDK 15+ 起 `-XX:+UseBiasedLocking` 默认关闭；JDK 18+ 显式开启会收到 obsolete 警告；Mark Word 中的偏向锁相关字段在这些版本已不再参与锁路径，但表格中的位布局仍是理解历史实现的参考。
-    - 影响：对绝大多数业务几乎无感；但依赖"短临界区单线程重复加锁"优化的老代码，需留意并推荐升级到更高效的同步原语（`java.util.concurrent`、`VarHandle`）。
-
-### 7.2 实例数据与对齐填充
-
-```txt
-┌─────────────────────────────────────┐
-│  Object Header（12 or 16 bytes）      │
-├─────────────────────────────────────┤
-│  Instance Data（field values）        │
-│  JVM reorders fields to reduce memory │
-│  Order：long/double > int/float >     │
-│        short/char > byte/boolean >  │
-│        reference                     │
-├─────────────────────────────────────┤
-│  Padding                            │
-│  Align to multiple of 8 bytes       │
-└─────────────────────────────────────┘
-```
-
-**计算一个对象的实际大小**：
-
-```java
-// 示例：一个只有 int 字段的对象
-class Foo {
-    int x; // 4 字节
+// 用户输入不加限制地 intern()，希望"字符串去重省内存"
+public String cacheKey(String userInput) {
+    return userInput.intern();   // 100 万个不同用户输入 → StringTable 挂 100 万条 → 堆 OOM
 }
-// 对象头：12 字节（开启指针压缩）
-// 实例数据：4 字节（int x）
-// 对齐填充：0 字节（12+4=16，已是8的倍数）
-// 总计：16 字节
-
-// 可用 JOL（Java Object Layout）工具精确查看
-// System.out.println(ClassLayout.parseInstance(new Foo()).toPrintable());
 ```
 
-### 7.3 压缩指针（Compressed Oops）
+**✅ 标准范式**：
 
-- **启用条件**：堆 ≤ 32GB（2^32 × 8 字节对齐 = 32GB），JDK 8+ 默认开启
-- **参数**：`-XX:+UseCompressedOops`（默认开启）
-- **收益**：对象头 Klass Pointer 从 8 字节压缩到 4 字节，对象引用字段也从 8 字节压到 4 字节——**整体节省 30%~40% 的堆内存**
-- **关闭场景**：堆 > 32GB 时自动关闭；或生产要求大堆时主动用 `-XX:-UseCompressedOops`
+```java
+// 方案 1：显式增大 StringTable 桶数（JVM 参数）
+// -XX:StringTableSize=1000003   // 100 万级质数
 
-!!! tip "📌 为什么要设 32GB 为边界？"
-    64 位指针被压缩为 32 位无符号整数，最大表示 2^32 = 4G；因为 JVM 对象 8 字节对齐，所以每个地址都是 8 的倍数——可以只存"高位的 32 位"，低位自动补 0 还原，得到 4G × 8 = 32GB 的可寻址空间。**堆超过 32GB 时压缩失效，引用回到 8 字节，对象密度骤降**——这也是为什么生产上"30GB 堆比 40GB 堆更省内存"的反直觉现象。
+// 方案 2：应用层手写字符串去重，避开 StringTable 隐式堆压力
+private static final ConcurrentHashMap<String, String> DEDUP = new ConcurrentHashMap<>();
 
-!!! note "📖 术语家族：`*Oops` 压缩指针家族"
-    **字面义**：`oop` = **O**rdinary **O**bject **P**ointer（普通对象指针），HotSpot 源码里对"Java 堆中对象引用"的内部称呼，不是 Java 语言层面的 `Object` 引用而是 VM 层面的 64/32 位地址。
+public String cacheKey(String userInput) {
+    // 已存在则返回原引用（省内存）；不存在则放入
+    String existing = DEDUP.get(userInput);
+    if (existing != null) return existing;
+    DEDUP.putIfAbsent(userInput, userInput);
+    return DEDUP.get(userInput);
+}
+// 优势：容量、逐出策略、监控指标全都可控，不依赖 JVM 内部 StringTable
+```
 
-    **在本框架中的含义**：HotSpot 用一整套 `*Oops` / `*Oop` 命名的 C++ 类来表达"如何在堆中引用一个对象"——包括未压缩的 8 字节指针、压缩后的 4 字节偏移、以及对不同类元数据（普通类、数组类、常量池等）的 Klass 指针变体。
+**降维金句**：
 
-    **同家族成员**：
+> *"JVM 的所有'内存去哪了'问题都收敛到三条主线：**七大分区两条主线**决定内存在哪、**对象头 + 实例数据 + 对齐填充**决定单对象占多少、**压缩指针 32GB 边界**决定堆密度。理解了这三条主线，OOM 类型、`jmap -heap` 输出、容器内存超限、`intern()` 撑堆全都是这些主线的排列组合。"*
 
-    | 成员 | 作用 | 源码位置（HotSpot） |
+---
+
+## 5. 🗺️ 跨战役知识伏笔（埋眼管理）
+
+### 5.1 术语家族卡片布点
+
+!!! note "📖 术语家族：JVM 运行时数据区族（Runtime Data Areas）"
+    **字面义**：`Runtime Data Areas` —— JVMS §2.5 定义的 JVM 运行时数据区
+
+    **在 JVM 中的含义**：JVM 规范规定的六大运行时数据区 + 一个约定俗成的堆外补充（直接内存）
+
+    **家族成员**：
+
+    | 成员 | 线程归属 | 内存位置 | 是否 GC | 存什么 | JVMS 章节 |
+    | :-- | :-- | :-- | :-- | :-- | :-- |
+    | `Heap` | 共享 | 堆内 | ✅ | 对象实例 / 数组 | §2.5.3 |
+    | `Method Area / Metaspace` | 共享 | 堆外 | ✅（Full GC） | 类元数据 / 字节码 / 类级常量池 | §2.5.4 |
+    | `Code Cache` | 共享 | 堆外 | ⚠️ Sweeper | JIT 机器码 | 非 JVMS 规定，HotSpot 特有 |
+    | `VM Stack` | 私有 | 堆内 | ❌ | 栈帧 / 局部变量表 | §2.5.2 |
+    | `Native Method Stack` | 私有 | 堆内 | ❌ | Native 方法栈 | §2.5.6 |
+    | `PC Register` | 私有 | 堆内 | ❌（不 OOM） | 字节码偏移 | §2.5.1 |
+    | `Direct Memory` | — | 堆外 | ❌（Cleaner） | NIO / Netty 缓冲 | 非 JVMS 规定 |
+
+    **命名规律**：`<线程归属> + <位置> + <职责>` —— JVMS 用这套三元组严格定义了每个区的生命周期与错误类型
+
+    **易混点**：`Method Area` 是 JVMS **规范层面**的概念，`Metaspace` 是 HotSpot 从 JDK 8 起对 `Method Area` 的**具体实现**（JDK 6~7 的实现是 `PermGen`）。规范和实现不能混说。
+
+!!! note "📖 术语家族：`*Oops` 压缩指针族（Ordinary Object Pointer）"
+    **字面义**：`oop` = **O**rdinary **O**bject **P**ointer，HotSpot 对"Java 堆中对象引用"的内部称呼
+
+    **在 HotSpot 中的含义**：C++ 层面表达"如何在堆中引用一个对象"的一整套类型
+
+    **家族成员**：
+
+    | 成员 | 作用 | 源码位置 |
     | :-- | :-- | :-- |
-    | `oop` | 未压缩的对象指针（8 字节裸指针） | `hotspot/share/oops/oop.hpp` |
-    | `narrowOop` | 压缩指针（4 字节，基于 heap base + shift 还原） | `hotspot/share/oops/oopsHierarchy.hpp` |
-    | `Klass*` | 未压缩的元数据指针（指向方法区的类元信息） | `hotspot/share/oops/klass.hpp` |
-    | `narrowKlass` | 压缩 Klass 指针（对象头里的 4 字节 Klass Pointer 即是此类型） | `hotspot/share/oops/compressedOops.hpp` |
-    | `CompressedOops` | 压缩/解压的静态工具类（`encode` / `decode` 方法） | `hotspot/share/oops/compressedOops.hpp` |
-    | `instanceOop` / `arrayOop` / `objArrayOop` / `typeArrayOop` | 具体对象类别（普通实例 / 数组 / 引用数组 / 基本类型数组） | `hotspot/share/oops/instanceOop.hpp` 等 |
+    | `oop` | 未压缩对象指针（8 字节裸指针） | `hotspot/share/oops/oop.hpp` |
+    | `narrowOop` | 压缩对象引用（4 字节，基于 heap base + shift 还原） | `hotspot/share/oops/oopsHierarchy.hpp` |
+    | `Klass*` | 未压缩元数据指针 | `hotspot/share/oops/klass.hpp` |
+    | `narrowKlass` | 压缩 Klass Pointer（对象头 4 字节 Klass Pointer 即此类型） | `hotspot/share/oops/compressedOops.hpp` |
+    | `CompressedOops` | 压缩/解压静态工具类（`encode` / `decode`） | `hotspot/share/oops/compressedOops.hpp` |
+    | `instanceOop` / `arrayOop` / `objArrayOop` / `typeArrayOop` | 具体对象类别（实例 / 一维数组 / 引用数组 / 基本类型数组） | `hotspot/share/oops/instanceOop.hpp` 等 |
 
-    **命名规律**：`<Xxx>Oop` / `narrow<Xxx>` = "HotSpot 中对 Java 堆引用的 C++ 表示"；**压缩版加 `narrow` 前缀、未压缩版直接用 `oop` / `Klass*`**。JVM 参数 `-XX:+UseCompressedOops` 控制对象**引用字段**的压缩，`-XX:+UseCompressedClassPointers`（JDK 8+ 默认开）控制对象头 **Klass Pointer** 的压缩——两者独立开关，但默认都打开。
+    **命名规律**：`<Xxx>Oop` / `narrow<Xxx>` = "HotSpot 中对 Java 堆引用的 C++ 表示"；压缩版加 `narrow` 前缀、未压缩版直接用 `oop` / `Klass*`
 
----
+    **易混点**：`-XX:+UseCompressedOops` 控制对象**引用字段**压缩 · `-XX:+UseCompressedClassPointers` 控制对象头 **Klass Pointer** 压缩 —— **两者独立开关但默认都开**，堆 > 32GB 时 `UseCompressedOops` 自动关闭，`UseCompressedClassPointers` 仍可保留（因为它压缩的是元空间指针，不受堆大小限制）。
 
-## 8. 常见问题 Q&A
+> 📖 `Mark Word` 五态多态复用 → 本篇为 **Mark Word 三处穿刺**的**首发源头**（讲位分布）；[10a JMM 与线程同步](@java-并发-JMM与线程同步) 承接锁升级视角、[12b GC 核心机制](@java-JVM-GC核心机制与收集器演进) 承接 GC 标记视角
+>
+> 📖 `Klass` / `oop` 二元模型完整展开 → [面向对象（OOP）](@java-字节码-面向对象) §"对象头与 Klass Pointer"（本文只讲对象头位分布，不重讲 `invokevirtual` 查表机制）
 
-**Q1：JDK 8 为何用元空间替代永久代？**
+### 5.2 伏笔登记与回收
 
-> 三条根本原因：① 永久代大小固定（`-XX:MaxPermSize`），CGLib 动态代理 / 热部署场景极易 OOM；② Oracle 合并 HotSpot 和 JRockit，JRockit 本身没有永久代的概念，合并时统一到元空间；③ 元空间使用本地内存（Native Memory），理论上只受物理内存限制，更灵活。但要注意：**生产环境必须显式设 `-XX:MaxMetaspaceSize`**，否则类泄漏会吃光本地内存。
+**本文回收的伏笔**：
 
-**Q2：为什么 Eden ∶ S0 ∶ S1 = 8 ∶ 1 ∶ 1？**
+- ✅ 回收 [00 Java 基础与 JVM 概览](@java-字节码-Java基础与JVM概览) 埋下的："`-Xmx` 管不到哪些区" → §1.1 生产事故引子 + §3.5 三块堆外内存 + §4 红线 1 完整穿刺
+- ✅ 回收 [01 面向对象](@java-字节码-面向对象) 埋下的："对象头 = Mark Word 8 字节 + Klass Pointer 4/8 字节" → §3.6 对象内存布局完整图 + Mark Word 五态多态复用表 + §3.7 32GB 边界推导
+- ✅ 回收 [08 集合框架](@java-数据结构-集合框架) 埋下的："`LinkedList` 节点 40 字节 / `HashMap.Node` 48 字节" → §3.6 通用公式"对象头 + 实例数据 + 对齐填充 + 8 字节向上取整"
 
-> **弱分代假说**告诉我们：大部分对象朝生夕死，Minor GC 后存活的不到 10%——因此让 Eden 占 80% 保证分配速率，S0/S1 各占 10% 刚好容纳那不到 10% 的存活对象。`-XX:SurvivorRatio=8` 是这个比例的默认值，可以按业务实测调整。
+**本文埋下的伏笔（待后续战役回收）**：
 
-**Q3：程序计数器为什么是唯一不会 OOM 的区域？**
+| 本篇 → 目标篇 | 伏笔内容 | 优先级 |
+| :-- | :-- | :-- |
+| `12a` → [10a JMM 与线程同步](@java-并发-JMM与线程同步) | Mark Word 五态多态复用 —— `10a` 需承接偏向 → 轻量 → 重量 → GC 标记的状态位跃迁 | ★★★★★ |
+| `12a` → [12b GC 核心机制](@java-JVM-GC核心机制与收集器演进) | Mark Word GC 标记态（低 2 bit = `11`）+ forwarding pointer —— `12b` 需承接三色标记算法中 Mark Word 的具体使用 | ★★★★★ |
+| `12a` → [12c GC 调优实战](@java-JVM-GC调优实战与常见误区) | 容器内存 = `-Xmx + MaxMetaspaceSize + ReservedCodeCacheSize + MaxDirectMemorySize + Xss × 线程数 + 200m 兜底` —— `12c` 需承接完整 checklist + `jcmd VM.native_memory` 排查链路 | ★★★★ |
+| `12a` → [12d JVM 现代实践](@java-JVM-现代实践与前沿技术) | ZGC 在堆 > 32GB 时的对象密度对比 + Loom 虚拟线程栈内存模型 —— `12d` 需承接前沿场景 | ★★★★ |
 
-> 因为它只存一个固定大小的数字（字节码偏移量），随线程创建即分配、随线程销毁即释放，不会动态增长。这也是 JVM 规范的要求："The pc register is large enough to hold a returnAddress or a native pointer on the specific platform"——固定大小，永不溢出。
-
-**Q4：栈帧里的"返回地址"到底存的是啥？是下一条指令的 PC 吗？**
-
-> **JVM 规范允许两种实现**，但 **HotSpot 实际存的是『调用点 PC』**（invoke 指令本身的偏移），不是下一条。理由是：异常栈打印、调试器定位、`Thread.getStackTrace()` 等低频但高价值的场景直接复用这个值就能查到源码行号；而"加指令长度跳到下一条"这个动作被放到了"正常返回"的高频路径里。一句话：**JVM 中所有记录『执行位置』的字段，语义都是『正在执行的那条指令本身的偏移』**。
-
-**Q5：`String.intern()` 在 JDK 7 前后到底变了什么？**
-
-> **JDK 6 及以前**：字符串常量池在**永久代**，`intern()` 会把字符串**复制一份**到常量池。**JDK 7+**：常量池搬到**堆**，`intern()` 不再复制，而是**记录堆中已有字符串的引用**到 StringTable——这意味着大量 `intern()` 调用直接吃堆内存，OOM 类型是 `Java heap space` 而非 `Metaspace`。JDK 8 元空间取代永久代，但 StringTable 仍在堆中，行为不变。
-
-> 📖 **调优题**（"堆外内存该设多大？Full GC 频繁怎么排查？"）已在 [GC 调优实战与常见误区](@java-GC调优实战与常见误区) 给出工程视角答案，本文不再重复，专注"机制原理"题。
-
----
-
-## 9. 一句话口诀
-
-> **三共享（堆/元空间/Code Cache）+ 三私有（VM 栈/Native 栈/PC）+ 一补充（直接内存），PC 永不 OOM；Eden 8 ∶ 1 ∶ 1，TLAB 零锁分配；对象头 Mark Word 多态复用，偏向锁 JDK 15 默认关闭、JDK 18 标记 obsolete；StringTable 从 JDK 7 起搬到堆里（桶数 1009 → 60013）。**
+> 📖 **GC 三色标记完整链路、`synchronized` 锁升级四阶段、容器 RSS 超限排查** 请分别到 [GC 核心机制](@java-JVM-GC核心机制与收集器演进) / [JMM 与线程同步](@java-并发-JMM与线程同步) / [GC 调优实战](@java-JVM-GC调优实战与常见误区) 查看，本文专注"内存分区物理结构 + 对象头 Mark Word 五态多态"这条主线。

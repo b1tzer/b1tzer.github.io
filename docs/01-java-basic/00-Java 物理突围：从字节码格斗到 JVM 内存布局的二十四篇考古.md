@@ -1,13 +1,34 @@
 ---
-doc_id: java-Java基础与JVM概览
-title: Java 基础知识与 JVM 原理
+doc_id: java-概览
+title: Java 物理突围：从字节码格斗到 JVM 内存布局的二十四篇考古
 ---
 
-# Java 基础知识与 JVM 原理
+# Java 物理突围：从字节码格斗到 JVM 内存布局的二十四篇考古
 
-> **学习目标**：从"会用"升级到"理解原理 → 能解决问题 → 能做技术决策"
->
-> **检验标准**：学完每个模块后，能口述"这个技术解决了什么问题？不用它会怎样？工作中有哪些坑？"
+> 先回答五个问题，再决定要不要往下读。
+
+**①** 你手里的 Spring Boot 服务启动需要 45 秒。你知道其中有多少秒花在 `Method.invoke` 的 JNI 跳跳板上吗？为什么 JDK 18 后这个数字会闷声下降？
+
+**②** `list.parallelStream().map(this::rpcCall).collect(...)` 看起来一行就能把 QPS 翻倍，为什么上线后反而把线程池打爆了？那个隐藏的 `ForkJoinPool.commonPool()` 到底属于谁？
+
+**③** `new String("abc")` 到底创建了几个对象？`"a" + "b"` 与 `"a".concat("b")` 在 `javap` 下长得完全不一样，你能一眼看出哪个会进字符串常量池吗？
+
+**④** `List<String>` 和 `List<Integer>` 在运行时是同一个类，那为什么 `list.add(1)` 能在编译期就报错？字节码中神秘的桥接方法（bridge method）到底在干什么？
+
+**⑤** 一个 `HashMap` 在 JDK 7 多线程下可能死循环，到了 JDK 8 为什么只会丢数据不会斻死 CPU？头插法改尾插法背后，链表反转的那行字节码取消了什么？
+
+---
+
+如果你对上面任何一道题感到"嗯……好像知道但又说不清楚"，那么本专题就是为你写的。
+
+本专题 **24 篇** 文档不是另一本"Java 基础回忆录"，而是把你从业务代码现场一路拉到 `javap` 反编译现场、再拉到对象头与 CPU 缓存行现场的四层垂直透视：
+
+- **看得见的**：代码行为、Bug 现象、性能数据——你已经写了好几年的那一层
+- **看不见的**：字节码指令（`invokevirtual` / `invokedynamic` / `checkcast`）、对象头与 Klass 指针、方法内联与逃逸分析——它们才是 Bug 的真正现场
+
+读完本专题，你不会多背几条 API，而是获得一种**"看到 Bug 现场能立刻猜到字节码在做什么"的直觉**——这才是高级工程师与普通开发者的分水岭。
+
+> 二十四篇文档共同回答的：不是"Java 怎么写"，而是"**Java 写成那样，背后到底发生了什么**"。
 
 ---
 
@@ -27,6 +48,98 @@ timeline
 ```
 
 > 📌 本站聚焦 **JDK 8 / 17 / 21** 三个 LTS 版本。GC 演进路线：Serial → Parallel → CMS → G1（JDK 9+ 默认）→ ZGC（JDK 15+ 正式，JDK 21 分代模式）。JDK 21 起 Oracle 改为每 2 年一个 LTS，中间版本为非 LTS 短期支持。
+
+---
+
+## 如何阅读本专题
+
+本专题 **24 篇文档 · 5 大战役 · 1 个附录**，按认知下沉曲线依次展开——从**语言基石**到**内核穿刺**，每一战役都在回答上一战役无法回答的问题：
+
+```mermaid
+flowchart TB
+    subgraph Z1["⚙️ 战役一 · 字节码考古（语言基石）"]
+        direction LR
+        Z11["01 面向对象 · 02 异常 · 03 注解<br/>04 字符串 · 05 泛型 · 06 反射 · 07 Java8 函数式"]
+    end
+    subgraph Z2["📊 战役二 · 数据结构映照（Java 集合的物理映射）"]
+        direction LR
+        Z21["08 集合框架 · 09 数据结构精讲"]
+    end
+    subgraph Z3["🧵 战役三 · 并发全景（硬件 → 哲学 → 应用 → 组合）"]
+        direction LR
+        Z31["10 综览 · 11 JMM 与线程同步 · 12 AQS 设计哲学<br/>13 Lock 与线程池 · 14 并发集合与实战陷阱"]
+    end
+    subgraph Z4["🏛️ 战役四 · JVM Runtime（类加载 → 内存 → GC → 现代实践）"]
+        direction LR
+        Z41["15 类加载 · 16 综览<br/>17 内存分区 · 18 GC 机制 · 19 GC 调优 · 20 现代实践"]
+    end
+    subgraph Z5["🎯 战役五 · 向 OS 举刀（击穿内核）"]
+        direction LR
+        Z51["21 NIO 与 IO 模型（epoll / sendfile / 零拷贝）"]
+    end
+    subgraph ZX["📎 番外附录 · 语法参考（与主线正交）"]
+        direction LR
+        ZX1["90 Java8 其他新特性 · 91 Java9-17 关键新特性"]
+    end
+    Z1 -->|"语言契约稳定后，回头看**它承载的数据结构**"| Z2
+    Z2 -->|"数据结构在**多线程下发生了什么**？"| Z3
+    Z3 -->|"这些机制**跑在哪台机器上、被谁管理**？"| Z4
+    Z4 -->|"JVM 之下是 OS，**再往下就是内核系统调用**"| Z5
+    ZX -.->|"不参与主线 · 按需查阅"| Z1
+
+    style Z1 fill:#f6ffed,stroke:#52c41a
+    style Z2 fill:#e6fffb,stroke:#13c2c2
+    style Z3 fill:#f9f0ff,stroke:#722ed1
+    style Z4 fill:#fff1f0,stroke:#f5222d
+    style Z5 fill:#fff7e6,stroke:#fa8c16
+    style ZX fill:#fafafa,stroke:#8c8c8c,stroke-dasharray: 5 5
+```
+
+五大战役是**纵切时间轴**（读哪一篇），下面的四层是**横切透视法**（每一篇怎么读）——同一篇文档在两张图里都要能被定位：
+
+```mermaid
+flowchart TB
+    subgraph L1["🎯 业务层（工程红线）"]
+        direction LR
+        B1["Spring 冷启动为什么慢<br/>ThreadLocal 为什么泄漏<br/>parallelStream 为什么打爆线程池"]
+    end
+    subgraph L2["📜 语言契约层 · JLS"]
+        direction LR
+        L21["面向对象 · 泛型 · 注解<br/>effectively final · 异常契约"]
+    end
+    subgraph L3["⚙️ 字节码指令层 · JVMS"]
+        direction LR
+        L31["invokevirtual / invokeinterface<br/>invokedynamic / invokespecial<br/>checkcast / instanceof / ldc"]
+    end
+    subgraph L4["🔬 物理实现层 · HotSpot"]
+        direction LR
+        L41["对象头 · Klass Pointer · TLAB<br/>JIT 内联 · Escape Analysis · CPU Cache"]
+    end
+    L1 -->|"下沉：抛出悬念"| L2
+    L2 -->|"javap 反编译"| L3
+    L3 -->|"字节账单 / 硬件指令"| L4
+    L4 -->|"上浮：❌反模式 / ✅标准范式"| L1
+
+    style L1 fill:#fff4e6,stroke:#fa8c16
+    style L2 fill:#e6f7ff,stroke:#1890ff
+    style L3 fill:#f6ffed,stroke:#52c41a
+    style L4 fill:#fff1f0,stroke:#f5222d
+```
+
+上面开篇的 5 个问题对应到这张图里，就是经典的**L1 抛出悬念 → L3 抢现场 → L4 看真相 → L1 给出工程红线**回环。
+
+> **两张图的分工**：**战役图**回答"**该按什么顺序读**"（纵切认知曲线）；**四层图**回答"**每一篇内部该关注什么**"（横切透视方法论）。深度源码型文档（见下方 tip）会在文档内部同时下沉四层；综览篇与番外语法参考主要停在 L1 或 L2 层。
+
+!!! tip "📖 深度源码型文档的阅读姿势"
+    标题包含"深度解析 / 底层 / 原理"的文档（本专题中编号为 **01 / 05 / 06 / 07 / 11 ~ 14 / 15 / 17 / 21**），统一遵循**深度源码型 5 章节契约**：
+
+    1. **业务痛点** —— 3~5 个反问引子 + 一个生产事故现场
+    2. **字节码考古** —— `javap -c -v` 完整反编译 + 逐行破案
+    3. **物理内存布局** —— 精确到字节的 ASCII 布局图 + 硬件级性能账单
+    4. **工程红线** —— ❌反模式 / ✅标准范式 双代码块 × 3~5 条
+    5. **跨战役伏笔** —— 埋眼到后续篇章的 `@doc_id` 钩子
+
+    读者**不必按顺序读完全篇**：想学"怎么写"直接跳 §4；想搞懂"为什么"从 §1 顺读；想调优时回 §3 看物理账单。
 
 ---
 
@@ -93,68 +206,117 @@ timeline
 
 ## 知识点导航
 
-| # | 知识点 | 核心一句话 | 详细文档 |
-| :--: | :-- | :-- | :-- |
-| 01 | **面向对象** | 封装隐藏实现、继承复用代码、多态解耦调用方、抽象定义规范 | [面向对象](@java-面向对象) |
-| 02 | **集合框架** | ArrayList 随机访问快、LinkedList 增删快、HashMap 数组+链表+红黑树、ConcurrentHashMap 线程安全 | [集合框架](@java-集合框架) |
-| 03 | **并发编程** | synchronized 保证原子性+可见性、volatile 保证可见性+有序性、线程池避免频繁创建销毁线程 | [并发编程](@java-并发编程) |
-| 04 | **JVM 内存结构与 GC** | 堆存对象、栈存帧、元空间存类信息；GC 分代收集，G1 是 JDK9+ 默认收集器 | [JVM内存结构与GC](@java-JVM内存结构与GC) |
-| 05 | **异常处理** | Checked 编译器强制处理、Unchecked 编程错误应修复代码；禁止空 catch 块 | [异常处理](@java-异常处理) |
-| 06 | **AQS 与 CAS** | AQS 是并发包核心框架，CAS 是无锁编程基础；ReentrantLock 比 synchronized 更灵活 | [AQS与CAS](@java-AQS与CAS) |
-| 07 | **[Java8] 函数式编程** | Lambda 表达式 + Stream 流式编程 + Optional 空值处理，函数式编程三大核心 | [Java8函数式编程](@java-Java8函数式编程) |
-| 08 | **[Java8] 其他新特性** | 新日期 API（java.time）+ 接口默认方法与静态方法 | [Java8其他新特性](@java-Java8其他新特性) |
-| 09 | **[Java9-17] 新特性** | var 局部变量推断、Record、Sealed Classes、Pattern Matching 等 | [Java9-17新特性](@java-Java9-17新特性) |
-| 10 | **注解** | 元注解定义注解行为，自定义注解 + 反射/APT 实现框架功能 | [注解Annotation](@java-注解Annotation) |
-| 11 | **数据结构精讲** | 红黑树自平衡 O(log n)、B+树磁盘友好、跳表概率平衡、布隆过滤器判存在 | [数据结构精讲](@java-数据结构精讲) |
-| 12 | **类加载机制与双亲委派模型** | Boot → Ext/Platform → App 三级委派；SPI / Tomcat / OSGi 破坏委派的典型场景 | [类加载机制与双亲委派模型](@java-类加载机制与双亲委派模型) |
-| 13 | **字符串底层原理与 StringPool** | 字符串不可变的本质、`intern()` 与运行时常量池、JDK 9+ 紧凑字符串 | [字符串底层原理与StringPool](@java-字符串底层原理与StringPool) |
-| 14 | **泛型底层原理与类型擦除** | 编译期检查 + 运行期擦除；桥接方法与通配符的底层机制 | [泛型底层原理与类型擦除](@java-泛型底层原理与类型擦除) |
-| 15 | **反射性能与 MethodHandle** | `Method.invoke` 的开销来源、`MethodHandle` 与 `invokedynamic` 的优势 | [反射与MethodHandle](@java-反射与MethodHandle) |
-| 16 | **NIO 与 IO 模型深度解析** | BIO/NIO/AIO 对比、Reactor 模型、epoll 与 Netty 的关系 | [NIO与IO模型深度解析](@java-NIO与IO模型深度解析) |
+### ⚙️ 战役一 · 字节码考古（语言基石）
+
+| # | 知识点 | 核心一句话 |
+| :--: | :-- | :-- |
+| 01 | [**面向对象（OOP）**](@java-字节码-面向对象) | 从内存边界到虚方法表，封装 / 继承 / 多态 / 抽象在字节码层的物理透视 |
+| 02 | [**异常处理**](@java-字节码-异常处理) | `try-catch-finally` 编译成 **Exception Table**（不是 `if-else`）；`throw` 走操作数栈、栈展开由 JVM 内建，成本远高于普通返回 |
+| 03 | [**注解（Annotation）**](@java-字节码-注解) | 注解是 `.class` 属性表里的一段元数据（`RuntimeVisibleAnnotations`）；APT 编译期织入 / 反射运行期读取 是两条完全独立的解析路径 |
+| 04 | [**字符串与 StringPool**](@java-字节码-字符串底层原理) | JDK 7+ StringTable 从元空间搬到堆内、JDK 9+ Compact Strings（`byte[] + coder`）省一半内存；`ldc` 指令决定字面量走常量池 |
+| 05 | [**泛型（Generics）**](@java-字节码-泛型底层原理) | 编译期检查 + 运行期擦除；`Signature` 属性保存原始泛型信息，`checkcast` 指令兜底类型强转，桥接方法解决继承重写签名冲突 |
+| 06 | [**反射与 MethodHandle**](@java-字节码-反射与MethodHandle) | `Method.invoke` 有 JNI 跳板 + 参数包装 + 前 15 次膨胀成本；`MethodHandle` + `invokedynamic` 通过 LambdaForm 与 JIT 内联把反射降到接近直接调用 |
+| 07 | [**[Java8] 函数式编程**](@java-字节码-函数式编程) | Lambda 不生成 `.class` 匿名类，靠 `invokedynamic` + `LambdaMetafactory` 在**首次调用**才具化实现；`parallelStream` 复用 `ForkJoinPool.commonPool`，是"共享线程池陷阱"的源头 |
+
+---
+
+### 📊 战役二 · 数据结构映照（Java 集合的物理映射）
+
+| # | 知识点 | 核心一句话 |
+| :--: | :-- | :-- |
+| 08 | [**集合框架**](@java-数据结构-集合框架) | `HashMap` 数组 + 链表 + 红黑树（JDK 8 起阈值 8/6 由泊松分布推导）；JDK 8 头插改尾插 + `synchronized` 单槽位锁 是并发行为的分水岭 |
+| 09 | [**数据结构精讲**](@java-数据结构-数据结构精讲) | 红黑树 / B+ 树 / 跳表 / 时间轮 / 布隆过滤器的**生态映射**：谁在 JDK、谁在 MySQL、谁在 Redis、谁在 Netty |
+
+---
+
+### 🧵 战役三 · 并发全景（切片家族 · 强耦合下沉）
+
+| # | 知识点 | 核心一句话 |
+| :--: | :-- | :-- |
+| 10 | [**并发编程综览**](@java-并发-并发编程) | 战役三 · 硬件事实 → 设计哲学 → 框架应用 → 组合运用四层下沉；子专题**不可跳读**，12 假定读者已读 11、13 假定已读 12、14 假定已读 11/12/13 |
+| 11 | [**JMM 与线程同步**](@java-并发-JMM与线程同步) | 硬件地基：JMM 四种屏障 → x86 `mfence` / `LOCK` 指令、`synchronized` 锁升级四阶段的 Mark Word 位跃迁、CAS = `LOCK CMPXCHG` + MESI |
+| 12 | [**AQS 设计哲学**](@java-并发-AQS设计哲学) | 设计哲学：`state`（volatile int，5 种语义）+ CLH 双向队列 + 模板方法 + 独占/共享双模式，一个字段撑起 20+ 个 JUC 同步器 |
+| 13 | [**并发工具 · Lock 与线程池**](@java-并发-并发工具Lock与线程池) | 框架应用：`ReentrantLock` / `StampedLock` 乐观读 / `LongAdder` 分段计数 都是"在 AQS `state` 上定义语义"的产物；线程池 `ctl` 用一个 `int` 编码"5 状态 + 29 位线程数" |
+| 14 | [**并发集合与实战陷阱**](@java-并发-并发集合与实战陷阱) | 组合运用：`ConcurrentHashMap.put` 一次穿透 "CAS 无锁 + `synchronized` 单槽位 + 并发扩容协议" 三种工具；`ThreadLocal` 泄漏、`InheritableThreadLocal` 在池化场景失效的排查 |
+
+---
+
+### 🏛️ 战役四 · JVM Runtime（序章：类加载）
+
+| # | 知识点 | 核心一句话 |
+| :--: | :-- | :-- |
+| 15 | [**类加载机制与双亲委派**](@java-JVM-类加载机制与双亲委派模型) | 五阶段（加载 → 验证 → 准备 → 解析 → 初始化）由字节码指令被动触发；"两个类相等"的物理定义 = `ClassLoader + 全限定名` 二元组；JDK 9 起 `Platform CL` 取代 `Ext CL` |
+
+---
+
+### 🏛️ 战役四 · JVM Runtime（切片家族：内存 / GC / 调优 / 现代实践）
+
+| # | 知识点 | 核心一句话 |
+| :--: | :-- | :-- |
+| 16 | [**JVM 内存结构与 GC 综览**](@java-JVM-内存结构与GC) | 战役四子专题导航：内存分区（对象在哪）→ GC 机制（垃圾怎么找）→ 调优实战（参数怎么配）→ 现代实践（容器 / 虚拟线程 / 前沿），四件缺一不可 |
+| 17 | [**内存分区与对象布局**](@java-JVM-内存分区与对象布局) | 三共享（堆 / 元空间 / Code Cache）+ 三私有（虚拟机栈 / 本地方法栈 / PC）+ 一堆外（直接内存）；`-Xmx` 管不到的**四大盲区**是容器 OOMKilled 元凶 |
+| 18 | [**GC 核心机制与收集器演进**](@java-JVM-GC核心机制与收集器演进) | 可达性分析 + 三色标记 + 写屏障：CMS 走**增量更新**、G1 / ZGC 走 **SATB**，没有第三种；收集器演进主线 Serial → Parallel → CMS → G1 → ZGC 都在回答同一问题：还能把哪些 STW 挪到并发做？ |
+| 19 | [**GC 调优实战与常见误区**](@java-JVM-GC调优实战与常见误区) | 调优三步：**定目标（吞吐/延迟/内存三选一互斥）→ 测量（`-Xlog:gc*` + JFR）→ 小步迭代**；OOM 四字诀：堆查对象链、栈查递归、元空间查代理类、直接内存查 NIO |
+| 20 | [**JVM 现代实践与前沿技术**](@java-JVM-现代实践与前沿技术) | 容器化 `-XX:+UseContainerSupport` + 虚拟线程 M:N 模型（JDK 21 `synchronized` pin 载体、JDK 24 JEP 491 修复）+ JFR 生产 profiler + 分代 ZGC（JDK 23 默认） |
+
+---
+
+### 🎯 战役五 · 向 OS 举刀（击穿内核）
+
+| # | 知识点 | 核心一句话 |
+| :--: | :-- | :-- |
+| 21 | [**NIO 与 IO 模型深度解析**](@java-OS-NIO与IO模型) | Java "NIO" 对应的 OS 模型是**多路复用**（不是非阻塞）；`Selector` = `epoll_create1`、`register` = `epoll_ctl`、`select()` = `epoll_wait`；`FileChannel.transferTo()` 走 `sendfile` 零拷贝 |
+
+---
+
+### 📎 番外附录 · Java 版本新特性（与主线正交 · 语法参考页）
+
+> 定位：**打开时机是"迁移 / 查语法 / 抄坑清单"**，不是"顿悟字节码机制"；对应机制拆到主线相应篇（`Lambda` 见 07、`Record` 见 01、`Sealed` 见 20）。
+
+| # | 知识点 | 核心一句话 |
+| :--: | :-- | :-- |
+| 90 | [**[Java8] 其他新特性**](@java-番外-Java8其他新特性) | `java.time` 不可变 + 时区显式两条准则治好 `SimpleDateFormat` 传统坑；接口 `default` 方法冲突记"具体优先、类优先、平级显式" |
+| 91 | [**[Java 9~17] 关键新特性**](@java-番外-Java9-17关键新特性) | 三主线：**语法糖**（`var` / 文本块 / `switch` 表达式）+ **新类型建模**（`Record` / `Sealed`）+ **模式匹配起点**（`instanceof` 模式匹配 → Java 21 完整落地） |
 
 ---
 
 ## 高频问题索引
 
+> 按四层垂直透视分类：**🎯 L1 业务层**（Bug 现场 / 排查 / 选型）、**📜 L2 语言契约**（JLS）、**⚙️ L3 字节码**（JVMS）、**🔬 L4 物理实现**（HotSpot / 内存 / 硬件）。
+
+### 🎯 L1 业务层：Bug 现场与工程选型
+
 | 问题 | 详见 |
 | :-- | :-- |
-| 面向对象四大特性分别解决什么问题？ | [面向对象](@java-面向对象) |
-| HashMap 扩容流程？JDK7 头插法为什么会死循环？ | [集合框架](@java-集合框架) |
-| synchronized 和 volatile 的区别？ | [并发编程](@java-并发编程) |
-| 线程池核心参数怎么设置？为什么不用 Executors？ | [并发编程](@java-并发编程) |
-| ThreadLocal 为什么会内存泄漏？ | [并发编程](@java-并发编程) |
-| JVM 内存分区有哪些？各自存什么？ | [JVM内存结构与GC](@java-JVM内存结构与GC) |
-| G1 和 CMS 的区别？ | [JVM内存结构与GC](@java-JVM内存结构与GC) |
-| OOM 问题如何排查？ | [JVM内存结构与GC](@java-JVM内存结构与GC) |
-| 双重检查锁的单例为什么需要 volatile？ | [AQS与CAS](@java-AQS与CAS) |
-| AQS 等待队列原理？ReentrantLock vs synchronized？ | [AQS与CAS](@java-AQS与CAS) |
-| CAS 的 ABA 问题如何解决？ | [AQS与CAS](@java-AQS与CAS) |
-| Tomcat / SPI / 线程上下文类加载器为什么要破坏双亲委派？ | [类加载机制与双亲委派模型](@java-类加载机制与双亲委派模型) |
-| `String s = new String("a")` 创建了几个对象？`intern()` 在 JDK 6/7+ 有什么区别？ | [字符串底层原理与StringPool](@java-字符串底层原理与StringPool) |
-| 泛型擦除下的桥接方法是干什么的？泛型数组为什么不能 `new T[]`？ | [泛型底层原理与类型擦除](@java-泛型底层原理与类型擦除) |
-| 反射为什么慢？MethodHandle / LambdaMetafactory 快在哪里？ | [反射与MethodHandle](@java-反射与MethodHandle) |
-| select / poll / epoll 的区别？Netty 的 Reactor 模型怎么回事？ | [NIO与IO模型深度解析](@java-NIO与IO模型深度解析) |
+| ThreadLocal 为什么会内存泄漏？ | [并发编程](@java-并发-并发编程) |
+| 线程池核心参数怎么设置？为什么不用 Executors？ | [并发编程](@java-并发-并发编程) |
+| OOM 问题如何排查？ | [JVM内存结构与GC](@java-JVM-内存结构与GC) |
+| Tomcat / SPI / 线程上下文类加载器为什么要破坏双亲委派？ | [类加载机制与双亲委派模型](@java-JVM-类加载机制与双亲委派模型) |
 
----
+### 📜 L2 语言契约层 · JLS：语义与约定
 
-## 学习路径建议
+| 问题 | 详见 |
+| :-- | :-- |
+| 面向对象四大特性分别解决什么问题？ | [面向对象](@java-字节码-面向对象) |
+| Checked vs Unchecked 异常的设计哲学？ | [异常处理](@java-字节码-异常处理) |
+| AQS 等待队列原理？ReentrantLock vs synchronized？ | [AQS与CAS](@java-并发-AQS设计哲学) |
 
-```mermaid
-flowchart TD
-    A[面向对象基础] --> B[集合框架原理]
-    B --> C["并发编程基础<br>synchronized / volatile"]
-    C --> D[线程池深入]
-    D --> E[AQS / ReentrantLock]
-    E --> F[JVM 内存模型]
-    F --> G[GC 算法与调优]
-    G --> H[类加载机制 & StringPool]
-    H --> I[泛型/注解/反射]
-    I --> J[NIO 与 IO 模型]
-    J --> K[Java 8 / 9-17 新特性]
-```
+### ⚙️ L3 字节码指令层 · JVMS：`javap` 挖真相
 
-> **推荐实践**：
->
-> 1. 手写一个线程安全的单例（双重检查锁 + volatile）
-> 2. 用 `jvisualvm` 模拟一次内存泄漏并排查
-> 3. 配置一个自定义线程池，测试各种拒绝策略的行为
+| 问题 | 详见 |
+| :-- | :-- |
+| HashMap 扩容流程？JDK7 头插法为什么会死循环？ | [集合框架](@java-数据结构-集合框架) |
+| `String s = new String("a")` 创建了几个对象？`intern()` 在 JDK 6/7+ 有什么区别？ | [字符串底层原理与StringPool](@java-字节码-字符串底层原理) |
+| 泛型擦除下的桥接方法是干什么的？泛型数组为什么不能 `new T[]`？ | [泛型底层原理与类型擦除](@java-字节码-泛型底层原理) |
+| 反射为什么慢？MethodHandle / LambdaMetafactory 快在哪里？ | [反射与MethodHandle](@java-字节码-反射与MethodHandle) |
+
+### 🔬 L4 物理实现层 · HotSpot：内存 / 硬件 / GC
+
+| 问题 | 详见 |
+| :-- | :-- |
+| JVM 内存分区有哪些？各自存什么？ | [JVM内存结构与GC](@java-JVM-内存结构与GC) |
+| G1 和 CMS 的区别？ | [JVM内存结构与GC](@java-JVM-内存结构与GC) |
+| synchronized 和 volatile 的区别？（对象头 Mark Word / 内存屏障） | [并发编程](@java-并发-并发编程) |
+| 双重检查锁的单例为什么需要 volatile？（指令重排序 + happens-before） | [AQS与CAS](@java-并发-AQS设计哲学) |
+| CAS 的 ABA 问题如何解决？（`lock cmpxchg` / LL-SC / AtomicStampedReference） | [AQS与CAS](@java-并发-AQS设计哲学) |
+| select / poll / epoll 的区别？Netty 的 Reactor 模型怎么回事？ | [NIO与IO模型深度解析](@java-OS-NIO与IO模型) |

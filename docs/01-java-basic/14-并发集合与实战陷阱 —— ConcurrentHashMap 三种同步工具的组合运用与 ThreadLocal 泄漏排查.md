@@ -1,641 +1,1024 @@
 ---
-doc_id: java-并发集合与实战陷阱
-title: 并发集合与实战陷阱（Concurrent Collections & Practical Pitfalls）
+doc_id: java-并发-并发集合与实战陷阱
+title: 并发集合与实战陷阱 —— ConcurrentHashMap 三种同步工具的组合运用与 ThreadLocal 泄漏排查
 ---
 
-# 并发集合与实战陷阱（Concurrent Collections & Practical Pitfalls）
+# 并发集合与实战陷阱 —— ConcurrentHashMap 三种同步工具的组合运用与 ThreadLocal 泄漏排查
 
 !!! info "**并发集合与实战陷阱 一句话口诀**"
-    ConcurrentHashMap JDK 8 改用 CAS+synchronized 锁单个桶，多线程协作扩容；死锁是互等卡死，活锁是空转无用功，饥饿是长期排队；happens-before 是可见性保证，不是原子性保证
+    - **`ConcurrentHashMap` JDK 8 = "CAS 无锁 + `synchronized` 单槽位 + 并发扩容" 三件事**：空桶用 `casTabAt` 无锁插入（最快路径）· 非空桶用 `synchronized (f)` 锁住头节点（借助 JVM 锁升级，低竞争几乎零开销）· 并发扩容通过 `ForwardingNode.hash == MOVED == -1` 让多线程协作迁移。**这是 JUC 三种同步工具（CAS · `synchronized` · AQS-like 转发协议）在一个数据结构里的完整组合运用**。
+    - **`sizeCtl` 是 `ConcurrentHashMap` 的"多语义状态字段"**：`> 0` 是扩容阈值 · `= 0` 是默认容量占位 · `= -1` 是正在 `initTable` · `< -1` 时高 16 位是扩容 stamp（校验位）+ 低 16 位是参与扩容的线程数 + 1。**一个 `volatile int` 撑起 5 种状态**——与 `10b` AQS `state`、`10c` 线程池 `ctl` 一脉相承，都是 Doug Lea "用最少字段撑最大语义空间"的复用力。
+    - **`CopyOnWriteArrayList` 的弱一致性不是 bug，是设计**：写操作复制整个数组、迭代器基于快照 `array` 引用、读操作永不阻塞——代价是"读不到最新写"+"O(N²) 累计拷贝成本"+"旧快照 GC 压力"。**适用场景锁死为读远多于写 + 数据量小 + 可接受最终一致**（Spring `ApplicationListener` 列表、路由表、白名单）；把它当"通用线程安全 List"用是老手最容易踩的坑。
+    - **并发编程所有 bug 都收敛到 3 条根源**：① 可见性——忘加 `volatile` / 用错 `synchronized` 位置；② 原子性——`read-modify-write` 三步操作没加锁（`i++` / `check-then-act`）；③ 有序性——DCL 单例没加 `volatile` / 依赖对象初始化字段值。**理解 `10a` 的三条硬件事实（缓存一致性、`LOCK CMPXCHG`、内存屏障）就能推演所有陷阱**。
 
-> 📖 **边界声明**：本文聚焦"并发集合的底层机制与并发编程实战陷阱"，以下主题请见对应专题：
->
-> - **JMM 内存模型与线程同步基础** → [并发基础：JMM 与线程同步](@java-并发基础JMM与线程同步)
-> - **Lock、AQS 与线程池深度解析** → [并发工具：Lock、AQS 与线程池](@java-并发工具Lock-AQS与线程池)
-> - **并发编程整体概览与知识地图** → [并发编程](@java-并发编程)
+**你能立刻答上来吗？**
+
+- `ConcurrentHashMap.put()` 究竟什么时候走 CAS、什么时候走 `synchronized`、什么时候走 `helpTransfer`？完整决策链能一次画出来吗？
+- `sizeCtl` 的 5 种语义分别对应什么运行阶段？扩容中的高 16 位"扩容 stamp"到底校验什么？
+- CHM 扩容期间，另一个线程来 `get(key)` 会读到什么？如果这个 key 已经被迁移到 `nextTable` 呢？
+- `CopyOnWriteArrayList` 迭代到一半有别的线程 `add`，会抛 `ConcurrentModificationException` 吗？为什么？
+- 线程池的 `Worker` 复用后，`ThreadLocal` 传递的 `traceId` 为什么会串？`ThreadLocalMap.Entry` 里到底哪个引用强、哪个引用弱？
+- `InheritableThreadLocal` 在线程池里为什么"看似能用其实失效"？跨线程池传递上下文的正确姿势是什么？
+
+任何一个问题让你迟疑超过 3 秒——继续读。
 
 ---
 
-## 1. ConcurrentHashMap（JDK 8）深度解析
+> 📖 **边界声明**：本文是战役三 · 并发全景的**收官篇**，站在"组合运用"视角，把 [`10a` JMM 与线程同步](@java-并发-JMM与线程同步) 的三条硬件事实 + [`10b` AQS 设计哲学](@java-并发-AQS设计哲学) 的 `state` / CLH / 模板方法 + [`10c` 并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) **作为已知前置**，聚焦"并发容器如何把三种同步工具组合起来"与"20 年 Java 并发的 5 大实战陷阱"。以下主题请见对应专题：
+>
+> - **CAS 硬件语义 / `LOCK CMPXCHG` / MESI / `synchronized` 锁升级 / Mark Word** → [`10a` JMM 与线程同步](@java-并发-JMM与线程同步)
+> - **AQS 骨架 / `state` 通用语义 / CLH 队列 / `park` 挂起 / 模板方法** → [`10b` AQS 设计哲学](@java-并发-AQS设计哲学)
+> - **`ReentrantLock` / `StampedLock` / `LongAdder` / 线程池 7 参数 / `ctl` 位编码** → [`10c` 并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池)
+> - **HashMap 三级结构（数组 + 链表 + 红黑树）+ 位运算捷径** → [`08` 集合框架](@java-数据结构-集合框架)
+> - **红黑树完整旋转变色 + 跳表结构** → [`09` 数据结构精讲](@java-数据结构-数据结构精讲)
+> - **虚拟线程 pin 到载体线程排查（`synchronized` pin、`ReentrantLock` 不 pin）** → [`12d` JVM 现代实践](@java-JVM-现代实践与前沿技术)
 
-JDK 8 的 `ConcurrentHashMap` 放弃了分段锁，改用 **CAS + synchronized（锁单个桶头节点）**：
+---
 
-```txt
-ConcurrentHashMap Structure (JDK 8):
+## 1. 第一层：业务痛点 —— 从"CHM put 决策链"到"ThreadLocal 泄漏 OOM"
 
-Node[] table (array, default size 16)
-┌────┬────┬────┬────┬────┬────┬────┬────┐
-|    |    |    |    |    |    |    |    |
-└────┴────┴────┴────┴────┴────┴────┴────┘
-  |    |
-  v    v
-[Node] [Node]
-  |      +-> [Node] -> [Node]  (linked list, length < 8)
-  +-> [TreeNode]               (red-black tree, length >= 8)
+### 1.1 生产事故现场：CoW 存 10 万订单、CPU 直接打满
 
-Concurrency Control:
-  - Bucket empty   : CAS insert head node (lock-free)
-  - Bucket not empty: synchronized on head node (lock one bucket only)
-  - Resizing       : multi-thread cooperative migration
-```
-
-### 1.1 put 操作源码流程
-
-`put()` 是 ConcurrentHashMap 最核心的方法，理解它就理解了整个并发控制设计：
-
-```mermaid
-flowchart TD
-    A["put(key, value)"] --> B["计算 hash\nspread(key.hashCode())"]
-    B --> C{"table 是否\n已初始化？"}
-    C -->|"否"| D["initTable()\nCAS 竞争初始化权\n（sizeCtl 作为标志）"]
-    D --> C
-    C -->|"是"| E{"tabAt(i)\n桶位是否为空？"}
-    E -->|"空"| F["CAS 插入新 Node\n作为头节点（无锁）"]
-    E -->|"不空"| G{"头节点 hash\n== MOVED (-1)？"}
-    G -->|"是（正在扩容）"| H["helpTransfer()\n当前线程加入协助扩容"]
-    H --> C
-    G -->|"否"| I["synchronized\n锁住头节点"]
-    I --> J{"头节点是\n链表还是红黑树？"}
-    J -->|"链表 (hash >= 0)"| K["遍历链表\n找到相同 key 则覆盖\n否则尾插新节点\n并记录链表长度"]
-    J -->|"红黑树 (TreeBin)"| L["调用 TreeBin.putTreeVal()\n在红黑树中插入"]
-    K --> M{"链表长度\n>= 8？"}
-    M -->|"是"| N["treeifyBin()\n链表转红黑树\n（数组长度<64 则优先扩容）"]
-    M -->|"否"| O["addCount()\n计数 +1\n检查是否需要扩容"]
-    N --> O
-    L --> O
-    F --> O
-```
+某电商大促当天，订单中心的一段"看起来没问题"的代码把整个 CPU 打到 100%：
 
 ```java
-// put 核心源码（简化版）
-final V putVal(K key, V value, boolean onlyIfAbsent) {
-    if (key == null || value == null) throw new NullPointerException();
-    int hash = spread(key.hashCode()); // 高低16位异或 + 强制正数
-    int binCount = 0;
+@Service
+public class OrderRuleEngine {
 
+    // ❌ 用 CopyOnWriteArrayList 存所有活跃订单
+    private final List<Order> activeOrders = new CopyOnWriteArrayList<>();
+
+    // 每毫秒都有新订单进来（写密集）
+    public void onOrderCreated(Order o) {
+        activeOrders.add(o);           // ⚠️ 每次都 O(n) 复制整个数组
+    }
+
+    // 每秒一次全量扫描（读）
+    @Scheduled(fixedRate = 1000)
+    public void scanTimeout() {
+        for (Order o : activeOrders) { // ⚠️ 迭代持有旧快照
+            if (o.isTimeout()) reject(o);
+        }
+    }
+}
+```
+
+大促当天订单数飙到 10 万，`activeOrders.add(o)` 每次都要 `Arrays.copyOf` 一份长度 10 万的数组——**单次 add 的时间复杂度是 O(n)，N 次 add 累计就是 O(N²)**。更致命的是每次 `copyOf` 都触发一次新数组分配 + 老数组变垃圾，Eden 区被瞬间刷爆，`Young GC` 一秒好几次，GC 时间占比冲到 40%，业务线程时间片全被吃干。
+
+这个事故直接暴露了三个老手的盲区：
+
+- **盲区一**：`CopyOnWriteArrayList` 从来不是"通用线程安全 List"——它是"读远多于写 + 元素少 + 可接受弱一致"三个条件同时满足才用的**特化容器**，写次数不能是每毫秒级
+- **盲区二**：`activeOrders.iterator()` 拿到的**不是当前 array 引用**，而是**创建迭代器那一刻的 array 快照**——迭代期间的新 `add` 一律读不到，但快照会长期占堆
+- **盲区三**：单次 `add` 的锁竞争极低（只锁一个 `lock` 对象、只锁写、时间只有 `System.arraycopy`），所以 CPU profiler 一开始不会告诉你"锁在冲突"——它告诉你"`Arrays.copyOf` 和 `Young GC` 在打架"
+
+修复方案的实际选择是**换 `ConcurrentHashMap<Long, Order>`**（用订单 ID 做 key），或者**普通 `List` + `synchronized` + 分批扫描**——本文第 4 层的红线 3 会给出完整的选型决策依据。
+
+### 1.2 生产事故现场：`ThreadLocal` 串联的 `traceId` 泄漏出别人的日志
+
+同一家电商的日志中间件里，出现过更诡异的一次事故：
+
+```java
+public class TraceContext {
+    private static final ThreadLocal<String> TRACE_ID = new ThreadLocal<>();
+
+    public static void set(String id) { TRACE_ID.set(id); }
+    public static String get() { return TRACE_ID.get(); }
+    // ❌ 没有 remove()！
+}
+
+// 拦截器
+public class TraceInterceptor implements HandlerInterceptor {
+    public boolean preHandle(HttpServletRequest req, ...) {
+        TraceContext.set(req.getHeader("X-Trace-Id"));
+        return true;
+    }
+    // ❌ postHandle / afterCompletion 里都没有 TraceContext.remove()！
+}
+```
+
+上线两周后，运维发现日志系统里同一条 `traceId` **跨着不同的用户订单**出现——用户 A 的 `traceId` 打到了用户 B 的日志里。排查了两天，最终 heap dump 一看：Tomcat 的 `NioEndpoint$Poller` 里有 200 个 `Worker` 线程，每个 `Worker` 的 `Thread.threadLocals` 里都塞着上一批请求的 `TRACE_ID` 值。
+
+**物理链条**：
+
+- Tomcat 的 `Worker` 是**线程池复用**的，Thread 对象长期存活
+- `TraceContext.set("A的id")` 会把 `("A的id" 的 value)` 塞进 `Thread.threadLocals`（也就是 `ThreadLocalMap`）
+- 请求 A 结束、`Worker` 被回收进池
+- 请求 B 复用了同一个 `Worker`，但由于**没有调用 `remove()`**，`ThreadLocalMap` 里还残留着 `"A的id"` 的 Entry
+- B 的业务代码里恰好有条路径没走 `TraceContext.set()`（比如异步补偿分支），直接读了 `TRACE_ID.get()` —— **读到了 A 的 traceId**
+
+这个事故揭示了 `ThreadLocal` 在线程池场景下的**独特泄漏路径**——不是"内存泄漏"这么简单，而是"**上下文串了**"。而线程池里 `Worker` 一活就是几天，`ThreadLocalMap` 里的 `Entry` 只要不 `remove()`、`ThreadLocal` 对象自身没被 GC，就永远不会被清理。第 3 层 §3.4 会画出 `ThreadLocalMap` 的物理布局，第 4 层红线 4 给出根治范式。
+
+### 1.3 痛点清单
+
+| 痛点 | 现象 | 归因层 |
+| :-- | :-- | :-- |
+| **A**：CHM 扩容期间的读一致性 | 一个 key 恰好被迁到 `nextTable`，另一个线程来 `get(key)` 会不会读到 null？ | 第 3 层 §3.2 `ForwardingNode` 转发协议 |
+| **B**：CoW 迭代期间的写可见性 | 迭代到一半有别的线程 `add`，会抛 `CME` 吗？迭代器会不会读到新元素？ | 第 3 层 §3.3 快照迭代物理机制 |
+| **C**：死锁排查为什么必用 `jstack` | 为什么不能用日志/APM 提前发现？为什么线程池阻塞不算死锁？ | 第 4 层红线 6 死锁四条件 |
+
+---
+
+## 2. 第二层：源码考古 —— CHM / CoW / ThreadLocal 的源码物理链
+
+> ⭐ **本层特殊说明**：并发容器的"字节码考古"聚焦**源码穿刺**主线，不再抓通用 `invokevirtual` 全景（那属于战役一），而是抓"CHM 内部那几段决定物理结构的关键代码"与"`ThreadLocalMap` 的不对称引用设计"。`javap -v -p ConcurrentHashMap.class` 可观察到 `Unsafe.compareAndSetReference` / `getReferenceAcquire` 调用点。
+
+### 2.1 `ConcurrentHashMap.put()` 完整源码链路
+
+`put()` 是理解 CHM 全部并发控制的钥匙——**六个分支覆盖了 CAS、`synchronized`、协作扩容三种同步工具**：
+
+```java
+public V put(K key, V value) {
+    return putVal(key, value, false);
+}
+
+final V putVal(K key, V value, boolean onlyIfAbsent) {
+    if (key == null || value == null) throw new NullPointerException();  // ⚠️ 与 HashMap 不同：并发下 null 无法区分"不存在"和"值为 null"
+    int hash = spread(key.hashCode());  // 高低 16 位异或 + 强制正数（负数 hash 有特殊语义）
+    int binCount = 0;
     for (Node<K,V>[] tab = table;;) {
         Node<K,V> f; int n, i, fh;
 
+        // 分支 ① 表未初始化 → 走 CAS 抢初始化权
         if (tab == null || (n = tab.length) == 0)
-            tab = initTable();                          // ① 懒初始化
+            tab = initTable();
 
+        // 分支 ② 目标桶为空 → CAS 无锁插入（快速路径）
         else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {
-            if (casTabAt(tab, i, null, new Node<>(hash, key, value)))
-                break;                                  // ② CAS 插入空桶（无锁）
+            if (casTabAt(tab, i, null,
+                         new Node<K,V>(hash, key, value, null)))
+                break;                            // 成功即出循环
+        }
 
-        } else if ((fh = f.hash) == MOVED)
-            tab = helpTransfer(tab, f);                 // ③ 协助扩容
+        // 分支 ③ 桶头是 ForwardingNode（正在扩容）→ 帮助迁移
+        else if ((fh = f.hash) == MOVED)
+            tab = helpTransfer(tab, f);
 
+        // 分支 ④ 桶头是普通节点 → synchronized 锁头节点
         else {
-            synchronized (f) {                          // ④ 锁住桶头节点
-                if (tabAt(tab, i) == f) {               // double-check
-                    if (fh >= 0) {                      // 链表
-                        // 遍历链表，尾插或覆盖
-                    } else if (f instanceof TreeBin) {  // 红黑树
-                        // 红黑树插入
+            V oldVal = null;
+            synchronized (f) {                    // ⭐ JVM 锁升级：偏向 → 轻量 → 重量
+                if (tabAt(tab, i) == f) {         // 二次校验（防扩容并发下头节点已换）
+                    if (fh >= 0) {                // 分支 ④a 链表
+                        binCount = 1;
+                        for (Node<K,V> e = f;; ++binCount) {
+                            // 遍历链表：命中 key 则覆盖，否则尾插
+                            if (e.next == null) {
+                                e.next = new Node<K,V>(hash, key, value, null);
+                                break;
+                            }
+                            // ... (省略 key 相等的覆盖分支)
+                        }
+                    }
+                    else if (f instanceof TreeBin) {   // 分支 ④b 红黑树
+                        binCount = 2;
+                        // 调用 TreeBin.putTreeVal() 在树中插入
                     }
                 }
             }
-            if (binCount >= TREEIFY_THRESHOLD)          // ⑤ 链表转树
-                treeifyBin(tab, i);
+            // 分支 ⑤ 链表长度 >= 8 → 尝试树化（数组长度 < 64 时先扩容）
+            if (binCount != 0) {
+                if (binCount >= TREEIFY_THRESHOLD)
+                    treeifyBin(tab, i);
+                if (oldVal != null) return oldVal;
+                break;
+            }
         }
     }
-    addCount(1L, binCount);                             // ⑥ 计数 + 扩容检查
+    // 分支 ⑥ CounterCell 分段计数 + 扩容触发
+    addCount(1L, binCount);
     return null;
 }
 ```
 
-!!! tip "关键设计点"
-    - **key 和 value 都不允许为 null**：与 HashMap 不同！因为在并发场景下，`get()` 返回 null 无法区分"key 不存在"还是"value 就是 null"，会产生二义性。
-    - **spread() 哈希扰动**：`(h ^ (h >>> 16)) & HASH_BITS`，高低 16 位异或后强制最高位为 0（保证 hash 为正数），因为负数 hash 有特殊含义（`MOVED=-1` 表示正在扩容，`TREEBIN=-2` 表示红黑树）。
-    - **synchronized 锁的是头节点对象**，不同桶的操作完全并行，锁粒度极细。
+**`javap -v -p ConcurrentHashMap` 关键切片**（观察 `Unsafe` 调用与 `monitorenter` 编排）：
 
-### 1.2 扩容机制：多线程协作迁移（transfer）
+```volt
+// putVal 内部 tabAt(...) 的最终字节码
+invokestatic  #NN  // Method jdk/internal/misc/Unsafe.getReferenceAcquire:(Ljava/lang/Object;J)Ljava/lang/Object;
 
-ConcurrentHashMap 的扩容是其最精妙的设计之一——**多个线程可以同时参与数据迁移**：
+// casTabAt(...) 的最终字节码
+invokestatic  #NM  // Method jdk/internal/misc/Unsafe.compareAndSetReference:(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z
 
-```txt
-Multi-Thread Cooperative Resizing:
-
-Old table (size=16):
-┌────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┐
-│ 0  │ 1  │ 2  │ 3  │ 4  │ 5  │ 6  │ 7  │ 8  │ 9  │ 10 │ 11 │ 12 │ 13 │ 14 │ 15 │
-└────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┘
-  ^                   ^                   ^                   ^
-  │                   │                   │                   │
-  Thread-3            Thread-2            Thread-1            Thread-0
-  (stride=4)          (stride=4)          (stride=4)          (stride=4)
-  migrating           migrating           migrating           migrating
-  [0..3]              [4..7]              [8..11]             [12..15]
-
-New table (size=32):
-┌────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬────┬...
-│ 0  │ 1  │ 2  │ 3  │ 4  │ 5  │ 6  │ 7  │ 8  │ 9  │ 10 │ 11 │ 12 │ 13 │ 14 │ 15 │...
-└────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴...
-
-Migration rule for each node:
-  if (hash & oldCap == 0) -> stays at index i        (low  list)
-  if (hash & oldCap != 0) -> moves to index i+oldCap (high list)
+// synchronized (f) 的字节码指令对
+monitorenter
+...                // 分支 ④a / ④b 内部代码
+monitorexit
 ```
 
-**扩容流程详解**：
+**顿悟三条**：
+
+1. **`put` 是 CAS + `synchronized` + `ForwardingNode` 三种同步工具的组合**——快速路径无锁、冲突路径低粒度锁、扩容期间协作迁移，三条路径的分岔口就在 `tabAt(i) == null` / `f.hash == MOVED` / `else` 三个判断上。
+2. **`synchronized (f)` 锁的是**桶头节点对象本身**，不是整个表**——不同桶的 `put` 完全并行，并发度 = `table.length`（默认 16，扩容后线性增长）。
+3. **锁升级红利**：低竞争场景下 `synchronized (f)` 就是一次 CAS 修改 Mark Word 到轻量级锁，几乎零开销。这是 CHM 从 JDK 7 的 `ReentrantLock`（`Segment`）换成 `synchronized` 的核心动机——**JDK 6 之后的 `synchronized` 已经比 `ReentrantLock` 更轻**（详见 [`10a` § JMM 与锁升级](@java-并发-JMM与线程同步)）。
+
+### 2.2 `sizeCtl` 的 5 种语义 —— 一个 `volatile int` 撑 5 种状态
+
+CHM 里最"精打细算"的字段是 `sizeCtl`——单个 `int` 承担 5 种运行期语义：
+
+```java
+private transient volatile int sizeCtl;
+```
+
+| 值域 | 语义 | 触发时机 |
+| :-- | :-- | :-- |
+| **`> 0`** | 扩容阈值（如 12 = 16 × 0.75） | 正常运行期 |
+| **`= 0`** | 尚未指定初始容量（默认 16） | `new ConcurrentHashMap()` 且未 `put` |
+| **`= -1`** | 正在初始化 | `initTable()` 期间 CAS 抢到的线程 |
+| **`< -1`** | **高 16 位 = 扩容 stamp**（校验位）+ **低 16 位 = 参与扩容线程数 + 1** | `transfer()` 期间 |
+| **具体如 `-M`** | 扩容中间态，M = `(rs << 16) + N`，N 为工作线程数 | 多线程协作扩容 |
+
+**为什么要塞 5 种语义**：`sizeCtl` 是 `volatile`，任何写入都要走内存屏障——**用一个字段表达所有关键状态**能把"多字段之间可见性对齐"的复杂度砍到 0。CAS 一次修改 `sizeCtl` 就能完成"从阈值状态切换到初始化状态"或"从阈值状态切换到扩容状态"这样的原子跳变，避免"改完 A 字段还没改 B 字段"的窗口期。
+
+**与 `10b` / `10c` 的呼应**：
+
+| 场景 | 字段 | 承载语义数 | 位编码技巧 |
+| :-- | :-- | :-- | :-- |
+| AQS `state` | `volatile int` | 2~3 种（锁状态 / 计数） | `ReentrantReadWriteLock` 高 16 位读、低 16 位写 |
+| 线程池 `ctl` | `AtomicInteger` | 5 种运行状态 + 工作线程数 | 高 3 位状态、低 29 位线程数 |
+| CHM `sizeCtl` | `volatile int` | 5 种运行阶段 | 高 16 位扩容 stamp、低 16 位线程数 |
+
+这就是 **Doug Lea 的 JUC 三大字段设计哲学**——"用最少字段撑最大语义空间"。
+
+### 2.3 `transfer()` 分段迁移 + `ForwardingNode` 转发协议
+
+CHM 扩容的精髓是**多线程协作迁移**——不搞"扩容线程独占，其他线程阻塞"，而是让每个来 `put` 的线程都顺手帮忙搬一段。
+
+```java
+private final void transfer(Node<K,V>[] tab, Node<K,V>[] nextTab) {
+    int n = tab.length, stride;
+    // 每个线程一次领 stride 个桶（最小 16），CPU 越多分片越大
+    if ((stride = (NCPU > 1) ? (n >>> 3) / NCPU : n) < MIN_TRANSFER_STRIDE)
+        stride = MIN_TRANSFER_STRIDE;
+
+    if (nextTab == null) {
+        nextTab = new Node<K,V>[n << 1];        // ⭐ 新表容量 2x
+        transferIndex = n;
+    }
+    int nextn = nextTab.length;
+    ForwardingNode<K,V> fwd = new ForwardingNode<K,V>(nextTab);  // ⭐ 共享的转发节点
+    boolean advance = true, finishing = false;
+
+    for (int i = 0, bound = 0;;) {
+        // 通过 CAS 抢占 stride 大小的迁移任务段（transferIndex 单向递减）
+        // ... 抢到 [bound, i] 区间后，逐桶迁移
+
+        // 迁移单个桶：拆分链表为 low/high（依据 hash & oldCap）
+        //   low  → nextTab[i]
+        //   high → nextTab[i + n]
+
+        // ⭐ 迁移完成后，原桶放置 ForwardingNode
+        setTabAt(tab, i, fwd);
+    }
+}
+```
+
+`ForwardingNode` 是并发扩容的**灵魂**——它是一个 hash 值恒为 `MOVED = -1` 的特殊节点，持有 `nextTable` 引用：
+
+```java
+static final class ForwardingNode<K,V> extends Node<K,V> {
+    final Node<K,V>[] nextTable;   // 转发目标：新表
+
+    ForwardingNode(Node<K,V>[] tab) {
+        super(MOVED, null, null, null);   // hash 强制为 MOVED (-1)
+        this.nextTable = tab;
+    }
+
+    // ⭐ 遇到查询请求：转发到 nextTable 查找
+    Node<K,V> find(int h, Object k) {
+        outer: for (Node<K,V>[] tab = nextTable;;) {
+            // ...在 tab 中继续 hash → i → 链表遍历
+            // 如果又遇 ForwardingNode，就沿 nextTable 链继续转发
+        }
+    }
+}
+```
+
+**协议全景**（并发迁移期间三种线程角色的行为）：
+
+| 线程角色 | 遇到 `ForwardingNode` 时 | 行为 |
+| :-- | :-- | :-- |
+| **读线程**（`get`） | `f.hash == MOVED` | 调用 `f.find(h, k)`，转发到 `nextTable` 查找 —— **读操作永不阻塞** |
+| **写线程**（`put`） | `f.hash == MOVED` | 调用 `helpTransfer(tab, f)`，加入协作迁移，迁完再回来 `put` |
+| **迁移线程** | 迁完一个桶 | `setTabAt(tab, i, fwd)`，插旗告知其他线程该桶已完成 |
+
+这就是 CHM"**扩容不停机**"的物理机制——旧表变成一张"路标网"，每张路标（`ForwardingNode`）指向新表的对应位置。
+
+### 2.4 `size()` 与 `CounterCell` 分段计数
+
+CHM 的 `size()` 借鉴了 `LongAdder` 的分段设计（同一作者 Doug Lea）：
+
+```java
+private transient volatile long baseCount;
+private transient volatile CounterCell[] counterCells;
+
+public int size() {
+    long n = sumCount();
+    return ((n < 0L) ? 0
+            : (n > (long)Integer.MAX_VALUE) ? Integer.MAX_VALUE
+            : (int) n);
+}
+
+final long sumCount() {
+    CounterCell[] cs = counterCells;
+    long sum = baseCount;
+    if (cs != null) {
+        for (CounterCell c : cs)
+            if (c != null) sum += c.value;   // ⭐ 遍历累加：语义上是"最终一致快照"
+    }
+    return sum;
+}
+
+@jdk.internal.vm.annotation.Contended            // ⭐ 128 字节填充避免伪共享
+static final class CounterCell {
+    volatile long value;
+    CounterCell(long x) { value = x; }
+}
+```
+
+**顿悟三条**：
+
+1. **`addCount(x, ...)` 先 CAS `baseCount`，冲突再散到 `CounterCell[]`**——这是 [`10c` § LongAdder 分段计数](@java-并发-并发工具Lock与线程池) 讲过的同一个套路，用在 CHM 上是为了让 `size()` 计数不成为写热点。
+2. **`@Contended` 让每个 `CounterCell` 独占 128 字节缓存行**——避免多个 `Cell` 落在同一缓存行导致 MESI 一致性风暴（[`10a` § MESI](@java-并发-JMM与线程同步) 已讲）。
+3. **`size()` 返回值是最终一致快照**——`sumCount` 遍历过程中其他线程仍在写 `Cell`，读到的是"扫过时的快照总和"，不是某个原子瞬间的精确值。老手不能拿 `size()` 当 `while` 循环上限用，第 4 层红线 2 有降维范式。
+
+### 2.5 `CopyOnWriteArrayList.add()` 完整源码
+
+CoW 的整份并发控制其实**只有一把锁**——写锁：
+
+```java
+final transient Object lock = new Object();     // 唯一的写锁对象
+private transient volatile Object[] array;      // ⭐ volatile 引用，读永远看得到最新数组
+
+public boolean add(E e) {
+    synchronized (lock) {                       // 只锁写，读完全无锁
+        Object[] es = getArray();
+        int len = es.length;
+        es = Arrays.copyOf(es, len + 1);        // ⭐ O(n) 复制整个数组
+        es[len] = e;
+        setArray(es);                           // ⭐ 原子替换 array 引用
+        return true;
+    }
+}
+
+public Iterator<E> iterator() {
+    return new COWIterator<E>(getArray(), 0);   // ⭐ 拿当前 array 引用作为快照
+}
+
+static final class COWIterator<E> implements ListIterator<E> {
+    private final Object[] snapshot;            // ⭐ 迭代器创建时的数组快照
+    private int cursor;
+
+    COWIterator(Object[] es, int initialCursor) {
+        cursor = initialCursor;
+        snapshot = es;
+    }
+    // next() / hasNext() 全部只操作 snapshot，不受后续 add 影响
+}
+```
+
+**顿悟三条**：
+
+1. **每次 `add` 都 O(n) 拷贝**——N 次 add 累计 O(N²)，元素上万时性能坍缩（回顾 §1.1 的生产事故）。
+2. **迭代器基于快照 `Object[]` 引用**——`iterator()` 拿到的是当时的 `array`，`add()` 通过 `setArray(newEs)` 切换的是 `this.array`，**两者是不同的引用**，快照不会被写方"追赶到"，所以永远不抛 `ConcurrentModificationException`。
+3. **代价是内存翻倍 + GC 压力**——迭代器持有的旧快照数组会阻止 GC 回收，长时间迭代 + 频繁写入 = 旧数组堆积 = Full GC。
+
+### 2.6 `ThreadLocal` 完整原理 + 线程池泄漏路径
+
+`ThreadLocal` 的秘密全在 `ThreadLocalMap.Entry` 的**引用不对称设计**：
+
+```java
+public class Thread {
+    ThreadLocal.ThreadLocalMap threadLocals = null;   // ⭐ 每个线程独立一份
+}
+
+public class ThreadLocal<T> {
+    public void set(T value) {
+        Thread t = Thread.currentThread();
+        ThreadLocalMap map = getMap(t);
+        if (map != null) map.set(this, value);
+        else createMap(t, value);
+    }
+
+    static class ThreadLocalMap {
+        // ⭐ Entry 继承 WeakReference：key 是弱引用
+        static class Entry extends WeakReference<ThreadLocal<?>> {
+            Object value;                             // ⭐ value 是强引用
+            Entry(ThreadLocal<?> k, Object v) {
+                super(k);                             // key 弱引用
+                value = v;
+            }
+        }
+        private Entry[] table;                        // 开放地址法（线性探测）
+    }
+}
+```
+
+**引用不对称的物理示意**：
+
+```txt
+Thread 对象                              ThreadLocal 对象
+┌──────────────────────────┐          ┌──────────────────────┐
+│ threadLocals ─┐          │          │ (无外部强引用)        │
+│               │          │          │                      │
+│      ┌────────┴──────┐   │          │                      │
+│      │ ThreadLocalMap│   │          │                      │
+│      │  table[]      │   │          │                      │
+│      │  ┌──────┐     │   │          │                      │
+│      │  │Entry │     │   │          │                      │
+│      │  │ key ⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢▶│ (弱引用，可被 GC) │
+│      │  │value━━━━━━━━━━━━━━━━━━━━━━▶│ Object            │
+│      │  └──────┘     │   │          │ (强引用！)          │
+│      └───────────────┘   │          └──────────────────────┘
+└──────────────────────────┘
+```
+
+**线程池场景下的独特泄漏路径**（回顾 §1.2 事故）：
+
+```txt
+Step 1: 线程池 Worker 线程被创建，Thread 对象长期存活（可能存活数天）
+Step 2: 任务 A 执行 threadLocal.set(largeObject_A)
+         → Worker.threadLocals.table[i] = Entry(TL_ref, largeObject_A)
+Step 3: 任务 A 结束（但没 remove()），Worker 归池等下一个任务
+Step 4: 若 threadLocal 对象自身在应用层没有强引用了：
+         → GC 回收 threadLocal，Entry 里的 key 变为 null
+         → Entry.value 依然强引用着 largeObject_A → largeObject_A 泄漏
+Step 5: 若 threadLocal 对象自身在应用层仍被引用（如 static 字段）：
+         → Entry 完整保留 → largeObject_A 一直活着
+         → 任务 B 若走了"没有 set 就 get"的分支，读到的是 A 的值 → 上下文串了
+```
+
+**探测式清理的兜底与不足**：
+
+```java
+// ThreadLocalMap.set 内部会顺手清理 stale entry
+private void set(ThreadLocal<?> key, Object value) {
+    // ... 找到目标 slot
+    for (Entry e = tab[i]; e != null; e = tab[i = nextIndex(i, len)]) {
+        ThreadLocal<?> k = e.get();
+        if (k == null)                     // ⭐ 探测到 stale entry（key 已被 GC）
+            replaceStaleEntry(key, value, i);
+        // ...
+    }
+}
+```
+
+**探测式清理**只在 `set` / `get` / `remove` 被调用时**顺手触发**——如果一段 `Worker` 生命周期里再也没有其他 `ThreadLocal.set` / `get` 调用，那些 stale entry 就会一直烂在 `table[]` 里，直到 `Worker` 销毁。这就是为什么第 4 层红线 4 强制要求 `try/finally + remove()` 显式清理。
+
+---
+
+## 3. 第三层：JVM 物理结构 —— CHM 决策图 · 扩容协作 · CoW 快照 · ThreadLocalMap
+
+### 3.1 CHM `put()` 决策流程图
 
 ```mermaid
-flowchart TD
-    subgraph 触发["① 触发扩容"]
-        direction LR
-        A["addCount() 检测到 size > sizeCtl"] --> B["创建 nextTable（2x），sizeCtl 记录线程数"]
-    end
+flowchart TB
+    Start(["put(key, value)"]) --> CheckNull{"key/value == null?"}
+    CheckNull -- 是 --> NPE["抛 NullPointerException"]
+    CheckNull -- 否 --> Hash["计算 spread(hash)"]
+    Hash --> Loop{"table 已初始化?"}
+    Loop -- 否 --> Init["initTable() · CAS 抢 sizeCtl = -1"]
+    Init --> Loop
+    Loop -- 是 --> BinCheck{"目标桶为空?"}
+    BinCheck -- 是 --> CAS["casTabAt · CAS 无锁插入"]
+    CAS -- 成功 --> Count["addCount 分段计数"]
+    CAS -- 失败 --> Loop
+    BinCheck -- 否 --> ForwardCheck{"桶头 hash == MOVED?"}
+    ForwardCheck -- 是 --> Help["helpTransfer 协作扩容"]
+    Help --> Loop
+    ForwardCheck -- 否 --> Sync["synchronized (f) 锁头节点"]
+    Sync --> Insert["遍历链表 / 红黑树"]
+    Insert --> Treeify{"binCount >= 8?"}
+    Treeify -- 是 --> Tree["treeifyBin 树化"]
+    Treeify -- 否 --> Count
+    Tree --> Count
+    Count --> Check{"size > sizeCtl?"}
+    Check -- 是 --> Transfer["触发 transfer 扩容"]
+    Check -- 否 --> End(["return"])
 
-    subgraph 迁移["② 多线程迁移（每线程循环领取 stride ≥ 16 个桶）"]
-        direction LR
-        C["锁住桶头节点"] --> D["拆分为 low/high\nlow→newTab[i]\nhigh→newTab[i+oldCap]"]
-        D --> E["旧桶放置 ForwardingNode"]
-        E --> F{"还有未迁移的桶？"}
-        F -->|"是"| C
-    end
-
-    subgraph 完成["③ 收尾"]
-        direction LR
-        G["sizeCtl 减 1"] --> H{"所有线程完成？"}
-        H -->|"是"| I["table = nextTable，扩容完成"]
-        H -->|"否"| J["等待其他线程"]
-    end
-
-    触发 --> 迁移
-    F -->|"否"| 完成
+    style CAS fill:#e8ffe1
+    style Sync fill:#fff4e1
+    style Help fill:#ffe1e1
 ```
 
-!!! note "ForwardingNode 的作用"
-    当一个桶迁移完成后，旧桶位置会放置一个 `ForwardingNode`（hash 值为 `MOVED = -1`）。它有两个作用：
+**决策岔口**——同一段 `put` 代码在不同状态走出三条截然不同的路径：**空桶 CAS 无锁**、**非空桶 `synchronized` 单槽位**、**遇 FN 走 `helpTransfer`**。这三条路径就是"三种同步工具的组合运用"的物理证据。
 
-    1. **标记已迁移**：其他线程在 `put` 时发现桶头是 ForwardingNode，就知道正在扩容，会调用 `helpTransfer()` 加入协助
-    2. **转发读请求**：`get()` 遇到 ForwardingNode 时，会通过它的 `find()` 方法到新数组中查找，保证扩容期间读操作不受影响
+### 3.2 CHM 并发扩容协作时序图
 
-!!! warning "扩容期间的并发安全"
-    - **读操作**：完全无锁。如果桶未迁移，直接在旧数组读；如果已迁移（ForwardingNode），转发到新数组读
-    - **写操作**：如果桶未迁移，正常加锁写入旧数组；如果遇到 ForwardingNode，先帮助扩容，再在新数组写入
-    - **迁移过程**：每个桶的迁移都加了 synchronized 锁，保证同一个桶不会被多个线程同时迁移
+```mermaid
+sequenceDiagram
+    participant T1 as 线程 T1
+    participant T2 as 线程 T2
+    participant T3 as 线程 T3
+    participant Old as oldTable
+    participant New as nextTable
 
-### 1.3 size() 的实现：分散计数
+    T1->>Old: put 触发扩容
+    T1->>New: 创建 nextTable (2x)
+    T1->>Old: CAS 抢占迁移段 [48, 63]
+    T2->>Old: put 时遇到 ForwardingNode
+    T2->>T2: helpTransfer 加入协作
+    T2->>Old: CAS 抢占迁移段 [32, 47]
+    T3->>Old: put 时遇到 ForwardingNode
+    T3->>T3: helpTransfer 加入协作
+    T3->>Old: CAS 抢占迁移段 [16, 31]
 
-ConcurrentHashMap 的 `size()` 采用了类似 `LongAdder` 的分散计数策略，避免所有线程竞争同一个计数器：
+    Note over T1,T3: 3 个线程并行迁移，transferIndex 单向递减分片
+
+    T1->>Old: 迁完桶 50 → setTabAt(50, fwd)
+    T2->>Old: 迁完桶 33 → setTabAt(33, fwd)
+    T3->>Old: 迁完桶 20 → setTabAt(20, fwd)
+
+    Note over Old,New: 每迁完一桶就插旗（ForwardingNode）
+
+    T1->>Old: 所有段迁完，最后一个线程 CAS sizeCtl → 新阈值
+    Note over Old,New: table = nextTable，扩容完成
+```
+
+**扩容期间读线程的行为**：
 
 ```txt
-Counting Mechanism (similar to LongAdder):
+Reader.get(key):
+  1. 定位桶 i = (n - 1) & hash
+  2. tabAt(i) → 桶头节点 f
+  3. if (f.hash == MOVED)          // 遇到 ForwardingNode
+     → f.find(h, k)                // 转发到 nextTable 查找
+       → nextTable 里再定位桶 i'
+       → 若又遇 ForwardingNode，沿 nextTable 链继续转发
+  4. else 走正常链表/红黑树查找
 
-Low contention:
-  All threads CAS on baseCount
-  baseCount: 42
-
-High contention (CAS on baseCount fails):
-  Spread to CounterCell array
-  baseCount: 30
-  ┌─────────────┬─────────────┬─────────────┬─────────────┐
-  │ CounterCell │ CounterCell │ CounterCell │ CounterCell │
-  │  value = 3  │  value = 5  │  value = 2  │  value = 2  │
-  └─────────────┴─────────────┴─────────────┴─────────────┘
-
-  size() = baseCount + sum(CounterCell[])
-         = 30 + 3 + 5 + 2 + 2 = 42
+结论：读操作永不阻塞，永远能读到"当前状态下应有的值"
 ```
 
+### 3.3 CoW 迭代器快照物理图
+
+```txt
+时间线：
+
+t0:  array 引用 R1 = [A, B, C]
+     ┌────────────────────────┐
+     │ Object[] R1: [A, B, C] │
+     └────────────────────────┘
+
+t1:  线程 X 创建迭代器
+     iter.snapshot = R1
+     ┌────────────────────────┐
+     │ iter.snapshot ─┐        │
+     │                ▼        │
+     │ Object[] R1: [A, B, C] │
+     └────────────────────────┘
+
+t2:  线程 Y 调用 list.add(D)
+     synchronized (lock):
+       R2 = Arrays.copyOf(R1, 4)
+       R2[3] = D
+       list.array = R2
+     ┌────────────────────────────────┐
+     │ list.array ─┐                  │
+     │             ▼                  │
+     │ Object[] R2: [A, B, C, D]      │
+     │                                │
+     │ iter.snapshot ─┐  ← 仍指向 R1  │
+     │                ▼                │
+     │ Object[] R1: [A, B, C] (旧)    │
+     └────────────────────────────────┘
+
+t3:  线程 X 调用 iter.next()
+     读的是 iter.snapshot → 得到 R1 的元素，永远读不到 D
+     不抛 ConcurrentModificationException（因为迭代器根本不 check R1 是否变化）
+
+t4:  迭代器结束
+     R1 变成 GC Root 不可达 → 才能被回收
+
+事故窗口：
+  - 若迭代耗时长（如 60s 全表扫描）
+  - 期间线程 Y 调用 add 一千次 → 产生 R2, R3, ..., R1001
+  - 若某读线程也持有 R500 的迭代器 → R500 及之后所有版本都不能回收
+  → 内存翻倍 + 大量 minor GC
+```
+
+**顿悟点**：CoW 的"弱一致性"不是"实现漏洞"，是**用空间换时间 + 用一致性换无锁**的显式设计——迭代器**永远不会**抛 `CME`，代价是**迭代期间的写永远读不到**。
+
+### 3.4 `ThreadLocalMap` 物理布局图
+
+```txt
+Thread 对象（线程池 Worker 长期存活）
+┌──────────────────────────────────────────────────────────┐
+│ ThreadLocalMap threadLocals                              │
+│                                                          │
+│  Entry[] table (开放地址法 + 线性探测)                   │
+│  ┌──────────┬──────────┬──────────┬──────────┬─────────┐ │
+│  │ [0]      │ [1]      │ [2]      │ [3]      │ [4] ... │ │
+│  │ Entry    │ null     │ Entry    │ Entry    │         │ │
+│  │  key ⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢⇢▶ TL_A (弱) │
+│  │  value━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━▶ V_A (强)  │
+│  │          │          │ key: null│ key ⇢⇢⇢⇢▶ TL_C     │
+│  │          │          │ value:   │ value ━━▶ V_C (强)  │
+│  │          │          │ V_B (强)│                    │ │
+│  │          │          │ ⚠️ stale│                    │ │
+│  └──────────┴──────────┴──────────┴──────────┴─────────┘ │
+│                              ▲                           │
+│                              └─ TL_B 已被 GC             │
+│                                 但 value V_B 仍强引用    │
+│                                 → 泄漏点                 │
+└──────────────────────────────────────────────────────────┘
+
+清理时机：
+  ✅ 主动 threadLocal.remove()      → 立即清理 slot
+  ⚠️ 下次 set/get 顺手扫到 stale    → 探测式清理
+  ❌ 若 Worker 生命周期内不再触发    → 永久泄漏
+
+图例：
+  ⇢⇢⇢▶  弱引用（可被 GC）
+  ━━━▶  强引用（不可被 GC）
+```
+
+**引用不对称的物理原因**：
+
+- **key 用弱引用**：防止 `ThreadLocal` 对象因被 `ThreadLocalMap` 强持有而永不释放（`ThreadLocal` 通常是 `static final` 字段，这不是关键；关键是不允许"用户端引用消失后 map 还硬撑着")
+- **value 用强引用**：value 通常没有其他外部引用，如果也用弱引用，任何一次 minor GC 都会让 value 消失，`ThreadLocal.get()` 就会诡异地返回 null
+
+**这个不对称是刻意为之的**——JDK 设计者选择"key 可回收、value 靠用户显式 `remove()` 清理"，就是把清理责任转嫁给用户，换取更强的 value 可用性。**代价就是用户必须写 `try/finally + remove()`**。
+
+### 3.5 `ConcurrentSkipListMap` 无锁跳表（回收 `09` 伏笔）
+
+CHM 之外，`ConcurrentSkipListMap`（CSLM）是 JUC 里唯一一个**纯 CAS 无锁**的并发容器——它选用**跳表**而不是红黑树，物理原因就是**跳表的修改只影响相邻 2 个节点，CAS 冲突范围极小**：
+
+```mermaid
+flowchart LR
+    subgraph L3["Level 3 (索引层)"]
+        H3["HEAD"] --> N30["25"]
+    end
+    subgraph L2["Level 2 (索引层)"]
+        H2["HEAD"] --> N21["10"] --> N22["25"] --> N23["50"]
+    end
+    subgraph L1["Level 1 (索引层)"]
+        H1["HEAD"] --> N11["5"] --> N12["10"] --> N13["25"] --> N14["40"] --> N15["50"]
+    end
+    subgraph Base["Base Level (真实数据)"]
+        B1["1"] --> B2["5"] --> B3["8"] --> B4["10"] --> B5["17"] --> B6["25"] --> B7["31"] --> B8["40"] --> B9["50"]
+    end
+
+    N30 -.-> B6
+    N22 -.-> B6
+    N13 -.-> B6
+
+    style L3 fill:#e1f5ff
+    style L2 fill:#fff4e1
+    style L1 fill:#e8ffe1
+    style Base fill:#ffe1e1
+```
+
+**关键的无锁修改**（CSLM 内部用 `VarHandle` 做 CAS）：
+
 ```java
-// addCount 简化逻辑
-private final void addCount(long x, int check) {
-    CounterCell[] cs; long b, s;
-    // 先尝试 CAS 更新 baseCount
-    if ((cs = counterCells) != null ||
-        !U.compareAndSetLong(this, BASECOUNT, b = baseCount, s = b + x)) {
-        // CAS 失败（竞争激烈），分散到 CounterCell
-        CounterCell c; long v;
-        int m = cs.length - 1;
-        // 用线程探针值（ThreadLocalRandom.getProbe()）选择 Cell
-        if ((c = cs[ThreadLocalRandom.getProbe() & m]) == null ||
-            !(U.compareAndSetLong(c, CELLVALUE, v = c.value, v + x))) {
-            fullAddCount(x, uncontended); // 进一步处理竞争
-        }
-    }
-    // check >= 0 时检查是否需要扩容
-    if (check >= 0) { /* 扩容检查逻辑 */ }
+// ConcurrentSkipListMap.Node —— CAS 修改 next 指针
+static final class Node<K,V> {
+    final K key;
+    V val;
+    Node<K,V> next;
+    // ... casNext / casVal 均通过 VarHandle 完成
 }
 ```
 
-!!! warning "size() 返回的是近似值"
-    `size()` 内部调用 `sumCount()` = `baseCount + Σ CounterCell[i].value`。由于没有加全局锁，在并发写入时，返回值可能不是精确的实时值。但对于绝大多数场景（监控、日志、判断是否为空），近似值已经足够。如果需要精确值，需要外部加锁。
+**顿悟点**：
 
-### 1.4 get 操作：全程无锁
+- **红黑树的修改可能连带旋转多个节点** —— CHM 的 `TreeBin` 只能靠 `synchronized` 锁头节点保护
+- **跳表的修改只涉及相邻 2 个 `next` 指针** —— CSLM 用 CAS 就能保证正确性，完全无锁
+- **CSLM 是 JUC 里唯一保序的并发 Map** —— 需要范围查询 (`subMap` / `headMap`) 或有序遍历时的首选
+- **代价**：单次操作 O(log n) 慢于 CHM 的 O(1)（无冲突场景），且内存开销是 CHM 的 1.5~2 倍
 
-`get()` 操作**完全不加锁**，这是 ConcurrentHashMap 高性能的关键：
+---
 
-```java
-public V get(Object key) {
-    Node<K,V>[] tab; Node<K,V> e, p; int n, eh; K ek;
-    int h = spread(key.hashCode());
-    if ((tab = table) != null && (n = tab.length) > 0 &&
-        (e = tabAt(tab, (n - 1) & h)) != null) {       // volatile 读取桶头
-        if ((eh = e.hash) == h) {
-            if ((ek = e.key) == key || (ek != null && key.equals(ek)))
-                return e.val;                            // 头节点命中
-        }
-        else if (eh < 0)                                 // 特殊节点
-            return (p = e.find(h, key)) != null ? p.val : null;
-            // ForwardingNode: 转发到新数组查找
-            // TreeBin: 在红黑树中查找
-        while ((e = e.next) != null) {                   // 遍历链表
-            if (e.hash == h &&
-                ((ek = e.key) == key || (ek != null && key.equals(ek))))
-                return e.val;
-        }
-    }
-    return null;
-}
-```
+## 4. 第四层：工程红线与降维架构
 
-!!! tip "get() 为什么不需要加锁？"
-    三个关键保障：
+### 红线 1 · 多线程 Map 一律 `ConcurrentHashMap`
 
-    1. **Node 的 val 和 next 都是 volatile 的**：保证读到最新值
-    2. **tabAt() 使用 Unsafe.getObjectVolatile()**：保证读取数组元素时的可见性
-    3. **数组引用 table 也是 volatile 的**：扩容切换数组时，其他线程能立即看到新数组
+**硬性依据**：
 
-### 1.5 JDK 7 vs JDK 8 对比
-
-| 对比项 | JDK 7 | JDK 8 |
-| :----- | :----- | :----- |
-| **锁机制** | `Segment` 分段锁（继承 ReentrantLock） | `synchronized` + CAS |
-| **锁粒度** | 锁一个 Segment（包含多个桶） | 锁单个桶的头节点 |
-| **数据结构** | 数组 + 链表 | 数组 + 链表 + 红黑树 |
-| **并发度** | 固定（默认 16 个 Segment） | 等于数组长度（动态增长） |
-| **哈希冲突** | 链表（JDK 7 的 `HashMap` 内部为头插法，`ConcurrentHashMap` 的 `Segment.HashEntry` 内部同样是头插） | 链表（尾插法，避免扩容时链表倒置）+ 红黑树 |
-| **扩容** | 单线程迁移（每个 Segment 独立扩容） | **多线程协作迁移** |
-| **计数** | 每个 Segment 单独计数，求和需遍历 | baseCount + CounterCell[] |
-| **空桶插入** | 加锁 | CAS（无锁） |
-
-```txt
-JDK 7 Segment-based Locking:
-┌───────────────────────────────────────────────────────────┐
-│  ConcurrentHashMap                                        │
-│  Segment[] (default 16, fixed after creation)             │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │
-│  │ Segment0 │ │ Segment1 │ │ Segment2 │ │ Segment3 │ ...  │
-│  │ (Lock)   │ │ (Lock)   │ │ (Lock)   │ │ (Lock)   │      │
-│  │ HashEntry│ │ HashEntry│ │ HashEntry│ │ HashEntry│      │
-│  │ [] table │ │ [] table │ │ [] table │ │ [] table │      │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘      │
-│                                                           │
-│  Problem: Segment count is fixed at creation time.        │
-│  Even if table grows, max concurrency = 16 (default).     │
-└───────────────────────────────────────────────────────────┘
-
-JDK 8 Per-Bucket Locking:
-┌───────────────────────────────────────────────────────────┐
-│  ConcurrentHashMap                                        │
-│  Node[] table (grows dynamically)                         │
-│  ┌────┬────┬────┬────┬────┬────┬────┬────┬────┬────┐      │
-│  │    │    │    │    │    │    │    │    │    │    │ ...  │
-│  └─┬──┴─┬──┴────┴────┴────┴────┴────┴────┴────┴────┘      │
-│    │    │                                                 │
-│    v    v                                                 │
-│  [syn] [syn]  <- synchronized on each bucket head         │
-│                                                           │
-│  Concurrency = table.length (16 → 32 → 64 → ...)          │
-│  Grows with data, no artificial ceiling.                  │
-└───────────────────────────────────────────────────────────┘
-```
-
-### 1.6 常见陷阱与最佳实践
+- `HashMap` JDK 7 并发 `put` → 环形链表 → `get()` 死循环（100% CPU）
+- `HashMap` JDK 8 并发 `put` → 尾插法虽避免了环，但仍会**数据丢失**（后写者覆盖前写者未提交的节点）
+- `Hashtable` / `Collections.synchronizedMap` → 全表 `synchronized`，并发度 = 1
 
 ```java
-// ❌ 错误：先检查再操作（check-then-act），非原子
-ConcurrentHashMap<String, Integer> map = new ConcurrentHashMap<>();
-if (!map.containsKey("key")) {
-    map.put("key", 1);  // 两个线程可能同时通过 containsKey 检查
+// ❌ 反模式：以为"只是临时缓存不会有并发"
+private final Map<String, Object> cache = new HashMap<>();
+
+// ✅ 标准范式：即使写少也一律 CHM
+private final Map<String, Object> cache = new ConcurrentHashMap<>();
+```
+
+**并发度对比**：CHM 单槽位锁并发度 = `table.length`，从 16 起步、扩容后线性增长；`Hashtable` 恒为 1；差距不是常数倍，而是**接近数组长度倍**。
+
+### 红线 2 · CHM 的 `size()` 是最终一致，不能作循环上限
+
+**硬性依据**：`sumCount()` 遍历 `CounterCell[]` 时其他线程仍在写，返回值是快照总和而非精确瞬时值。
+
+```java
+// ❌ 反模式：拿 size() 当循环上限
+ConcurrentHashMap<Long, Order> orders = ...;
+for (int i = 0; i < orders.size(); i++) {   // ⚠️ size 期间还在写 → 可能越界或漏
+    // ...
 }
 
-// ✅ 正确：使用原子方法
-map.putIfAbsent("key", 1);
+// ✅ 标准范式 A：显式维护 AtomicLong 精确计数
+private final AtomicLong orderCount = new AtomicLong();
+public void put(Order o) {
+    if (orders.put(o.id, o) == null) orderCount.incrementAndGet();
+}
 
-// ✅ 正确：原子的 compute 操作
-map.compute("key", (k, v) -> v == null ? 1 : v + 1);
-
-// ✅ 正确：原子的 merge 操作（累加计数）
-map.merge("key", 1, Integer::sum);
+// ✅ 标准范式 B：迭代器 / entrySet（弱一致但内容自洽）
+for (Order o : orders.values()) { ... }     // 迭代器是弱一致的，不会 CME
 ```
 
-!!! danger "ConcurrentHashMap 的复合操作不是原子的"
-    虽然 `put()`、`get()` 等单个方法是线程安全的，但**多个方法的组合操作不是原子的**。例如 `if (!map.containsKey(k)) map.put(k, v)` 在并发下仍然不安全。必须使用 `putIfAbsent()`、`compute()`、`merge()` 等原子复合方法。
+### 红线 3 · `CopyOnWriteArrayList` 只用在"读远多于写 + 元素少 + 可接受弱一致"
 
----
+**硬性依据**：单次 add O(n)、N 次 add O(N²)；旧快照阻止 GC → 元素上万时 Young GC 频率线性上升。
 
-## 2. 并发集合选型
+**适用/禁用场景**：
 
-!!! note "📖 术语家族：`*Node`（ConcurrentHashMap 中的节点家族）"
-    **字面义**：Node = 结点 / 节点——单链表的基础单元。
-    **在本框架中的含义**：`ConcurrentHashMap` 的桶内元素统一以 `Node` 继承树展现，通过 `hash` 字段的特殊取值识别节点类型（正数=普通链表节点，`MOVED=-1`=转发节点，`TREEBIN=-2`=红黑树代理，`RESERVED=-3`=计算占位）。
-    **同家族成员**：
-
-    | 成员 | hash 值 | 作用 | 源码位置 |
-    | :-- | :-- | :-- | :-- |
-    | `Node<K,V>` | >= 0 | 基础链表节点，`val` 与 `next` 均为 `volatile` | `java.util.concurrent.ConcurrentHashMap.Node` |
-    | `TreeNode<K,V>` | >= 0 | 红黑树节点，由 `TreeBin` 管理（不直接入桶） | `ConcurrentHashMap.TreeNode` |
-    | `TreeBin<K,V>` | `TREEBIN = -2` | 树代理节点，桶头存的是 `TreeBin`，内部持有红黑树的 `root` | `ConcurrentHashMap.TreeBin` |
-    | `ForwardingNode<K,V>` | `MOVED = -1` | 扩容时放在旧桶的占位节点，转发 `get()` 到新数组 | `ConcurrentHashMap.ForwardingNode` |
-    | `ReservationNode<K,V>` | `RESERVED = -3` | `computeIfAbsent()` 的计算占位，避免重入时重复计算 | `ConcurrentHashMap.ReservationNode` |
-
-    **命名规律**：JDK 集合内部节点类的命名遵循`修饰词 + Node` 或 `Node 组合词` 的模式：`TreeNode` = 树形节点，`TreeBin` = 树箱子（代理），`Forwarding` = 转发的，`Reservation` = 预留的。HashMap 内部也有 `Node` 与 `TreeNode` 的同家族，但非线程安全版，`val` 不加 `volatile`。
-
----
-
-| 场景 | 推荐集合 | 说明 |
-| :----- | :----- | :----- |
-| 高并发读写 Map | `ConcurrentHashMap` | 分桶锁，高并发 |
-| 读多写极少 Map（写控制在分钟级以上） | `Collections.synchronizedMap(new HashMap<>())` 或 `ConcurrentHashMap` | JDK 并未提供 `CopyOnWriteMap`——若确实需要"读时无锁、写时全量复制"的语义，可用 `ConcurrentHashMap` + `volatile HashMap` 自行封装，或直接用 Guava `ImmutableMap` + 原子引用切换 |
-| 并发队列（FIFO） | `LinkedBlockingQueue` | 阻塞队列，生产者-消费者 |
-| 高性能无锁队列 | `ConcurrentLinkedQueue` | CAS 实现，非阻塞 |
-| 延迟队列 | `DelayQueue` | 定时任务 |
-| 优先级队列 | `PriorityBlockingQueue` | 带优先级的阻塞队列 |
-| 读多写极少 List | `CopyOnWriteArrayList` | 写时复制，读完全无锁 |
-| 读多写极少 Set | `CopyOnWriteArraySet` | 内部委托给 `CopyOnWriteArrayList`，同样写时复制 |
-
----
-
-## 3. 并发实战陷阱
-
-### 3.1 死锁
-
-**死锁的四个必要条件**（破坏任意一个即可预防）：
-
-```txt
-① 互斥：资源同一时刻只能被一个线程持有
-② 占有并等待：线程持有资源的同时等待其他资源
-③ 不可剥夺：线程持有的资源不能被强制剥夺
-④ 循环等待：线程间形成环形等待链
-```
+| 场景 | 推荐? | 理由 |
+| :-- | :-- | :-- |
+| Spring `ApplicationListener` 列表（启动期写、运行期读） | ✅ 首选 | 写一次终生只读 |
+| 网关路由表（分钟级更新） | ✅ 推荐 | 写频率 << 读频率，且数据量小 |
+| IP 白名单 / 权限列表 | ✅ 推荐 | 同上 |
+| 订单列表 / 消息队列 | ❌ 禁止 | 每毫秒都写，O(N²) 直接打满 CPU |
+| 计数器场景 | ❌ 禁止 | 用 `LongAdder`（[`10c`](@java-并发-并发工具Lock与线程池)） |
 
 ```java
-// ❌ 死锁示例：加锁顺序相反
-// 线程1：lockA → lockB
-// 线程2：lockB → lockA
+// ❌ 反模式：把 CoW 当通用 List 用
+private final List<Order> orders = new CopyOnWriteArrayList<>();
+public void onOrderCreated(Order o) { orders.add(o); }  // 每次 O(n)！
 
-// ✅ 预防方案1：统一加锁顺序
-// 所有线程都按 lockA → lockB 顺序加锁
+// ✅ 标准范式：换成 ConcurrentHashMap<Long, Order>
+private final Map<Long, Order> orders = new ConcurrentHashMap<>();
+public void onOrderCreated(Order o) { orders.put(o.id, o); }
+```
 
-// ✅ 预防方案2：tryLock 超时
-if (lockA.tryLock(100, TimeUnit.MILLISECONDS)) {
+### 红线 4 · `ThreadLocal` 使用后必须 `try/finally + remove()` —— 尤其在线程池
+
+**硬性依据**：`ThreadLocalMap.Entry` 弱引用 key + 强引用 value → 探测式清理仅在下次 `set`/`get` 触发 → 线程池 `Worker` 长期存活 → value 永久泄漏或上下文串（回顾 §1.2 事故）。
+
+```java
+// ❌ 反模式：设置后不清理
+public void handle(Request req) {
+    TRACE_ID.set(req.traceId);
+    // ... 业务逻辑
+    // ⚠️ 方法结束，Worker 归池，Entry 还在
+}
+
+// ✅ 标准范式：try / finally 强制清理
+public void handle(Request req) {
+    TRACE_ID.set(req.traceId);
     try {
-        if (lockB.tryLock(100, TimeUnit.MILLISECONDS)) {
-            try {
-                // 临界区
-            } finally { lockB.unlock(); }
-        }
-    } finally { lockA.unlock(); }
+        // ... 业务逻辑
+    } finally {
+        TRACE_ID.remove();                  // ⭐ 无论成功失败都清理
+    }
 }
-
-// ✅ 预防方案3：一次性申请所有资源（破坏"占有并等待"）
 ```
 
-**死锁排查**：
+**AOP / 拦截器场景**必须写在 `afterCompletion` / `@Around` 的 finally 块里：
+
+```java
+public class TraceInterceptor implements HandlerInterceptor {
+    public boolean preHandle(HttpServletRequest req, ...) {
+        TraceContext.set(req.getHeader("X-Trace-Id"));
+        return true;
+    }
+    public void afterCompletion(HttpServletRequest req, ...) {
+        TraceContext.remove();              // ⭐ 强制清理，兜底一切分支
+    }
+}
+```
+
+### 红线 5 · `InheritableThreadLocal` 与线程池不兼容 —— 用 `TransmittableThreadLocal`
+
+**硬性依据**：`InheritableThreadLocal` 在 `Thread.<init>` 里执行"父线程 → 新线程"的一次性拷贝；线程池的 `Worker` 已经存活，`execute(task)` 时不会重新调用 `Thread` 构造函数 → 拷贝时机错过 → 子任务读到的是**创建 Worker 那一刻的父线程值**，而不是"提交任务的那个线程"的值。
+
+```java
+// ❌ 反模式：以为 InheritableThreadLocal 能跨线程池传值
+private static final InheritableThreadLocal<String> CTX = new InheritableThreadLocal<>();
+CTX.set("A");
+executor.submit(() -> System.out.println(CTX.get()));   // ⚠️ 可能读到旧值或 null
+
+// ✅ 标准范式：用阿里 TransmittableThreadLocal（TTL）
+// pom.xml
+// <dependency>
+//   <groupId>com.alibaba</groupId>
+//   <artifactId>transmittable-thread-local</artifactId>
+// </dependency>
+private static final TransmittableThreadLocal<String> CTX = new TransmittableThreadLocal<>();
+CTX.set("A");
+executor = TtlExecutors.getTtlExecutorService(executor);   // ⭐ 装饰器
+executor.submit(() -> System.out.println(CTX.get()));      // ✅ 始终读到 "A"
+```
+
+**原理简述**：TTL 通过任务包装器（Decorator）在 `submit` 时刻拷贝 `TTL.copy()`，在 Worker 真正 `run` 时把值临时塞进 `Worker.threadLocals`，`run` 结束再恢复。**这才是"跨线程池传上下文"的正确姿势**。
+
+### 红线 6 · 死锁排查用 `jstack -l`，防御用"统一加锁顺序 + tryLock 超时"
+
+**死锁四条件同时满足才成立**：① 互斥（资源不能共享）② 持有并等待（拿着 A 等 B）③ 不可剥夺（不能强抢）④ 循环等待（形成环）—— **破坏任意一条即可预防**。
+
+```java
+// ❌ 反模式：加锁顺序相反 → 循环等待
+// 线程 1: synchronized (lockA) { synchronized (lockB) { ... } }
+// 线程 2: synchronized (lockB) { synchronized (lockA) { ... } }
+
+// ✅ 标准范式 A：全局统一加锁顺序（用 System.identityHashCode 定序）
+static void transfer(Account from, Account to, int amount) {
+    Account first  = System.identityHashCode(from) < System.identityHashCode(to) ? from : to;
+    Account second = first == from ? to : from;
+    synchronized (first) {
+        synchronized (second) {
+            from.balance -= amount;
+            to.balance += amount;
+        }
+    }
+}
+
+// ✅ 标准范式 B：tryLock 超时 + 随机退避（打破循环等待）
+if (from.lock.tryLock(100, TimeUnit.MILLISECONDS)) {
+    try {
+        if (to.lock.tryLock(100, TimeUnit.MILLISECONDS)) {
+            try { /* transfer */ } finally { to.lock.unlock(); }
+        }
+    } finally { from.lock.unlock(); }
+}
+```
+
+**排查工具**：
 
 ```bash
-# 查看线程堆栈，找到 BLOCKED 状态的线程
-jstack <pid> | grep -A 20 "BLOCKED"
+# jstack 自动检测 Java-level deadlock
+jstack -l <pid> | grep -A 30 "Found one Java-level deadlock"
 
-# 或使用 jconsole / arthas 的 thread -b 命令
-# arthas：
-thread -b  # 自动检测死锁
+# Arthas 快速定位
+thread -b
 ```
 
-Arthas `thread -b` 输出样例：
+`jstack` 输出的"Found one Java-level deadlock"段会**打印完整的循环等待链**——`Thread-A 等 Thread-B 的 Object@xxx，Thread-B 等 Thread-A 的 Object@yyy`。这是死锁排查的**黄金证据**。
 
-```txt
-$ thread -b
-"Thread-1" Id=12 BLOCKED on java.lang.Object@3f2a3a5
-  owned by "Thread-0" Id=11
-    at com.example.DeadlockDemo.lambda$main$1(DeadlockDemo.java:28)
-    -  blocked on java.lang.Object@3f2a3a5       <-- 想获取这把锁
-    -  locked   java.lang.Object@1c655221         <-- 已持有这把锁
-    at java.lang.Thread.run(Thread.java:750)
+### 红线 7 · 不可变对象天然线程安全 —— 优先设计不可变
 
-Found one Java-level deadlock:
-=============================
-"Thread-1":
-  waiting to lock Monitor of java.lang.Object@3f2a3a5
-  which is held by "Thread-0"
-
-"Thread-0":
-  waiting to lock Monitor of java.lang.Object@1c655221
-  which is held by "Thread-1"
-```
-
-!!! tip "如何读懂输出"
-    - `BLOCKED on java.lang.Object@3f2a3a5`：Thread-1 正在等待获取 `@3f2a3a5` 这把锁
-    - `owned by "Thread-0"`：这把锁被 Thread-0 持有
-    - `blocked on ... / locked ...`：Thread-1 **想要** `@3f2a3a5`，但**已持有** `@1c655221`
-    - 最下方的 deadlock 摘要清晰展示了环形等待链：Thread-1 等 Thread-0 的锁，Thread-0 等 Thread-1 的锁
-
-### 3.2 活锁与饥饿
-
-**三者对比总览**：
-
-| 问题 | 线程状态 | 描述 | 解决方案 |
-| :----- | :----- | :----- | :----- |
-| **死锁** | BLOCKED（阻塞） | 线程永久阻塞，互相等待对方释放锁 | 统一加锁顺序 / tryLock 超时 |
-| **活锁** | RUNNABLE（运行中） | 线程不阻塞，但一直在重试，无法推进 | 引入随机退避（Exponential Backoff） |
-| **饥饿** | RUNNABLE / WAITING | 某些线程长期无法获得资源 | 使用公平锁 / 优先级调整 |
-
-#### 活锁（Livelock）
-
-活锁和死锁的区别在于：**死锁是线程"卡死不动"，活锁是线程"一直在动但做无用功"**。就像两个人在走廊里迎面相遇，都想给对方让路，结果同时往左让、同时往右让，不断重复，谁也过不去。
-
-```txt
-Livelock Example: Two Threads Yielding to Each Other
-
-Time  Thread-A                    Thread-B
- t0   tryLock(lockA) -> success   tryLock(lockB) -> success
- t1   tryLock(lockB) -> FAIL      tryLock(lockA) -> FAIL
- t2   unlock(lockA), retry...     unlock(lockB), retry...
- t3   tryLock(lockA) -> success   tryLock(lockB) -> success
- t4   tryLock(lockB) -> FAIL      tryLock(lockA) -> FAIL
- t5   unlock(lockA), retry...     unlock(lockB), retry...
- ...  (infinite loop, both threads are RUNNABLE but make no progress)
-```
+**硬性依据**：不可变对象无 setter、字段 `final`、构造完成后状态永不变 → 没有 `read-modify-write` 三步操作 → 天然无并发问题。
 
 ```java
-// ❌ 活锁示例：两个线程互相谦让，永远无法推进
-public void transferMoney(Account from, Account to, int amount) {
-    while (true) {
-        if (from.lock.tryLock()) {
-            try {
-                if (to.lock.tryLock()) {
-                    try {
-                        from.balance -= amount;
-                        to.balance += amount;
-                        return; // 成功
-                    } finally { to.lock.unlock(); }
-                }
-            } finally { from.lock.unlock(); }
-        }
-        // 两个线程同时执行到这里，同时重试，又同时失败...
+// ❌ 反模式：可变 DTO
+public class UserProfile {
+    private String name;
+    private int age;
+    public void setName(String n) { this.name = n; }   // ⚠️ 并发下必须加锁
+    public void setAge(int a) { this.age = a; }
+}
+
+// ✅ 标准范式 A：final 字段 + 无 setter
+public final class UserProfile {
+    private final String name;
+    private final int age;
+    public UserProfile(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+    public UserProfile withName(String n) {             // "修改" 返回新对象
+        return new UserProfile(n, this.age);
     }
 }
 
-// ✅ 解决方案：引入随机退避
-public void transferMoney(Account from, Account to, int amount) throws InterruptedException {
-    Random random = new Random();
-    while (true) {
-        if (from.lock.tryLock()) {
-            try {
-                if (to.lock.tryLock()) {
-                    try {
-                        from.balance -= amount;
-                        to.balance += amount;
-                        return;
-                    } finally { to.lock.unlock(); }
-                }
-            } finally { from.lock.unlock(); }
-        }
-        // 随机等待一段时间再重试，打破同步节奏
-        Thread.sleep(random.nextInt(10)); // 随机退避 0~9ms
-    }
-}
+// ✅ 标准范式 B：JDK 16+ record（更简洁的不可变载体）
+public record UserProfile(String name, int age) {}
+
+// ✅ 标准范式 C：不可变集合
+List<String> tags = List.of("a", "b", "c");            // JDK 9+
+Map<String, Integer> scores = Map.of("A", 90, "B", 85);
 ```
 
-!!! tip "活锁的常见场景"
-    1. **消息重试**：消息消费失败后立即重试，但失败原因未消除（如下游服务宕机），导致无限重试。应使用**指数退避**（Exponential Backoff）：第 1 次等 1s，第 2 次等 2s，第 3 次等 4s...
-    2. **tryLock 互相谦让**：如上例，两个线程用 `tryLock` 避免死锁，但同步重试导致活锁。加随机退避即可解决。
-    3. **状态机循环**：两个线程根据对方状态调整自己的状态，导致状态不断翻转但永远无法达到稳定态。
-
-#### 饥饿（Starvation）
-
-饥饿是指某些线程**长期无法获得所需资源**（CPU 时间、锁、IO 等），虽然没有被阻塞，但实际上一直在"排队等待"。
-
-```txt
-Starvation Example: Non-Fair Lock
-
-Lock acquisition order (non-fair):
-  Thread-1 (high priority): lock -> execute -> unlock -> lock -> execute -> ...
-  Thread-2 (high priority): lock -> execute -> unlock -> lock -> execute -> ...
-  Thread-3 (low priority) : waiting... waiting... waiting... (starved!)
-
-  Non-fair lock allows "barging": when the lock is released,
-  a newly arriving thread can steal it before queued threads.
-  High-priority threads keep barging in, Thread-3 never gets a chance.
-
-┌───────────────────────────────────────────────────────────────────┐
-│  Time →                                                           │
-│  T1: [===]    [===]    [===]    [===]    [===]                    │
-│  T2:      [===]    [===]    [===]    [===]    [===]               │
-│  T3:  wait  wait  wait  wait  wait  wait  wait  wait  (starved!)  │
-└───────────────────────────────────────────────────────────────────┘
-```
-
-```java
-// ❌ 饥饿场景1：非公平锁 + 高竞争
-ReentrantLock unfairLock = new ReentrantLock(); // 默认非公平
-// 高优先级线程频繁获取锁，低优先级线程可能长期等待
-
-// ✅ 解决：使用公平锁
-ReentrantLock fairLock = new ReentrantLock(true); // 公平锁，FIFO 顺序
-
-// ❌ 饿死场景2：读写锁中写线程饿死
-ReadWriteLock rwLock = new ReentrantReadWriteLock();
-// 大量读线程不断获取读锁，写线程一直无法获取写锁
-// 因为读锁是共享的，只要有读锁存在，写锁就无法获取
-
-// ✅ 解决：使用公平模式的 ReentrantReadWriteLock——默认非公平模式**不拼读写优先**，后来的读线程可能插队成功导致写饥饿
-// 公平模式下，如果有写线程在队列中等待，后续读线程会排队，不再插队——系统以 FIFO 语义先放进队列靠前的线程（可能是写）
-ReadWriteLock rwLock = new ReentrantReadWriteLock(true); // 公平模式
-
-// ✅ 更弻的选择：`StampedLock`（JDK 8+）引入乐观读 + 转写的三模式锁，在读多写少场景下性能优于 `ReentrantReadWriteLock.FairSync`，但不支持重入、不绑 Condition
-// ❌ 饥饿场景3：线程优先级设置不当
-thread.setPriority(Thread.MIN_PRIORITY); // 优先级最低，可能长期得不到调度
-// 注意：Java 线程优先级只是"建议"，不同 OS 的调度策略不同，不要依赖优先级
-```
-
-!!! warning "饥饿 vs 死锁 vs 活锁 的本质区别"
-    - **死锁**：所有相关线程都**停止**了，谁也动不了 → 系统完全卡住
-    - **活锁**：所有相关线程都在**运动**，但做的是无用功 → 系统在空转
-    - **饥饿**：部分线程正常运行，**个别线程**长期得不到资源 → 系统整体能工作，但不公平
-
-    ```txt
-    Deadlock:  Thread-A: [blocked...]     Thread-B: [blocked...]
-    Livelock:  Thread-A: [retry retry...] Thread-B: [retry retry...]
-    Starvation:Thread-A: [run run run...] Thread-B: [wait wait wait...]
-    ```
-
-### 3.3 happens-before 实战
-
-```java
-// 问题：以下代码线程安全吗？
-class Holder {
-    int n;
-    Holder(int n) { this.n = n; }
-}
-
-Holder holder;
-
-// 线程A
-holder = new Holder(42);
-
-// 线程B
-if (holder != null) {
-    System.out.println(holder.n); // 可能打印 0！
-}
-
-// 原因：holder 的赋值和 Holder 内部字段的初始化可能被重排序
-// 线程B 可能看到 holder != null，但 holder.n 还是 0（未初始化）
-
-// ✅ 解决：将 holder 声明为 volatile，或使用 synchronized
-volatile Holder holder;
-```
-
-!!! note "为什么 `volatile` 能修复这个问题？"
-    `volatile` 写前的 `StoreStore` 屏障保证：写 `volatile` 变量**之前**的所有普通写操作必须先完成。具体到本例：
-
-    ```txt
-    线程A 的操作时序（写 volatile 语义）：
-      ① 分配 Holder 对象内存
-      ② 执行构造器 this.n = 42（普通写）
-      ── StoreStore 屏障（保证②结束后才能执行③）──
-      ③ holder = 新对象（volatile 写）
-      ── StoreLoad 屏障（保证后续线程 volatile 读能立即看到③）──
-
-    线程B 的操作时序（读 volatile 语义）：
-      ④ 读到 holder != null（volatile 读）
-      ── LoadLoad 屏障（保证④之后的读不能被重排到④之前）──
-      ⑤ 读取 holder.n
-    ```
-
-    **happens-before 传递链**：② hb ③（StoreStore） → ③ hb ④（volatile 写 hb volatile 读） → ④ hb ⑤（LoadLoad），根据传递性，**② hb ⑤**——线程B 一旦读到 `holder != null`，后续读 `holder.n` 必定看到 42。
+**降维金句**：*"能不可变就不可变——**最好的锁就是没有锁**。"*
 
 ---
 
-## 4. 常见问题 Q&A
+**战役三降维总结**：
 
-> **问：synchronized 和 volatile 的区别？**
+> *"战役三的所有并发问题都收敛到三条根源：**可见性**（10a JMM 缓存一致性）· **原子性**（10a CAS `LOCK CMPXCHG`）· **有序性**（10a 内存屏障）。理解了 10a 的三条硬件事实、10b 的 AQS 骨架（一个 `volatile int` + CLH 队列 + `park`/`unpark`）、10c 的锁与线程池（`state` 语义定义 + `ctl` 位编码）、以及本文的三种同步工具组合运用（CAS + `synchronized` + 转发协议），20 年 Java 并发的所有 bug 都能追溯到这套物理机制。"*
 
-`volatile` 保证**可见性**和**有序性**，但不保证原子性。通过内存屏障实现：写后立即刷主内存，读前从主内存加载，同时禁止指令重排。适合状态标志位、DCL 单例等场景。
+---
 
-`synchronized` 保证**可见性、有序性和原子性**。通过 Monitor 锁实现互斥，同一时刻只有一个线程能进入临界区。JDK 6 后引入锁升级（偏向锁→轻量级锁→重量级锁），性能大幅提升。适合复合操作、需要互斥的临界区。
+## 5. 🗺️ 跨战役知识伏笔（战役三收官 · 全部闭环）
 
-> **问：CAS 是什么？有什么问题？**
+### 5.1 本文回收的伏笔（战役三之内 + 战役二反向承接）
 
-CAS（Compare And Swap）是 CPU 级别的原子指令，比较内存值与期望值，相等则更新为新值，否则失败重试（自旋）。Java 的 `AtomicInteger` 等原子类基于 CAS 实现无锁并发。
+| 上游篇 → 本篇 | 承接内容 | 落地章节 | 状态 |
+| :-- | :-- | :-- | :-- |
+| [`08` 集合框架](@java-数据结构-集合框架) → 本文 | `ConcurrentHashMap` 完整源码 · `sizeCtl` / `transfer` / `ForwardingNode` · CoW 弱一致 | §2.1~§2.5 + §3.1~§3.3 | ✅ 已闭环（★★★★★） |
+| [`09` 数据结构精讲](@java-数据结构-数据结构精讲) → 本文 | `ConcurrentSkipListMap` 无锁 CAS 跳表原理 | §3.5 | ✅ 已闭环（★★★★★） |
+| [`10a` JMM 与线程同步](@java-并发-JMM与线程同步) → 本文 | `synchronized` 锁升级让 CHM 单槽位锁近乎零开销 · `@Contended` 避免伪共享 | §2.1 + §2.4 | ✅ 已闭环（★★★★） |
+| [`10c` Lock 与线程池](@java-并发-并发工具Lock与线程池) → 本文 | `ctl` 位编码 → `sizeCtl` 位编码同构 · `LongAdder` 分段 → `CounterCell` 分段 | §2.2 + §2.4 | ✅ 已闭环（★★★★） |
 
-三个问题：① **ABA 问题**：值被改了又改回来，CAS 无法感知，用 `AtomicStampedReference` 加版本号解决；② **自旋开销**：竞争激烈时大量 CPU 空转，高并发计数用 `LongAdder` 替代；③ **只能保证单变量原子性**，多变量需封装为对象用 `AtomicReference`。
+### 5.2 本文埋下的伏笔（面向战役四 · JVM Runtime）
 
-> **问：线程池的核心参数和执行流程？**
+| 本篇 → 目标篇 | 伏笔内容 | 优先级 |
+| :-- | :-- | :-- |
+| 本文 → [`12a` 内存分区与对象布局](@java-JVM-内存分区与对象布局) | `ForwardingNode.hash == MOVED == -1` 的"哨兵节点"设计模式 · 与对象头 Mark Word 特殊位对照 | ★★ |
+| 本文 → [`12b` GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) | `CopyOnWriteArrayList` 旧快照数组阻止 GC · Young GC 压力线性上升 · 引用族与 GC Root | ★★★ |
+| 本文 → [`12c` GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) | `ThreadLocal` 泄漏 heap dump 定位 `ThreadLocalMap.table` · OOM 排查流程 | ★★★★ |
+| 本文 → [`12d` JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) | CHM 内部大量 `synchronized (f)` · 虚拟线程执行 CHM 时载体线程会被 pin · JDK 21+ 的适配之路 | ★★★★★ |
 
-七个核心参数：`corePoolSize`（核心线程数）、`maximumPoolSize`（最大线程数）、`keepAliveTime`（非核心线程存活时间）、`unit`（时间单位）、`workQueue`（任务队列）、`threadFactory`（线程工厂）、`handler`（拒绝策略）。
+---
 
-执行流程：① 线程数 < 核心线程数 → 创建核心线程；② 核心线程满 → 放入队列；③ 队列满 → 创建非核心线程；④ 达到最大线程数 → 执行拒绝策略。
+## 6. 术语家族卡片
 
-!!! danger "禁止使用 Executors 工厂方法"
-    生产环境必须手动创建 `ThreadPoolExecutor`，使用有界队列（`ArrayBlockingQueue`）。`Executors.newFixedThreadPool` 使用无界队列、`Executors.newCachedThreadPool` 线程数无上限，都有 OOM 风险。
+!!! note "📖 术语家族一：`Concurrent*` 并发容器族"
+    **字面义**：`Concurrent<Container>` = "非阻塞并发容器"（读永不阻塞、写走 CAS 或低粒度锁）
 
-> **问：ThreadLocal 的内存泄漏是怎么发生的？**
+    **在本框架中的含义**：`java.util.concurrent` 包里所有以 `Concurrent` 开头的容器 —— 特点是**读操作无锁、写操作用 CAS + 单槽位 `synchronized`**，与 `Hashtable` / `synchronizedXxx` 的"全表锁"形成对立。
 
-`ThreadLocalMap` 的 Entry 中，key（ThreadLocal 对象）是弱引用，value 是强引用。当 ThreadLocal 对象没有外部强引用时，GC 会回收 key，Entry 变为 `key=null, value=存活`。在线程池场景下，线程长期存活，这些孤儿 Entry 无法被访问也无法被回收，造成内存泄漏。
+    **家族成员**：
 
-解决方案：使用完后在 `finally` 块中调用 `ThreadLocal.remove()`。
+    | 成员 | 底层同步机制 | 数据结构 | 源码位置 |
+    | :-- | :-- | :-- | :-- |
+    | `ConcurrentHashMap<K,V>` | CAS + `synchronized` 单槽位 + `ForwardingNode` 转发 | 数组 + 链表 + 红黑树 | `java.util.concurrent.ConcurrentHashMap` |
+    | `ConcurrentSkipListMap<K,V>` | 纯 CAS 无锁 | 跳表（有序） | `java.util.concurrent.ConcurrentSkipListMap` |
+    | `ConcurrentSkipListSet<E>` | 委托 CSLM | 有序 Set | `java.util.concurrent.ConcurrentSkipListSet` |
+    | `ConcurrentLinkedQueue<E>` | 纯 CAS 无锁 | Michael-Scott 无锁队列 | `java.util.concurrent.ConcurrentLinkedQueue` |
+    | `ConcurrentLinkedDeque<E>` | 纯 CAS 无锁 | 无锁双端队列 | `java.util.concurrent.ConcurrentLinkedDeque` |
+
+    **命名规律**：`Concurrent*` = "非阻塞并发（CAS 主导 + `synchronized` 补位）"，与 `CopyOnWrite*`（写复制）、`Blocking*`（阻塞）形成三大并发容器族对立。
+
+    **易混点**：`ConcurrentHashMap` 与 `Hashtable` —— 前者是 CAS + 单槽位锁（并发度 = table.length），后者是全表 `synchronized`（并发度 = 1），差距接近数组长度倍。
+
+!!! note "📖 术语家族二：`CopyOnWrite*` 快照并发族"
+    **字面义**：`CopyOnWrite<Container>` = "写时复制容器" —— 写操作复制整个底层数组、读操作走 volatile 引用、迭代器基于创建时的数组快照
+
+    **在本框架中的含义**：JUC 里唯一一族"**读永远无锁 + 迭代永不 CME**"的并发容器，代价是"读不到最新写"+"O(N²) 累计拷贝成本"+"旧快照 GC 压力"。
+
+    **家族成员**：
+
+    | 成员 | 底层策略 | 适用场景 |
+    | :-- | :-- | :-- |
+    | `CopyOnWriteArrayList<E>` | 写时 `Arrays.copyOf` + 原子替换 `array` 引用 | 读远多于写 + 元素少（Spring 监听器列表、路由表） |
+    | `CopyOnWriteArraySet<E>` | 内部委托 `CopyOnWriteArrayList` | 同上，去重语义 |
+
+    **命名规律**：`CopyOnWrite*` = "写时复制 · 读免锁 · 迭代快照"
+
+    **易混点**：老手最容易把 `CopyOnWriteArrayList` 当"通用线程安全 List"用 —— 一旦写次数达到每秒千次级别，O(N²) 直接把 CPU 打爆（见 §1.1 事故）。
+
+!!! note "📖 术语家族三：`ConcurrentHashMap.Node*` 节点家族"
+    **字面义**：CHM 桶内元素以 `Node` 继承体系表达 —— 通过 `hash` 字段的特殊取值区分节点类型
+
+    **在本框架中的含义**：JDK 集合内部节点类的命名遵循`修饰词 + Node` 或 `Node + 组合词` 的模式，`hash` 字段的正负值是识别节点类型的关键信号。
+
+    **家族成员**：
+
+    | 成员 | `hash` 值 | 作用 | 源码位置 |
+    | :-- | :-- | :-- | :-- |
+    | `Node<K,V>` | ≥ 0 | 普通链表节点，`val` 与 `next` 均为 `volatile` | `CHM.Node` |
+    | `TreeNode<K,V>` | ≥ 0 | 红黑树节点（不直接入桶，由 `TreeBin` 管理） | `CHM.TreeNode` |
+    | `TreeBin<K,V>` | `TREEBIN = -2` | 桶头代理节点，持有红黑树 `root` | `CHM.TreeBin` |
+    | `ForwardingNode<K,V>` | `MOVED = -1` | 扩容时的占位节点，转发查询到 `nextTable` | `CHM.ForwardingNode` |
+    | `ReservationNode<K,V>` | `RESERVED = -3` | `computeIfAbsent` 的计算占位，防重入 | `CHM.ReservationNode` |
+
+    **命名规律**：`Node` 家族的 `hash` 负值都是"特殊标记"—— `-1` 转发、`-2` 树代理、`-3` 计算占位。老手看到 `f.hash < 0` 立刻知道"这不是普通节点，要走特殊分支"。
+
+    **易混点**：`TreeNode` 与 `TreeBin` —— 前者是树里的具体节点，后者是**桶头代理**（桶头存的是 `TreeBin`，`TreeBin` 内部再指向 `TreeNode` 树的根）。
+
+**引用其他篇的术语家族**：
+
+- 📖 CAS 三层同义族（`compareAndSet` / `weakCompareAndSet` / `LOCK CMPXCHG`）→ [`10a` JMM 与线程同步](@java-并发-JMM与线程同步) §术语家族
+- 📖 AQS 四要素族（`state` / CLH / 模板方法 / `park` 挂起）→ [`10b` AQS 设计哲学](@java-并发-AQS设计哲学) §术语家族
+- 📖 `*Lock` 三代锁族 · `*Adder` 分段计数族 · `*BlockingQueue` 阻塞队列族 → [`10c` Lock 与线程池](@java-并发-并发工具Lock与线程池) §术语家族
+- 📖 `*Reference` 四大引用强度族（`Strong` / `Soft` / `Weak` / `Phantom`）→ [`12b` GC 核心机制](@java-JVM-GC核心机制与收集器演进) §术语家族
+
+---
+
+## 7. 常见问题 Q&A
+
+> **Q1：ConcurrentHashMap 的 `put()` 什么时候用 CAS · 什么时候用 `synchronized`？完整决策链是什么？**
+>
+> 三条路径的分岔口在 `tabAt(i)` 的判断上：**桶为 null → CAS 无锁插入**（`casTabAt`，快速路径）；**桶头 `hash == MOVED` → `helpTransfer` 加入协作扩容**；**其他情况 → `synchronized (f)` 锁头节点后遍历链表 / 红黑树**。这三条路径就是"三种同步工具的组合运用"—— CAS 覆盖无冲突场景、`synchronized` 覆盖单桶冲突场景、`ForwardingNode` 协议覆盖扩容期间的并发协作。完整决策图见 §3.1。
+
+> **Q2：`sizeCtl` 的 5 种语义分别是什么？扩容中的高低 16 位怎么分解？**
+>
+> `> 0`：扩容阈值（如 12 = 16 × 0.75）；`= 0`：初始默认（未指定容量）；`= -1`：正在 `initTable`；`< -1`：扩容中，**高 16 位是扩容 stamp**（一个从容量派生的校验位，防止不同代扩容互相干扰），**低 16 位是参与扩容的线程数 + 1**。当最后一个协作线程完成时，会 CAS 把 `sizeCtl` 更新为下一轮的新阈值。**用一个 `volatile int` 撑 5 种状态**是 Doug Lea "最小字段撑最大语义"设计哲学在 CHM 上的实例（与 `10c` 线程池 `ctl`、`10b` AQS `state` 同源）。
+
+> **Q3：CHM 扩容期间的读操作会读到什么？`ForwardingNode` 协议是什么？**
+>
+> **读操作永不阻塞**。桶头如果是 `ForwardingNode`（`hash == MOVED == -1`），`get()` 会调用 `f.find(h, k)` **转发到 `nextTable`** 继续查找——如果新表里的桶头又是 `ForwardingNode`（多轮扩容），就沿 nextTable 链继续转发。**这是 CHM"扩容不停机"的物理机制**：旧表变成一张"路标网"，每张路标（迁完的桶）都指向新表的对应位置。写操作遇到 FN 则走 `helpTransfer` 加入协作，先帮迁完再回来 `put`。
+
+> **Q4：`CopyOnWriteArrayList` 的迭代器为什么不会抛 `ConcurrentModificationException`？弱一致的物理链是什么？**
+>
+> 因为迭代器持有的是**创建时的 `Object[]` 快照引用**（`iter.snapshot`），而 `add()` 是通过 `list.array = newArray` **切换外部引用**——两者是不同的对象，快照永远不会被写方"追赶到"。所以迭代器：① 永不抛 CME（没有 `modCount` 检查）；② 迭代期间的新 `add` 全部读不到（弱一致性）；③ 代价是旧快照阻止 GC，长迭代 + 频繁写 = Young GC 压力（见 §3.3）。
+
+> **Q5：`ThreadLocal` 在线程池场景下的泄漏路径是什么？如何避免？**
+>
+> **物理链**：线程池 `Worker` 长期存活 → `Worker.threadLocals` 的 `Entry[]` 长期存活 → `Entry` 里 `key` 是弱引用（可被 GC）但 `value` 是强引用 → 若忘 `remove()`，`value` 永久泄漏；若 `ThreadLocal` 自身还被 static 字段引用，下一批任务复用 `Worker` 时可能读到上批任务的 value（"上下文串了"，见 §1.2 事故）。**避免范式**：`try { local.set(...); ... } finally { local.remove(); }`，AOP / 拦截器场景把 `remove()` 写在 `afterCompletion` 里。
+
+> **Q6：`InheritableThreadLocal` 为什么在线程池中失效？如何跨线程池正确传值？**
+>
+> `InheritableThreadLocal` 的拷贝时机在 `Thread.<init>` 里——**新线程被创建时**从父线程一次性复制。线程池的 `Worker` **早就存活了**，`executor.submit(task)` 时不会调用 `Thread` 构造函数，所以拷贝时机**根本不会触发**。子任务读到的是"创建 Worker 那一刻的父线程值"，而不是"提交任务的当前线程"的值。正确姿势用**阿里的 `TransmittableThreadLocal`（TTL）**——通过任务包装器在 `submit` 时刻拷贝、`run` 时刻塞值、`run` 结束恢复。见红线 5 完整范式。
+
+> **Q7：并发编程 5 大实战陷阱有哪些？**
+>
+> **① 不可变对象设计缺失**——`final` 字段 + 无 setter 就能天然线程安全，能不可变就不可变（红线 7）；**② 无锁数据结构选型错**——`CopyOnWriteArrayList` 当通用 List、`AtomicLong` 当计数器（应换 `LongAdder`）；**③ 异常吞噬 / 复合操作非原子**——`if (!map.containsKey(k)) map.put(k, v)` 必须换成 `map.putIfAbsent(k, v)` 或 `map.compute(...)`；**④ 死锁四条件（互斥 · 持有并等待 · 不可剥夺 · 循环等待）**——防御用"统一加锁顺序 + tryLock 超时"（红线 6）；**⑤ `InheritableThreadLocal` 与线程池不兼容**——跨池传上下文必须用 TTL（红线 5）。
+
+> 📖 **AQS 骨架 · CAS 硬件语义 · `ReentrantLock` 用法 · 线程池 7 参数** 已分别在 [`10b` AQS 设计哲学](@java-并发-AQS设计哲学) / [`10a` JMM 与线程同步](@java-并发-JMM与线程同步) / [`10c` Lock 与线程池](@java-并发-并发工具Lock与线程池) 给出答案，本文专注"并发容器组合运用与实战陷阱"题。
+>
+> 🎉 **战役三 · 并发全景至此收官**：从 [`10a` 硬件地基](@java-并发-JMM与线程同步) → [`10b` 设计哲学](@java-并发-AQS设计哲学) → [`10c` 框架应用](@java-并发-并发工具Lock与线程池) → 本文的组合运用，**20+ JUC 同步器的所有源码都能追溯到"三条硬件事实 + 一条 AQS 骨架 + 一套组合运用"这三条主线**。战役四即将进入 JVM Runtime 视角，届时你会发现 `Worker` 长期存活的"GC Root 身份"、`CopyOnWriteArrayList` 快照的"引用可达性"、`ThreadLocalMap` 的"堆内定位"，都能在 [`12a` 内存分区与对象布局](@java-JVM-内存分区与对象布局) 之后一一破解。
