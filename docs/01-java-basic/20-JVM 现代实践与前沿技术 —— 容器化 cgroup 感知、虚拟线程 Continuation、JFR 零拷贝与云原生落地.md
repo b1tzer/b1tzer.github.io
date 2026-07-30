@@ -21,7 +21,7 @@ title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟�
 > - **通用 GC 参数调优、GC 日志分析、OOM 排查五字诀** → [12c GC 调优实战](@java-JVM-GC调优实战与常见误区)（本文只补齐"容器 + 前沿场景"专属参数）
 > - **虚拟线程中的 JMM、happens-before、内存屏障基础** → [10a JMM 与线程同步](@java-并发-JMM与线程同步)
 > - **传统线程池 7 参数、拒绝策略、Fork/Join Pool** → [10c 并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池)
-> - **NIO / Netty `PooledByteBufAllocator` / DirectByteBuffer 堆外内存** → [13 NIO 与 IO 模型深度解析](@java-JVM-Java-NIO与IO模型深度解析)
+> - **NIO / Netty `PooledByteBufAllocator` / DirectByteBuffer 堆外内存** → [13 NIO 与 IO 模型深度解析](@java-OS-NIO与IO模型)
 
 ---
 
@@ -746,7 +746,7 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 
 | 本篇 → 目标篇 | 伏笔内容 | 优先级 |
 | :-- | :-- | :-- |
-| **`12d` → [13 NIO 与 IO 模型](@java-JVM-Java-NIO与IO模型深度解析)** | 直接内存 GC 回收路径 · `DirectByteBuffer.Cleaner` · Netty `PooledByteBufAllocator` 管理堆外内存 · Panama FFM API（JEP 442）替代 JNI —— `13` 需承接堆外内存工程视角完整链路 | ★★★★★ |
+| **`12d` → [13 NIO 与 IO 模型](@java-OS-NIO与IO模型)** | 直接内存 GC 回收路径 · `DirectByteBuffer.Cleaner` · Netty `PooledByteBufAllocator` 管理堆外内存 · Panama FFM API（JEP 442）替代 JNI —— `13` 需承接堆外内存工程视角完整链路 | ★★★★★ |
 | **`12d` → 后续「并发编程」HotSpot 专题（拆分中）** | `Continuation` `freeze` / `thaw` 汇编级实现 · `VirtualThread` 与 `ForkJoinPool` 调度器协作 · `ScopedValue` 完整 API —— 后续并发专题需承接 M:N 线程模型完整源码 | ★★★★★ |
 | **`12d` → [10c Lock 与线程池](@java-并发-并发工具Lock与线程池)** | `ReentrantLock` 在虚拟线程场景下的 AQS `park` / `unpark` 与 `Continuation.yield` 协作 —— `10c` 需承接 AQS 在虚拟线程时代的新语义 | ★★★★ |
 | **`12d` → [12c GC 调优实战](@java-JVM-GC调优实战与常见误区)**（已完成） | 容器化 JVM 参数 · JFR 深度使用 · 分代 ZGC 参数 | ✅ 已闭环 |

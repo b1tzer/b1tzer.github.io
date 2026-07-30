@@ -426,5 +426,5 @@ public interface DataProcessor {
 | `90 Java8 其他新特性` → [07 函数式编程](@java-字节码-函数式编程) | `Optional` 与 `Stream` 深度机制 —— 本篇只做"何时来查附录"引导 | ★★ |
 | `90 Java8 其他新特性` → [01 面向对象](@java-字节码-面向对象) | 接口 `default` 方法走 `invokespecial InterfaceMethod` —— `01` 是 `invoke*` 五条指令族的首发承接篇 | ★★★ |
 | `90 Java8 其他新特性` → [10a JMM 与线程同步](@java-并发-JMM与线程同步) | `java.time` 不可变对象 · `DateTimeFormatter` 线程安全的原理 —— `10a` §"不可变对象与安全发布" | ★★ |
-| `90 Java8 其他新特性` → [91 Java9-17 关键新特性](@java-番外-Java9到17关键新特性) | Java 9 接口 `private` 方法是 Java 8 `default` 方法的自然演化 —— `91` §"Java 9 语法新增"承接 | ★★★ |
+| `90 Java8 其他新特性` → [91 Java9-17 关键新特性](@java-番外-Java9-17关键新特性) | Java 9 接口 `private` 方法是 Java 8 `default` 方法的自然演化 —— `91` §"Java 9 语法新增"承接 | ★★★ |
 
