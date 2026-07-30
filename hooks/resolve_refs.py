@@ -21,6 +21,7 @@ import os
 import re
 import logging
 from pathlib import PurePosixPath
+from urllib.parse import quote
 
 log = logging.getLogger("mkdocs.hooks.resolve_refs")
 
@@ -95,6 +96,12 @@ def on_page_markdown(markdown, page, config, files, **kwargs):
         # 计算从当前页面到目标页面的相对路径
         src_dir = str(PurePosixPath(src_path).parent)
         rel_path = os.path.relpath(target_path, src_dir).replace("\\", "/")
+
+        # ⭐ 对相对路径做 URL 编码：处理路径里含反引号 / 空格 / 括号等特殊字符的场景
+        # 若不编码，pymdownx.superfences 会把 URL 里的反引号 code-span 替换为 `wzxhzdk:N` 占位符，
+        # 导致 mkdocs 死链检查器把 URL 认成不存在的文件，报 WARNING 打断 --strict 构建。
+        # `safe="/#"` 保留路径分隔符 `/` 与锚点分隔符 `#` 不编码，其他字符按 RFC 3986 编码。
+        rel_path = quote(rel_path, safe="/#")
 
         return f"[{link_text}]({rel_path}{anchor})"
 
