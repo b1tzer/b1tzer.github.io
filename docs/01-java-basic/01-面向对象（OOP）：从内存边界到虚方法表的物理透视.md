@@ -15,18 +15,18 @@ title: 面向对象（OOP）：从内存边界到虚方法表的物理透视
 
 ### 1.1 面向过程的边界匮乏困境
 
-在面向过程编程（如经典 C 语言风格）的世界中，系统由**“全局变量池（Data Pool）”**与**“函数池（Function Pool）”**两部分拼装而成。它的致命缺陷在于**数据与行为在物理上完全分离**：
+在面向过程编程（如经典 C 语言风格）的世界中，系统由**“全局变量池（Global variables）”**与**“函数池（Functions）”**两部分拼装而成。它的致命缺陷在于**数据与行为在物理上完全分离**：
 
 ```txt
 面向过程的致命黑洞（Procedural Programming Core Defect）:
 
-  全局变量池（Data Pool）                     函数池（Function Pool）
+  全局变量池（Global variables）                     函数池（Functions）
 ┌─────────────────────────┐               ┌──────────────────────────────┐
 │  user_name              │ ◄──────────── │ login()  logout()  pay()     │
 │  user_balance           │ ◄──────────── │ transfer()  query_balance()  │
 │  order_list             │ ◄──────────── │ create_order()  cancel()     │
 └─────────────────────────┘               └──────────────────────────────┘
-  【物理上毫无受控边界】 Any function can directly read/write any data → Chain reaction
+  【物理上毫无受控边界】 Any function can access and modify global data. → Chain reaction
 ```
 
 在这种无边界的设计下，任何函数都可以绕过校验直接改写全局数据。一个无心的指针越界或并发变量篡改，就会像推倒多米诺骨牌一样引发不可预测的系统崩溃。系统的状态安全，完全依赖于程序员个人的道德水准与微弱的直觉，这在工程规模迅速放大时会瞬间破产。
@@ -44,11 +44,11 @@ title: 面向对象（OOP）：从内存边界到虚方法表的物理透视
 
 ---
 
-## 2. 封装（Encapsulation）：内存防火墙的建立
+## 2. 封装（Encapsulation）：访问防火墙的建立
 
 ### 2.1 封装的物理本质：建立受控边界
 
-封装在语法层表现为“用方法隐藏属性”，但在 JVM 的堆内存看来，它的本质是**建立一堵受控的内存防火墙**。
+封装在语法层表现为“用方法隐藏属性”，但在 JVM 的堆内存看来，它的本质是**建立一堵受控的访问防火墙**。
 
 我们来看这段经典的对比：
 
@@ -61,7 +61,7 @@ account.balance = -9999;    // 语法上合法，但业务逻辑瞬间溃败
 
 // ✅ 标准范式：具备物理防御能力的封装
 public class BankAccount {
-    private double balance;  // 防火墙：外部物理指令无法直接定位该属性的相对偏移量
+    private double balance;  // 外部代码无法直接访问该字段
 
     public void deposit(double amount) {
         if (amount <= 0) throw new IllegalArgumentException("金额必须大于0");
@@ -72,7 +72,7 @@ public class BankAccount {
 }
 ```
 
-没有封装的类，就像一个没有大门的银行仓库，任何人都可以绕过出纳，直接把假钞塞进金库；而封装后的类，在内存分配上通过访问标志（Access Flags）死死锁住了属性的偏移量，任何外部的指令想要改写 `balance`，必须老老实实通过 `deposit` 这个法定入口。
+没有封装的类，就像一个没有大门的银行仓库，任何人都可以绕过出纳，直接把假钞塞进金库；而封装后的类，通过访问标志（Access Flags）把每个属性的访问权限牢牢锁死，任何外部指令想要直接改写 `balance`，都会被 JVM 在运行时拦截——必须老老实实走 `deposit` 这个法定入口。
 
 ### 2.2 访问修饰符的可见范围
 
@@ -81,40 +81,52 @@ public class BankAccount {
 ```txt
 Access Modifier Visibility（from narrow to wide）：
 
-                    Same Class  Same Package  Subclass  Other Package
-private                ✅            ❌           ❌         ❌
-(default/package)      ✅            ✅           ❌         ❌
-protected              ✅            ✅           ✅         ❌
-public                 ✅            ✅           ✅         ✅
+                    Within class  Within package  Subclass  Outside package
+private                  ✅            ❌             ❌         ❌
+(default/package)        ✅            ✅             ❌         ❌
+protected                ✅            ✅             ✅         ❌
+public                   ✅            ✅             ✅         ✅
 ```
 
 !!! note "封装的最佳实践"
-    在实际开发中，实施封装应遵循“权限最小化原则”：优先使用 private 将数据锁死在 Same Class 内部；仅在需要对特定范围开放时，才逐步放宽至 protected 或 public。这种精细化的范围控制，正是下一节 JVM 能够进行安全校验的依据。
+    在实际开发中，实施封装应遵循“权限最小化原则”：优先使用 private 将数据锁死在 Same class 内部；仅在需要对特定范围开放时，才逐步放宽至 protected 或 public。这种精细化的范围控制，正是下一节 JVM 能够进行安全校验的依据。
 
 ### 2.3 封装的 JVM 实现
 
-封装不仅是语法限制，更是 JVM 提升性能和保障安全的底层基石。封装在 JVM 层面通过**访问控制检查**实现，发生在两个阶段：
+封装不仅是语法限制，更是 JVM 层面可以落实的访问控制机制。当 Java 源码被编译为字节码后，JVM 在两个阶段执行访问守卫：
 
 1. **编译期**：`javac` 检查访问修饰符，违规直接报编译错误
-2. **运行期**：类加载的**验证阶段**（Verification）以及**字节码执行**时，JVM 会再次校验符号引用的权限，防止黑客绕过编译器直接运行恶意字节码。
+2. **运行期**：类加载的**验证阶段**（Verification）以及**字节码执行**时，JVM 会再次校验符号引用的权限，防止黑客绕过编译器直接运构造恶意字节码。
 
-核心指令差异：为什么 private 能提升性能？
-
-在字节码层面，普通公开方法和被封装的私有方法，其调用指令和执行效率有着天壤之别：
+这就是封装的完整闭环：编译器挡第一道，JVM 挡第二道。
 
 ```txt
-  Method Type        JVM Instruction       Dispatch Method        Performance
-  Public/Protected   invokevirtual         Dynamic (虚方法表)       Slow (需运行时查找)
-  Private            invokespecial         Static (直接绑定)        Fast (无表查找开销)
+Access Guard Timeline：
+  Source Code    →    javac compile    →    Class Loading    →    Runtime Execution
+                     (编译期检查)           (验证阶段检查)         (执行期检查)
+                         ✅                    ✅                   ✅
+                     违规 → 编译错误       违规 → LinkageError    违规 → IllegalAccessError
 ```
 
-1. **`invokevirtual`（动态分派）**：
-   标准的 public 方法因为可能被子类重写，JVM 在编译时无法确定到底执行哪个版本。在运行时，JVM 必须去查一张**虚方法表（vtable）**，逐层寻找对应的函数指针。
-2. **`invokespecial`（静态分派）**：
-   因为 2.2 节中明确了 `private` 的可见性仅限于 `Same Class`，**子类绝对不可能重写私有方法**。因此，JVM 认定该方法是“确定且不可变”的。编译时直接使用 `invokespecial` 指令进行静态绑定，调用时**直接跳过虚方法表**。调用路径极短，甚至触发**内联优化（Method Inlining）**，将方法体直接复制到调用处，消除了方法调用的开销。
+附带收益：**私有方法的调用优化**
+
+访问控制不仅保障安全，还间接影响了字节码的调用方式。JVM 有四种方法调用指令：
+
+| JVM Instruction | 适用场景 | 绑定方式 |
+| :--: | :-- | :-- |
+| **`invokevirtual`** | 非 `private`/非 `static` 的实例方法 | 动态分派（运行时查虚方法表） |
+| **`invokespecial`** | 构造器、`super` 调用、`private` 方法 | 静态分派（编译时直接绑定） |
+| **`invokestatic`** | 静态方法 | 静态分派 |
+| **`invokeinterface`** | 通过接口引用调用 | 动态分派（查接口方法表） |
+
+关键在于 **`invokespecial`**：
+
+因为 2.2 节明确了 `private` 的可见性仅限于 Same class，**子类绝对不可能重写私有方法**。JVM 据此认定该方法"确定且不可变"，编译时直接使用 `invokespecial` 静态绑定，调用时跳过虚方法表查找，路径更短。但这不意味着 `private` 就比 `public` 快得多——在现代 JVM 中，**JIT 编译器会在运行时进行去虚化（Devirtualization）分析**：如果发现某个 `invokevirtual` 在实际运行中始终只命中同一个目标方法，JIT 会将其直接内联，效果与 `invokespecial` 无异。因此：
+
+> `private` 的调用优势主要体现在 JIT 编译前的解释执行阶段。一旦代码被 JIT 充分优化，两者的性能差距将大幅缩小。封装的真正价值始终是访问控制与数据完整性，而非性能。
 
 !!! tip "反射可以绕过封装，但有代价"
-    框架（如 Spring、MyBatis）通过 `field.setAccessible(true)` 可以跳过运行期的访问检查以注入私有字段。但这种“后门”会绕过 JVM 的静态优化路径，带来额外的运行期检查开销，因此业务代码中应极力避免。
+    框架（如 Spring、MyBatis）通过 `field.setAccessible(true)` 可以跳过运行期的访问检查以注入私有字段。但反射的代价并非"绕过了某个优化路径"，而是它本身的动态特性（安全检查、装箱/拆箱、无法内联）让 JIT 难以优化，因此业务代码中应极力避免直接使用反射操作私有成员。
 
 ---
 
@@ -153,33 +165,36 @@ classDiagram
 
 继承在语法上表现为代码的复用，但在 JVM 底层，它表现为内存空间的嵌套与方法表槽位的覆盖。理解 `new 子类()` 时的内存真相，是攻克后续“多态”底层原理的必经之路。
 
+以下以 **HotSpot JVM**（Oracle/OpenJDK 默认实现）为例，展示继承在内存层面的具体实现。其他 JVM（如 J9、GraalVM）的细节可能不同，但核心思路一致。
+
 以 `Dog extends Animal` 为例，`new Dog()` 在堆内存中的布局：
 
 ```txt
 Heap Memory - Dog Object:
-┌──────────────────────────────────────────────────────┐
-│  Object Header                                       │
-│  ├─ Mark Word (32 位 JVM = 4 bytes / 64 位 = 8 bytes) │
-│  │    Stores: hashCode, GC age, lock state flags     │
-│  └─ Klass Pointer                                    │
-│        64 位 JVM 开启指针压缩 = 4 bytes；否则 = 8 bytes │
-│        Points to Dog's Class object in Method Area   │
-├──────────────────────────────────────────────────────┤
-│  Instance Data                                       │
-│  ├─ Parent Fields (Animal's fields first)            │
-│  │    name: String reference (4 bytes)               │
-│  └─ Child Fields (Dog's fields after)                │
-│       breed: String reference (4 bytes)              │
-├──────────────────────────────────────────────────────┤
-│  Padding                                             |
-│  Align to multiple of 8 bytes                        |
-└──────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  Object Header                                          │
+│  ├─ Mark Word (32 位 JVM = 4 bytes / 64 位 = 8 bytes)    │
+│  │    Stores: hashCode, GC age, lock state flags        │
+│  └─ Klass Pointer                                       │
+│        64 位 JVM 开启指针压缩 = 4 bytes；否则 = 8 bytes     │
+│        Points to Dog's InstanceKlass (class metadata)   │
+│                                       in Metaspace      │
+├─────────────────────────────────────────────────────────┤
+│  Instance Data                                          │
+│  ├─ Parent Fields (Animal's fields first)               │
+│  │    name: String reference (4 bytes)                  │
+│  └─ Child Fields (Dog's fields after)                   │
+│       breed: String reference (4 bytes)                 │
+├─────────────────────────────────────────────────────────┤
+│  Padding                                                |
+│  Align to multiple of 8 bytes                           |
+└─────────────────────────────────────────────────────────┘
 ```
 
-**方法区（元空间）中的 Class 对象**存储虚方法表：
+Metaspace 中的 InstanceKlass（类元数据结构）存储虚方法表：：
 
 ```txt
-Method Area - Dog's Class Object:
+Metaspace - Dog's InstanceKlass (类元数据结构):
 ┌──────────────────────────────────────────────────────────────┐
 │  vtable (Virtual Method Table)                               |
 │  ┌────────────────────────────────────────────────────────┐  |
@@ -190,19 +205,19 @@ Method Area - Dog's Class Object:
 │  │ [4] Animal.sleep()      → Animal.sleep address         |  |
 │  │ [5] Dog.bark()          → Dog.bark address             |  |
 │  └────────────────────────────────────────────────────────┘  |
-│  Static variables, constant pool, class metadata...          |
+│  Static variables, constant pool, field metadata...          |
 └──────────────────────────────────────────────────────────────┘
 ```
 
 !!! tip "底层透视：继承与重写的终极物理真相"
     1. 属性继承的本质：在堆内存中，父类的字段永远被整齐地排列在子类字段之前，形成物理包容。
-    2. 方法重写的本质：在方法区中，子类和父类的虚方法表（`vtable`）中相同方法的索引（Slot）是完全一致的（例如 `eat()` 都在索引 3）。子类重写方法，本质上只是把该索引处的指针替换为自己新方法的内存地址。这种索引一致、地址替换的机制，正是多态动态分派的底层铁律。
+    2. 方法重写的本质：在 Metaspace 中，子类和父类的虚方法表（`vtable`）中相同方法的索引（Slot）是完全一致的（例如 `eat()` 都在索引 3）。子类重写方法，本质上只是把该索引处的指针替换为自己新方法的内存地址。这种索引一致、地址替换的机制，正是多态动态分派的底层铁律。
 
 ### 3.3 类加载与继承顺序
 
 当你在代码中执行 `new Dog()` 时，JVM 内部会严格按照**“先静态后实例，先父类后子类”**的物理顺序，触发类与对象的初始化。
 
-我们可以通过两段核心的字节码指令，彻底看清这个过程的真相：
+我们可以通过两个核心的字节码层面的特殊方法，彻底看清这个过程的真相：
 
 阶段一：**类的加载与初始化（静态期）**
 
@@ -227,7 +242,7 @@ public Dog() {
 }
 ```
 
-```vlot
+```text
 // 对应的 JVM 字节码
 public com.example.Dog();
   Code:
@@ -240,7 +255,7 @@ public com.example.Dog();
 ```
 
 - `invokespecial` 强制先行：无论你在子类构造方法里写了什么，编译器生成的字节码中，第 1 行永远是调用父类 `<init>` 的 `invokespecial` 指令。
-- 物理顺序的必然性：结合 3.2 节的堆内存布局，子类对象包裹着父类字段。如果父类没有初始化完成，子类就无法安全地操作这些继承过来的数据。因此，字节码从底层物理上死死了“先父后子”的执行顺序。
+- 物理顺序的必然性：结合 3.2 节的堆内存布局，子类对象包裹着父类字段。如果父类没有初始化完成，子类就无法安全地操作这些继承过来的数据。因此，字节码从底层物理上锁死了“先父后子”的执行顺序。
 
 !!! summary "终极口诀"
     1. `Animal.<clinit>`（父类静态） → 2. `Dog.<clinit>`（子类静态） → 3. `Animal.<init>`（父类构造） → 4. `Dog.<init>`（子类构造）

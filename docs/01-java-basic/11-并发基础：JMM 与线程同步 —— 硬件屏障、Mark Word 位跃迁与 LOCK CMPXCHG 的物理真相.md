@@ -494,7 +494,7 @@ ObjectMonitor {
   _recursions   intptr_t ← 重入深度（0 表示未被本线程重入）
   _EntryList    Node*    ← 等待获取锁的线程队列（FIFO）
   _WaitSet      Node*    ← 调用 wait() 释放锁后进入的等待集合
-  _cxq          Node*    ← Contention Queue，新竞争线程先进这里（LIFO 栈）
+  _cxq          Node*    ← Contention List（LIFO 单向链表栈），新竞争线程通过 CAS 压入栈头
   _succ         Thread*  ← 继任者（unpark 后被授权尝试竞争的线程）
   ...
 }

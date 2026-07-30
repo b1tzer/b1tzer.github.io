@@ -286,7 +286,7 @@ final boolean acquireQueued(final Node node, int arg) {
 **逐行破案**：
 
 1. **`addWaiter` 的两步 CAS 妙处**：`node.setPrevRelaxed(oldTail)` 是 `Unsafe.putObject`（无内存屏障、非 volatile 写），此时新节点还没接入队列 —— 只有下一行 `compareAndSetTail(oldTail, node)` 成功才让新节点**真正可达**。这一"先设 prev + 再 CAS tail" 的双步是 AQS 精妙的入队方案：**避免"部分可达节点"污染其他线程的遍历**。
-2. **`oldTail.next = node` 为什么放在 CAS 之后**：`prev` 是节点入队的**必要**指针（`predecessor()` 靠它找前驱），`next` 只是**辅助**指针（`unparkSuccessor` 用它跳过 CANCELLED 快速定位后继）。这也就是为什么 `next` 是普通写、`prev` 是 volatile 写 —— 保证 `prev` 一定有值、`next` 允许"暂时是 null 由 `prev` 兜底遍历"。
+2. **`oldTail.next = node` 为什么放在 CAS 之后**：`prev` 是节点入队的**必要**指针（`predecessor()` 靠它找前驱），`next` 只是**辅助**指针（`unparkSuccessor` 用它跳过 CANCELLED 快速定位后继）。这也就是为什么 `next` 是普通写、`prev` 字段声明为 `volatile` 却在 `setPrevRelaxed` 中以 relaxed 方式写入（`VarHandle.set`，无内存屏障）—— 保证了 `prev` 的读可见性、`next` 允许"暂时是 null 由 `prev` 兜底遍历"。
 3. **`p == head && tryAcquire(arg)`**：AQS 里"**只有队头后一位有资格试锁**"这条铁律的物理体现 —— 保证严格 FIFO。哑头节点的存在正是为了让"队头就是持锁者"这条不变量始终成立。
 4. **`shouldParkAfterFailedAcquire`**：把前驱的 `waitStatus` 改成 `SIGNAL` 才 `park` —— 这一步是"**先立契约再挂起**"，避免"我 park 了但你没人叫我"的死锁窗口。
 5. **`parkAndCheckInterrupt`** 底层直通 `LockSupport.park(this)`，也就是 `Unsafe.park` / `JVM_Park` / `pthread_cond_wait` 一路直下 OS。

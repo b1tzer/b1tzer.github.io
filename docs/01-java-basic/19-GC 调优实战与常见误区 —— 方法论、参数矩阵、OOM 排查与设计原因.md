@@ -88,7 +88,7 @@ title: GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排�
 
 - `filecount` + `filesize` 做日志轮转，避免 GC 日志把磁盘吃满
 - 日志路径必须落到持久化目录（不能在容器临时目录 · 容器重启会丢）
-- `-Xlog:gc*` 里的 `*` 是通配所有 GC 相关子日志（`gc` / `gc+heap` / `gc+phases` / `safepoint` / `ergo` 等）
+- `-Xlog:gc*` 里的 `*` 是通配所有以 `gc` 开头的 GC 相关子日志（`gc` / `gc+heap` / `gc+phases` / `gc+ergo` 等）。`safepoint` 是独立顶层标签，需单独指定：`-Xlog:gc*,safepoint=info`。
 
 ### 2.2 读懂一条 G1 GC 日志
 
