@@ -80,7 +80,7 @@ _TECH_STACKS: list[dict] = [
         "dir": "01-java-basic",
         "key": "java",
         "name": "Java",
-        "entry": "00-Java 物理突围：从字节码格斗到 JVM 内存布局的二十四篇考古.md",
+        "entry": "00-Java 物理透视：从字节码剖析到 JVM 内存布局的二十四篇.md",
         "color": "#f89820",
         "tags": ["并发", "JVM", "集合", "NIO"],
         "in_home": True,

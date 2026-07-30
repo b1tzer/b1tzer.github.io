@@ -835,7 +835,7 @@ Class 文件 → Signature → Reflection → ParameterizedType → ResolvableTy
 
 ---
 
-## 6. 🗺️ 跨战役知识伏笔（埋眼管理）
+## 6. 🗺️ 跨战役知识伏笔
 
 本章我们深挖了泛型在 Class 文件里留下的两张"签名报表"——`descriptor` 与 `Signature`，以及编译器在使用点自动插入的 **`checkcast`** 类型断言指令。请把"每一次泛型返回值使用都伴随一次 `checkcast`"这个物理事实焊在你的脑海中。
 

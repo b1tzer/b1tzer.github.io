@@ -606,7 +606,7 @@ public String cacheKey(String userInput) {
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔（埋眼管理）
+## 5. 🗺️ 跨战役知识伏笔
 
 ### 5.1 术语家族卡片布点
 

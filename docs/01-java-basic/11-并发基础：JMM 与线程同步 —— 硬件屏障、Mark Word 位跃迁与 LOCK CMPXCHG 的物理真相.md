@@ -756,7 +756,7 @@ private static final TransmittableThreadLocal<UserContext> CONTEXT = new Transmi
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔（埋眼管理）
+## 5. 🗺️ 跨战役知识伏笔
 
 本篇我们把 JMM 从"内存模型"这个玄学包装里剥出来——它的物理真相是 **CPU 内存屏障 + MESI 缓存一致性协议 + `LOCK` 前缀原子指令**三张牌的组合。请把这个物理事实焊死在脑海——它是理解后续所有并发/异步/框架设计的**硬件地基**。
 

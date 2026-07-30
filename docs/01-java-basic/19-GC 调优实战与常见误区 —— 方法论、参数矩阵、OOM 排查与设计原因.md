@@ -475,7 +475,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
 ---
 
-## 10. 🗺️ 跨战役知识伏笔（埋眼管理）
+## 10. 🗺️ 跨战役知识伏笔
 
 ### 10.1 本文回收的伏笔
 

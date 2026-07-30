@@ -778,7 +778,7 @@ public boolean tryIncrement(long timeoutMs) throws InterruptedException {
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔（埋眼管理）
+## 5. 🗺️ 跨战役知识伏笔
 
 本篇我们把 Doug Lea 的 AQS 剥到骨头缝里 —— 它的物理真相是 **一个 `volatile int state` 承担所有语义 + 一条 CLH 双向队列 + 一对 `park` / `unpark` + 一套模板方法**。四件事撑起整个 JUC 包 20+ 个同步器 —— 这是**用最少字段撑起最大语义空间**的极致设计哲学，也是 [10a JMM 与线程同步](@java-并发-JMM与线程同步) 讲的 CAS 硬件语义在 Java 层的第一次架构性组合应用。
 

@@ -660,7 +660,7 @@ names.stream()
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔（埋眼管理）
+## 5. 🗺️ 跨战役知识伏笔
 
 本篇我们把 Java 8 的 Lambda / Stream / 方法引用剥到骨头缝里——它们的物理真相是 **`invokedynamic` + `LambdaMetafactory.metafactory` 生成 `ConstantCallSite`**，而 `CallSite` 内部持有的正是 [06 反射性能篇](@java-字节码-反射与MethodHandle) 讲的 `MethodHandle`。请把"**Lambda = `invokedynamic` + `CallSite` + `LambdaMetafactory` 运行期生成匿名类**"这个物理事实焊死在脑海——这是理解后续所有并发/异步/框架设计的**共同基座**。
 

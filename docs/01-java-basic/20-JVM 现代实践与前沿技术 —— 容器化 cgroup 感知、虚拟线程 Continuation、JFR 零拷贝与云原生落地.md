@@ -732,7 +732,7 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔（埋眼管理）
+## 5. 🗺️ 跨战役知识伏笔
 
 ### 5.1 本文回收的伏笔
 

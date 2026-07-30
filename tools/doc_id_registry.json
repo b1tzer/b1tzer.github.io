@@ -51,7 +51,7 @@
   "java-并发-并发集合与实战陷阱": "01-java-basic/14-并发集合与实战陷阱 —— ConcurrentHashMap 三种同步工具的组合运用与 ThreadLocal 泄漏排查.md",
   "java-数据结构-数据结构精讲": "01-java-basic/09-数据结构精讲：红黑树、B+ 树、跳表、时间轮、布隆过滤器的生态映射.md",
   "java-数据结构-集合框架": "01-java-basic/08-集合框架：位运算捷径、泊松分布阈值与 JDK 8 单槽位锁的三条主线.md",
-  "java-概览": "01-java-basic/00-Java 物理突围：从字节码格斗到 JVM 内存布局的二十四篇考古.md",
+  "java-概览": "01-java-basic/00-Java 物理透视：从字节码剖析到 JVM 内存布局的二十四篇.md",
   "java-番外-Java8其他新特性": "01-java-basic/90-[Java8] 其他新特性 —— java.time 不可变时间对象、default 方法冲突消解与向后兼容契约.md",
   "java-番外-Java9-17关键新特性": "01-java-basic/91-Java9-17关键新特性.md",
   "kafka-Controller与Leader选举": "06-kafka/10-Controller与Leader选举.md",

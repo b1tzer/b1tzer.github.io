@@ -996,7 +996,7 @@ private OrderService orderService;       // ✅ JDK 动态代理
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔（埋眼管理）
+## 5. 🗺️ 跨战役知识伏笔
 
 本章我们从**四条独立技术线索**（HotSpot ≤17 反射、JEP 416 后反射、`MethodHandle` 家族、`invokedynamic` 指令）打通了反射生态的全貌，并按 **JLS / JVMS / HotSpot 实现** 三层规范体系锁定了每个技术断言的归属。以下三条伏笔请一起焊在思维版图中。
 

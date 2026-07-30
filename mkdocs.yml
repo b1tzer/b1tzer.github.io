@@ -163,7 +163,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Java:
-    - Java 物理突围：从字节码格斗到 JVM 内存布局的二十四篇考古: 01-java-basic/00-Java 物理突围：从字节码格斗到 JVM 内存布局的二十四篇考古.md
+    - Java 物理透视：从字节码剖析到 JVM 内存布局的二十四篇: 01-java-basic/00-Java 物理透视：从字节码剖析到 JVM 内存布局的二十四篇.md
     - 面向对象（OOP）：从内存边界到虚方法表的物理透视: 01-java-basic/01-面向对象（OOP）：从内存边界到虚方法表的物理透视.md
     - 异常处理：try-catch 底层字节码与 JVM 栈轨真相: 01-java-basic/02-异常处理：try-catch 底层字节码与 JVM 栈轨真相.md
     - 注解（Annotation）: 01-java-basic/03-注解（Annotation）：字节码属性表里的 RuntimeVisibleAnnotations 与 APT 编译期织入.md
