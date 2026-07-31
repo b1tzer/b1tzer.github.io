@@ -27,7 +27,7 @@ title: JVM 内存分区与对象布局 —— 堆栈元空间三驾马车 + 对�
 
 ---
 
-## 1. 第一层：业务痛点 —— 从"`-Xmx=2g` 却 RSS 4g 被 OOMKilled"到"`intern()` 打爆的到底是哪块内存"
+## 1. 第一层：业务痛点 —— 从"`-Xmx=2g` 却 RSS 4g 被 OOMKilled"到"`intern()` 撑满的到底是哪块内存"
 
 ### 1.1 生产事故现场：容器内 `-Xmx=2g` 的 JVM，为什么 RSS 常常 3~4g？
 
@@ -42,7 +42,7 @@ env:
   - name: JAVA_OPTS
     value: "-Xmx2g"   # 只管堆
 # 结果：Metaspace 涨到 800m + CodeCache 240m + DirectMemory 512m + 500 线程 × Xss 1m = 500m
-# → 堆外累计 2G+，加上堆 2G，RSS 稳超 4G，被 OOM Killer 秒杀
+# → 堆外累计 2G+，加上堆 2G，RSS 稳超 4G，被 OOM Killer 终止
 ```
 
 **四大盲区**：
@@ -54,16 +54,16 @@ env:
 
 **顿悟点**：容器 `memory.limit` **必须** ≥ `-Xmx + MaxMetaspaceSize + ReservedCodeCacheSize + MaxDirectMemorySize + (Xss × 线程数) + 200m 兜底`，否则被 OOM Killer 干掉是**必然事件**，不是概率事件。
 
-### 1.2 反问引子：老手也未必答得上的 6 个内存布局悬案
+### 1.2 反问引子：老手也未必答得上的 6 个内存布局难题
 
-- **悬案 1**：`-Xmx=2g` 却 RSS 4g —— 差的 2g 藏在哪？为什么 `jmap -heap` 完全看不到？
-- **悬案 2**：`String.intern()` 循环调用 100 万次，抛的 OOM 是 `Java heap space` 还是 `Metaspace`？为什么 JDK 6 和 JDK 7+ 答案不一样？
-- **悬案 3**：`new Object()` 到底占多少字节？开启 `-XX:+UseCompressedOops` 和关闭它有多少差距？为什么 30GB 堆比 40GB 堆更省内存？
-- **悬案 4**：TLAB 的 `-XX:TLABWasteTargetPercent=1` 到底是"每线程占 1% Eden"还是别的意思？大家都在说的"1%"出处到底在哪？
-- **悬案 5**：Mark Word 才 8 字节 = 64 bit —— 怎么同时装下 hashCode、GC 年龄、锁状态、偏向线程 ID 这么多信息？"多态复用"的底层机制是什么？
-- **悬案 6**：栈帧里的"返回地址"存的是"下一条指令的 PC"还是"调用点 PC"？HotSpot 为什么这么选？异常栈打印的行号是怎么算出来的？
+- **难题 1**：`-Xmx=2g` 却 RSS 4g —— 差的 2g 藏在哪？为什么 `jmap -heap` 完全看不到？
+- **难题 2**：`String.intern()` 循环调用 100 万次，抛的 OOM 是 `Java heap space` 还是 `Metaspace`？为什么 JDK 6 和 JDK 7+ 答案不一样？
+- **难题 3**：`new Object()` 到底占多少字节？开启 `-XX:+UseCompressedOops` 和关闭它有多少差距？为什么 30GB 堆比 40GB 堆更省内存？
+- **难题 4**：TLAB 的 `-XX:TLABWasteTargetPercent=1` 到底是"每线程占 1% Eden"还是别的意思？大家都在说的"1%"出处到底在哪？
+- **难题 5**：Mark Word 才 8 字节 = 64 bit —— 怎么同时装下 hashCode、GC 年龄、锁状态、偏向线程 ID 这么多信息？"多态复用"的底层机制是什么？
+- **难题 6**：栈帧里的"返回地址"存的是"下一条指令的 PC"还是"调用点 PC"？HotSpot 为什么这么选？异常栈打印的行号是怎么算出来的？
 
-任何一个问题让你迟疑超过 3 秒 —— 继续读。这六个悬案的答案全部藏在 `jmap` / `jcmd VM.native_memory` / `jol-cli` / `hotspot/share/oops/markWord.hpp` 里。
+任何一个问题让你迟疑超过 3 秒 —— 继续读。这六个难题的答案全部藏在 `jmap` / `jcmd VM.native_memory` / `jol-cli` / `hotspot/share/oops/markWord.hpp` 里。
 
 ### 1.3 痛点清单（3 条 · 与后三层强绑定）
 
@@ -75,7 +75,7 @@ env:
 
 ---
 
-## 2. 第二层：JVM 内存三件套穿刺 —— `PrintFlagsFinal` + `jol-cli` + `markWord.hpp`
+## 2. 第二层：JVM 内存三件套透视 —— `PrintFlagsFinal` + `jol-cli` + `markWord.hpp`
 
 > ⭐ **本层特殊说明**：内存布局的"字节码考古"不是抓 `javap -v` 字节码，而是抓 **JVM 内部三件观测工具**：`-XX:+PrintFlagsFinal` 摸清所有默认参数、`jol-cli` 打印对象在堆里的真实字节布局、`hotspot/share/oops/markWord.hpp` 看 Mark Word 64 bit 的精确定义。这三件套构成"JVM 内存底层真相"的三个入口。
 
@@ -360,7 +360,7 @@ Thread-1 (私有)
 
 - **存什么**：`ByteBuffer.allocateDirect()` 分配的堆外缓冲
 - **回收时机**：靠 `Cleaner` 机制 —— `DirectByteBuffer` 被 GC 时触发 Cleaner，释放本地内存
-- **陷阱**：如果堆内 `DirectByteBuffer` 长时间不 GC，本地内存永远不会释放 —— **堆很轻但 RSS 爆炸**
+- **陷阱**：如果堆内 `DirectByteBuffer` 长时间不 GC，本地内存永远不会释放 —— **堆很轻但 RSS 激增**
 
 **顿悟澄清**（StringTable 位置变迁 · 全站独家表格）：
 
@@ -374,7 +374,7 @@ Thread-1 (私有)
 
 > 📖 `String` 的 `ldc` 字节码 + `CONSTANT_String_info` + Compact Strings 完整链路请见 [字符串底层原理](@java-字节码-字符串底层原理)。
 
-### 3.6 对象在堆中的完整内存布局（核心机制图 · Mark Word 三处穿刺首发源头）
+### 3.6 对象在堆中的完整内存布局（核心机制图 · Mark Word 三处透视首发源头）
 
 **核心 ASCII 图**：
 
@@ -405,7 +405,7 @@ Thread-1 (私有)
         向上取整到 8 字节倍数
 ```
 
-**Mark Word 五态多态复用表**（本篇为 Mark Word 三处穿刺的**首发源头**）：
+**Mark Word 五态多态复用表**（本篇为 Mark Word 三处透视的**首发源头**）：
 
 | 锁状态 | 存储内容（按位拆解，合计 64 bit） | 标志位（低 3 bit） |
 | :-- | :-- | :-- |
@@ -421,7 +421,7 @@ Thread-1 (私有)
 - **同一个字段在五种状态下"存不同的东西"**，判断当前是哪种状态只需读低 2 bit + 第 3 bit（偏向标志）
 - **GC 标记态复用**：Serial / Parallel GC 用 forwarding pointer 记录转发地址；G1 / ZGC 有自己的着色指针，但同样借用 Mark Word 的低位分派
 
-> 📖 **Mark Word 三处穿刺**：本篇讲**位分布**（哪些位存什么）· [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 讲**状态位跃迁**（锁升级时机）· [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 讲**GC 使用**（三色标记 + forwarding pointer）。
+> 📖 **Mark Word 三处透视**：本篇讲**位分布**（哪些位存什么）· [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 讲**状态位跃迁**（锁升级时机）· [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 讲**GC 使用**（三色标记 + forwarding pointer）。
 
 > 📖 `Klass` / `oop` 二元模型 + `invokevirtual` 查 vtable 完整展开请见 [面向对象（OOP）](@java-字节码-面向对象) §"对象头与 Klass Pointer"。
 
@@ -448,7 +448,7 @@ Thread-1 (私有)
 - **临界结果**：32GB 压缩堆能装的对象数量 > 40GB 未压缩堆 —— 这是"生产宁可用 30GB 堆，不用 40GB 堆"的根本原因
 - **`-XX:ObjectAlignmentInBytes=16`** 可以把上限提到 64GB，代价是每个对象平均多浪费 4 字节 padding —— 非极端场景不建议动
 
-**降维建议**：
+**实践建议**：
 
 - 堆需求 ≤ 32GB → 保持默认 `-XX:+UseCompressedOops`（自动开）
 - 堆需求略超 32GB → **优先降到 30GB**，保住压缩指针（配合 ZGC 减少 STW）
@@ -496,7 +496,7 @@ env:
 # 加上 200m 兜底 → RSS 峰值 2.2G，安全落在 3Gi 内
 ```
 
-**降维验证公式**：`memory.limit ≥ -Xmx + MaxMetaspaceSize + ReservedCodeCacheSize + MaxDirectMemorySize + (Xss × 线程数) + 200m 兜底`
+**验证公式**：`memory.limit ≥ -Xmx + MaxMetaspaceSize + ReservedCodeCacheSize + MaxDirectMemorySize + (Xss × 线程数) + 200m 兜底`
 
 ### 红线 2：`-XX:MaxMetaspaceSize` 生产必设
 
@@ -600,7 +600,7 @@ public String cacheKey(String userInput) {
 // 优势：容量、逐出策略、监控指标全都可控，不依赖 JVM 内部 StringTable
 ```
 
-**降维金句**：
+**总结要义**：
 
 > *"JVM 的所有'内存去哪了'问题都收敛到三条主线：**七大分区两条主线**决定内存在哪、**对象头 + 实例数据 + 对齐填充**决定单对象占多少、**压缩指针 32GB 边界**决定堆密度。理解了这三条主线，OOM 类型、`jmap -heap` 输出、容器内存超限、`intern()` 撑堆全都是这些主线的排列组合。"*
 
@@ -651,7 +651,7 @@ public String cacheKey(String userInput) {
 
     **易混点**：`-XX:+UseCompressedOops` 控制对象**引用字段**压缩 · `-XX:+UseCompressedClassPointers` 控制对象头 **Klass Pointer** 压缩 —— **两者独立开关但默认都开**，堆 > 32GB 时 `UseCompressedOops` 自动关闭，`UseCompressedClassPointers` 仍可保留（因为它压缩的是元空间指针，不受堆大小限制）。
 
-> 📖 `Mark Word` 五态多态复用 → 本篇为 **Mark Word 三处穿刺**的**首发源头**（讲位分布）；[并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 承接锁升级视角、[GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 承接 GC 标记视角
+> 📖 `Mark Word` 五态多态复用 → 本篇为 **Mark Word 三处透视**的**首发源头**（讲位分布）；[并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 承接锁升级视角、[GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 承接 GC 标记视角
 >
 > 📖 `Klass` / `oop` 二元模型完整展开 → [面向对象（OOP）](@java-字节码-面向对象) §"对象头与 Klass Pointer"（本文只讲对象头位分布，不重讲 `invokevirtual` 查表机制）
 
@@ -659,7 +659,7 @@ public String cacheKey(String userInput) {
 
 **本文回收的伏笔**：
 
-- ✅ 回收 [Java 基础与 JVM 概览](@java-概览) 埋下的："`-Xmx` 管不到哪些区" → §1.1 生产事故引子 + §3.5 三块堆外内存 + §4 红线 1 完整穿刺
+- ✅ 回收 [Java 基础与 JVM 概览](@java-概览) 埋下的："`-Xmx` 管不到哪些区" → §1.1 生产事故引子 + §3.5 三块堆外内存 + §4 红线 1 完整透视
 - ✅ 回收 [面向对象](@java-字节码-面向对象) 埋下的："对象头 = Mark Word 8 字节 + Klass Pointer 4/8 字节" → §3.6 对象内存布局完整图 + Mark Word 五态多态复用表 + §3.7 32GB 边界推导
 - ✅ 回收 [集合框架](@java-数据结构-集合框架) 埋下的："`LinkedList` 节点 40 字节 / `HashMap.Node` 48 字节" → §3.6 通用公式"对象头 + 实例数据 + 对齐填充 + 8 字节向上取整"
 

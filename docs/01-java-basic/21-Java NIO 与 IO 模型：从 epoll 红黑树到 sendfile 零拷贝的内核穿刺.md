@@ -1,9 +1,9 @@
 ---
 doc_id: java-OS-NIO与IO模型
-title: Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内核穿刺
+title: Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内核透视
 ---
 
-# Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内核穿刺
+# Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内核透视
 
 !!! info "**Java NIO 与 I/O 模型 一句话口诀**"
     - **五种 I/O 模型两阶段记忆法**：`阶段一 = 等待数据（内核等网卡）` + `阶段二 = 拷贝数据（内核 → 用户空间）`。**同步 vs 异步的结构分水岭只看阶段二**——阶段二由**应用线程**拷贝就是同步（BIO / NIO / 多路复用 / 信号驱动全在此列）；阶段二由**内核**完成才是真异步（Java AIO / `io_uring`）。
@@ -38,7 +38,7 @@ title: Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内
 
 ---
 
-## 1. 第一层：业务痛点 —— 从"10 万连接打爆 Tomcat BIO"到"零拷贝拯救 Kafka 吞吐"
+## 1. 第一层：业务痛点 —— 从"10 万连接拖垮 Tomcat BIO"到"零拷贝拯救 Kafka 吞吐"
 
 ### 1.1 生产事故现场：BIO Tomcat 撑不住的 C10K 时刻
 
@@ -80,28 +80,28 @@ BIO 线程模型：一连接一线程
 
 **顿悟点**：C10K 问题（单机 1 万并发连接）**本质上不是"CPU / 内存不够"**，是**"线程 : 连接 = 1 : 1"这个映射关系的性能天花板**。NIO 的所有设计都围绕一件事：**让线程数 << 连接数，用"事件通知"取代"阻塞等待"**。
 
-### 1.2 老手也未必答得上的 6 个 NIO 悬案
+### 1.2 老手也未必答得上的 6 个 NIO 难题
 
-- **悬案 1**：`Selector.select()` 到底是 select、poll 还是 epoll？——掀开 `sun.nio.ch.SelectorProvider` 源码就清楚了。
-- **悬案 2**：epoll 的 `epoll_wait` 号称 O(1)——但注册的 fd 越多、红黑树越大，为什么查询还是 O(1)？——因为**扫的不是红黑树、是就绪链表**，红黑树只在 `epoll_ctl` 注册时用到。
-- **悬案 3**：`FileChannel.transferTo(0, size, socket)` 传 10GB 文件——用户空间**一个字节都没经过**吗？——是的，这就是"零拷贝"的字面含义。
-- **悬案 4**：`ByteBuffer.allocateDirect(1024)` 分配的直接缓冲区，`-Xmx` 管得着吗？——管不着；OOM 时抛的是 `OutOfMemoryError: Direct buffer memory`，堆外内存独立计账。
-- **悬案 5**：JDK 空轮询 Bug 到底是 Linux epoll 的锅还是 JDK 的锅？——是 epoll 在特定内核版本 + JDK 未清理无效 fd 的组合问题。
-- **悬案 6**：Netty 为什么不用 Java AIO？Linux 的 AIO 到底缺什么？——Linux 传统 POSIX AIO 用线程池模拟、性能不如 epoll；`io_uring` 才是真正的异步 I/O 新星（JDK 21+ 才开始探索）。
+- **难题 1**：`Selector.select()` 到底是 select、poll 还是 epoll？——掀开 `sun.nio.ch.SelectorProvider` 源码就清楚了。
+- **难题 2**：epoll 的 `epoll_wait` 号称 O(1)——但注册的 fd 越多、红黑树越大，为什么查询还是 O(1)？——因为**扫的不是红黑树、是就绪链表**，红黑树只在 `epoll_ctl` 注册时用到。
+- **难题 3**：`FileChannel.transferTo(0, size, socket)` 传 10GB 文件——用户空间**一个字节都没经过**吗？——是的，这就是"零拷贝"的字面含义。
+- **难题 4**：`ByteBuffer.allocateDirect(1024)` 分配的直接缓冲区，`-Xmx` 管得着吗？——管不着；OOM 时抛的是 `OutOfMemoryError: Direct buffer memory`，堆外内存独立计账。
+- **难题 5**：JDK 空轮询 Bug 到底是 Linux epoll 的锅还是 JDK 的锅？——是 epoll 在特定内核版本 + JDK 未清理无效 fd 的组合问题。
+- **难题 6**：Netty 为什么不用 Java AIO？Linux 的 AIO 到底缺什么？——Linux 传统 POSIX AIO 用线程池模拟、性能不如 epoll；`io_uring` 才是真正的异步 I/O 新星（JDK 21+ 才开始探索）。
 
-这六个悬案的答案都写在 `strace -e trace=epoll_wait,sendfile,read,write` 输出 + `sun.nio.ch.EPollSelectorImpl` 源码 + `linux/fs/eventpoll.c` 内核代码里。下面三层挨个穿刺。
+这六个难题的答案都写在 `strace -e trace=epoll_wait,sendfile,read,write` 输出 + `sun.nio.ch.EPollSelectorImpl` 源码 + `linux/fs/eventpoll.c` 内核代码里。下面三层逐层剖析。
 
 ### 1.3 痛点清单（3 条 · 与后三层强绑定）
 
-- **痛点 A**：10 万连接下 BIO 线程模型崩溃 → §2.1 揭 `strace` 抓到的 epoll 三件套系统调用 + §3.2 揭 epoll 红黑树 + 就绪链表的底层结构
+- **痛点 A**：10 万连接下 BIO 线程模型失效 → §2.1 揭 `strace` 抓到的 epoll 三件套系统调用 + §3.2 揭 epoll 红黑树 + 就绪链表的底层结构
 - **痛点 B**：10GB 大文件传输 CPU 拉满 → §2.3 揭 `read + write` vs `transferTo` 的系统调用差异 + §3.5 揭 sendfile 三代演进的底层链路
 - **痛点 C**：原生 NIO 写 Echo Server 100 行才能跑起来 → §3.6 揭 `Selector / Channel / Buffer` 三大组件协作 + §4 红线 5 揭 Netty 五大解耦
 
 ---
 
-## 2. 第二层：字节码考古 —— `strace` + `sun.nio.ch.*` 源码 + `SelectorProvider` 三件套穿刺
+## 2. 第二层：字节码考古 —— `strace` + `sun.nio.ch.*` 源码 + `SelectorProvider` 三件套剖析
 
-> ⭐ **本层特殊说明**：NIO 的"字节码考古"不是抓 `javap -v`，而是抓 **JVM 到 OS 内核的三件观测工具**：`strace -e trace=<syscall>` 抓真实系统调用序列、`sun.nio.ch.EPollSelectorImpl` 看 JDK 内部实现、`SelectorProvider.provider()` 看多平台分派——这是"从 JVM 击穿到 OS 内核"的战役收官动线。
+> ⭐ **本层特殊说明**：NIO 的"字节码考古"不是抓 `javap -v`，而是抓 **JVM 到 OS 内核的三件观测工具**：`strace -e trace=<syscall>` 抓真实系统调用序列、`sun.nio.ch.EPollSelectorImpl` 看 JDK 内部实现、`SelectorProvider.provider()` 看多平台分派——这是"从 JVM 下沉到 OS 内核"的战役收官动线。
 
 ### 2.1 `strace` 抓 `Selector.select()` 的真实系统调用
 
@@ -316,7 +316,7 @@ epoll_wait 的 O(1) 秘密：
   → Nginx / Netty EpollEventLoop 使用 ET 模式
 ```
 
-**顿悟点**：**LT 是"数据没读完就一直通知"的兜底模式**；**ET 是"只通知一次、你必须一次读完"的高性能模式**。JDK 原生 NIO 用 LT 是为了编程简单、Netty 用 ET 是为了性能极致——**这是 Netty 比原生 NIO 快 20%~30% 的根本原因之一**。
+**顿悟点**：**LT 是"数据没读完就一直通知"的兜底模式**；**ET 是"只通知一次、你必须一次读完"的高性能模式**。JDK 原生 NIO 用 LT 是为了编程简单、Netty 用 ET 是为了峰值性能——**这是 Netty 比原生 NIO 快 20%~30% 的根本原因之一**。
 
 ### 3.5 sendfile 零拷贝三代演进（核心机制图 5 · 战役五收官图）
 
@@ -542,7 +542,7 @@ try (FileChannel src = FileChannel.open(Paths.get("big.bin"), READ);
 **根本原因**：原生 NIO 五大痛点——① 空轮询 Bug ② 粘包 / 拆包 ③ ByteBuffer 状态易错 ④ 无连接超时 / 心跳 ⑤ 无编解码框架。
 
 ```java
-// ❌ 反模式：原生 NIO 写 Echo Server（100+ 行、坑无数）
+// ❌ 反模式：原生 NIO 写 Echo Server（100+ 行、陷阱多）
 Selector selector = Selector.open();
 ServerSocketChannel server = ServerSocketChannel.open();
 server.configureBlocking(false);
@@ -574,7 +574,7 @@ b.bind(8080).sync();
 
 **硬依据**：Netty `NioEventLoop.select()` 源码里有空轮询计数器 `selectCnt`，超过 `SELECTOR_AUTO_REBUILD_THRESHOLD`（默认 512）就重建 Selector——这是 Netty 比原生 NIO 更靠谱的底层证据。
 
-### 4.6 降维金句
+### 4.6 总结要义
 
 > **NIO 的所有"为什么"都收敛到三条主线**：**epoll 红黑树 + 就绪链表**决定 O(1) 就绪查询、**sendfile scatter/gather**决定零拷贝底层链路、**Selector / Channel / Buffer**决定 Java 视角的 fd 封装。理解了这三条主线，**Netty / Kafka / Nginx 的高吞吐秘密全部揭开**——它们只是"epoll 红黑树 + 就绪链表 + sendfile 零拷贝"这两条主线在不同场景下的排列组合。
 
@@ -669,7 +669,7 @@ b.bind(8080).sync();
 
 ### 5.5 战役五收官：字节码 → JVM → OS 三层因果链闭合
 
-本篇是**战役五唯一一篇 OS 视角文档**，也是全站"应用代码 → JVM → 内核 → 硬件"四层抽象穿透的最终收官：
+本篇是**战役五唯一一篇 OS 视角文档**，也是全站"应用代码 → JVM → 内核 → 硬件"四层抽象贯穿的最终收官：
 
 ```mermaid
 flowchart LR

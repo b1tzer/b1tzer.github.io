@@ -14,7 +14,7 @@ title: [Java8] 其他新特性 —— java.time 不可变时间对象、default 
 **你能立刻答上来吗？**
 
 - `LocalDate` / `LocalDateTime` / `ZonedDateTime` / `Instant` 四个类的适用场景各是什么？为什么数据库存时间戳一律用 `Instant` 或 `TIMESTAMP` 而不是 `LocalDateTime`？
-- 为什么 `SimpleDateFormat` 是全 JDK 最著名的"多线程共享地雷"？`DateTimeFormatter` 为什么可以放心共享？
+- 为什么 `SimpleDateFormat` 是全 JDK 最著名的"多线程共享陷阱"？`DateTimeFormatter` 为什么可以放心共享？
 - 一个类同时实现了 `interface A` 和 `interface B`，两个接口里都有 `default void hello()`，编译器会怎么处理？
 - Java 8 接口能有几种方法？Java 9 又加了什么？为什么 Java 9 要加"接口私有方法"？
 - 服务器时区北京、数据库时区 UTC，你用 `LocalDateTime.now()` 存进数据库会发生什么？
@@ -340,7 +340,7 @@ public abstract class AbstractUserService {
 }
 ```
 
-**降维范式**：`default` 方法只用于**提供默认行为**，不存储状态。需要状态时改用抽象类。
+**工程范式**：`default` 方法只用于**提供默认行为**，不存储状态。需要状态时改用抽象类。
 
 #### 坑 2：库升级后自己的方法被"恶意覆盖"
 
@@ -357,7 +357,7 @@ public class MyBatch implements Processor {
 // 但从此"恶意覆盖"了库设计的默认实现 —— 返回值突变、逻辑缺失。
 ```
 
-**降维范式**：**所有实现类中的 public 方法都加 `@Override` 显式标注来源**；无法标注 `@Override` 的方法要重新审视命名和语义，避免与未来的接口演化撞车。
+**工程范式**：**所有实现类中的 public 方法都加 `@Override` 显式标注来源**；无法标注 `@Override` 的方法要重新审视命名和语义，避免与未来的接口演化撞车。
 
 #### 坑 3：接口 `static` 方法不能被继承
 
@@ -397,7 +397,7 @@ public interface DataProcessor {
 }
 ```
 
-**降维范式**：`private` 方法专门用于**提取多个 `default` 方法的公共逻辑**；不要用它做接口对外契约（对外契约用 `default` / `static`）。
+**工程范式**：`private` 方法专门用于**提取多个 `default` 方法的公共逻辑**；不要用它做接口对外契约（对外契约用 `default` / `static`）。
 
 ---
 

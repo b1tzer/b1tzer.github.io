@@ -6,7 +6,7 @@ title: GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排�
 # GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排查与设计原因
 
 !!! info "**GC 调优实战 一句话口诀**"
-    - **调优不是猜参数** —— 先定**目标**（吞吐 / 延迟 / 内存 · **三者互斥**），再**测量**（`-Xlog:gc*` + JFR），最后**小步迭代**（一次只改一个参数 · 每次跑回归验证）。**上来就 `-Xmx8g -XX:+UseG1GC -XX:MaxGCPauseMillis=50` 是玄学不是调优**。
+    - **调优不是猜参数** —— 先定**目标**（吞吐 / 延迟 / 内存 · **三者互斥**），再**测量**（`-Xlog:gc*` + JFR），最后**小步迭代**（一次只改一个参数 · 每次跑回归验证）。**上来就 `-Xmx8g -XX:+UseG1GC -XX:MaxGCPauseMillis=50` 是猜测不是调优**。
     - **堆不是越大越好** —— CMS / G1 下堆越大 · 单次 Full GC 停顿越长；只有 **ZGC / Shenandoah** 能靠染色指针 + 读屏障做到"停顿与堆大小无关"，所以只有它们下**大堆才安全**。
     - **`System.gc()` 是建议不是命令** —— 生产必加 `-XX:+DisableExplicitGC`，否则三方库一行 `System.gc()` 就能让你整夜加班。**唯一例外**：依赖 `DirectByteBuffer.Cleaner` 回收堆外内存时改用 `-XX:+ExplicitGCInvokesConcurrent`（允许但降为并发）。
     - **OOM 四字诀** —— **堆（Java heap space）查对象链**、**栈（StackOverflowError）查递归**、**元空间（Metaspace）查代理类**、**直接内存（Direct buffer memory）查 NIO**。对号入座、不越界。
@@ -26,7 +26,7 @@ title: GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排�
 
 ## 1. 调优方法论：目标 → 测量 → 分析 → 验证
 
-### 1.1 生产事故引子：老手也翻车的"参数玄学"三连击
+### 1.1 生产事故引子：老手也翻车的"参数盲目配置"三连击
 
 **引子 1 · `MaxGCPauseMillis` 越调越卡**
 
@@ -36,19 +36,19 @@ title: GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排�
 
 某 Spring Boot 微服务莫名频繁 Full GC，日志显示 `Metadata GC Threshold` —— 排查两天才发现是没设 `-XX:MaxMetaspaceSize`，元空间默认无上限但受 `MetaspaceSize`（触发首次 Full GC 的水位线）驱动 → CGLib 生成大量代理类推高元空间 → 每次跨过水位就 Full GC。
 
-**引子 3 · 容器时代 `-Xmx` 硬编码是头号地雷**
+**引子 3 · 容器时代 `-Xmx` 硬编码是常见误区**
 
 容器里 `-Xmx4g` 硬编码，某天 SRE 把 K8s Pod 内存 limit 从 6G 调到 4G —— **JVM 直接被 OOMKilled，且没有留下任何 Java 层 OOM 日志**。因为 Java 堆 4G + 元空间 512M + 直接内存 1G + 线程栈 + JIT Code Cache 早就超过 4G 容器 limit，被 Linux OOM Killer 干掉。
 
-### 1.2 反问引子：老手也未必答得上的 5 个调优悬案
+### 1.2 反问引子：老手也未必答得上的 5 个调优难题
 
-- **悬案 1**：GC 日志里 `Total time for which application threads were stopped: 5.2s` 但 `[Times: real=0.02 secs]` —— 剩下的 5 秒去哪了？（提示：**TTSP 空洞** · 见 [GC 核心机制](@java-JVM-GC核心机制与收集器演进) §"Safepoint"）
-- **悬案 2**：`-Xmx` 和 `-Xms` 为什么要设成一样？"堆自动扩容不是很省内存吗？"
-- **悬案 3**：`System.gc()` 到底能不能被执行？为什么禁用它、又要留 `ExplicitGCInvokesConcurrent` 后门？
-- **悬案 4**：为什么容器里必须 `-XX:MaxRAMPercentage=75.0` 而不是 `-Xmx4g`？剩下的 25% 是给谁的？
-- **悬案 5**：Full GC 频繁 —— 是"老年代满了"吗？还有几种触发原因？
+- **难题 1**：GC 日志里 `Total time for which application threads were stopped: 5.2s` 但 `[Times: real=0.02 secs]` —— 剩下的 5 秒去哪了？（提示：**TTSP 空洞** · 见 [GC 核心机制](@java-JVM-GC核心机制与收集器演进) §"Safepoint"）
+- **难题 2**：`-Xmx` 和 `-Xms` 为什么要设成一样？"堆自动扩容不是很省内存吗？"
+- **难题 3**：`System.gc()` 到底能不能被执行？为什么禁用它、又要留 `ExplicitGCInvokesConcurrent` 后门？
+- **难题 4**：为什么容器里必须 `-XX:MaxRAMPercentage=75.0` 而不是 `-Xmx4g`？剩下的 25% 是给谁的？
+- **难题 5**：Full GC 频繁 —— 是"老年代满了"吗？还有几种触发原因？
 
-这五个悬案的答案都写在 GC 日志 + `jcmd` 输出 + K8s 事件里。
+这五个难题的答案都写在 GC 日志 + `jcmd` 输出 + K8s 事件里。
 
 ### 1.3 GC 调优的唯一正确流程
 
@@ -317,7 +317,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
     | `-Xms` / `-Xmx` / `-Xmn` / `-Xss` | 堆 / 栈内存类 · 标准参数 | 上述 4 个 + `-Xloggc` | **跨所有 JVM 版本稳定** |
     | `-XX:+<Flag>` / `-XX:-<Flag>` | 布尔开关 | `+UseG1GC` / `+HeapDumpOnOutOfMemoryError` / `+DisableExplicitGC` | 部分参数随版本废弃（如 `+UseConcMarkSweepGC` JDK 14 移除） |
     | `-XX:<Key>=<Value>` | 数值 / 字符串参数 | `MaxGCPauseMillis=200` / `MaxMetaspaceSize=512m` / `MaxRAMPercentage=75.0` | 跨版本相对稳定 |
-    | `-XX:+PrintFlagsFinal` | 元查询参数 | 打印所有参数最终值 · **排查参数是否生效的终极大招** | 所有 JVM 版本可用 |
+    | `-XX:+PrintFlagsFinal` | 元查询参数 | 打印所有参数最终值 · **排查参数是否生效的权威手段** | 所有 JVM 版本可用 |
     | `-Xlog:<tag>` | 统一日志系统（JDK 9+） | `-Xlog:gc*` / `-Xlog:safepoint=info` / `-Xlog:class+load` | JDK 9+ · **替代 JDK 8 各种独立 `-XX:+Print*` 参数** |
 
     **命名规律**：
@@ -326,7 +326,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
     2. **`-XX:+/-` 是布尔开关** · **`-XX:Key=Value` 是数值**
     3. **JDK 9+ 统一走 `-Xlog:<tag>`** · JDK 8 各种独立 `-XX:+Print*` 参数（`+PrintGCDetails`、`+PrintGCDateStamps`、`+PrintSafepointStatistics`）在 JDK 9+ 都被整合到 `-Xlog`
 
-    **一句话总结**：**`-X` 是身份证 · `-XX:` 是护照 · `-Xlog:` 是新一代通用签证** —— 记住三条前缀规则 · 任何 JVM 参数一眼看穿身份。
+    **一句话总结**：**`-X` 是身份证 · `-XX:` 是护照 · `-Xlog:` 是新一代通用签证** —— 记住三条前缀规则 · 任何 JVM 参数判断其身份。
 
 ### 5.2 生产环境黄金参数组合（G1 · JDK 17）
 
@@ -353,7 +353,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
 **根源**：堆越大 · 单次 Full GC 停顿越长（扫更多对象）。
 
-**降维**：
+**应对**：
 
 - 延迟敏感 · 用 G1 + `-XX:MaxGCPauseMillis` 控停顿
 - 大堆场景 · 用 **ZGC / Shenandoah** 实现亚毫秒 STW（染色指针 + 读屏障 · 见 [GC 核心机制](@java-JVM-GC核心机制与收集器演进) §"ZGC 染色指针 4 位编码"）
@@ -362,7 +362,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
 **根源**：`System.gc()` 只是**建议** · JVM 可以忽略。
 
-**降维**：
+**应对**：
 
 - 生产禁用：`-XX:+DisableExplicitGC`
 - **唯一例外**：依赖 `DirectByteBuffer.Cleaner` 回收堆外内存时 → 改用 `-XX:+ExplicitGCInvokesConcurrent`（允许但降为并发 · 不 STW）
@@ -371,7 +371,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
 **根源**：**逃逸分析 + 标量替换**能让对象**完全消失** —— 字段变为独立局部变量、不进堆。
 
-**降维**：**"栈上分配"是误传** —— HotSpot 实际落地始终是**标量替换**。短方法 + 小作用域 + 不逃逸的临时对象最容易吃到这个优化。
+**应对**：**"栈上分配"是误传** —— HotSpot 实际落地始终是**标量替换**。短方法 + 小作用域 + 不逃逸的临时对象最容易吃到这个优化。
 
 > 📖 逃逸分析限制与实际收益 → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) §5.1
 
@@ -413,7 +413,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
 **根源**：传统分代（CMS）的老年代是一整块连续内存 · 回收时必须处理整个老年代 · 停顿随堆增大而增大 · **不可控**。
 
-**G1 的降维**：把堆切成小块 Region · 每次只选**垃圾最多的 Region** 回收（**Garbage First** 名字由来）· 在有限时间内回收最多垃圾 · **可预测停顿**。
+**G1 的应对**：把堆切成小块 Region · 每次只选**垃圾最多的 Region** 回收（**Garbage First** 名字由来）· 在有限时间内回收最多垃圾 · **可预测停顿**。
 
 > 📖 G1 Region + RSet + Mixed GC 完整机制 → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) §"G1 Region + RSet"
 

@@ -10,7 +10,7 @@ title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟�
     - **虚拟线程（JDK 21+ JEP 444）适合 I/O 密集、不适合 CPU 密集**——载体线程数 = CPU 核数，虚拟线程在阻塞时 unmount 释放载体，是 M:N 线程模型的底层机制。**JDK 21~23 下 `synchronized` 会 pin 住载体线程 → 收益打折**，改用 `ReentrantLock` 可正常 unmount；**JDK 24（JEP 491）彻底修复**，`synchronized` 代码零改动直接受益。虚拟线程专属调度器 `DEFAULT_SCHEDULER` **独立于** `ForkJoinPool.commonPool` —— `parallelStream` 阻塞不会污染虚拟线程调度。
     - **JFR 是生产环境首选 profiler**——持续开启开销 < 1%，JDK 11+ 完全开源（不再是 Oracle 商业特性）。低开销的根本原因：**事件写入 per-thread 缓冲、无锁竞争 / 无 Java 反射 / 无字符串拼接 / 无 JVMTI Agent 附加成本**——`jdk.jfr` 是 JVM 内建模块。`jcmd <pid> JFR.start duration=60s filename=xxx.jfr` 动态采集，`jfr print` / JMC 分析，事件覆盖 GC / 锁竞争 / I/O / TLAB / 方法采样 300+ 种。
     - **分代 ZGC** —— **JDK 21（JEP 439）引入需显式 `-XX:+ZGenerational` · JDK 23（JEP 474）成为默认 · JDK 24+（JEP 490）非分代模式正式移除**。老手记这一条时间线就够：未来 `-XX:+UseZGC` 即分代，无需额外参数。**分代 ZGC = G1 的吞吐 + ZGC 的延迟** —— 套用弱分代假说，新生代复制算法快速回收短命对象，减少标记成本、吞吐追平 G1、延迟仍亚毫秒。
-    - **生产红线四件套** —— **无界队列禁用（`LinkedBlockingQueue` 默认 `Integer.MAX_VALUE`）· `ThreadLocal` 必 `remove`（虚拟线程场景百万副本 = 4GB 爆炸）· 必设 `-XX:MaxMetaspaceSize`（JDK 8+ 元空间默认无上限）· 必开 GC 日志与 OOM 自动 dump**。每一条都是血泪教训，不带一条上线 = 早晚翻车。
+    - **生产红线四件套** —— **无界队列禁用（`LinkedBlockingQueue` 默认 `Integer.MAX_VALUE`）· `ThreadLocal` 必 `remove`（虚拟线程场景百万副本 = 4GB 爆炸）· 必设 `-XX:MaxMetaspaceSize`（JDK 8+ 元空间默认无上限）· 必开 GC 日志与 OOM 自动 dump**。每一条都是实践总结，不带一条上线 = 早晚翻车。
 
 <!-- -->
 
@@ -37,7 +37,7 @@ title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟�
 4G 堆 + 512M 元空间 + 1G 直接内存 + 200 线程 × 1M 栈 + 240M JIT Code Cache ≈ 5.9G
 ```
 
-早已超过 4G 容器 limit。**`-Xmx` 硬编码 = 容器时代头号地雷** —— 应改为 `-XX:MaxRAMPercentage=75.0` 让 JVM 按容器规格自适应，容器扩缩容时无需重发布。
+早已超过 4G 容器 limit。**`-Xmx` 硬编码 = 容器时代典型误区** —— 应改为 `-XX:MaxRAMPercentage=75.0` 让 JVM 按容器规格自适应，容器扩缩容时无需重发布。
 
 **引子 2：虚拟线程 `synchronized` pin 载体线程 · 收益归零**
 
@@ -53,15 +53,15 @@ title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟�
 - **短期**：`try/finally + ThreadLocal.remove()` 严格清理
 - **长期**：关注 `ScopedValue`（JEP 487 · JDK 24 Fourth Preview）—— 不可变、无副作用、天然适配虚拟线程作用域
 
-### 1.2 反问引子：老手也未必答得上的 5 个现代 JVM 悬案
+### 1.2 反问引子：老手也未必答得上的 5 个现代 JVM 难题
 
-- **悬案 1**：`Executors.newVirtualThreadPerTaskExecutor()` 返回的 Executor 内部到底"调度"到哪个线程池？和 `parallelStream` 用的 `ForkJoinPool.commonPool` 是同一个吗？（提示：**不是**，见 §2.1）
-- **悬案 2**：JFR 声称"持续开启开销 < 1%" —— **为什么**？和 async-profiler / JVMTI Agent 的采样机制有什么本质差异？（提示：**JFR 是 JVM 内部事件源、直接写 in-process ring buffer**，见 §2.3）
-- **悬案 3**：`-XX:MaxRAMPercentage=75.0` —— 剩下的 25% 是给谁的？为什么这个数字不是 90 也不是 50？（提示：**元空间 + 直接内存 + 线程栈 + Code Cache 总和**，见 §2.4）
-- **悬案 4**：分代 ZGC（JEP 439/474）到底解决了原 ZGC 的什么痛点？"低延迟"不是已经做到亚毫秒了吗？（提示：**吞吐量**，见 §4.1）
-- **悬案 5**：GraalVM Native Image 启动毫秒级 —— **为什么放弃了 JIT 峰值性能反而"更适合 Serverless"**？（提示：**冷启动占比**，见 §4.2）
+- **难题 1**：`Executors.newVirtualThreadPerTaskExecutor()` 返回的 Executor 内部到底"调度"到哪个线程池？和 `parallelStream` 用的 `ForkJoinPool.commonPool` 是同一个吗？（提示：**不是**，见 §2.1）
+- **难题 2**：JFR 声称"持续开启开销 < 1%" —— **为什么**？和 async-profiler / JVMTI Agent 的采样机制有什么本质差异？（提示：**JFR 是 JVM 内部事件源、直接写 in-process ring buffer**，见 §2.3）
+- **难题 3**：`-XX:MaxRAMPercentage=75.0` —— 剩下的 25% 是给谁的？为什么这个数字不是 90 也不是 50？（提示：**元空间 + 直接内存 + 线程栈 + Code Cache 总和**，见 §2.4）
+- **难题 4**：分代 ZGC（JEP 439/474）到底解决了原 ZGC 的什么痛点？"低延迟"不是已经做到亚毫秒了吗？（提示：**吞吐量**，见 §4.1）
+- **难题 5**：GraalVM Native Image 启动毫秒级 —— **为什么放弃了 JIT 峰值性能反而"更适合 Serverless"**？（提示：**冷启动占比**，见 §4.2）
 
-这五个悬案的答案都写在 JEP 文档、JFR 事件模型、cgroup 感知代码路径里 —— 掀开就都清晰了。
+这五个难题的答案都写在 JEP 文档、JFR 事件模型、cgroup 感知代码路径里 —— 掀开就都清晰了。
 
 ---
 
@@ -113,7 +113,7 @@ private static ForkJoinPool createDefaultScheduler() {
 }
 ```
 
-**顿悟点**（悬案 1 的答案）：
+**顿悟点**（难题 1 的答案）：
 
 - 虚拟线程的调度器 `DEFAULT_SCHEDULER` 是**虚拟线程专属的 ForkJoinPool** ——**不是** `parallelStream` 用的 `ForkJoinPool.commonPool()`，两者**内存隔离**，`parallelStream` 阻塞 I/O 不会污染虚拟线程调度器
 - `Continuation` 是 JDK 内部 API（`jdk.internal.vm.Continuation`），底层由 HotSpot 的 `runtime/continuation.cpp` 实现，通过 `freeze` / `thaw` 两条 native 方法完成栈帧的堆化与恢复
@@ -219,7 +219,7 @@ r.enable("jdk.GCPhasePause");
 r.start();
 ```
 
-**低开销的根本原因**（悬案 2 的答案）—— JFR 采样流程的**三层零拷贝设计**：
+**低开销的根本原因**（难题 2 的答案）—— JFR 采样流程的**三层零拷贝设计**：
 
 ```txt
 业务线程                            JFR Ring Buffer         JFR Disk Writer
@@ -266,7 +266,7 @@ JVM 启动时判断内存上限的底层链路：
 | `-XX:MinRAMPercentage` | 50.0 | 小容器（< 250MB）时的堆比例 | 保持默认 |
 | `-XX:ActiveProcessorCount` | 从 cgroup 读 | 显式设避免读到宿主机核数（K8s CPU limit 场景关键） | 与 `resources.limits.cpu` 对齐 |
 
-**为什么留 25% 给堆外**（悬案 3 的答案）：
+**为什么留 25% 给堆外**（难题 3 的答案）：
 
 ```txt
 容器内存 = Java 堆 + 元空间 + 直接内存 + 线程栈 + Code Cache + JVM 本身开销
@@ -485,7 +485,7 @@ flowchart LR
 
 ---
 
-## 4. 第四层：工程红线与前沿降维
+## 4. 第四层：工程红线与前沿实践
 
 ### 4.1 分代 ZGC（JEP 439 / JEP 474 / JEP 490）· 老手必背的时间线
 
@@ -496,15 +496,15 @@ flowchart LR
 | **JDK 23** | **JEP 474** | **分代成为默认** · 非分代废弃 | `-XX:+UseZGC` 即分代 |
 | **JDK 24+** | **JEP 490** | **非分代 ZGC 正式移除** | 仅剩分代模式 |
 
-**分代 ZGC 的性能收益**（悬案 4 的答案）：
+**分代 ZGC 的性能收益**（难题 4 的答案）：
 
 - **原 ZGC 的痛点**：全堆统一扫描，每次标记都要扫全堆，**吞吐量偏低**（相比 G1 约 10~15% 差距）——"低延迟"用"高 CPU 占用 + 低吞吐"换来
-- **分代 ZGC 的降维**：套用弱分代假说，新生代复制算法快速回收短命对象，老年代保留 ZGC 染色指针并发转移，**减少标记成本、吞吐量追平 G1、延迟仍亚毫秒**
+- **分代 ZGC 的应对**：套用弱分代假说，新生代复制算法快速回收短命对象，老年代保留 ZGC 染色指针并发转移，**减少标记成本、吞吐量追平 G1、延迟仍亚毫秒**
 - **顿悟点**：**"分代 ZGC = G1 的吞吐 + ZGC 的延迟"** —— JDK 21+ 大堆场景（> 16GB）可以放心用，无需在 G1 / ZGC 之间纠结
 
 📖 ZGC 染色指针 4 位编码、读屏障字节码、Self-Healing 机制 → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) §"ZGC 染色指针"。
 
-### 4.2 GraalVM Native Image vs CRaC · Serverless 冷启动降维
+### 4.2 GraalVM Native Image vs CRaC · Serverless 冷启动优化
 
 | 方案 | 启动时间 | 峰值性能 | 内存占用 | 适用场景 |
 | :-- | :-- | :-- | :-- | :-- |
@@ -512,7 +512,7 @@ flowchart LR
 | **GraalVM Native Image** | **毫秒级** | 80~85%（AOT · 无 JIT 运行时优化） | **低 10 倍**（无 JIT / Metaspace） | Serverless / FaaS / CLI |
 | **CRaC（Checkpoint/Restore）** | 秒级 → **毫秒级恢复** | 100%（保留 JIT 状态） | 中（快照文件 + 运行时） | K8s 快速伸缩 |
 
-**顿悟点**（悬案 5 的答案）：
+**顿悟点**（难题 5 的答案）：
 
 - Serverless / FaaS 场景，单次请求生命周期 < 100ms，**冷启动占比 > 90%** —— 传统 JVM 3 秒 JIT 预热 = 30 次请求全在等 JIT，**峰值性能没法体现**
 - GraalVM Native Image **提前编译（AOT）+ 关闭反射默认支持**，用"放弃 15% 峰值性能"换"启动时间从秒级降到毫秒级"—— **在 Serverless 场景总耗时反而更短**
@@ -545,7 +545,7 @@ jfr summary snapshot.jfr
 
 ### 4.4 生产红线四件套
 
-!!! warning "🚨 生产环境四条红线（每条都是血泪教训）"
+!!! warning "🚨 生产环境四条红线（每条都是实践总结）"
 
     #### ❌ 红线 1：禁止使用无界队列
 
@@ -726,7 +726,7 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 - 🐳 **容器环境**：**必开** `-XX:+UseContainerSupport` + `-XX:MaxRAMPercentage=75.0`
 - ⚡ **Serverless / FaaS**：GraalVM Native Image 或 CRaC
 
-**降维金句**：
+**总结要义**：
 
 > **现代 JVM 的所有"新特性"都收敛到两条主线：容器化感知（cgroup + `MaxRAMPercentage`）决定内存边界、M:N 线程模型（虚拟线程 + `Continuation`）决定并发上限。理解了这两条主线，JDK 21~25 的所有 JEP 都是这两条主线的排列组合。**
 
