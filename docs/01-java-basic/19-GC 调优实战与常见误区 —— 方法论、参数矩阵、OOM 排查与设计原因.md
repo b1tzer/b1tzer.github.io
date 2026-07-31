@@ -492,4 +492,3 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 | `12c` → [NIO 与 IO 模型深度解析](@java-OS-NIO与IO模型) | 直接内存 GC 回收路径 · `DirectByteBuffer.Cleaner` · `-XX:+ExplicitGCInvokesConcurrent` · Netty `PooledByteBufAllocator` —— `13` 需承接堆外内存工程视角 | ★★★★ |
 | `12c` → [GC 核心机制](@java-JVM-GC核心机制与收集器演进) | 写屏障 / CMS 缺陷 / G1 RSet / ZGC 读屏障源码级机理 | ✅ 已闭环 |
 | `12c` → [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) | `ThreadLocal` 在线程池未 remove 导致堆 OOM | ✅ 已闭环 |
-
