@@ -163,10 +163,10 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Java:
-    - Java 物理透视：从字节码剖析到 JVM 内存布局的二十四篇: 01-java-basic/00-Java 物理透视：从字节码剖析到 JVM 内存布局的二十四篇.md
+    - Java 底层透视：从字节码剖析到 JVM 内存布局的二十四篇: 01-java-basic/00-Java 物理透视：从字节码剖析到 JVM 内存布局的二十四篇.md
     - 面向对象（OOP）：从内存边界到虚方法表的物理透视: 01-java-basic/01-面向对象（OOP）：从内存边界到虚方法表的物理透视.md
     - 异常处理：try-catch 底层字节码与 JVM 栈轨真相: 01-java-basic/02-异常处理：try-catch 底层字节码与 JVM 栈轨真相.md
-    - 注解（Annotation）: 01-java-basic/03-注解（Annotation）：字节码属性表里的 RuntimeVisibleAnnotations 与 APT 编译期织入.md
+    - 注解（Annotation）：字节码属性表里的 RuntimeVisibleAnnotations 与 APT 编译期织入: 01-java-basic/03-注解（Annotation）：字节码属性表里的 RuntimeVisibleAnnotations 与 APT 编译期织入.md
     - 字符串与 String Pool：Compact Strings、ldc 字节码与运行时内存搬迁史: 01-java-basic/04-字符串与 String Pool：Compact Strings、ldc 字节码与运行时内存搬迁史.md
     - 泛型（Generics）：Signature 属性、checkcast 指令与类型擦除的时空双重契约: 01-java-basic/05-泛型（Generics）：Signature 属性、checkcast 指令与类型擦除的时空双重契约.md
     - 反射（Reflection）：调用链、字节码指令与 JIT 内联的三层视角: 01-java-basic/06-反射（Reflection）：调用链、字节码指令与 JIT 内联的三层视角.md
