@@ -7,7 +7,7 @@ title: Java 底层透视：从字节码剖析到 JVM 内存布局的二十四篇
 
 > 先回答五个问题，再决定要不要往下读。
 
-**①** 你手里的 Spring Boot 服务启动需要 45 秒。你知道其中有多少秒花在 `Method.invoke` 的 JNI 跳跳板上吗？为什么 JDK 18 后这个数字会闷声下降？
+**①** 你手里的 Spring Boot 服务启动需要 45 秒。你知道其中有多少秒花在 `Method.invoke` 的 JNI 跳板上吗？为什么 JDK 18 后这个数字会闷声下降？
 
 **②** `list.parallelStream().map(this::rpcCall).collect(...)` 看起来一行就能把 QPS 翻倍，为什么上线后反而把线程池打爆了？那个隐藏的 `ForkJoinPool.commonPool()` 到底属于谁？
 
@@ -137,7 +137,7 @@ flowchart TB
     2. **字节码考古** —— `javap -c -v` 完整反编译 + 逐行破案
     3. **内存布局** —— 精确到字节的 ASCII 布局图 + 硬件级性能账单
     4. **工程红线** —— ❌反模式 / ✅标准范式 双代码块 × 3~5 条
-    5. **跨战役伏笔** —— 埋眼到后续篇章的 `@doc_id` 钩子
+    5. **跨战役伏笔** —— 埋下伏笔到后续篇章的 `@doc_id` 钩子
 
     读者**不必按顺序读完全篇**：想学"怎么写"直接跳 §4；想搞懂"为什么"从 §1 顺读；想调优时回 §3 看内存账单。
 
@@ -215,7 +215,7 @@ flowchart TB
 | 03 | [**注解（Annotation）**](@java-字节码-注解) | 注解是 `.class` 属性表里的一段元数据（`RuntimeVisibleAnnotations`）；APT 编译期织入 / 反射运行期读取 是两条完全独立的解析路径 |
 | 04 | [**字符串与 StringPool**](@java-字节码-字符串底层原理) | JDK 7+ StringTable 从元空间搬到堆内、JDK 9+ Compact Strings（`byte[] + coder`）省一半内存；`ldc` 指令决定字面量走常量池 |
 | 05 | [**泛型（Generics）**](@java-字节码-泛型底层原理) | 编译期检查 + 运行期擦除；`Signature` 属性保存原始泛型信息，`checkcast` 指令兜底类型强转，桥接方法解决继承重写签名冲突 |
-| 06 | [**反射与 MethodHandle**](@java-字节码-反射与MethodHandle) | `Method.invoke` 有 JNI 跳板 + 参数包装 + 前 15 次膨胀成本；`MethodHandle` + `invokedynamic` 通过 LambdaForm 与 JIT 内联把反射降到接近直接调用 |
+| 06 | [**反射与 MethodHandle**](@java-字节码-反射与MethodHandle) | `Method.invoke` 有 JNI 跳板 + 参数包装 + 前 15 次膨胀成本；`MethodHandle` + `invokedynamic` 通过 `LambdaForm` 与 JIT 内联把反射降到接近直接调用 |
 | 07 | [**[Java8] 函数式编程**](@java-字节码-函数式编程) | Lambda 不生成 `.class` 匿名类，靠 `invokedynamic` + `LambdaMetafactory` 在**首次调用**才具化实现；`parallelStream` 复用 `ForkJoinPool.commonPool`，是"共享线程池陷阱"的源头 |
 
 ---

@@ -454,7 +454,7 @@ int x = ids.get(0);   // Integer → int 隐式拆箱
 | `List<Integer>` (`ArrayList` 底层是 `Object[]`) | 16 B（Integer 对象） | 4 B（数组元素是 Integer 引用） | **~20 MB** |
 | `IntArrayList`（Fastutil / Eclipse Collections） | 4 B | 0 B | **~4 MB** |
 
-**装箱风暴的性能代价 = 5 倍内存 + 每一个 Integer 对象都参与 GC 标记与复制**。当 QPS 达到 5 万，每秒新增数百万个 Integer 对象涌入 Eden，Minor GC 频率从毫秒级降到亚秒级——这就是 1.2 节接口 P99 台阶式劣化的底层真相。
+**装箱风暴的性能代价 = 5 倍内存 + 每一个 Integer 对象都参与 GC 标记与复制**。当 QPS 达到 5 万，每秒新增数百万个 Integer 对象涌入 Eden，Minor GC 频率从毫秒级降到亚秒级——这就是 1.3 节接口 P99 台阶式劣化的底层真相。
 
 > 📖 **对象头字段（Mark Word / Klass Pointer）的完整位分布 + 指针压缩阈值** 详见 [字符串底层原理](@java-字节码-字符串底层原理) §3.1 与后续战役四 [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)，本文不再重复。
 

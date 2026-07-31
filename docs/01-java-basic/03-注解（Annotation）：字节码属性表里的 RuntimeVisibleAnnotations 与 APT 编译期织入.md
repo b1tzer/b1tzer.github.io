@@ -9,7 +9,7 @@ title: 注解（Annotation）：字节码属性表里的 `RuntimeVisibleAnnotati
 
 ## 1. 业务痛点与魔幻现实
 
-### 1.1 消失的注解与诡异的空指针（NPE）注解的本质
+### 1.1 消失的注解与诡异的空指针（NPE）—— 注解的本质
 
 在实际的微服务项目开发中，很多开发者都遭遇过类似下面这种让人抓狂的“线上悬案”：
 
@@ -104,7 +104,7 @@ public interface com.example.RequiresRole extends java.lang.annotation.Annotatio
 
 这行字节码彻底暴露了注解的底牌：**注解在 Java 世界的本质，是一个继承了 `java.lang.annotation.Annotation` 的普通 Java 接口！**
 
-既然是接口，那些所谓的注解属性（如 `String value();`），在字节码层面也不过是一堆普通的**抽象方法（ACC_ABSTRACT）**罢了。
+既然是接口，那些所谓的注解属性（如 `String value();`），在字节码层面也不过是一堆普通的**抽象方法（`ACC_ABSTRACT`）**罢了。
 
 ### 2.3 JVM 运行时的伪造术：动态代理（$Proxy）
 
@@ -151,11 +151,11 @@ public final class $Proxy0 extends Proxy implements RequiresRole {
 2. 找到了字符串 `"ADMIN"` 后，JVM 的 `sun.reflect.annotation.AnnotationParser` 核心组件启动。
 3. 它在堆内存中动态拼装、并当场向 JVM 注册一个专门实现了你这个注解接口的 JDK 动态代理类（$Proxy）。
 4. 这个代理类内部死死持有一个 Map，里面塞满了从属性表里读出来的配置（如 {"value", "ADMIN"}）。
-5. 最终返回给你的 anno 引用，本质上就是一个被伪造出来的、封装了 AnnotationInvocationHandler 的动态代理实例。当你调用 anno.value() 时，底层其实是在去查那个运行时 Map 的只读字符串。
+5. 最终返回给你的 anno 引用，本质上就是一个被伪造出来的、封装了 `AnnotationInvocationHandler` 的动态代理实例。当你调用 `anno.value()` 时，底层其实是在去查那个运行时 Map 的只读字符串。
 
 通过这一层字节码与运行时考古，我们彻底看清了运行时注解的核心骨架。
 
-然而，我们还没有解决 1.2 节留下的跨时空悬案：为什么有的注解（如 Lombok、Spring 事务）能在这个生命周期的洪流中产生截然不同的超能力？这就需要切入我们的下一个战术维度：三大保留策略（RetentionPolicy）的时空分野与编译期 APT 织入。
+然而，我们还没有解决 1.2 节留下的跨时空悬案：为什么有的注解（如 Lombok、Spring 事务）能在这个生命周期的洪流中产生截然不同的超能力？这就需要切入我们的下一个战术维度：三大保留策略（`RetentionPolicy`）的时空分野与编译期 APT 织入。
 
 ---
 
@@ -163,14 +163,14 @@ public final class $Proxy0 extends Proxy implements RequiresRole {
 
 通过前两层的字节码考古与运行时 Dump 验证，我们揭开了运行时注解（`RUNTIME`）依赖 **`RuntimeVisibleAnnotations` 属性表** 与 **运行时 JDK 动态代理（`$Proxy`）** 的核心骨架。
 
-然而，如果所有的注解都必须在运行时通过反射查表、动态拼装字节码并生成代理类，那么在高并发或大批量使用的场景下，垃圾回收器（GC）和方法区（元空间 MetaSpace）将会承受巨大的性能压力。为了在性能与灵活性之间达成妥协，Java 在生命周期的底层设置了严密的分野，并演化出了彻底抹平运行时开销的时空降维打击武器——**APT（Annotation Processing Tool）**。
+然而，如果所有的注解都必须在运行时通过反射查表、动态代理并生成代理类，那么在高并发或大批量使用的场景下，垃圾回收器（GC）和方法区（元空间 Metaspace）将会承受巨大的性能压力。为了在性能与灵活性之间达成妥协，Java 在生命周期的底层设置了严密的分野，并演化出了彻底抹平运行时开销的时空降维打击武器——**APT（Annotation Processing Tool）**。
 
-### 3.1 三大保留策略（RetentionPolicy）的内存本质分野
+### 3.1 三大保留策略（`RetentionPolicy`）的内存本质分野
 
 在语法层，我们通过 `@Retention` 决定注解的寿命。在 JVM 的内存结构中，这三大策略直接决定了元数据在内存空间中的生死存亡：
 
 ```txt
- 源码文件 (.java) ───────► 字节码文件 (.class) ───────► JVM 方法区内存 (MetaSpace)
+ 源码文件 (.java) ───────► 字节码文件 (.class) ───────► JVM 方法区内存 (Metaspace)
  
  ┌─────────────────────────────────────────────────────────────────────────┐
  │ [RetentionPolicy.SOURCE]                                                │
@@ -182,7 +182,7 @@ public final class $Proxy0 extends Proxy implements RequiresRole {
  ├─────────────────────────────────────────────────────────────────────────┤
  │ [RetentionPolicy.RUNTIME]                                               │
  │   编译后写入 .class 文件的 RuntimeVisibleAnnotations 属性表，               │
- │   类加载时随之【读入元空间（MetaSpace）】，常驻内存，供运行时反射查表             │
+│   类加载时随之【读入元空间（Metaspace）】，常驻内存，供运行时反射查表             │
  └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -195,7 +195,7 @@ public final class $Proxy0 extends Proxy implements RequiresRole {
 
 既然 SOURCE 级别的注解在编译后就消失了，那为什么 Lombok 的 `@Data` 却能凭空变出大段的 `getter/setter` 字节码？
 
-这就是编译期注解处理器（APT，Annotation Processing Tool）大显身手的现场。它的本质是**在编译期间执行的插件**。当 javac 启动编译时，它的核心工作流并非一步到位，而是经历了一场循环：
+这就是编译期注解处理器（APT，Annotation Processing Tool）大显身手的现场。它的本质是**在编译期间执行的插件**。当 `javac` 启动编译时，它的核心工作流并非一步到位，而是经历了一场循环：
 
 ```mermaid
 flowchart TD
@@ -210,7 +210,7 @@ flowchart TD
 
 最终，当编译器在第 5 步将这棵被篡改过的语法树翻译成二进制的 `.class` 文件时，里面就已经塞满了合法的 `getter/setter` 字节码。
 
-- 时空压缩红利：APT 机制将原本需要在运行时通过反射、查表、动态动态代理完成的逻辑，**硬生生在编译期“时空压缩”并降维固化成了最纯粹、最普通的字节码指令**。在线上生产环境中，这种注解的运行时成本为绝对的零开销。
+- 时空压缩红利：APT 机制将原本需要在运行时通过反射、查表、动态代理完成的逻辑，**硬生生在编译期“时空压缩”并降维固化成了最纯粹、最普通的字节码指令**。在线上生产环境中，这种注解的运行时成本为绝对的零开销。
 
 ### 3.3 运行时反射流派的性能代价：Spring AOP 注解处理链路
 
@@ -243,16 +243,16 @@ Spring 运行时注解处理链路（Runtime Reflection Path）:
 
 理解了注解在字节码属性表里的贴纸本质，以及动态代理伪造、编译期 AST 篡改的技术底牌后，我们在进行系统开发和自定义注解设计时，就必须严守以下三条钢铁工程红线。
 
-### 4.1 🚨 工程红线 1：死守 RetentionPolicy 分野，拒绝元空间（MetaSpace）浪费
+### 4.1 🚨 工程红线 1：死守 `RetentionPolicy` 分野，拒绝元空间（Metaspace）浪费
 
-在团队内部自定义注解时，绝大多数开发者会为了图省事，不管三七二十一直接复制粘帖一把梭：`@Retention(RetentionPolicy.RUNTIME)`。这是一个极具毁灭性的坏习惯。
+在团队内部自定义注解时，绝大多数开发者会为了图省事，不管三七二十一直接复制粘贴一把梭：`@Retention(RetentionPolicy.RUNTIME)`。这是一个极具毁灭性的坏习惯。
 
 - **架构治理策略**：**如果一个注解不需要在运行时被高频动态读取，严禁声明为 `RUNTIME`**。
 - **落地范式**：
-  - 如果你编写的自定义注解只是为了给内部的构建工具、Maven 打包插件、或者前端 APT 代码生成工具使用（例如自动生成接口的静态配置元数据），**必须降维声明为 `SOURCE`**。
-  - 如果你编写的注解是为了在编译后进行代码合规性静态扫描，或者在类加载前进行字节码拦截，**必须降维声明为 `CLASS`**。
+    - 如果你编写的自定义注解只是为了给内部的构建工具、Maven 打包插件、或者前端 APT 代码生成工具使用（例如自动生成接口的静态配置元数据），**必须降维声明为 `SOURCE`**。
+    - 如果你编写的注解是为了在编译后进行代码合规性静态扫描，或者在类加载前进行字节码拦截，**必须降维声明为 `CLASS`**。
   
-死守这一红线，能防止成百上千个无用的注解元数据字符串常驻于 JVM 珍贵的元空间（MetaSpace）中，从根源上规避元空间无故膨胀、频繁触发 Full GC 甚至引爆元空间 OOM 的隐患。
+死守这一红线，能防止成百上千个无用的注解元数据字符串常驻于 JVM 珍贵的元空间（Metaspace）中，从根源上规避元空间无故膨胀、频繁触发 Full GC 甚至引爆元空间 OOM 的隐患。
 
 ### 4.2 🚨 工程红线 2：拔除高频 AOP 切面注解的“运行时反射检索”
 
