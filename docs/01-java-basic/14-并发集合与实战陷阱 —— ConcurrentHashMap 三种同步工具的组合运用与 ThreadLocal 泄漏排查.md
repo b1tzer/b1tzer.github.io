@@ -98,7 +98,7 @@ public class TraceInterceptor implements HandlerInterceptor {
 
 上线两周后，运维发现日志系统里同一条 `traceId` **跨着不同的用户订单**出现——用户 A 的 `traceId` 打到了用户 B 的日志里。排查了两天，最终 heap dump 一看：Tomcat 的 `NioEndpoint$Poller` 里有 200 个 `Worker` 线程，每个 `Worker` 的 `Thread.threadLocals` 里都塞着上一批请求的 `TRACE_ID` 值。
 
-**物理链条**：
+**底层链路条**：
 
 - Tomcat 的 `Worker` 是**线程池复用**的，Thread 对象长期存活
 - `TraceContext.set("A的id")` 会把 `("A的id" 的 value)` 塞进 `Thread.threadLocals`（也就是 `ThreadLocalMap`）
@@ -106,21 +106,21 @@ public class TraceInterceptor implements HandlerInterceptor {
 - 请求 B 复用了同一个 `Worker`，但由于**没有调用 `remove()`**，`ThreadLocalMap` 里还残留着 `"A的id"` 的 Entry
 - B 的业务代码里恰好有条路径没走 `TraceContext.set()`（比如异步补偿分支），直接读了 `TRACE_ID.get()` —— **读到了 A 的 traceId**
 
-这个事故揭示了 `ThreadLocal` 在线程池场景下的**独特泄漏路径**——不是"内存泄漏"这么简单，而是"**上下文串了**"。而线程池里 `Worker` 一活就是几天，`ThreadLocalMap` 里的 `Entry` 只要不 `remove()`、`ThreadLocal` 对象自身没被 GC，就永远不会被清理。第 3 层 §3.4 会画出 `ThreadLocalMap` 的物理布局，第 4 层红线 4 给出根治范式。
+这个事故揭示了 `ThreadLocal` 在线程池场景下的**独特泄漏路径**——不是"内存泄漏"这么简单，而是"**上下文串了**"。而线程池里 `Worker` 一活就是几天，`ThreadLocalMap` 里的 `Entry` 只要不 `remove()`、`ThreadLocal` 对象自身没被 GC，就永远不会被清理。第 3 层 §3.4 会画出 `ThreadLocalMap` 的内存布局，第 4 层红线 4 给出根治范式。
 
 ### 1.3 痛点清单
 
 | 痛点 | 现象 | 归因层 |
 | :-- | :-- | :-- |
 | **A**：CHM 扩容期间的读一致性 | 一个 key 恰好被迁到 `nextTable`，另一个线程来 `get(key)` 会不会读到 null？ | 第 3 层 §3.2 `ForwardingNode` 转发协议 |
-| **B**：CoW 迭代期间的写可见性 | 迭代到一半有别的线程 `add`，会抛 `CME` 吗？迭代器会不会读到新元素？ | 第 3 层 §3.3 快照迭代物理机制 |
+| **B**：CoW 迭代期间的写可见性 | 迭代到一半有别的线程 `add`，会抛 `CME` 吗？迭代器会不会读到新元素？ | 第 3 层 §3.3 快照迭代底层机制 |
 | **C**：死锁排查为什么必用 `jstack` | 为什么不能用日志/APM 提前发现？为什么线程池阻塞不算死锁？ | 第 4 层红线 6 死锁四条件 |
 
 ---
 
-## 2. 第二层：源码考古 —— CHM / CoW / ThreadLocal 的源码物理链
+## 2. 第二层：源码考古 —— CHM / CoW / ThreadLocal 的源码底层链路
 
-> ⭐ **本层特殊说明**：并发容器的"字节码考古"聚焦**源码穿刺**主线，不再抓通用 `invokevirtual` 全景（那属于战役一），而是抓"CHM 内部那几段决定物理结构的关键代码"与"`ThreadLocalMap` 的不对称引用设计"。`javap -v -p ConcurrentHashMap.class` 可观察到 `Unsafe.compareAndSetReference` / `getReferenceAcquire` 调用点。
+> ⭐ **本层特殊说明**：并发容器的"字节码考古"聚焦**源码穿刺**主线，不再抓通用 `invokevirtual` 全景（那属于战役一），而是抓"CHM 内部那几段决定底层结构的关键代码"与"`ThreadLocalMap` 的不对称引用设计"。`javap -v -p ConcurrentHashMap.class` 可观察到 `Unsafe.compareAndSetReference` / `getReferenceAcquire` 调用点。
 
 ### 2.1 `ConcurrentHashMap.put()` 完整源码链路
 
@@ -301,7 +301,7 @@ static final class ForwardingNode<K,V> extends Node<K,V> {
 | **写线程**（`put`） | `f.hash == MOVED` | 调用 `helpTransfer(tab, f)`，加入协作迁移，迁完再回来 `put` |
 | **迁移线程** | 迁完一个桶 | `setTabAt(tab, i, fwd)`，插旗告知其他线程该桶已完成 |
 
-这就是 CHM"**扩容不停机**"的物理机制——旧表变成一张"路标网"，每张路标（`ForwardingNode`）指向新表的对应位置。
+这就是 CHM"**扩容不停机**"的底层机制——旧表变成一张"路标网"，每张路标（`ForwardingNode`）指向新表的对应位置。
 
 ### 2.4 `size()` 与 `CounterCell` 分段计数
 
@@ -413,7 +413,7 @@ public class ThreadLocal<T> {
 }
 ```
 
-**引用不对称的物理示意**：
+**引用不对称的底层示意**：
 
 ```txt
 Thread 对象                              ThreadLocal 对象
@@ -466,7 +466,7 @@ private void set(ThreadLocal<?> key, Object value) {
 
 ---
 
-## 3. 第三层：JVM 物理结构 —— CHM 决策图 · 扩容协作 · CoW 快照 · ThreadLocalMap
+## 3. 第三层：JVM 底层结构 —— CHM 决策图 · 扩容协作 · CoW 快照 · ThreadLocalMap
 
 ### 3.1 CHM `put()` 决策流程图
 
@@ -500,7 +500,7 @@ flowchart TB
     style Help fill:#ffe1e1
 ```
 
-**决策岔口**——同一段 `put` 代码在不同状态走出三条截然不同的路径：**空桶 CAS 无锁**、**非空桶 `synchronized` 单槽位**、**遇 FN 走 `helpTransfer`**。这三条路径就是"三种同步工具的组合运用"的物理证据。
+**决策岔口**——同一段 `put` 代码在不同状态走出三条截然不同的路径：**空桶 CAS 无锁**、**非空桶 `synchronized` 单槽位**、**遇 FN 走 `helpTransfer`**。这三条路径就是"三种同步工具的组合运用"的底层证据。
 
 ### 3.2 CHM 并发扩容协作时序图
 
@@ -549,7 +549,7 @@ Reader.get(key):
 结论：读操作永不阻塞，永远能读到"当前状态下应有的值"
 ```
 
-### 3.3 CoW 迭代器快照物理图
+### 3.3 CoW 迭代器快照机制图
 
 ```txt
 时间线：
@@ -598,7 +598,7 @@ t4:  迭代器结束
 
 **顿悟点**：CoW 的"弱一致性"不是"实现漏洞"，是**用空间换时间 + 用一致性换无锁**的显式设计——迭代器**永远不会**抛 `CME`，代价是**迭代期间的写永远读不到**。
 
-### 3.4 `ThreadLocalMap` 物理布局图
+### 3.4 `ThreadLocalMap` 内存布局图
 
 ```txt
 Thread 对象（线程池 Worker 长期存活）
@@ -632,7 +632,7 @@ Thread 对象（线程池 Worker 长期存活）
   ━━━▶  强引用（不可被 GC）
 ```
 
-**引用不对称的物理原因**：
+**引用不对称的根本原因**：
 
 - **key 用弱引用**：防止 `ThreadLocal` 对象因被 `ThreadLocalMap` 强持有而永不释放（`ThreadLocal` 通常是 `static final` 字段，这不是关键；关键是不允许"用户端引用消失后 map 还硬撑着")
 - **value 用强引用**：value 通常没有其他外部引用，如果也用弱引用，任何一次 minor GC 都会让 value 消失，`ThreadLocal.get()` 就会诡异地返回 null
@@ -641,7 +641,7 @@ Thread 对象（线程池 Worker 长期存活）
 
 ### 3.5 `ConcurrentSkipListMap` 无锁跳表（回收 `09` 伏笔）
 
-CHM 之外，`ConcurrentSkipListMap`（CSLM）是 JUC 里唯一一个**纯 CAS 无锁**的并发容器——它选用**跳表**而不是红黑树，物理原因就是**跳表的修改只影响相邻 2 个节点，CAS 冲突范围极小**：
+CHM 之外，`ConcurrentSkipListMap`（CSLM）是 JUC 里唯一一个**纯 CAS 无锁**的并发容器——它选用**跳表**而不是红黑树，根本原因就是**跳表的修改只影响相邻 2 个节点，CAS 冲突范围极小**：
 
 ```mermaid
 flowchart LR
@@ -898,7 +898,7 @@ Map<String, Integer> scores = Map.of("A", 90, "B", 85);
 
 **战役三降维总结**：
 
-> *"战役三的所有并发问题都收敛到三条根源：**可见性**（10a JMM 缓存一致性）· **原子性**（10a CAS `LOCK CMPXCHG`）· **有序性**（10a 内存屏障）。理解了 10a 的三条硬件事实、10b 的 AQS 骨架（一个 `volatile int` + CLH 队列 + `park`/`unpark`）、10c 的锁与线程池（`state` 语义定义 + `ctl` 位编码）、以及本文的三种同步工具组合运用（CAS + `synchronized` + 转发协议），20 年 Java 并发的所有 bug 都能追溯到这套物理机制。"*
+> *"战役三的所有并发问题都收敛到三条根源：**可见性**（10a JMM 缓存一致性）· **原子性**（10a CAS `LOCK CMPXCHG`）· **有序性**（10a 内存屏障）。理解了 10a 的三条硬件事实、10b 的 AQS 骨架（一个 `volatile int` + CLH 队列 + `park`/`unpark`）、10c 的锁与线程池（`state` 语义定义 + `ctl` 位编码）、以及本文的三种同步工具组合运用（CAS + `synchronized` + 转发协议），20 年 Java 并发的所有 bug 都能追溯到这套底层机制。"*
 
 ---
 
@@ -1001,15 +1001,15 @@ Map<String, Integer> scores = Map.of("A", 90, "B", 85);
 
 > **Q3：CHM 扩容期间的读操作会读到什么？`ForwardingNode` 协议是什么？**
 >
-> **读操作永不阻塞**。桶头如果是 `ForwardingNode`（`hash == MOVED == -1`），`get()` 会调用 `f.find(h, k)` **转发到 `nextTable`** 继续查找——如果新表里的桶头又是 `ForwardingNode`（多轮扩容），就沿 nextTable 链继续转发。**这是 CHM"扩容不停机"的物理机制**：旧表变成一张"路标网"，每张路标（迁完的桶）都指向新表的对应位置。写操作遇到 FN 则走 `helpTransfer` 加入协作，先帮迁完再回来 `put`。
+> **读操作永不阻塞**。桶头如果是 `ForwardingNode`（`hash == MOVED == -1`），`get()` 会调用 `f.find(h, k)` **转发到 `nextTable`** 继续查找——如果新表里的桶头又是 `ForwardingNode`（多轮扩容），就沿 nextTable 链继续转发。**这是 CHM"扩容不停机"的底层机制**：旧表变成一张"路标网"，每张路标（迁完的桶）都指向新表的对应位置。写操作遇到 FN 则走 `helpTransfer` 加入协作，先帮迁完再回来 `put`。
 
-> **Q4：`CopyOnWriteArrayList` 的迭代器为什么不会抛 `ConcurrentModificationException`？弱一致的物理链是什么？**
+> **Q4：`CopyOnWriteArrayList` 的迭代器为什么不会抛 `ConcurrentModificationException`？弱一致的底层链路是什么？**
 >
 > 因为迭代器持有的是**创建时的 `Object[]` 快照引用**（`iter.snapshot`），而 `add()` 是通过 `list.array = newArray` **切换外部引用**——两者是不同的对象，快照永远不会被写方"追赶到"。所以迭代器：① 永不抛 CME（没有 `modCount` 检查）；② 迭代期间的新 `add` 全部读不到（弱一致性）；③ 代价是旧快照阻止 GC，长迭代 + 频繁写 = Young GC 压力（见 §3.3）。
 
 > **Q5：`ThreadLocal` 在线程池场景下的泄漏路径是什么？如何避免？**
 >
-> **物理链**：线程池 `Worker` 长期存活 → `Worker.threadLocals` 的 `Entry[]` 长期存活 → `Entry` 里 `key` 是弱引用（可被 GC）但 `value` 是强引用 → 若忘 `remove()`，`value` 永久泄漏；若 `ThreadLocal` 自身还被 static 字段引用，下一批任务复用 `Worker` 时可能读到上批任务的 value（"上下文串了"，见 §1.2 事故）。**避免范式**：`try { local.set(...); ... } finally { local.remove(); }`，AOP / 拦截器场景把 `remove()` 写在 `afterCompletion` 里。
+> **底层链路**：线程池 `Worker` 长期存活 → `Worker.threadLocals` 的 `Entry[]` 长期存活 → `Entry` 里 `key` 是弱引用（可被 GC）但 `value` 是强引用 → 若忘 `remove()`，`value` 永久泄漏；若 `ThreadLocal` 自身还被 static 字段引用，下一批任务复用 `Worker` 时可能读到上批任务的 value（"上下文串了"，见 §1.2 事故）。**避免范式**：`try { local.set(...); ... } finally { local.remove(); }`，AOP / 拦截器场景把 `remove()` 写在 `afterCompletion` 里。
 
 > **Q6：`InheritableThreadLocal` 为什么在线程池中失效？如何跨线程池正确传值？**
 >

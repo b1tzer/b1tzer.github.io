@@ -1,9 +1,9 @@
 ---
 doc_id: java-概览
-title: Java 物理透视：从字节码剖析到 JVM 内存布局的二十四篇
+title: Java 底层透视：从字节码剖析到 JVM 内存布局的二十四篇
 ---
 
-# Java 物理透视：从字节码剖析到 JVM 内存布局的二十四篇
+# Java 底层透视：从字节码剖析到 JVM 内存布局的二十四篇
 
 > 先回答五个问题，再决定要不要往下读。
 
@@ -61,7 +61,7 @@ flowchart TB
         direction LR
         Z11["01 面向对象 · 02 异常 · 03 注解<br/>04 字符串 · 05 泛型 · 06 反射 · 07 Java8 函数式"]
     end
-    subgraph Z2["📊 战役二 · 数据结构映照（Java 集合的物理映射）"]
+    subgraph Z2["📊 战役二 · 数据结构映照（Java 集合的底层映射）"]
         direction LR
         Z21["08 集合框架 · 09 数据结构精讲"]
     end
@@ -111,7 +111,7 @@ flowchart TB
         direction LR
         L31["invokevirtual / invokeinterface<br/>invokedynamic / invokespecial<br/>checkcast / instanceof / ldc"]
     end
-    subgraph L4["🔬 物理实现层 · HotSpot"]
+    subgraph L4["🔬 底层实现层 · HotSpot"]
         direction LR
         L41["对象头 · Klass Pointer · TLAB<br/>JIT 内联 · Escape Analysis · CPU Cache"]
     end
@@ -135,11 +135,11 @@ flowchart TB
 
     1. **业务痛点** —— 3~5 个反问引子 + 一个生产事故现场
     2. **字节码考古** —— `javap -c -v` 完整反编译 + 逐行破案
-    3. **物理内存布局** —— 精确到字节的 ASCII 布局图 + 硬件级性能账单
+    3. **内存布局** —— 精确到字节的 ASCII 布局图 + 硬件级性能账单
     4. **工程红线** —— ❌反模式 / ✅标准范式 双代码块 × 3~5 条
     5. **跨战役伏笔** —— 埋眼到后续篇章的 `@doc_id` 钩子
 
-    读者**不必按顺序读完全篇**：想学"怎么写"直接跳 §4；想搞懂"为什么"从 §1 顺读；想调优时回 §3 看物理账单。
+    读者**不必按顺序读完全篇**：想学"怎么写"直接跳 §4；想搞懂"为什么"从 §1 顺读；想调优时回 §3 看内存账单。
 
 ---
 
@@ -210,7 +210,7 @@ flowchart TB
 
 | # | 知识点 | 核心一句话 |
 | :--: | :-- | :-- |
-| 01 | [**面向对象（OOP）**](@java-字节码-面向对象) | 从内存边界到虚方法表，封装 / 继承 / 多态 / 抽象在字节码层的物理透视 |
+| 01 | [**面向对象（OOP）**](@java-字节码-面向对象) | 从内存边界到虚方法表，封装 / 继承 / 多态 / 抽象在字节码层的底层透视 |
 | 02 | [**异常处理**](@java-字节码-异常处理) | `try-catch-finally` 编译成 **Exception Table**（不是 `if-else`）；`throw` 走操作数栈、栈展开由 JVM 内建，成本远高于普通返回 |
 | 03 | [**注解（Annotation）**](@java-字节码-注解) | 注解是 `.class` 属性表里的一段元数据（`RuntimeVisibleAnnotations`）；APT 编译期织入 / 反射运行期读取 是两条完全独立的解析路径 |
 | 04 | [**字符串与 StringPool**](@java-字节码-字符串底层原理) | JDK 7+ StringTable 从元空间搬到堆内、JDK 9+ Compact Strings（`byte[] + coder`）省一半内存；`ldc` 指令决定字面量走常量池 |
@@ -220,7 +220,7 @@ flowchart TB
 
 ---
 
-### 📊 战役二 · 数据结构映照（Java 集合的物理映射）
+### 📊 战役二 · 数据结构映照（Java 集合的底层映射）
 
 | # | 知识点 | 核心一句话 |
 | :--: | :-- | :-- |
@@ -245,7 +245,7 @@ flowchart TB
 
 | # | 知识点 | 核心一句话 |
 | :--: | :-- | :-- |
-| 15 | [**类加载机制与双亲委派**](@java-JVM-类加载机制与双亲委派模型) | 五阶段（加载 → 验证 → 准备 → 解析 → 初始化）由字节码指令被动触发；"两个类相等"的物理定义 = `ClassLoader + 全限定名` 二元组；JDK 9 起 `Platform CL` 取代 `Ext CL` |
+| 15 | [**类加载机制与双亲委派**](@java-JVM-类加载机制与双亲委派模型) | 五阶段（加载 → 验证 → 准备 → 解析 → 初始化）由字节码指令被动触发；"两个类相等"的精确定义 = `ClassLoader + 全限定名` 二元组；JDK 9 起 `Platform CL` 取代 `Ext CL` |
 
 ---
 
@@ -282,7 +282,7 @@ flowchart TB
 
 ## 高频问题索引
 
-> 按四层垂直透视分类：**🎯 L1 业务层**（Bug 现场 / 排查 / 选型）、**📜 L2 语言契约**（JLS）、**⚙️ L3 字节码**（JVMS）、**🔬 L4 物理实现**（HotSpot / 内存 / 硬件）。
+> 按四层垂直透视分类：**🎯 L1 业务层**（Bug 现场 / 排查 / 选型）、**📜 L2 语言契约**（JLS）、**⚙️ L3 字节码**（JVMS）、**🔬 L4 底层实现**（HotSpot / 内存 / 硬件）。
 
 ### 🎯 L1 业务层：Bug 现场与工程选型
 
@@ -310,7 +310,7 @@ flowchart TB
 | 泛型擦除下的桥接方法是干什么的？泛型数组为什么不能 `new T[]`？ | [泛型底层原理与类型擦除](@java-字节码-泛型底层原理) |
 | 反射为什么慢？MethodHandle / LambdaMetafactory 快在哪里？ | [反射与MethodHandle](@java-字节码-反射与MethodHandle) |
 
-### 🔬 L4 物理实现层 · HotSpot：内存 / 硬件 / GC
+### 🔬 L4 底层实现层 · HotSpot：内存 / 硬件 / GC
 
 | 问题 | 详见 |
 | :-- | :-- |

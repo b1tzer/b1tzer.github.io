@@ -1,9 +1,9 @@
 ---
 doc_id: java-JVM-内存分区与对象布局
-title: JVM 内存分区与对象布局 —— 堆栈元空间三驾马车 + 对象头 Mark Word 的物理透视
+title: JVM 内存分区与对象布局 —— 堆栈元空间三驾马车 + 对象头 Mark Word 的底层透视
 ---
 
-# JVM 内存分区与对象布局：堆栈元空间三驾马车 + 对象头 Mark Word 的物理透视
+# JVM 内存分区与对象布局：堆栈元空间三驾马车 + 对象头 Mark Word 的底层透视
 
 !!! info "**JVM 内存分区与对象布局 一句话口诀**"
     - **七大分区两条主线记忆法**：`三共享（堆 / 元空间 / Code Cache）+ 三私有（虚拟机栈 / 本地方法栈 / PC 寄存器）+ 一堆外补充（直接内存）`。**唯一不 OOM** 的是 PC 寄存器 —— 它只存一个固定大小的字节码偏移，随线程生随线程死。
@@ -15,14 +15,14 @@ title: JVM 内存分区与对象布局 —— 堆栈元空间三驾马车 + 对�
 
 <!-- -->
 
-> 📖 **边界声明**：本文聚焦"JVM 运行时数据区的物理结构 + 对象在堆中的内存布局"，以下主题请见对应姊妹文档：
+> 📖 **边界声明**：本文聚焦"JVM 运行时数据区的底层结构 + 对象在堆中的内存布局"，以下主题请见对应姊妹文档：
 >
 > - **GC 算法、三色标记、G1 / ZGC 实现** → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)
 > - **GC 调优参数、OOM 排查、生产 checklist** → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)
 > - **容器化 JVM、JFR、虚拟线程内存模型** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)
 > - **`synchronized` 锁升级完整流程（Mark Word 状态位跃迁：无锁 → 偏向 → 轻量 → 重量）** → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) §"锁升级四阶段"
 > - **`Klass` / `oop` 二元模型 + `invokevirtual` 查 vtable / itable 完整展开** → [面向对象（OOP）](@java-字节码-面向对象) §"对象头与 Klass Pointer"
-> - **`LinkedList` 节点 40 字节 / `HashMap.Node` 48 字节的完整推导** → [集合框架](@java-数据结构-集合框架) §"每元素内存物理构成图"
+> - **`LinkedList` 节点 40 字节 / `HashMap.Node` 48 字节的完整推导** → [集合框架](@java-数据结构-集合框架) §"每元素内存底层构成图"
 > - **`String` 常量池的字节码考古（`ldc` 指令 + `CONSTANT_String_info`）+ Compact Strings** → [字符串底层原理](@java-字节码-字符串底层原理)
 
 ---
@@ -60,7 +60,7 @@ env:
 - **悬案 2**：`String.intern()` 循环调用 100 万次，抛的 OOM 是 `Java heap space` 还是 `Metaspace`？为什么 JDK 6 和 JDK 7+ 答案不一样？
 - **悬案 3**：`new Object()` 到底占多少字节？开启 `-XX:+UseCompressedOops` 和关闭它有多少差距？为什么 30GB 堆比 40GB 堆更省内存？
 - **悬案 4**：TLAB 的 `-XX:TLABWasteTargetPercent=1` 到底是"每线程占 1% Eden"还是别的意思？大家都在说的"1%"出处到底在哪？
-- **悬案 5**：Mark Word 才 8 字节 = 64 bit —— 怎么同时装下 hashCode、GC 年龄、锁状态、偏向线程 ID 这么多信息？"多态复用"的物理机制是什么？
+- **悬案 5**：Mark Word 才 8 字节 = 64 bit —— 怎么同时装下 hashCode、GC 年龄、锁状态、偏向线程 ID 这么多信息？"多态复用"的底层机制是什么？
 - **悬案 6**：栈帧里的"返回地址"存的是"下一条指令的 PC"还是"调用点 PC"？HotSpot 为什么这么选？异常栈打印的行号是怎么算出来的？
 
 任何一个问题让你迟疑超过 3 秒 —— 继续读。这六个悬案的答案全部藏在 `jmap` / `jcmd VM.native_memory` / `jol-cli` / `hotspot/share/oops/markWord.hpp` 里。
@@ -77,7 +77,7 @@ env:
 
 ## 2. 第二层：JVM 内存三件套穿刺 —— `PrintFlagsFinal` + `jol-cli` + `markWord.hpp`
 
-> ⭐ **本层特殊说明**：内存布局的"字节码考古"不是抓 `javap -v` 字节码，而是抓 **JVM 内部三件观测工具**：`-XX:+PrintFlagsFinal` 摸清所有默认参数、`jol-cli` 打印对象在堆里的真实字节布局、`hotspot/share/oops/markWord.hpp` 看 Mark Word 64 bit 的物理定义。这三件套构成"JVM 内存物理真相"的三个入口。
+> ⭐ **本层特殊说明**：内存布局的"字节码考古"不是抓 `javap -v` 字节码，而是抓 **JVM 内部三件观测工具**：`-XX:+PrintFlagsFinal` 摸清所有默认参数、`jol-cli` 打印对象在堆里的真实字节布局、`hotspot/share/oops/markWord.hpp` 看 Mark Word 64 bit 的精确定义。这三件套构成"JVM 内存底层真相"的三个入口。
 
 ### 2.1 `-XX:+PrintFlagsFinal` 打印所有默认参数 —— 摸清"四大盲区"底数
 
@@ -137,9 +137,9 @@ Space losses: 0 bytes internal + 4 bytes external = 4 bytes total
 3. **OFFSET 12~15 · 4 字节 `int` value**：唯一的实例字段
 4. **对齐填充**：`8 + 4 + 4 = 16` 字节，恰好是 8 的倍数，本例无需额外 padding
 
-**顿悟点**：**一个 `new Integer(0)` 占 16 字节 —— 而它承载的 int 数据只有 4 字节**，对象头 + 对齐开销占 75%。这就是为什么 `int[]` 数组永远比 `Integer[]` 数组省内存 2~3 倍的物理根源，也是 [08 集合框架](@java-数据结构-集合框架) 讲 `HashMap.Node = 48 字节` 的对齐推导起点。
+**顿悟点**：**一个 `new Integer(0)` 占 16 字节 —— 而它承载的 int 数据只有 4 字节**，对象头 + 对齐开销占 75%。这就是为什么 `int[]` 数组永远比 `Integer[]` 数组省内存 2~3 倍的根本原因，也是 [08 集合框架](@java-数据结构-集合框架) 讲 `HashMap.Node = 48 字节` 的对齐推导起点。
 
-### 2.3 `markWord.hpp` 源码考古 —— Mark Word 64 bit 的物理定义
+### 2.3 `markWord.hpp` 源码考古 —— Mark Word 64 bit 的精确定义
 
 主考古样本（`hotspot/share/oops/markWord.hpp`）：
 
@@ -165,13 +165,13 @@ Space losses: 0 bytes internal + 4 bytes external = 4 bytes total
 
 - **锁标志位（低 2 bit）是所有状态的公共入口**：`00` 轻量锁、`01` 无锁/偏向、`10` 重量锁、`11` GC 标记 —— JVM 判断对象状态永远只读这 2 bit
 - **偏向锁标志（第 3 bit）区分"真无锁"和"偏向锁"**：低 3 bit `001` = 无锁、`101` = 偏向锁
-- **Mark Word 是 JVM 内存布局里最紧凑的多态设计**：8 字节槽位 + 低 2 bit 分派 + 五种状态共享同一物理空间
+- **Mark Word 是 JVM 内存布局里最紧凑的多态设计**：8 字节槽位 + 低 2 bit 分派 + 五种状态共享同一内存空间
 
-> 📖 完整锁升级链路（Mark Word 状态位跃迁：无锁 → 偏向 → 轻量 → 重量）请见 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) §"锁升级四阶段"，本文只讲 Mark Word 的**物理位分布**。
+> 📖 完整锁升级链路（Mark Word 状态位跃迁：无锁 → 偏向 → 轻量 → 重量）请见 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) §"锁升级四阶段"，本文只讲 Mark Word 的**位分布布**。
 
 ---
 
-## 3. 第三层：物理内存布局 —— 七大分区 + 五张核心物理图
+## 3. 第三层：内存布局 —— 七大分区 + 五张核心机制图
 
 ### 3.1 七大分区两条主线全景图
 
@@ -250,14 +250,14 @@ flowchart TB
                           (age=1)          (age=2)                  (Tenured)
 ```
 
-**顿悟点**（弱分代假说的物理根源）：
+**顿悟点**（弱分代假说的根本原因）：
 
 - **大部分对象朝生夕死** → Minor GC 后存活率 < 10% → Eden 占 80% 保证分配速率
-- **S0/S1 各占 10%** 恰好容纳存活对象；两个 Survivor 交替使用是**复制算法**的物理前提（To 空间清空、From 空间存活对象复制过来）
+- **S0/S1 各占 10%** 恰好容纳存活对象；两个 Survivor 交替使用是**复制算法**的硬性前提（To 空间清空、From 空间存活对象复制过来）
 - **动态年龄判断**：Survivor 中相同年龄对象总大小超 50% 时提前晋升（`-XX:TargetSurvivorRatio=50`）—— 防止 Survivor 撑爆
 - **大对象直接进老年代**：`-XX:PretenureSizeThreshold=1m` 设置阈值，超过直接分配到 Old Gen，绕过 Eden
 
-### 3.3 TLAB 零锁分配的物理图
+### 3.3 TLAB 零锁分配的机制图
 
 **核心 ASCII 图**：
 
@@ -285,7 +285,7 @@ Eden Area
 - **TLAB 实际大小** = `TLABWasteTargetPercent × Eden / (期望 refill 次数 × 活跃线程数)` —— **动态自适应**，不是固定 1%
 - **`-XX:+ResizeTLAB`（默认开启）** 让 TLAB 大小随线程分配速率动态调整，热点线程拿到更大的 TLAB
 
-### 3.4 栈帧五件套 + PC 寄存器的物理协作图
+### 3.4 栈帧五件套 + PC 寄存器的底层协作图
 
 **核心 Mermaid**（栈帧五件套结构）：
 
@@ -338,11 +338,11 @@ Thread-1 (私有)
 - **JVMS 规范允许两种实现**：存"调用点 PC"或存"下一条 PC"都合法
 - **HotSpot 选存"调用点 PC"**：把"加指令长度跳到下一条"放在**正常返回**的高频路径；把"用调用点 PC 直接查 LineNumberTable"放在**异常栈打印**的低频高价值路径 —— 复用同一个字段
 - **统一心智模型**：**JVM 中所有记录"执行位置"的字段（PC 寄存器 + 栈帧返回地址），语义都是"正在执行的那条指令本身的偏移"，不是"下一条"**
-- **异常行号的物理来源**：`Throwable.fillInStackTrace()` 遍历栈帧，逐帧取出"调用点 PC" → 查方法的 `Code` 属性下的 `LineNumberTable` → 得到源码行号
+- **异常行号的根本来源**：`Throwable.fillInStackTrace()` 遍历栈帧，逐帧取出"调用点 PC" → 查方法的 `Code` 属性下的 `LineNumberTable` → 得到源码行号
 
 > 📖 `Throwable.fillInStackTrace()` 的完整 native 栈帧遍历链路请见 [异常处理](@java-字节码-异常处理) §"fillInStackTrace 与栈展开"。
 
-### 3.5 元空间 + Code Cache + 直接内存三块堆外内存的物理分布
+### 3.5 元空间 + Code Cache + 直接内存三块堆外内存的分布
 
 **元空间**（本地内存 · 全局共享）：
 
@@ -374,7 +374,7 @@ Thread-1 (私有)
 
 > 📖 `String` 的 `ldc` 字节码 + `CONSTANT_String_info` + Compact Strings 完整链路请见 [字符串底层原理](@java-字节码-字符串底层原理)。
 
-### 3.6 对象在堆中的完整内存布局（核心物理图 · Mark Word 三处穿刺首发源头）
+### 3.6 对象在堆中的完整内存布局（核心机制图 · Mark Word 三处穿刺首发源头）
 
 **核心 ASCII 图**：
 
@@ -417,7 +417,7 @@ Thread-1 (私有)
 
 **顿悟点**：
 
-- **8 字节槽位 + 低 2 bit 分派入口 + 五种状态共享同一物理空间** —— Mark Word 是 JVM 内存布局里最紧凑的多态设计
+- **8 字节槽位 + 低 2 bit 分派入口 + 五种状态共享同一内存空间** —— Mark Word 是 JVM 内存布局里最紧凑的多态设计
 - **同一个字段在五种状态下"存不同的东西"**，判断当前是哪种状态只需读低 2 bit + 第 3 bit（偏向标志）
 - **GC 标记态复用**：Serial / Parallel GC 用 forwarding pointer 记录转发地址；G1 / ZGC 有自己的着色指针，但同样借用 Mark Word 的低位分派
 
@@ -445,7 +445,7 @@ Thread-1 (私有)
 
 - **堆 ≤ 32GB**：引用字段 4 字节 · Klass Pointer 4 字节 · 对象平均密度高
 - **堆 > 32GB**：引用字段 8 字节 · Klass Pointer 8 字节 · **每个对象平均多消耗 12~16 字节**
-- **临界结果**：32GB 压缩堆能装的对象数量 > 40GB 未压缩堆 —— 这是"生产宁可用 30GB 堆，不用 40GB 堆"的物理根源
+- **临界结果**：32GB 压缩堆能装的对象数量 > 40GB 未压缩堆 —— 这是"生产宁可用 30GB 堆，不用 40GB 堆"的根本原因
 - **`-XX:ObjectAlignmentInBytes=16`** 可以把上限提到 64GB，代价是每个对象平均多浪费 4 字节 padding —— 非极端场景不建议动
 
 **降维建议**：
@@ -460,7 +460,7 @@ Thread-1 (私有)
 
 ### 红线 1：容器化 JVM 的 `memory.limit` 必须包含堆外四大盲区
 
-**物理根源**：`-Xmx` 只管堆，元空间 / Code Cache / 直接内存 / 线程栈全在堆外，独立占用本地内存。
+**根本原因**：`-Xmx` 只管堆，元空间 / Code Cache / 直接内存 / 线程栈全在堆外，独立占用本地内存。
 
 **❌ 反模式**：
 
@@ -500,7 +500,7 @@ env:
 
 ### 红线 2：`-XX:MaxMetaspaceSize` 生产必设
 
-**物理根源**：默认 `MaxMetaspaceSize = 2^64 - 1`，事实上无上限。CGLib 动态代理、JSP 热部署、Groovy `eval` 会持续生成新 Class 塞入元空间。
+**根本原因**：默认 `MaxMetaspaceSize = 2^64 - 1`，事实上无上限。CGLib 动态代理、JSP 热部署、Groovy `eval` 会持续生成新 Class 塞入元空间。
 
 **❌ 反模式**：
 
@@ -526,7 +526,7 @@ java -Xmx8g -XX:MaxMetaspaceSize=1g -jar app.jar
 
 ### 红线 3：堆 > 32GB 时压缩指针自动关闭 —— 优先选 30GB 而非 40GB
 
-**物理根源**：`-XX:+UseCompressedOops` 的 32GB 上限来自"32 位偏移 + 8 字节对齐"数学推导。堆超限后引用字段 4 字节 → 8 字节，对象密度骤降。
+**根本原因**：`-XX:+UseCompressedOops` 的 32GB 上限来自"32 位偏移 + 8 字节对齐"数学推导。堆超限后引用字段 4 字节 → 8 字节，对象密度骤降。
 
 **❌ 反模式**：
 
@@ -546,7 +546,7 @@ java -Xmx64g -XX:+UseZGC -jar app.jar
 
 ### 红线 4：`-XX:+UseBiasedLocking` 在 JDK 15+ 不要再显式开启
 
-**物理根源**：JEP 374 在 JDK 15 默认关闭 + 标记 deprecated；JDK 18 起显式开启会产生 obsolete 警告。现代 JIT 的锁消除已足够优秀，偏向锁在低竞争场景收益微乎其微，反而增加锁升级复杂度。
+**根本原因**：JEP 374 在 JDK 15 默认关闭 + 标记 deprecated；JDK 18 起显式开启会产生 obsolete 警告。现代 JIT 的锁消除已足够优秀，偏向锁在低竞争场景收益微乎其微，反而增加锁升级复杂度。
 
 **❌ 反模式**：
 
@@ -570,7 +570,7 @@ java -Xmx2g -jar app.jar
 
 ### 红线 5：`String.intern()` 密集调用抛的是 `Java heap space`，不是 `Metaspace`
 
-**物理根源**：StringTable 从 JDK 7 起在堆里，不在元空间。`intern()` 只是在 StringTable 里加一条"字符串 → 堆对象"的映射，被引用的字符串本身占用堆内存。
+**根本原因**：StringTable 从 JDK 7 起在堆里，不在元空间。`intern()` 只是在 StringTable 里加一条"字符串 → 堆对象"的映射，被引用的字符串本身占用堆内存。
 
 **❌ 反模式**：
 
@@ -672,4 +672,4 @@ public String cacheKey(String userInput) {
 | `12a` → [12c GC 调优实战](@java-JVM-GC调优实战与常见误区) | 容器内存 = `-Xmx + MaxMetaspaceSize + ReservedCodeCacheSize + MaxDirectMemorySize + Xss × 线程数 + 200m 兜底` —— `12c` 需承接完整 checklist + `jcmd VM.native_memory` 排查链路 | ★★★★ |
 | `12a` → [12d JVM 现代实践](@java-JVM-现代实践与前沿技术) | ZGC 在堆 > 32GB 时的对象密度对比 + Loom 虚拟线程栈内存模型 —— `12d` 需承接前沿场景 | ★★★★ |
 
-> 📖 **GC 三色标记完整链路、`synchronized` 锁升级四阶段、容器 RSS 超限排查** 请分别到 [GC 核心机制](@java-JVM-GC核心机制与收集器演进) / [JMM 与线程同步](@java-并发-JMM与线程同步) / [GC 调优实战](@java-JVM-GC调优实战与常见误区) 查看，本文专注"内存分区物理结构 + 对象头 Mark Word 五态多态"这条主线。
+> 📖 **GC 三色标记完整链路、`synchronized` 锁升级四阶段、容器 RSS 超限排查** 请分别到 [GC 核心机制](@java-JVM-GC核心机制与收集器演进) / [JMM 与线程同步](@java-并发-JMM与线程同步) / [GC 调优实战](@java-JVM-GC调优实战与常见误区) 查看，本文专注"内存分区底层结构 + 对象头 Mark Word 五态多态"这条主线。

@@ -1,12 +1,12 @@
 ---
 doc_id: java-并发-JMM与线程同步
-title: 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃迁与 LOCK CMPXCHG 的物理真相
+title: 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃迁与 LOCK CMPXCHG 的底层真相
 ---
 
-# 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃迁与 LOCK CMPXCHG 的物理真相
+# 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃迁与 LOCK CMPXCHG 的底层真相
 
 !!! info "**并发基础 · 一句话口诀**"
-    - **JMM 不是"内存模型"，是"重排序契约 + 内存屏障使用手册"**：JLS §17.4.5 的 8 条 happens-before 规则决定"哪些代码不能重排、哪些必须建立可见性"，编译器 / JIT 依据这份契约插入四种 JMM 屏障（`LoadLoad` / `StoreStore` / `LoadStore` / `StoreLoad`），最终在 x86 上落成 `sfence` / `lfence` / `mfence` 或 `LOCK` 前缀指令。**四种 JMM 屏障在 x86 上有三种是空指令（TSO 天然有序），只有 `StoreLoad` 需要真实 `mfence`**——这就是"x86 上 volatile 读几乎零成本、volatile 写才是唯一显著开销"的物理根源。
+    - **JMM 不是"内存模型"，是"重排序契约 + 内存屏障使用手册"**：JLS §17.4.5 的 8 条 happens-before 规则决定"哪些代码不能重排、哪些必须建立可见性"，编译器 / JIT 依据这份契约插入四种 JMM 屏障（`LoadLoad` / `StoreStore` / `LoadStore` / `StoreLoad`），最终在 x86 上落成 `sfence` / `lfence` / `mfence` 或 `LOCK` 前缀指令。**四种 JMM 屏障在 x86 上有三种是空指令（TSO 天然有序），只有 `StoreLoad` 需要真实 `mfence`**——这就是"x86 上 volatile 读几乎零成本、volatile 写才是唯一显著开销"的根本原因。
     - **`synchronized` 锁升级四阶段 = Mark Word 前 8 字节最低 3 位的位跃迁**：无锁（`001`）→ 偏向锁（`101` + 线程 ID）→ 轻量级锁（`00` + 栈锁记录指针）→ 重量级锁（`10` + `ObjectMonitor` 指针）。**JDK 15 起（[JEP 374](https://openjdk.org/jeps/374)）默认关闭偏向锁**——现代应用几乎全是多线程竞争场景，偏向锁的撤销开销大于收益，实际链路已退化为"无锁 → 轻量级锁 → 重量级锁"。这一条与 01 OOP 篇 §3 Mark Word 段落埋下的伏笔在此闭环。
     - **CAS 不是软件魔法，是 CPU `LOCK CMPXCHG` + MESI 缓存一致性协议的组合**：`LOCK` 前缀让缓存行独占（首选缓存锁 · 跨行降级为总线锁），MESI 协议保证其他核对应缓存行置为 Invalid——**硬件保证的原子性**，比软件锁（重量级 `synchronized` 陷入内核 `pthread_mutex`）快 10~100 倍。Java 层的 `AtomicInteger.compareAndSet` / JDK 内部的 `Unsafe.compareAndSwapInt` / CPU 指令 `LOCK CMPXCHG` 是**同一件事在三个层级上的投影**（术语家族卡片一）。
     - **`volatile` 只保证可见性 + 有序性，**不**保证原子性**：可见性靠 volatile 读/写强制刷新主内存；有序性靠内存屏障禁止部分重排序；原子性需要另外用 `AtomicInteger.incrementAndGet` 或 `synchronized` 兜底。`i++` 编译成 `getfield → iconst_1 → iadd → putfield` 四步字节码，中间任何时刻都可能被抢占——**volatile 修饰 i 依然会丢失更新**，这是并发编程最经典的死角。
@@ -16,7 +16,7 @@ title: 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃
 - DCL 单例的 `instance = new Singleton()` 编译成哪三条字节码？为什么去掉 `volatile` 就能读到"引用不为 null 但字段未初始化"的半成品？CPU 到底允许把哪两条指令重排序？
 - `synchronized` 锁升级四阶段的 Mark Word 最低 3 位标志分别是什么？JDK 15 为什么把偏向锁默认关掉？关闭之后 HotSpot 的 `ObjectMonitor` 有没有跟着变简单？
 - CAS 的原子性从哪里来？`LOCK CMPXCHG` 与 MESI 协议是怎么配合的？x86 上一条 `volatile int` 的写会被 JIT 编译成哪一条汇编指令？
-- JMM 四种内存屏障对应 x86 上的哪些 CPU 指令？为什么 x86 只需要一条 `mfence`（TSO 强内存模型的物理事实），而 ARM 需要四种 `dmb` 变种？
+- JMM 四种内存屏障对应 x86 上的哪些 CPU 指令？为什么 x86 只需要一条 `mfence`（TSO 强内存模型的硬件事实），而 ARM 需要四种 `dmb` 变种？
 - `AtomicInteger.incrementAndGet` 高竞争下为什么改用 `LongAdder` 会快 10 倍？`Cell[]` 分段是怎么把"单点 CAS 争抢"变成"多点 CAS 无争抢"的？
 
 任何一个问题让你迟疑超过 3 秒——继续读。
@@ -73,9 +73,9 @@ public class RouteStrategyRegistry {
 
 上线一周后偶发核心告警：`NullPointerException: strategies is null` 从 `RouteStrategyRegistry.getInstance().strategies.get(...)` 抛出。诡异之处在于——**`instance` 明明已经被 `new` 了**（否则第一次 `if (instance == null)` 就会拦下、走 `synchronized` 块），但拿到手的 `instance.strategies` 却是 `null`。
 
-事后拉线程 dump 看到的物理真相是：某个线程 A 在 `synchronized` 块里执行 `instance = new RouteStrategyRegistry()`，CPU 把这条语句编译成的**三条字节码**（`new` 分配堆内存 → `<init>` 执行构造器 → `putstatic` 把引用赋给 `instance`）**允许把第 2 步和第 3 步重排序**——先把"引用"塞进 `instance` 字段（让 `instance != null`），再回头慢悠悠调用构造器初始化 `strategies` / `loader` / `breaker`。这中间，恰巧线程 B 走到第一层 `if (instance == null)` 判断，看到 `instance` 非 null 直接返回——**它拿到的是一个"引用有效但字段全部未初始化"的半成品对象**。
+事后拉线程 dump 看到的底层真相是：某个线程 A 在 `synchronized` 块里执行 `instance = new RouteStrategyRegistry()`，CPU 把这条语句编译成的**三条字节码**（`new` 分配堆内存 → `<init>` 执行构造器 → `putstatic` 把引用赋给 `instance`）**允许把第 2 步和第 3 步重排序**——先把"引用"塞进 `instance` 字段（让 `instance != null`），再回头慢悠悠调用构造器初始化 `strategies` / `loader` / `breaker`。这中间，恰巧线程 B 走到第一层 `if (instance == null)` 判断，看到 `instance` 非 null 直接返回——**它拿到的是一个"引用有效但字段全部未初始化"的半成品对象**。
 
-修复只需要一个字：给 `instance` 加 `volatile`。这一个字为什么就能救命，答案藏在 §2.1 的字节码考古里——**`putstatic` 前后的内存屏障禁止了 `<init>` 与 `putstatic` 的重排序**，让"引用可见"和"字段可见"两件事在物理时序上强制对齐。
+修复只需要一个字：给 `instance` 加 `volatile`。这一个字为什么就能救命，答案藏在 §2.1 的字节码考古里——**`putstatic` 前后的内存屏障禁止了 `<init>` 与 `putstatic` 的重排序**，让"引用可见"和"字段可见"两件事在执行时序上强制对齐。
 
 ### 1.2 生产事故现场二：高并发 `i++` 一夜丢失 8000 次调用
 
@@ -97,7 +97,7 @@ public class CallCounter {
 }
 ```
 
-老手看代码第一反应是"`volatile` 已经加了、可见性没问题"——但真实的物理事实是 `totalCalls++` 会被 `javac` 编译成**四条字节码**（对 `long` 字段读写是 `getfield_wide → lconst_1 → ladd → putfield_wide`，对 `int` 是 `getfield → iconst_1 → iadd → putfield`）。这四条字节码**中间任何时刻都可能被抢占**——线程 T1 刚 `getfield` 完读到 100、还没写回；线程 T2 也 `getfield` 读到 100、加 1 后 `putfield` 写回 101；T1 抢回来把手里的 100+1 也写成 101——**两次 `onCall` 只累加了一次**。
+老手看代码第一反应是"`volatile` 已经加了、可见性没问题"——但真实的硬件事实是 `totalCalls++` 会被 `javac` 编译成**四条字节码**（对 `long` 字段读写是 `getfield_wide → lconst_1 → ladd → putfield_wide`，对 `int` 是 `getfield → iconst_1 → iadd → putfield`）。这四条字节码**中间任何时刻都可能被抢占**——线程 T1 刚 `getfield` 完读到 100、还没写回；线程 T2 也 `getfield` 读到 100、加 1 后 `putfield` 写回 101；T1 抢回来把手里的 100+1 也写成 101——**两次 `onCall` 只累加了一次**。
 
 `volatile` 只在**单次读、单次写**上保证"其他核能看到我这次的写"，**它对"读—改—写这种复合操作"完全无能**。修复必须换成 `AtomicLong.incrementAndGet`（§2.4 的 `LOCK XADD` 单指令原子）或 `LongAdder`（§4 红线 4 的分段 CAS）。
 
@@ -146,7 +146,7 @@ public class Singleton {
 
 1. **CPU 允许把步骤 ②（`invokespecial <init>`）与步骤 ③（`putstatic`）重排序**——从"分配内存 → 初始化 → 赋值引用"变成"分配内存 → 赋值引用 → 初始化"。JMM/JLS 只承诺**单线程语义不变**（as-if-serial），这样的重排在单线程视角下确实等价（反正只有当前线程会用这个引用）。但**多线程视角下**，另一个线程可能在步骤 ③ 已完成、步骤 ② 未完成的窗口期读到"非 null 但字段未初始化"的半成品。
 2. **`volatile` 修饰 `instance` 后**，JIT 会在 `putstatic` 之前插入 `StoreStore` 屏障、之后插入 `StoreLoad` 屏障——`StoreStore` 保证步骤 ② 里所有对新对象字段的写入**必须先于**步骤 ③ 的引用赋值完成，`StoreLoad` 保证步骤 ③ 完成后其他线程立刻能读到新引用。这一对屏障从字节码层禁止了 ② 与 ③ 的重排，DCL 才终于安全。
-3. **`volatile` 读几乎零成本、`volatile` 写才是真开销**——因为 x86 的 TSO 强内存模型下 `LoadLoad` / `LoadStore` 都是空指令（见 §2.2），唯有 `StoreLoad` 需要真实 `mfence`（或用 `LOCK`-prefixed 指令替代）。这就是"高频只读 volatile 字段完全可以放心用"的物理依据。
+3. **`volatile` 读几乎零成本、`volatile` 写才是真开销**——因为 x86 的 TSO 强内存模型下 `LoadLoad` / `LoadStore` 都是空指令（见 §2.2），唯有 `StoreLoad` 需要真实 `mfence`（或用 `LOCK`-prefixed 指令替代）。这就是"高频只读 volatile 字段完全可以放心用"的硬件依据。
 
 ### 2.2 四种 JMM 内存屏障与 CPU 指令映射
 
@@ -163,7 +163,7 @@ public class Singleton {
 
 - **x86 是 TSO（Total Store Order）强内存模型**——CPU 硬件已经天然保证前三种屏障的语义，编译器不需要插入任何指令。唯一的漏洞是"写后读"——CPU 为了性能会让写操作先进 Store Buffer 再异步落缓存/主存，此时同一线程后续的读操作可能读到 Store Buffer 之前的值。`StoreLoad` 屏障就是通过 `mfence`（或任一 `LOCK`-prefixed 指令）强制刷 Store Buffer 来堵住这个漏洞。
 - **ARM 是弱内存模型**——四种屏障都必须显式落到 `dmb`（Data Memory Barrier）指令族上。这就是为什么"x86 上跑得好好的代码换到 ARM（比如 Apple Silicon、AWS Graviton、鲲鹏 920）就冒出灵异并发 Bug"——你之前吃过 TSO 免费午餐，换个 CPU 就得还债。
-- **`volatile int x; x = 42;`** 在 x86 上会被 JIT 编译成 `mov [x_addr], eax` + `lock addl $0, (%rsp)`（用一条空的 `LOCK` 前缀原子加操作代替 `mfence`，因为 `LOCK`-prefixed 指令本身就带全屏障语义且比 `mfence` 快）。这就是"volatile 写在 x86 上到底代表哪一条汇编"的物理答案。
+- **`volatile int x; x = 42;`** 在 x86 上会被 JIT 编译成 `mov [x_addr], eax` + `lock addl $0, (%rsp)`（用一条空的 `LOCK` 前缀原子加操作代替 `mfence`，因为 `LOCK`-prefixed 指令本身就带全屏障语义且比 `mfence` 快）。这就是"volatile 写在 x86 上到底代表哪一条汇编"的答案。
 
 ### 2.3 `synchronized` 锁升级四阶段的 Mark Word 位跃迁
 
@@ -203,14 +203,14 @@ flowchart LR
 1. **偏向锁 = "假设只有一个线程用"的极致优化**——首次 `synchronized` 时用一次 CAS 把 `threadID` 写进 Mark Word；同一线程后续进入只需比较 `threadID`，**连 CAS 都不用**。但一旦有第二个线程尝试获取，就必须"撤销偏向"——需要在 safepoint 停下持有偏向锁的线程、读其栈找是否还持锁、决定是升级为轻量级锁还是回退到无锁，这个过程的开销远超一次普通 CAS。
 2. **JDK 15 起（[JEP 374](https://openjdk.org/jeps/374)）默认禁用偏向锁**——现代 Java 应用几乎全靠 `java.util.concurrent` 高性能锁支撑（`ReentrantLock` / `StampedLock` / 各种 `Atomic*`），纯 `synchronized` 且真的"单线程无竞争"的场景已经极少。偏向锁撑大了 HotSpot 里 Mark Word 和 `ObjectMonitor` 的代码复杂度、维护成本极高——收益不再匹配代价。**JDK 15+ 上锁升级链路已退化为"无锁 → 轻量级 → 重量级"三级**。
 3. **轻量级锁 = 栈上 Lock Record + CAS**——JVM 在当前线程栈帧里开一块 Lock Record，把对象头的 Mark Word 拷进去（Displaced Mark Word），然后 CAS 把对象头替换成"指向 Lock Record 的指针 + `00` 标志"。释放锁时反向 CAS 把 Mark Word 恢复。轻量级锁的核心假设是"竞争概率低、CAS 一次就成功"，一旦 CAS 失败会自旋若干次（早期 10 次，JDK 6+ 自适应），仍失败才膨胀为重量级锁。
-4. **重量级锁 = `ObjectMonitor` + `pthread_mutex`**——锁膨胀后对象头 Mark Word 变成"指向 `ObjectMonitor` 的指针 + `10` 标志"。`ObjectMonitor` 里持有 `_owner` / `_recursions` / `_EntryList` / `_WaitSet` / `_cxq` 五个关键字段（HotSpot `src/hotspot/share/runtime/objectMonitor.hpp`），获取失败的线程会被 `park()` 挂起（陷入内核 `pthread_cond_wait`）——这是重量级锁"慢"的物理来源，也是"用户态→内核态切换"的开销。
+4. **重量级锁 = `ObjectMonitor` + `pthread_mutex`**——锁膨胀后对象头 Mark Word 变成"指向 `ObjectMonitor` 的指针 + `10` 标志"。`ObjectMonitor` 里持有 `_owner` / `_recursions` / `_EntryList` / `_WaitSet` / `_cxq` 五个关键字段（HotSpot `src/hotspot/share/runtime/objectMonitor.hpp`），获取失败的线程会被 `park()` 挂起（陷入内核 `pthread_cond_wait`）——这是重量级锁"慢"的根本来源，也是"用户态→内核态切换"的开销。
 
-> 🗺️ **伏笔闭环**：01 OOP 篇 §3 对象头段落曾说"Mark Word 承载 `synchronized` 锁状态，具体状态机在 10a 章节展开"——本节完成了从"无锁 001 → 偏向锁 101 → 轻量级 00 → 重量级 10"四阶段位跃迁的完整叙述。同时**部分承接**了 08 集合框架 §3.3 埋下的伏笔（"`ConcurrentHashMap` 单槽位 `synchronized` 借助锁升级实现低竞争高吞吐"）——因为 CHM 的槽位竞争频率极低，绝大部分场景停留在轻量级锁，永远不会膨胀成重量级，这就是它敢在 JDK 8 把 JDK 7 的 Segment 分段锁改回 `synchronized` 的物理底气。
+> 🗺️ **伏笔闭环**：01 OOP 篇 §3 对象头段落曾说"Mark Word 承载 `synchronized` 锁状态，具体状态机在 10a 章节展开"——本节完成了从"无锁 001 → 偏向锁 101 → 轻量级 00 → 重量级 10"四阶段位跃迁的完整叙述。同时**部分承接**了 08 集合框架 §3.3 埋下的伏笔（"`ConcurrentHashMap` 单槽位 `synchronized` 借助锁升级实现低竞争高吞吐"）——因为 CHM 的槽位竞争频率极低，绝大部分场景停留在轻量级锁，永远不会膨胀成重量级，这就是它敢在 JDK 8 把 JDK 7 的 Segment 分段锁改回 `synchronized` 的技术底气。
 
 !!! note "📖 术语家族：Mark Word 锁状态标志位 —— 对象头承载的 5 种锁态"
     **字面义**：Mark Word 是对象头的第一个 8 字节槽位，字面就是"标记字"——用来承载 hashCode、分代年龄（age）、锁状态、GC 状态等**运行期动态信息**。
 
-    **在本框架中的含义**：Mark Word 的**最低 3 位**（1 位偏向标志 + 2 位锁标志）编码了 5 种锁态，是 HotSpot JVM 实现 `synchronized` 锁升级的**唯一状态机字段**。同一个对象在生命周期中会在这 5 种锁态之间跃迁，Mark Word 的其余高位则承担 hashCode（无锁态）/ 线程 ID（偏向态）/ 栈锁指针（轻量态）/ Monitor 指针（重量态）**不同的物理载荷**——单个 8 字节被复用出了极致的密度。
+    **在本框架中的含义**：Mark Word 的**最低 3 位**（1 位偏向标志 + 2 位锁标志）编码了 5 种锁态，是 HotSpot JVM 实现 `synchronized` 锁升级的**唯一状态机字段**。同一个对象在生命周期中会在这 5 种锁态之间跃迁，Mark Word 的其余高位则承担 hashCode（无锁态）/ 线程 ID（偏向态）/ 栈锁指针（轻量态）/ Monitor 指针（重量态）**不同的载荷**——单个 8 字节被复用出了极致的密度。
 
     **家族成员**（3 位标志 `biased | lock:2` 的完整枚举）：
 
@@ -260,8 +260,8 @@ public final int getAndAddInt(Object o, long offset, int delta) {
 1. **`LOCK` 前缀是硬件级"锁定信号"**——CPU 在执行带 `LOCK` 前缀的指令时，会通过硬件机制保证目标内存位置的读-改-写在整条指令期间**原子且对其他核可见**。现代 CPU 首选**缓存锁**（Cache Lock）实现：锁定单个缓存行（64 字节），通过 MESI 协议把其他核持有的该缓存行置为 Invalid，粒度细、开销小。只有当操作跨越缓存行边界或 CPU 不支持缓存锁时，才降级到**总线锁**（Bus Lock）——锁定整条内存总线，粒度粗、开销大（几十到几百倍差距）。
 2. **`CMPXCHG` 是"比较并交换"指令**——语义等价于 `if (*addr == expected) { *addr = new; ZF=1 } else { expected = *addr; ZF=0 }`。单独的 `CMPXCHG` **本身不是原子的**（在多核下另一核可能穿插修改），必须加 `LOCK` 前缀才能变成原子指令。`LOCK CMPXCHG` 就是 CAS 的完整硬件实现。
 3. **`LOCK XADD` 是 `LOCK CMPXCHG` 循环的单指令优化版**——`XADD` = eXchange and ADD，一条指令原子完成"读旧值 + 加 delta + 写回 + 返回旧值"。当业务语义是"原子加"时，JIT 会把 `Unsafe.getAndAddInt` 的 `do-while(CAS)` 循环折叠成单条 `LOCK XADD`，比循环 CAS 快得多。
-4. **MESI 协议是硬件层保证多核缓存一致性的物理机制**——每个缓存行有 4 种状态：M（Modified，本核独占且已修改，与主存不一致）、E（Exclusive，本核独占且与主存一致）、S（Shared，多核共享且一致）、I（Invalid，无效需重新加载）。当 `LOCK` 指令写入某缓存行时，会通过总线广播让其他核持有的该行状态转为 I。此时其他核想读同一地址会触发缓存缺失、必须重新从当前 M 状态的核（或主存）拉取——这就是"CAS 一次修改被其他核立刻看到"的物理实现路径。
-5. **CAS 是硬件原语而非软件模拟**——这就是"CAS 比 `synchronized` 快"的根本原因：`synchronized` 重量级锁竞争失败要走 `park()` 陷入内核 `pthread_cond_wait`，涉及用户态/内核态切换（数千纳秒），而 CAS 全在用户态由 CPU 硬件一条指令完成（几纳秒到几十纳秒），差距 10~100 倍。**代价**是高竞争下 CAS 会不停自旋消耗 CPU——这就是 §4 红线 4 要求高并发计数改用 `LongAdder` 的物理动机。
+4. **MESI 协议是硬件层保证多核缓存一致性的硬件机制**——每个缓存行有 4 种状态：M（Modified，本核独占且已修改，与主存不一致）、E（Exclusive，本核独占且与主存一致）、S（Shared，多核共享且一致）、I（Invalid，无效需重新加载）。当 `LOCK` 指令写入某缓存行时，会通过总线广播让其他核持有的该行状态转为 I。此时其他核想读同一地址会触发缓存缺失、必须重新从当前 M 状态的核（或主存）拉取——这就是"CAS 一次修改被其他核立刻看到"的底层实现路径。
+5. **CAS 是硬件原语而非软件模拟**——这就是"CAS 比 `synchronized` 快"的根本原因：`synchronized` 重量级锁竞争失败要走 `park()` 陷入内核 `pthread_cond_wait`，涉及用户态/内核态切换（数千纳秒），而 CAS 全在用户态由 CPU 硬件一条指令完成（几纳秒到几十纳秒），差距 10~100 倍。**代价**是高竞争下 CAS 会不停自旋消耗 CPU——这就是 §4 红线 4 要求高并发计数改用 `LongAdder` 的根本动机。
 
 !!! note "📖 术语家族：`compareAndSet` / `compareAndSwap` / `CMPXCHG` —— CAS 三层同义族"
     **字面义**：
@@ -334,9 +334,9 @@ public class SafeCounter {
 
 ---
 
-## 3. 第三层：物理内存布局 —— MESI 状态、park/unpark 与 Monitor 结构
+## 3. 第三层：内存布局 —— MESI 状态、park/unpark 与 Monitor 结构
 
-### 3.1 JMM 主内存与工作内存的物理映射
+### 3.1 JMM 主内存与工作内存的底层映射
 
 JMM 抽象里的"主内存"和"工作内存"到硬件的映射并不是 1:1——JMM 是 **语言层规范**，硬件是 **CPU 层实现**：
 
@@ -354,7 +354,7 @@ JMM 抽象                        HotSpot on x86-64 硬件实现
 happens-before 契约              MESI 缓存一致性协议 + 内存屏障 mfence/LOCK
 ```
 
-**关键物理事实**：MESI 协议本身能保证"多核之间缓存行状态最终一致"，但**它有两个延迟队列**——写操作先进 Store Buffer 再异步落 L1（Store Buffer 未刷新时其他核看到旧值）、失效消息先进 Invalidate Queue 再异步执行（Invalidate Queue 未处理完时本核读到自己缓存里的旧值）。这两个队列是"volatile 需要在写侧加屏障"的物理根源——`volatile` 的写屏障强制刷 Store Buffer，读屏障强制清 Invalidate Queue，把 MESI 的"最终一致"逼成"立即一致"。
+**关键硬件事实**：MESI 协议本身能保证"多核之间缓存行状态最终一致"，但**它有两个延迟队列**——写操作先进 Store Buffer 再异步落 L1（Store Buffer 未刷新时其他核看到旧值）、失效消息先进 Invalidate Queue 再异步执行（Invalidate Queue 未处理完时本核读到自己缓存里的旧值）。这两个队列是"volatile 需要在写侧加屏障"的根本原因——`volatile` 的写屏障强制刷 Store Buffer，读屏障强制清 Invalidate Queue，把 MESI 的"最终一致"逼成"立即一致"。
 
 ### 3.2 MESI 协议状态机
 
@@ -374,7 +374,7 @@ S           写命中 → 广播 → M      Read → 保持 S；Invalidate → I
 E           写命中 → M             Read → S；Invalidate → I
 M           读/写命中 → 保持 M     Read → 写回主存并转 S；Invalidate → I
 
-⭐ LOCK CMPXCHG 的物理时序：
+⭐ LOCK CMPXCHG 的执行时序：
   1. 本核申请获得该缓存行的 M 状态（可能触发从 E/S 升级 M）
   2. 广播 Invalidate 消息，让其他核持有该行的副本状态转 I
   3. 在锁定期间执行 CMP + XCHG，成功则保持 M；失败则不写
@@ -401,7 +401,7 @@ flowchart LR
 
 1. **许可不累积**：`unpark` 调用多次，`permit` 最多是 1。这与信号量、`notify` 的"每次唤醒一个等待者"不同——**多次 unpark = 一次 unpark**。
 2. **`unpark` 可先发制人**：即使 `unpark` 先于 `park` 调用，`permit` 会被保存，后续 `park` 直接消费 permit 立即返回、根本不进内核。这是"两次 `wait/notify` 顺序颠倒会导致永久阻塞"的经典陷阱在 `park/unpark` 里被消除的原因。
-3. **精确唤醒**：`unpark(Thread t)` 指定唤醒某个具体线程，不走任何公共队列——这是 AQS 能实现"精确唤醒队头节点"的物理基础，也是 10b AQS 篇 §3 里 CLH 队列前驱唤醒后继节点的实现依据。
+3. **精确唤醒**：`unpark(Thread t)` 指定唤醒某个具体线程，不走任何公共队列——这是 AQS 能实现"精确唤醒队头节点"的底层基础，也是 10b AQS 篇 §3 里 CLH 队列前驱唤醒后继节点的实现依据。
 
 **六种典型时序场景**（现存正文中的详细时序图已在此节保留）：
 
@@ -481,7 +481,7 @@ sequenceDiagram
 **顿悟点**：
 
 - 场景 ③ 是 `park/unpark` 与 `wait/notify` 最关键的差异——`notify` 会精确唤醒一个等待者、多次 notify 会累积唤醒多个；`unpark` 只累积一位、多次 unpark 就是一次 unpark。**在 AQS 的 `release` 唤醒后继节点场景下这恰恰是想要的语义**——即使多次尝试唤醒，只要目标线程还未消费，最终只唤醒一次即可。
-- 场景 ④ 是"必须用 `while` 循环 + 业务条件"的物理原因——不是 Java 特有的坑，而是 POSIX `pthread_cond_wait` 本身就允许虚假唤醒，Java `park()` 是它的直接封装。
+- 场景 ④ 是"必须用 `while` 循环 + 业务条件"的根本原因——不是 Java 特有的坑，而是 POSIX `pthread_cond_wait` 本身就允许虚假唤醒，Java `park()` 是它的直接封装。
 - 场景 ⑤ 与 `wait()` 的核心差异——`wait()` 响应中断会抛 `InterruptedException`；`park()` 响应中断**不抛异常**、只是从阻塞返回，需要用户代码调用 `Thread.interrupted()` 检查后自行决定如何处理。
 
 ### 3.4 重量级锁的 `ObjectMonitor` 结构
@@ -503,10 +503,10 @@ ObjectMonitor {
 **顿悟点**：
 
 - **`_cxq` + `_EntryList` 双队列设计**是 HotSpot 竞争优化的产物——新竞争线程为了减少 CAS 开销，先无锁 push 到 `_cxq`（LIFO 栈头）；持锁线程释放时会把 `_cxq` 整段"倒进"`_EntryList`（FIFO 队列），然后从 `_EntryList` 取继任者 `unpark`。这样做的好处是：无竞争路径**完全无锁**（`_cxq` 用 CAS push），有竞争路径**批量处理**（一次性把 `_cxq` 全部搬到 `_EntryList`）。
-- **`_owner` + `_recursions` 是可重入的物理载体**——同一线程进入同一 `synchronized` 块会看 `_owner == currentThread`，然后仅递增 `_recursions`、无需真的争锁。这就是 `synchronized` 天然可重入的实现依据。
+- **`_owner` + `_recursions` 是可重入的底层载体**——同一线程进入同一 `synchronized` 块会看 `_owner == currentThread`，然后仅递增 `_recursions`、无需真的争锁。这就是 `synchronized` 天然可重入的实现依据。
 - **HotSpot 的 Monitor Deflation**（[JEP 384](https://openjdk.org/jeps/384) 引入、JDK 18 [JEP 375] 改为并发执行）会在重量级锁长期无人竞争时**释放 `ObjectMonitor` 并把对象头还原为无锁状态**——这是 HotSpot 内部的资源回收机制，对应用透明，不违反"应用视角锁只能升级"的语义。
 
-### 3.5 `ThreadLocal` 内存物理结构（引用强度族的又一次显影）
+### 3.5 `ThreadLocal` 内存底层结构（引用强度族的又一次显影）
 
 ```txt
 Thread 对象
@@ -524,13 +524,13 @@ Entry 结构：
   Object value                        ← 强引用（不可回收）
                                         ↑ 泄漏根源
 
-内存泄漏物理路径：
+内存泄漏底层路径：
   ThreadLocal 外部引用被清 → key 弱引用被 GC → key 变 null
   但 value 仍被 Entry 强引用 → value 无法回收
   ⇒ 线程池中长期存活的线程 → 泄漏累积到 OOM
 ```
 
-**顿悟点**：`ThreadLocal` 泄漏的物理成因不是"引用类型选错了"，是**"弱引用 key + 强引用 value"这种不对称设计**在线程池复用场景下的必然产物。JDK 团队在 `ThreadLocal.set/get/remove` 中加了探测式清理（发现 key 为 null 的 Entry 就删除 value），但清理链路必须被后续 `set/get/remove` 触发才有效——**线程复用但 ThreadLocal 不再被访问时**，泄漏会持续累积。这也是 §4 红线 5 强制"用完必须 `remove()`"的物理动机。
+**顿悟点**：`ThreadLocal` 泄漏的根本成因不是"引用类型选错了"，是**"弱引用 key + 强引用 value"这种不对称设计**在线程池复用场景下的必然产物。JDK 团队在 `ThreadLocal.set/get/remove` 中加了探测式清理（发现 key 为 null 的 Entry 就删除 value），但清理链路必须被后续 `set/get/remove` 触发才有效——**线程复用但 ThreadLocal 不再被访问时**，泄漏会持续累积。这也是 §4 红线 5 强制"用完必须 `remove()`"的根本动机。
 
 > 📖 `*Reference` 强度族（Soft / Weak / Phantom / Final）的完整回收链详见 [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) §"引用族与可达性分析"，本文只用到 `WeakReference` 一种。08 集合框架 §3.4 同样在 `WeakHashMap` 视角下引用了这一家族。
 
@@ -716,7 +716,7 @@ public long report() {
 
 ### 4.5 红线 5：`ThreadLocal` 使用后必须 `try-finally remove()`，尤其在线程池中
 
-**技术依据**：§3.5 已给出物理成因——`ThreadLocalMap.Entry` 的"弱引用 key + 强引用 value"设计在线程池长期复用场景下必然泄漏。**这不是"最佳实践"级别的建议，是"不做就会 OOM"级别的红线**。
+**技术依据**：§3.5 已给出根本成因——`ThreadLocalMap.Entry` 的"弱引用 key + 强引用 value"设计在线程池长期复用场景下必然泄漏。**这不是"最佳实践"级别的建议，是"不做就会 OOM"级别的红线**。
 
 ```java
 // ❌ 反模式：Spring MVC 里保存请求上下文
@@ -758,14 +758,14 @@ private static final TransmittableThreadLocal<UserContext> CONTEXT = new Transmi
 
 ## 5. 🗺️ 跨战役知识伏笔
 
-本篇我们把 JMM 从"内存模型"这个玄学包装里剥出来——它的物理真相是 **CPU 内存屏障 + MESI 缓存一致性协议 + `LOCK` 前缀原子指令**三张牌的组合。请把这个物理事实焊死在脑海——它是理解后续所有并发/异步/框架设计的**硬件地基**。
+本篇我们把 JMM 从"内存模型"这个玄学包装里剥出来——它的底层真相是 **CPU 内存屏障 + MESI 缓存一致性协议 + `LOCK` 前缀原子指令**三张牌的组合。请把这个硬件事实焊死在脑海——它是理解后续所有并发/异步/框架设计的**硬件地基**。
 
-紧接着的 [10b AQS 设计哲学](@java-并发-AQS设计哲学) 会承接本篇 §3.3 的 `park` / `unpark` 二元信号量语义——AQS 的 CLH 队列在节点入队后调用 `LockSupport.park(this)` 挂起，前驱节点释放锁时调用 `LockSupport.unpark(next)` 精确唤醒后继。**AQS 的"精确唤醒"能力来源于 `unpark(Thread)` 而非 `notify` 的公共队列语义**——今天在 §3.3 场景 ② 里看到的"unpark 可先发制人、根本不进内核"的物理优势，明天到 AQS 里就是"高性能队列锁的核心加速手段"。同时本篇 §2.4 的 `LOCK CMPXCHG` 会在 10b §2 变成 AQS `compareAndSetState` 的 JIT 汇编——底层是同一条 x86 指令，AQS 只是在其上加了 CLH 队列这层调度。
+紧接着的 [10b AQS 设计哲学](@java-并发-AQS设计哲学) 会承接本篇 §3.3 的 `park` / `unpark` 二元信号量语义——AQS 的 CLH 队列在节点入队后调用 `LockSupport.park(this)` 挂起，前驱节点释放锁时调用 `LockSupport.unpark(next)` 精确唤醒后继。**AQS 的"精确唤醒"能力来源于 `unpark(Thread)` 而非 `notify` 的公共队列语义**——今天在 §3.3 场景 ② 里看到的"unpark 可先发制人、根本不进内核"的性能优势，明天到 AQS 里就是"高性能队列锁的核心加速手段"。同时本篇 §2.4 的 `LOCK CMPXCHG` 会在 10b §2 变成 AQS `compareAndSetState` 的 JIT 汇编——底层是同一条 x86 指令，AQS 只是在其上加了 CLH 队列这层调度。
 
-进一步在 [10c Lock 与线程池](@java-并发-并发工具Lock与线程池) 里，本篇 §4.4 的 `LongAdder` 会展开成 `Striped64` 类的完整源码——`Cell` 数组的初始化时机、`@Contended` 缓存行填充、`probe` 线程哈希 rehash 都会讲清楚；`ReentrantLock` 的公平锁与非公平锁会承接本篇 §2.3 讲的锁升级思想（`synchronized` 隐式升级 vs `ReentrantLock` 一步到位重量级）；线程池的 `Worker` 类会用 AQS `state` 字段实现"是否正在执行任务 + 是否已 shutdown"的双状态编码。**本篇 §3.5 讲的 `ThreadLocal` 引用强度族陷阱，会在线程池篇里变成"为什么 Alibaba TransmittableThreadLocal 必须存在"的物理动机**。
+进一步在 [10c Lock 与线程池](@java-并发-并发工具Lock与线程池) 里，本篇 §4.4 的 `LongAdder` 会展开成 `Striped64` 类的完整源码——`Cell` 数组的初始化时机、`@Contended` 缓存行填充、`probe` 线程哈希 rehash 都会讲清楚；`ReentrantLock` 的公平锁与非公平锁会承接本篇 §2.3 讲的锁升级思想（`synchronized` 隐式升级 vs `ReentrantLock` 一步到位重量级）；线程池的 `Worker` 类会用 AQS `state` 字段实现"是否正在执行任务 + 是否已 shutdown"的双状态编码。**本篇 §3.5 讲的 `ThreadLocal` 引用强度族陷阱，会在线程池篇里变成"为什么 Alibaba TransmittableThreadLocal 必须存在"的根本动机**。
 
 再到 [10d 并发集合与实战陷阱](@java-并发-并发集合与实战陷阱)，本篇 §2.3 顿悟点 4 埋下的"`ConcurrentHashMap` 单槽位 `synchronized` 借助锁升级"会完整展开——CHM 的 `putVal` 源码里 `synchronized (f)` 锁的是链表头节点，绝大部分场景停留在轻量级锁；`sizeCtl` 字段用 `LOCK CMPXCHG` 无锁初始化；扩容时 `ForwardingNode` 借助 `Unsafe.compareAndSwapObject` 换表——**每一处并发原语，都是本篇讲的三张硬件牌的排列组合**。
 
-最后到战役四 [12a JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §7 讲对象头完整位分布时，会回收本篇 §2.3 的 Mark Word 锁状态族——本篇讲了 5 种锁态的低 3 位编码，12a 篇会完整展开 hashCode（31 bit）、age（4 bit）、压缩指针下的位分布优化、[JEP 450 Compact Object Headers](https://openjdk.org/jeps/450) 的未来演进。到 [12d JVM 现代实践](@java-JVM-现代实践与前沿技术) 讲虚拟线程时，会承接本篇讲的 `synchronized` 重量级锁陷入内核 `park` 的物理路径——**虚拟线程 pin 到载体线程的最重要触发因素之一，就是持有 `synchronized` 锁时的 `park`**（因为 HotSpot 无法把 monitor 状态从载体栈搬到虚拟线程栈），这也是 JDK 21 之前 Loom 早期版本"虚拟线程 + `synchronized` 有坑"的物理根源，JDK 24 [JEP 491] 正在系统性移除这个 pin 点。
+最后到战役四 [12a JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §7 讲对象头完整位分布时，会回收本篇 §2.3 的 Mark Word 锁状态族——本篇讲了 5 种锁态的低 3 位编码，12a 篇会完整展开 hashCode（31 bit）、age（4 bit）、压缩指针下的位分布优化、[JEP 450 Compact Object Headers](https://openjdk.org/jeps/450) 的未来演进。到 [12d JVM 现代实践](@java-JVM-现代实践与前沿技术) 讲虚拟线程时，会承接本篇讲的 `synchronized` 重量级锁陷入内核 `park` 的底层路径——**虚拟线程 pin 到载体线程的最重要触发因素之一，就是持有 `synchronized` 锁时的 `park`**（因为 HotSpot 无法把 monitor 状态从载体栈搬到虚拟线程栈），这也是 JDK 21 之前 Loom 早期版本"虚拟线程 + `synchronized` 有坑"的根本原因，JDK 24 [JEP 491] 正在系统性移除这个 pin 点。
 
 当你真正读懂本篇的 §2.4（`LOCK CMPXCHG` + MESI 的组合）与 §2.5（`VarHandle` 六种访问模式），回头看 06 反射篇 §2.4 的 `MethodHandle` / `VarHandle` 家族——会顿悟"JDK 9 引入的一整套 `java.lang.invoke.*` 包，本质上是把 `Unsafe` 里的所有 native 原语（内存屏障、原子操作、字段直读）**类型安全化 + 语义显式化**的公开 API"。到 [08 集合框架](@java-数据结构-集合框架) §2.2 讲桥接方法的 `checkcast` 兜底、[09 数据结构精讲](@java-数据结构-数据结构精讲) §3 讲 `ConcurrentSkipListMap` 的 `VarHandle` 无锁跳表，你会看到 `VarHandle.compareAndSet` 一次次以不同姿态复用同一套硬件原语——**并发正确性从来不是软件魔法，是 CPU 硬件保证 + 语言层契约 + 编译器插入屏障三方合作的产物**。到那时，你今天在 §2 挖出的每一条 `mfence`、每一次 Mark Word 位跃迁、每一句 `LOCK XADD`，都会变成打通整条并发战线的关键钥匙。

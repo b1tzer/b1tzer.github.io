@@ -6,14 +6,14 @@ title: 类加载机制与双亲委派模型 —— 五阶段字节码触发时�
 # 类加载机制与双亲委派模型 —— 五阶段字节码触发时机、`ClassLoader + 全限定名` 二元组与 JDK 9 模块化重构
 
 !!! info "**类加载 一句话口诀**"
-    - **类加载五阶段"加载 → 验证 → 准备 → 解析 → 初始化"不是概念清单，是 JVMS §5 定义的物理时序**：`加载` 由字节码指令（`new` / `getstatic` / `putstatic` / `invokestatic` / `invokedynamic` / `ldc → Class`）**被动触发**，`初始化` 由 6 条"必须立即初始化"规则触发，中间三阶段（`验证` / `准备` / `解析`）合称 `Linking`。理解这套时序才能一次性理解 `ClassNotFoundException`（加载阶段找不到 `.class` 字节流）与 `NoClassDefFoundError`（曾经加载成功但初始化时 `<clinit>` 抛异常）的物理差异。
-    - **JVM 中"两个类相等"的物理定义 = `ClassLoader + 全限定名` 二元组**：同一个 `com.example.Foo` 被 `AppClassLoader` 和 `MyClassLoader` 各加载一次，在 JVM 内部就是两个独立的 `Klass`，`instanceof` 返回 `false`、`ClassCastException` 一触即发。这是"热部署换新 ClassLoader 实现类替换"与"Tomcat 多应用隔离依赖版本冲突"共享的**同一条物理机制**。
-    - **双亲委派不是"继承关系"而是"组合关系 + 递归委托"**：`ClassLoader.loadClass()` 内部 `parent.loadClass()` 递归上溯，只有父加载器抛 `ClassNotFoundException` 才回落到 `findClass()`——这条递归链是"用户无法自定义 `java.lang.String` 替换核心类"的唯一物理防线；破坏它必须**重写 `loadClass()`** 而非 `findClass()`。
-    - **JDK 8 → 9 类加载器族发生了物理结构重构**：`Extension ClassLoader` 被 `Platform ClassLoader` 取代（不再接受用户扩展、`ext` 目录被移除）、`Bootstrap ClassLoader` 从加载 `rt.jar` 改为加载 `java.base` 等平台模块、`AppClassLoader` 从 `URLClassLoader` 子类改为 `BuiltinClassLoader` 子类。**升级 JDK 9+ 时读不到 `ext/` 目录扩展的类、`sun.misc.*` 类找不到，都是这次重构的直接后果**。
+    - **类加载五阶段"加载 → 验证 → 准备 → 解析 → 初始化"不是概念清单，是 JVMS §5 定义的执行时序**：`加载` 由字节码指令（`new` / `getstatic` / `putstatic` / `invokestatic` / `invokedynamic` / `ldc → Class`）**被动触发**，`初始化` 由 6 条"必须立即初始化"规则触发，中间三阶段（`验证` / `准备` / `解析`）合称 `Linking`。理解这套时序才能一次性理解 `ClassNotFoundException`（加载阶段找不到 `.class` 字节流）与 `NoClassDefFoundError`（曾经加载成功但初始化时 `<clinit>` 抛异常）的本质差异。
+    - **JVM 中"两个类相等"的精确定义 = `ClassLoader + 全限定名` 二元组**：同一个 `com.example.Foo` 被 `AppClassLoader` 和 `MyClassLoader` 各加载一次，在 JVM 内部就是两个独立的 `Klass`，`instanceof` 返回 `false`、`ClassCastException` 一触即发。这是"热部署换新 ClassLoader 实现类替换"与"Tomcat 多应用隔离依赖版本冲突"共享的**同一条底层机制**。
+    - **双亲委派不是"继承关系"而是"组合关系 + 递归委托"**：`ClassLoader.loadClass()` 内部 `parent.loadClass()` 递归上溯，只有父加载器抛 `ClassNotFoundException` 才回落到 `findClass()`——这条递归链是"用户无法自定义 `java.lang.String` 替换核心类"的唯一硬件防线；破坏它必须**重写 `loadClass()`** 而非 `findClass()`。
+    - **JDK 8 → 9 类加载器族发生了底层结构重构**：`Extension ClassLoader` 被 `Platform ClassLoader` 取代（不再接受用户扩展、`ext` 目录被移除）、`Bootstrap ClassLoader` 从加载 `rt.jar` 改为加载 `java.base` 等平台模块、`AppClassLoader` 从 `URLClassLoader` 子类改为 `BuiltinClassLoader` 子类。**升级 JDK 9+ 时读不到 `ext/` 目录扩展的类、`sun.misc.*` 类找不到，都是这次重构的直接后果**。
 
 **你能立刻答上来吗？**
 
-- `ClassNotFoundException` 与 `NoClassDefFoundError` 分别在类加载五阶段的**哪一阶段**抛出？物理触发点差异是什么？
+- `ClassNotFoundException` 与 `NoClassDefFoundError` 分别在类加载五阶段的**哪一阶段**抛出？实际触发点差异是什么？
 - `String s = Foo.class.getName();` 会不会执行 `Foo` 的 `<clinit>()`？为什么 `Class.forName("Foo")` 会，而 `Foo.class` 语法糖不会？
 - `public static final String NAME = "hello";` 能被调用方内联，`public static final Integer BOXED = Integer.valueOf(1);` 却不能——`field_info` 属性表里的**哪一个字段**决定了这条边界？
 - 自定义类加载器要重写 `findClass()` 还是 `loadClass()`？为什么 Tomcat 的 `WebAppClassLoader` **必须**重写 `loadClass()`？
@@ -80,7 +80,7 @@ public class RuleEngine {
 
 **表层归因**：`OrderRule` 类没变啊，`isAssignableFrom` 为什么不认识自己？
 
-**物理根因**（层 3.1 完整揭开）：**JVM 中"两个类相等"的物理定义是 `ClassLoader + 全限定名` 二元组**。旧的 `URLClassLoader` 实例与新的 `URLClassLoader` 实例是两个不同对象，即便加载了同名字节流，产生的也是**方法区里两个独立的 `Klass`**。`currentHandler.getClass()` 属于旧 CL，`newImpl` 属于新 CL——JVM 眼里就是两个不同的类，`isAssignableFrom` 只查父类链，父类链走到 `OrderRule` 就已经分叉了。
+**根本原因**（层 3.1 完整揭开）：**JVM 中"两个类相等"的精确定义是 `ClassLoader + 全限定名` 二元组**。旧的 `URLClassLoader` 实例与新的 `URLClassLoader` 实例是两个不同对象，即便加载了同名字节流，产生的也是**方法区里两个独立的 `Klass`**。`currentHandler.getClass()` 属于旧 CL，`newImpl` 属于新 CL——JVM 眼里就是两个不同的类，`isAssignableFrom` 只查父类链，父类链走到 `OrderRule` 就已经分叉了。
 
 ### 1.2 生产事故现场：JDK 8 → 11 升级后 `sun.misc.Unsafe` 无声崩溃
 
@@ -88,18 +88,18 @@ public class RuleEngine {
 
 **表层归因**："Java 版本兼容问题，加个 `--add-opens` 就行了。"
 
-**物理根因**（层 3.4 完整揭开）：JDK 8 → 9 的类加载器族**发生了物理结构重构**——
+**根本原因**（层 3.4 完整揭开）：JDK 8 → 9 的类加载器族**发生了底层结构重构**——
 
 - `Extension ClassLoader` **被 `Platform ClassLoader` 取代**（不再接受用户扩展）
 - `AppClassLoader` **从 `URLClassLoader` 子类改为 `BuiltinClassLoader` 子类**
 - `Bootstrap ClassLoader` **从加载 `rt.jar` 改为加载 `java.base` 等平台模块**
-- `ext/` 目录**被物理移除**，`sun.misc.*` 默认不导出
+- `ext/` 目录**被彻底移除**，`sun.misc.*` 默认不导出
 
 这不是"兼容问题"，是**加载器血统全线换代**。老代码里的 `(URLClassLoader) getSystemClassLoader()` 强转、`sun.misc.Unsafe` 的直接使用、`ext/` 目录的扩展点——**每一条都踩中了这次重构的雷区**。
 
 ### 1.3 三条痛点收敛到四层结构
 
-| 痛点 | 表象 | 物理根源 | 后续章节 |
+| 痛点 | 表象 | 根本原因 | 后续章节 |
 | :-- | :-- | :-- | :-- |
 | **A · `CNFE` vs `NCDFE` 傻傻分不清** | 抓到 `ClassNotFoundException` 就重试，抓到 `NoClassDefFoundError` 却重试无效 | 前者在**加载**阶段抛出（字节流找不到），后者在**初始化**阶段抛出（`<clinit>()` 内部异常导致 `Klass` 变 `errorState`） | 层 2 §1 + 层 3.2 |
 | **B · `<clinit>` 死锁** | 多线程首次访问同一个类，`<clinit>` 里获取分布式锁，jstack 显示线程全部 `WAITING` 但看不到锁对象 | JVM 用 **per-class 锁**（`getClassLoadingLock(name)`）保证 `<clinit>` 单次执行；`<clinit>` 里再抢外部锁 = **双锁嵌套**，且 class 加载锁不在标准锁 dump 里 | 层 2 §3 + 层 4 红线 4 |
@@ -126,7 +126,7 @@ ldc #<Class Foo>              → 只触发 Foo 的加载，不初始化 ⚠️ 
 
 **顿悟点**：
 
-- `ldc → Class` 指令**只触发加载**，不触发初始化——这就是 `Foo.class.getName()` **不会**执行 `Foo` 的 `<clinit>()` 的物理根源；而 `Class.forName("Foo")` 会（因其 `initialize=true` 默认值走完整链路）
+- `ldc → Class` 指令**只触发加载**，不触发初始化——这就是 `Foo.class.getName()` **不会**执行 `Foo` 的 `<clinit>()` 的根本原因；而 `Class.forName("Foo")` 会（因其 `initialize=true` 默认值走完整链路）
 - `invokedynamic` 是 JDK 7 新增的第 5 类触发指令——JDK 8 的 Lambda、JDK 9 的字符串拼接、JDK 15 的 Hidden Class 都借这条指令入场
 - 反射 `Class.forName(name)` 等价于 `Class.forName(name, true, currentCL)`——`initialize=true` 是常被忽略的默认参数
 
@@ -141,7 +141,7 @@ $ java -verbose:class -cp . Sample 2>&1 | grep "com.example.Foo"
 
 > 📖 `invoke*` 五条方法调用指令族的完整解剖详见 [01 面向对象](@java-字节码-面向对象) §"术语家族卡片：`invoke*` 家族"；本文只借用 `invokestatic` / `invokedynamic` 的"触发加载"性质。
 
-### 2.2 主考古样本二：`ConstantValue` 属性 —— 准备阶段赋非零值的唯一物理依据
+### 2.2 主考古样本二：`ConstantValue` 属性 —— 准备阶段赋非零值的唯一硬件依据
 
 **源码样本**：
 
@@ -185,11 +185,11 @@ public static final long BIG;
 
 **顿悟三条**：
 
-1. `field_info.attributes` 里的 `ConstantValue` 属性是**准备阶段赋非零值**的**唯一物理依据**（JVMS §4.7.2）
+1. `field_info.attributes` 里的 `ConstantValue` 属性是**准备阶段赋非零值**的**唯一硬件依据**（JVMS §4.7.2）
 2. 仅 **8 种基本类型 + `String`** 的 `final static` 字面量能产生 `ConstantValue`——`Integer` 装箱、`enum`、`new Foo()` 全部走 `<clinit>` 路径
-3. 因为 `NAME` 有 `ConstantValue`，调用方 `getstatic ConstantProbe.NAME` 在编译期被**直接内联**为 `ldc "hello"`——**这就是"改了常量值不重编译调用方，值不会变"的物理根源**
+3. 因为 `NAME` 有 `ConstantValue`，调用方 `getstatic ConstantProbe.NAME` 在编译期被**直接内联**为 `ldc "hello"`——**这就是"改了常量值不重编译调用方，值不会变"的根本原因**
 
-**反问自检**：为什么 `switch(String)` 只能用 `final static` 字符串常量做 `case`？→ 因为 `case` 标签必须在编译期确定，`ConstantValue` 属性是唯一能让常量"编译期可见"的物理载体。
+**反问自检**：为什么 `switch(String)` 只能用 `final static` 字符串常量做 `case`？→ 因为 `case` 标签必须在编译期确定，`ConstantValue` 属性是唯一能让常量"编译期可见"的底层载体。
 
 ### 2.3 主考古样本三：`<clinit>()` 方法的编译器合成规则
 
@@ -252,7 +252,7 @@ public class Singleton {
 }
 ```
 
-### 2.4 主考古样本四：`defineClass` —— 字节流 → `Klass` 的物理唯一入口
+### 2.4 主考古样本四：`defineClass` —— 字节流 → `Klass` 的绝对唯一入口
 
 **唯一入口**：`ClassLoader.defineClass(name, byte[], off, len)` 是 JVM 里**所有**类加载路径的最终收敛点：
 
@@ -274,15 +274,15 @@ public class Singleton {
                               加入 ClassLoaderData 的 klass 链表    ← 归属确定
 ```
 
-**顿悟点**：无论是编译产物 `.class` 文件、Lambda 生成的 `LambdaProbe$$Lambda$1`、还是 ASM 运行时织入的字节码，**最终都要走 `defineClass` 才能进入方法区**——这是 JIT 与 AOT 无法绕过的"字节流 → JVM 类型系统"物理边界。
+**顿悟点**：无论是编译产物 `.class` 文件、Lambda 生成的 `LambdaProbe$$Lambda$1`、还是 ASM 运行时织入的字节码，**最终都要走 `defineClass` 才能进入方法区**——这是 JIT 与 AOT 无法绕过的"字节流 → JVM 类型系统"内存边界。
 
 > 📖 `invokedynamic` + `LambdaMetafactory` 触发的 Hidden Class 加载完整链路详见 [07 函数式编程](@java-字节码-函数式编程) §"`invokedynamic` 引导链路"；`Lookup.defineHiddenClass` 的现代实践详见 [12d JVM 现代实践](@java-JVM-现代实践与前沿技术) §"Hidden Class"。
 
 ---
 
-## 3. 第三层：物理内存布局 —— `Klass` / `ClassLoader` / `ClassLoaderData` 三元关系
+## 3. 第三层：内存布局 —— `Klass` / `ClassLoader` / `ClassLoaderData` 三元关系
 
-### 3.1 `Klass` / `ClassLoader` / `ClassLoaderData` 三元强引用物理图
+### 3.1 `Klass` / `ClassLoader` / `ClassLoaderData` 三元强引用机制图
 
 ```txt
 Metaspace（方法区）                                       Heap（Java 堆）
@@ -315,13 +315,13 @@ Metaspace（方法区）                                       Heap（Java 堆�
 
 **顿悟三条**：
 
-1. **`Klass` 与 `ClassLoader` 相互强引用**——`Klass.java_mirror` 指向堆中 `Class<Foo>` 对象；`Class<Foo>.classLoader` 字段指回 `AppClassLoader`；`AppClassLoader.classes` 反向持有已加载类列表。**只要 `ClassLoader` 对象不被 GC，它加载的所有 `Klass` 都无法卸载**——这是"热部署必须换新 CL 实例，旧实例断开引用后类才会真正卸载"的**物理必要条件**
-2. **`ClassLoaderData`（CLD）是 GC 卸载类的最小单元**——整体回收 / 整体保留，不存在"卸载 CLD 里一部分类"的操作。这就是元空间 OOM 排查时"泄漏一个类加载器 = 泄漏它加载的整个类树"的物理根源
+1. **`Klass` 与 `ClassLoader` 相互强引用**——`Klass.java_mirror` 指向堆中 `Class<Foo>` 对象；`Class<Foo>.classLoader` 字段指回 `AppClassLoader`；`AppClassLoader.classes` 反向持有已加载类列表。**只要 `ClassLoader` 对象不被 GC，它加载的所有 `Klass` 都无法卸载**——这是"热部署必须换新 CL 实例，旧实例断开引用后类才会真正卸载"的**硬性必要条件**
+2. **`ClassLoaderData`（CLD）是 GC 卸载类的最小单元**——整体回收 / 整体保留，不存在"卸载 CLD 里一部分类"的操作。这就是元空间 OOM 排查时"泄漏一个类加载器 = 泄漏它加载的整个类树"的根本原因
 3. **同一个 `Foo.class` 字节流被两个 CL 各调用一次 `defineClass()`**，产生**两个独立的 `Klass`**——方法区两份元数据、堆里两个 `Class<Foo>` 镜像、`Foo == Foo` 返回 `false`。这**闭环了 §1.1 的热部署事故**：`isAssignableFrom` 只查父类链，父类链走到 `OrderRule` 就已经分叉了两条独立的 `Klass` 血脉
 
 > 📖 `Klass` 骨架在 Metaspace 里的完整字段布局（`ConstantPool` / `Method` / `vtable` / `itable` 各字段偏移）详见 [12a JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"元空间对象布局"；`ClassLoaderData` 与 GC 可达性分析详见 [12b GC 核心机制](@java-JVM-GC核心机制与收集器演进) §"类卸载与 CLD 回收"。
 
-### 3.2 类加载五阶段与内存物理跃迁
+### 3.2 类加载五阶段与内存状态跃迁
 
 ```mermaid
 flowchart TB
@@ -350,14 +350,14 @@ flowchart TB
     style Trigger fill:#fce4ec
 ```
 
-**四条物理事实**：
+**四条硬件事实**：
 
-1. **`Klass` 骨架在加载阶段就已创建**（无字段值、无 vtable 内容）——这就是 `Class.forName("Foo", false, loader)` 第二个参数 `initialize=false` 能"只加载不初始化"的物理依据
-2. **准备阶段的零值 vs 初始化阶段的赋值**是两个物理时刻：`public static int v = 123;` 在**准备阶段**是 `0`（内存槽位分配 + 零值填充），在 **`<clinit>` 里被 `putstatic` 赋为 `123`**
+1. **`Klass` 骨架在加载阶段就已创建**（无字段值、无 vtable 内容）——这就是 `Class.forName("Foo", false, loader)` 第二个参数 `initialize=false` 能"只加载不初始化"的硬件依据
+2. **准备阶段的零值 vs 初始化阶段的赋值**是两个执行时刻：`public static int v = 123;` 在**准备阶段**是 `0`（内存槽位分配 + 零值填充），在 **`<clinit>` 里被 `putstatic` 赋为 `123`**
 3. **验证阶段**分四步——文件格式验证（魔数 / 版本号）、元数据验证（是否有父类 / 是否实现接口 SAM）、字节码验证（`StackMapTable` 帮忙加速）、符号引用验证（引用的类 / 方法是否存在）
 4. **解析阶段**决定"方法调用点是否走 `vtable` 索引"——解析后 `invokevirtual` 才能拿到 `vtable` 偏移；未解析时走符号查找（延迟到运行时）
 
-### 3.3 双亲委派递归调用链的物理路径
+### 3.3 双亲委派递归调用链的底层路径
 
 **`ClassLoader.loadClass(name, resolve)` 完整源码链路**：
 
@@ -391,13 +391,13 @@ AppClassLoader.loadClass("com.example.Foo")
 **顿悟四条**：
 
 1. 递归调用链是**深度优先向上遍历**——"父加载器优先"是**递归返回顺序**的自然结果，不是 `if (parent != null) parent.load; else self.load;` 这种直觉理解
-2. **`findLoadedClass()` 每层都要检查一次**——这是"同一个类不会被同一 CLD 加载两次"的物理保证，也是"重写 `findClass()` 保留双亲委派"的物理基础
+2. **`findLoadedClass()` 每层都要检查一次**——这是"同一个类不会被同一 CLD 加载两次"的硬件保证，也是"重写 `findClass()` 保留双亲委派"的底层基础
 3. **每层加锁的锁对象是 per-class 的**（`getClassLoadingLock(name)`）——JDK 7 起的关键性能优化，让不同类的加载可以完全并发（例如两个线程分别首次访问 `Foo` 和 `Bar` 不会互相阻塞）
 4. **两条常见破坏点**：
     - **破坏点 A**：`WebAppClassLoader` **重写 `loadClass()`** 反转顺序（先 `findClass` 再委托父）——目的是 Web 应用可以带自己版本的库覆盖容器同名库
     - **破坏点 B**：`Thread.currentThread().setContextClassLoader()` 让 Bootstrap 加载的代码能**反向调用** App 加载器——SPI (`ServiceLoader`)、JDBC 驱动、JNDI 都靠这条
 
-### 3.4 JDK 8 → 9 类加载器族物理重构对比
+### 3.4 JDK 8 → 9 类加载器族底层重构对比
 
 ```mermaid
 flowchart LR
@@ -415,7 +415,7 @@ flowchart LR
         B9 --> P9 --> A9
     end
 
-    JDK8 -.->|"ext/ 目录物理移除<br/>URLClassLoader → BuiltinClassLoader<br/>模块系统接管命名空间"| JDK9
+    JDK8 -.->|"ext/ 目录彻底移除<br/>URLClassLoader → BuiltinClassLoader<br/>模块系统接管命名空间"| JDK9
 ```
 
 **JDK 8 → 9 三条硬变更**：
@@ -426,14 +426,14 @@ flowchart LR
 | **中层加载器父类** | `URLClassLoader` | `BuiltinClassLoader`（模块感知） | `ext/` 目录不再被扫描，用户扩展入口关闭 |
 | **App 加载器父类** | `URLClassLoader` | `BuiltinClassLoader` | `(URLClassLoader) getSystemClassLoader()` 强转崩溃 |
 
-**这就是 §1.2 事故的完整物理根源**——Spring Boot 早期版本（2.0 前）在 `LaunchedURLClassLoader` 初始化时依赖 `(URLClassLoader) parent`，升级 JDK 9+ 后直接 `ClassCastException`。修复方案是把强转改为 `MethodHandles.Lookup` 反射调用 `URLClassLoader::getURLs`（或走模块化 API `ModuleLayer::configuration`）。
+**这就是 §1.2 事故的完整根本原因**——Spring Boot 早期版本（2.0 前）在 `LaunchedURLClassLoader` 初始化时依赖 `(URLClassLoader) parent`，升级 JDK 9+ 后直接 `ClassCastException`。修复方案是把强转改为 `MethodHandles.Lookup` 反射调用 `URLClassLoader::getURLs`（或走模块化 API `ModuleLayer::configuration`）。
 
 ### 3.5 术语家族卡片：`ClassLoader` 类加载器族
 
 !!! note "📖 术语家族：`ClassLoader` 类加载器族"
     **字面义**：`Class + Loader` = "加载 `.class` 字节流并生成 `Klass` 的执行单元"
 
-    **在 JVM 中的含义**：JVM 中所有类的加载路径必须以某个 `ClassLoader` 实例为入口，该实例与其加载的 `Klass` 共同构成 `ClassLoaderData` 单元；`ClassLoader + 全限定名` 二元组是 JVM 判定"两个类是否相等"的唯一物理依据。
+    **在 JVM 中的含义**：JVM 中所有类的加载路径必须以某个 `ClassLoader` 实例为入口，该实例与其加载的 `Klass` 共同构成 `ClassLoaderData` 单元；`ClassLoader + 全限定名` 二元组是 JVM 判定"两个类是否相等"的唯一硬件依据。
 
     **家族成员**：
 
@@ -449,18 +449,18 @@ flowchart LR
 
     **命名规律**：`<载体前缀><ClassLoader>`——`Bootstrap`（启动）、`Platform`（平台）、`Application`（应用）、`URL`（通用 URL）、`WebApp`（Web 应用）；每个都必须能通过 `defineClass()` 生成 `Klass`。
 
-    **易混点**：`Extension ClassLoader` 与 `Platform ClassLoader` **不是简单改名**——前者是 `URLClassLoader` 子类且加载 `ext/` 目录，后者是 `BuiltinClassLoader` 子类且**不接受用户扩展**。物理职责变了、父类变了、加载范围变了——是**血统换代**而非"改名"。
+    **易混点**：`Extension ClassLoader` 与 `Platform ClassLoader` **不是简单改名**——前者是 `URLClassLoader` 子类且加载 `ext/` 目录，后者是 `BuiltinClassLoader` 子类且**不接受用户扩展**。底层职责变了、父类变了、加载范围变了——是**血统换代**而非"改名"。
 
 ### 3.6 术语家族卡片：类加载五阶段族
 
 !!! note "📖 术语家族：类加载五阶段族"
     **字面义**：`Loading / Verification / Preparation / Resolution / Initialization`——JVM 规范定义的类从字节流到可用的必经五阶段
 
-    **在 JVMS §5 中的含义**：类加载不是"一个动作"，是**五个可观测的物理阶段**，每个阶段有独立触发时机、独立异常类型、独立可延迟策略。
+    **在 JVMS §5 中的含义**：类加载不是"一个动作"，是**五个可观测的执行阶段**，每个阶段有独立触发时机、独立异常类型、独立可延迟策略。
 
     **家族成员**：
 
-    | 阶段 | JVMS 章节 | 触发时机 | 关键动作 | 物理产物 | 异常类型 |
+    | 阶段 | JVMS 章节 | 触发时机 | 关键动作 | 底层产物 | 异常类型 |
     | :-- | :-- | :-- | :-- | :-- | :-- |
     | 加载 Loading | §5.3 | 6 类字节码指令 / 反射 | 字节流 → Metaspace，创建 `Klass` 骨架 + `Class` 对象 | `Klass` 骨架 | `ClassNotFoundException` |
     | 验证 Verification | §5.4.1 | 加载后立即执行 | 魔数 / 版本号 / 元数据 / 字节码 / 符号引用 | 通过验证的 `Klass` | `VerifyError` / `ClassFormatError` |
@@ -478,7 +478,7 @@ flowchart LR
 
 ### 红线 1：自定义类加载器只重写 `findClass()`，绝不重写 `loadClass()`
 
-**物理根源**：`loadClass()` 实现了**递归委托链路 + `findLoadedClass()` 去重 + per-class 锁**三层保证；重写 `loadClass()` 意味着这三条保证全部失效。
+**根本原因**：`loadClass()` 实现了**递归委托链路 + `findLoadedClass()` 去重 + per-class 锁**三层保证；重写 `loadClass()` 意味着这三条保证全部失效。
 
 **❌ 反模式**（复制默认实现"稍微改改"）：
 
@@ -552,7 +552,7 @@ public class WebAppLikeLoader extends URLClassLoader {
 
 ### 红线 2：升级 JDK 9+ 前必须审计 `sun.misc.*` / `URLClassLoader` 强转 / `ext/` 目录扩展
 
-**物理根源**：JDK 9 类加载器族**血统换代**——`sun.*` 包默认不导出、`AppClassLoader` 不再是 `URLClassLoader` 子类、`ext/` 目录被删。
+**根本原因**：JDK 9 类加载器族**血统换代**——`sun.*` 包默认不导出、`AppClassLoader` 不再是 `URLClassLoader` 子类、`ext/` 目录被删。
 
 **❌ 反模式**（假设加载器血统不变）：
 
@@ -600,7 +600,7 @@ handle.setVolatile(fooInstance, 42);   // 相当于 UNSAFE.putIntVolatile(...)
 
 ### 红线 3：热部署必须"整个 `ClassLoader` 实例换掉"，而非"用同一个 `ClassLoader` 重新加载同名类"
 
-**物理根源**：同一 CLD 内 `findLoadedClass` 去重，无法重复加载同名类；且 `ClassLoader` 与 `Klass` 强引用锁定，只有整个 CLD 无引用才能被 GC 卸载。
+**根本原因**：同一 CLD 内 `findLoadedClass` 去重，无法重复加载同名类；且 `ClassLoader` 与 `Klass` 强引用锁定，只有整个 CLD 无引用才能被 GC 卸载。
 
 **❌ 反模式**（同一 CL 反复加载）：
 
@@ -654,7 +654,7 @@ public class SafeHotSwap {
 
 ### 红线 4：`<clinit>()` 里禁止调用外部锁（数据库 / 分布式锁 / `wait()`）
 
-**物理根源**：JVM 用 per-class 锁保证 `<clinit>` 单次执行；`<clinit>` 里再获取外部锁 = **双锁嵌套**，且 class 加载锁**不在标准锁 dump 里**——线程 dump 只显示"等待外部锁"，看不到"持有 class 加载锁"这一层，导致死锁排查完全无从下手。
+**根本原因**：JVM 用 per-class 锁保证 `<clinit>` 单次执行；`<clinit>` 里再获取外部锁 = **双锁嵌套**，且 class 加载锁**不在标准锁 dump 里**——线程 dump 只显示"等待外部锁"，看不到"持有 class 加载锁"这一层，导致死锁排查完全无从下手。
 
 **❌ 反模式**（`<clinit>` 抢外部锁）：
 
@@ -709,7 +709,7 @@ public class SafeConfig {
 
 ### 红线 5：多 ClassLoader 场景禁止用 `instanceof` / `ClassCastException` 做类型判断
 
-**物理根源**：`ClassLoader + 全限定名` 二元组决定 `Klass` 唯一性——同名类跨 CLD 时 `instanceof` 返回 `false`，`ClassCastException` 一触即发。
+**根本原因**：`ClassLoader + 全限定名` 二元组决定 `Klass` 唯一性——同名类跨 CLD 时 `instanceof` 返回 `false`，`ClassCastException` 一触即发。
 
 **❌ 反模式**：
 
@@ -753,7 +753,7 @@ if (commonInterface.isInstance(obj)) {
 }
 ```
 
-**降维金句**：*"类加载篇的所有'为什么'都收敛到三条主线：**字节码 6 类触发时机** 决定加载/初始化的物理时刻、**`ClassLoader + 全限定名` 二元组** 决定 `Klass` 唯一性、**双亲委派递归链路** 决定安全边界。理解了这三条主线，`ClassNotFoundException` / `NoClassDefFoundError` / SPI / Tomcat / 热部署 / OSGi 都是这些主线的排列组合。"*
+**降维金句**：*"类加载篇的所有'为什么'都收敛到三条主线：**字节码 6 类触发时机** 决定加载/初始化的执行时刻、**`ClassLoader + 全限定名` 二元组** 决定 `Klass` 唯一性、**双亲委派递归链路** 决定安全边界。理解了这三条主线，`ClassNotFoundException` / `NoClassDefFoundError` / SPI / Tomcat / 热部署 / OSGi 都是这些主线的排列组合。"*
 
 ---
 
@@ -764,7 +764,7 @@ if (commonInterface.isInstance(obj)) {
 | 埋点篇 | 承接内容 | 落地位置 |
 | :-- | :-- | :-- |
 | ✅ [00 综览](@java-概览) | "类加载器族的完整家族卡片—— `11` 需在战役四序章首次承接" | §3.5 术语家族卡片：`ClassLoader` 类加载器族 |
-| ✅ [03 注解](@java-字节码-注解) | "APT 编译期织入的字节码最终仍要走 `defineClass` 才能进入方法区" | §2.4 `defineClass` 唯一入口物理图 |
+| ✅ [03 注解](@java-字节码-注解) | "APT 编译期织入的字节码最终仍要走 `defineClass` 才能进入方法区" | §2.4 `defineClass` 唯一入口机制图 |
 | ✅ [07 函数式编程](@java-字节码-函数式编程) | "`invokedynamic` 触发的 Hidden Class 加载走 `Lookup.defineHiddenClass` 而非 `Unsafe.defineAnonymousClass`" | §2.1 6 类触发指令表 + §2.4 加载路径收敛图 |
 
 ### 5.2 本文埋下的伏笔

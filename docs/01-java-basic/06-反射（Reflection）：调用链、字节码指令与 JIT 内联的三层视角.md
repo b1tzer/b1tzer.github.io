@@ -7,7 +7,7 @@ title: 反射（Reflection）：调用链、字节码指令与 JIT 内联的三�
 
 在 Java 生态里，**反射（Reflection）** 是所有主流框架的隐形地基——Spring IoC 的 Bean 实例化、MyBatis 的结果集映射、Jackson 的字段序列化、JUnit 的测试方法调度、Dubbo 的远程服务调用，都在其动态发现与调用链路上大量使用 `Class.forName` + `Method.invoke` + `Field.get/set` 这套 API（现代框架通常还会叠加 `MethodHandle` / `VarHandle` / 字节码生成 / 代理 / 缓存等组合机制）。它赋予了 Java "编译期未知、运行期动态发现"的超能力，让"配置驱动"和"插件化架构"成为可能。
 
-然而这份"超能力"从来都不是免费的。每一次 `Method.invoke` 的背后，都藏着一场跨越三层规范的博弈：**Java 语言规范（JLS）** 规定了调用语义、**JVM 规范（JVMS）** 决定了字节码指令与分派规则、**HotSpot 实现（且随 JDK 版本演化）** 决定了具体调用链的物理形态。三层交织，让"反射慢"不是一句静态的口诀，而是一条会随着 JDK 版本重塑的动态曲线。
+然而这份"超能力"从来都不是免费的。每一次 `Method.invoke` 的背后，都藏着一场跨越三层规范的博弈：**Java 语言规范（JLS）** 规定了调用语义、**JVM 规范（JVMS）** 决定了字节码指令与分派规则、**HotSpot 实现（且随 JDK 版本演化）** 决定了具体调用链的底层形态。三层交织，让"反射慢"不是一句静态的口诀，而是一条会随着 JDK 版本重塑的动态曲线。
 
 你是否真正直面过这些问题：
 
@@ -16,7 +16,7 @@ title: 反射（Reflection）：调用链、字节码指令与 JIT 内联的三�
 - 为什么 `AtomicInteger` 到 JDK 21 都还在用 `jdk.internal.misc.Unsafe`？`VarHandle` 只是"官方替代"却没能替代 JDK 内部原子类？
 - 为什么 JDK 动态代理只能代理接口、CGLIB 遇到 `final` 类会直接罢工？两者在字节码层的差异到底是什么？
 
-真正优秀的架构师，不会满足于"反射慢 = 用 MethodHandle" 这一层浅薄的选型口诀。本篇我们将按 **"业务痛点 → 字节码考古 → 物理内存布局 → 工程红线"** 四层垂直透视展开，并**在每个技术点显式标注归属哪一层规范**——JLS / JVMS / HotSpot 实现——让你既看清 Java 反射的"本质契约"，又能识别哪些是"HotSpot 特定版本的实现细节"。
+真正优秀的架构师，不会满足于"反射慢 = 用 MethodHandle" 这一层浅薄的选型口诀。本篇我们将按 **"业务痛点 → 字节码考古 → 内存布局 → 工程红线"** 四层垂直透视展开，并**在每个技术点显式标注归属哪一层规范**——JLS / JVMS / HotSpot 实现——让你既看清 Java 反射的"本质契约"，又能识别哪些是"HotSpot 特定版本的实现细节"。
 
 !!! note "📖 阅读约定：三层规范体系（含衍生层）"
     本文正文所有技术断言都会标注归属层次，请留意以下惯例：
@@ -25,7 +25,7 @@ title: 反射（Reflection）：调用链、字节码指令与 JIT 内联的三�
     - **JVMS**（Java Virtual Machine Specification）：字节码指令与分派规则，跨实现稳定。示例：`invokedynamic` 指令通过 `BootstrapMethod` 绑定 `CallSite`；JVMS 也定义了 signature-polymorphic 方法的字节码表示。
     - **HotSpot 实现**（且标注 JDK 版本）：随 OpenJDK 版本演化的实现细节。示例：`MethodAccessor` inflation 阈值（HotSpot ≤ JDK 17）、`LambdaForm` 常量折叠（HotSpot 全版本）、C2 内联启发式。
 
-    ⚠️ 遇到"HotSpot 实现"标签的内容时，请把它当作**"当前主流 JDK 的一种实现方式"**，而不是"Java 语言规律"——同一段代码在 GraalVM / OpenJ9 上完全可能走不同的物理路径。
+    ⚠️ 遇到"HotSpot 实现"标签的内容时，请把它当作**"当前主流 JDK 的一种实现方式"**，而不是"Java 语言规律"——同一段代码在 GraalVM / OpenJ9 上完全可能走不同的底层路径。
 
     **📌 三层之外的衍生层**：本文还会出现三个不属于上述三层但同样重要的归属标签，请一并注意：
 
@@ -74,7 +74,7 @@ public class OrderController {
 
 单元测试跑起来毫无异样。一旦压测把 QPS 冲到万级以上，Young GC 频率可能从"分钟级"劣化到"秒级"，接口 P99 延迟呈台阶式跳升。
 
-⚠️ **但注意**：现代 Jackson 在**首次反序列化目标类时**会缓存字段访问器（`AnnotatedMethod` + 内部 `MemberKey` 缓存），并不是"每一次调用都新建一个反射查找"。真正落到反射调用层的物理成本主要有两块：
+⚠️ **但注意**：现代 Jackson 在**首次反序列化目标类时**会缓存字段访问器（`AnnotatedMethod` + 内部 `MemberKey` 缓存），并不是"每一次调用都新建一个反射查找"。真正落到反射调用层的底层成本主要有两块：
 
 1. **`Method.invoke` 内部的调用链开销**——这一块随 JDK 版本变化很大（详见 §2）
 2. **调用方 varargs 装箱产生的 `Object[]` + 基本类型的自动装箱**——这一块由**调用者字节码**决定，与反射内部实现无关
@@ -126,7 +126,7 @@ public class ReflectionProbe {
     public static void main(String[] args) throws Exception {
         Method m = ReflectionProbe.class.getDeclaredMethod("hello", String.class);
         ReflectionProbe target = new ReflectionProbe();
-        m.invoke(target, "World");  // ← 反射调用的物理入口
+        m.invoke(target, "World");  // ← 反射调用的代码入口
     }
 }
 ```
@@ -442,15 +442,15 @@ public final class com.sun.proxy.$Proxy0
 
 ⚠️ **CGLIB 的现代地位**：CGLIB 上游多年停止维护，Spring 从 5.x 起把 CGLIB 复刻到 `spring-core` 内部维护，Mockito / Hibernate 6+ 已改用 **ByteBuddy**（现代等价物，字节码 API 更清晰、模块系统兼容更好）；但 ByteBuddy 与 CGLIB 都基于"生成子类"，`final` 类/`final` 方法/静态方法的短板依然存在。
 
-> 📖 03 注解篇 §4.3 埋下了"`$Proxy0` 加载时的双亲委派链"伏笔，这里正式回收：**`$Proxy0` 由 `ProxyGenerator` 在运行时 `defineClass` 到 App ClassLoader（或指定 loader），而不是 Bootstrap ClassLoader**——这是它能被反射修改、能被 JVM Instrumentation 增强的物理前提。
+> 📖 03 注解篇 §4.3 埋下了"`$Proxy0` 加载时的双亲委派链"伏笔，这里正式回收：**`$Proxy0` 由 `ProxyGenerator` 在运行时 `defineClass` 到 App ClassLoader（或指定 loader），而不是 Bootstrap ClassLoader**——这是它能被反射修改、能被 JVM Instrumentation 增强的硬性前提。
 
 至此四条主线索都完成字节码考古。要真正把这套字节码机制落地为工程决策，我们还需要看清它们在物理内存、Metaspace、CPU 指令流上留下的每一处实证。
 
 ---
 
-## 3. 第三层：物理内存布局 —— Metaspace、Eden、`LambdaForm` 与 CPU 缓存
+## 3. 第三层：内存布局 —— Metaspace、Eden、`LambdaForm` 与 CPU 缓存
 
-前一层里，我们看清了反射委派链在字节码上的路径。当这套字节码真正跑到 CPU 上时，它会向 **Metaspace（元空间）**、**Eden 区（新生代）**、**CPU L1/L2 缓存**索取真实的物理代价。
+前一层里，我们看清了反射委派链在字节码上的路径。当这套字节码真正跑到 CPU 上时，它会向 **Metaspace（元空间）**、**Eden 区（新生代）**、**CPU L1/L2 缓存**索取真实的性能代价。
 
 ⚠️ **本章数据口径说明**：以下所有字节数、耗时数、Metaspace 增量都是**数量级示意**，实际值随 JDK 版本、压缩指针（`-XX:+UseCompressedOops`）、对象对齐、`Integer` 缓存池、JIT 状态等因素浮动。若要在生产项目中做决策，请**自行用 JMH 在你的目标 JDK 上跑基准测试**。
 
@@ -474,14 +474,14 @@ public final class com.sun.proxy.$Proxy0
 超阈值以后：走 GeneratedMethodAccessor（纯 Java 调用，无 JNI 跨界）
 ```
 
-**物理账单**（数量级示意）：
+**内存账单**（数量级示意）：
 
 | 场景 | 单方法 Metaspace 增量 | 备注 |
 | :-- | :-- | :-- |
 | 只调用少数几次（不触发 inflation） | 0 | 全程 JNI 慢路径 |
 | 调用次数超过阈值（触发 inflation） | 典型 KB 量级 | 每个热点方法产生一个 `GeneratedMethodAccessor` 类 |
 
-**这就是 §1.1 Spring 启动悬案在 HotSpot ≤17 上的物理证据**：Spring 冷启动里大量反射调用**次数达不到 inflation 阈值**，全部困在 JNI 慢路径里，每次调用都要跨 Java/Native 边界。
+**这就是 §1.1 Spring 启动悬案在 HotSpot ≤17 上的底层证据**：Spring 冷启动里大量反射调用**次数达不到 inflation 阈值**，全部困在 JNI 慢路径里，每次调用都要跨 Java/Native 边界。
 
 ⚠️ **反面案例：不要盲目调 `-Dsun.reflect.inflationThreshold=0`**
 
@@ -492,7 +492,7 @@ public final class com.sun.proxy.$Proxy0
 
 ⚠️ **归属层次**：**HotSpot 实现（JDK ≤17）**，且 JDK 18+ 已淘汰。
 
-### 3.2 反射调用一次的 Eden 区物理账单
+### 3.2 反射调用一次的 Eden 区内存账单
 
 先澄清一个常见混淆点：**"每次 `method.invoke` 都会分配 `Object[]`"到底是谁在分配？**
 
@@ -604,7 +604,7 @@ static final 字段  ≠  Java 编译期常量  ≠  JIT 一定能内联
 
 ### 3.4 `VarHandle` vs `Unsafe`：为什么 `AtomicInteger` 至今没换？
 
-`VarHandle`（JDK 9+）在物理层面与 `sun.misc.Unsafe.compareAndSwapInt` 等价——都会被 HotSpot 最终编译为 CPU 的平台相关 CAS 指令（典型地，x86 上是 `lock cmpxchg`，ARM/AArch64 上是 LL/SC 或 `casal` 家族）。那为什么 `AtomicInteger` 到 JDK 21 都没换？
+`VarHandle`（JDK 9+）在底层与 `sun.misc.Unsafe.compareAndSwapInt` 等价——都会被 HotSpot 最终编译为 CPU 的平台相关 CAS 指令（典型地，x86 上是 `lock cmpxchg`，ARM/AArch64 上是 LL/SC 或 `casal` 家族）。那为什么 `AtomicInteger` 到 JDK 21 都没换？
 
 翻开 OpenJDK 21 的 `java.util.concurrent.atomic.AtomicInteger` 源码：
 
@@ -655,9 +655,9 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 | `VarHandle` 最终编译为 `lock cmpxchg` | **HotSpot 实现** ⚠️ |
 | `AtomicInteger` / CHM 用 `Unsafe` 而非 `VarHandle` | **JDK 内部实现选型** ⚠️ 与规范无关 |
 
-### 3.5 动态代理的物理开销全景
+### 3.5 动态代理的性能开销全景
 
-最后回收 §2.5 的动态代理素材，看物理层面的开销分布（**数量级示意**）：
+最后回收 §2.5 的动态代理素材，看底层开销分布（**数量级示意**）：
 
 ```txt
 📌 JDK 动态代理调用链（数量级示意）：
@@ -708,7 +708,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 
 ⚠️ **归属层次**：**JLS**（Java 继承规则决定 `final` 无法覆盖）+ **框架实现契约**（Spring AOP / Mockito / MapStruct 等）。
 
-认清了这一层物理代价与 JIT 优化边界，我们就能把这些底层规律转化为高并发场景下的工程红线。
+认清了这一层性能代价与 JIT 优化边界，我们就能把这些底层规律转化为高并发场景下的工程红线。
 
 ---
 
@@ -790,7 +790,7 @@ public class ServiceB {
 
 ### 4.2 🚨 工程原则 2：profiling 驱动决定是否升级到 `MethodHandle` + `invokeExact`
 
-**核心事实**：反射 `Method.invoke` 与 `static final MethodHandle.invokeExact` 在**稳态性能上有可观差距**（§3.3 已给量级排序），差距的物理原因是：`invokeExact` 的签名多态调用 + `LambdaForm` 常量传播 + JIT 内联三重优化。
+**核心事实**：反射 `Method.invoke` 与 `static final MethodHandle.invokeExact` 在**稳态性能上有可观差距**（§3.3 已给量级排序），差距的根本原因是：`invokeExact` 的签名多态调用 + `LambdaForm` 常量传播 + JIT 内联三重优化。
 
 **决策模型（真正的工程红线）**：**不要**基于 QPS 阈值一刀切决定是否升级——正确的决策路径是：
 
@@ -1006,7 +1006,7 @@ private OrderService orderService;       // ✅ JDK 动态代理
 
 紧接着的 [Java 8 函数式编程](@java-字节码-函数式编程)（战役一收官篇）会揭示：**每一个 Lambda 表达式在字节码层都被编译为一条 `invokedynamic`，`BootstrapMethod` 是 `LambdaMetafactory.metafactory`**——Bootstrap 方法在首次调用时通过 `MethodHandle` 生成实现目标函数式接口（`Function` / `Consumer` / `Predicate`）的对象并封装到 `ConstantCallSite`；此后每次调用都直接沿 `CallSite` 分派，性能接近直接方法调用，摆脱了泛型篇的桥接方法与 `checkcast` 开销。
 
-**读到那里，你会顿悟**：Lambda 不是"编译期语法糖"，而是**运行期通过 `invokedynamic` + `MethodHandle` 生成的匿名类**——本章 §4.2 提到的 `LambdaMetafactory` 熔炼术，就是把冷冰冰的反射 `Method` 转成"和 Lambda 完全一样的物理形态"的降维打击。
+**读到那里，你会顿悟**：Lambda 不是"编译期语法糖"，而是**运行期通过 `invokedynamic` + `MethodHandle` 生成的匿名类**——本章 §4.2 提到的 `LambdaMetafactory` 熔炼术，就是把冷冰冰的反射 `Method` 转成"和 Lambda 完全一样的底层形态"的降维打击。
 
 ### 5.2 伏笔二 · `VarHandle` + `Unsafe` → 通向 J.U.C 并发原语
 
@@ -1019,7 +1019,7 @@ private OrderService orderService;       // ✅ JDK 动态代理
 进入战役三高并发全景专题：
 
 - [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 揭示 `volatile` 的读写语义与 `VarHandle` 各访问模式的对应关系
-- [AQS 设计哲学](@java-并发-AQS设计哲学) 揭示 `AQS.state` / `CountDownLatch` / `Semaphore` 全部通过 `VarHandle`（或早期 JDK 的 `Unsafe`）实现无锁 CAS，构成整个 J.U.C 的物理地基
+- [AQS 设计哲学](@java-并发-AQS设计哲学) 揭示 `AQS.state` / `CountDownLatch` / `Semaphore` 全部通过 `VarHandle`（或早期 JDK 的 `Unsafe`）实现无锁 CAS，构成整个 J.U.C 的硬件地基
 - [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 揭示 `ConcurrentHashMap` 的 `sizeCtl` 状态机、`transferIndex` 协作扩容、`baseCount` 分段计数——都是 `Unsafe.compareAndSwap*` 的经典应用场景
 
 **读到那里，你会顿悟**：并发编程的本质，就是把"CPU 硬件的 `lock cmpxchg` 指令 + JVM 内存屏障"包装成"程序员能理解的 API"——`VarHandle` 是这条包装链的最上层入口，`Unsafe` 是它的历史前身。

@@ -8,7 +8,7 @@ title: AQS 设计哲学 —— state 心脏、CLH 队列、模板方法与独占
 !!! info "**AQS 设计哲学一句话口诀**"
     - **AQS = `state`（volatile int）+ CLH 双向队列 + 模板方法 + 独占/共享双模式** —— 四件事撑起 20+ 个 JUC 同步器。所有 `Lock` / `Semaphore` / `CountDownLatch` / `ReadWriteLock` / `ThreadPoolExecutor.Worker` 都是"在 `state` 上定义不同语义 + 复用模板方法"的产物。
     - **`state` 是 AQS 的心脏 —— 一个 `volatile int` 承载所有语义**：`ReentrantLock` 里 `state` = 重入次数、`Semaphore` 里 = 剩余许可数、`CountDownLatch` 里 = 倒计数、`ReentrantReadWriteLock` 里 = 高 16 位读锁 + 低 16 位写锁计数。**用最少的字段撑起最大语义空间**，是 Doug Lea 设计哲学的极致体现。
-    - **CLH 双向队列是严格 FIFO 公平性的物理保证**：每个等待线程封装成 `Node`（`prev` / `next` 双向指针 + 状态位 `waitStatus`），头节点持有锁的哑节点、尾节点是新入队、`park()` / `unpark()` 是挂起唤醒对。CLH 名字来自三位作者（Craig / Landin / Hagersten），原始 CLH 是**单向自旋队列**，AQS 变体升级为**双向 + `park` 阻塞**，`prev` 支持"取消节点"物理跳过。
+    - **CLH 双向队列是严格 FIFO 公平性的硬件保证**：每个等待线程封装成 `Node`（`prev` / `next` 双向指针 + 状态位 `waitStatus`），头节点持有锁的哑节点、尾节点是新入队、`park()` / `unpark()` 是挂起唤醒对。CLH 名字来自三位作者（Craig / Landin / Hagersten），原始 CLH 是**单向自旋队列**，AQS 变体升级为**双向 + `park` 阻塞**，`prev` 支持"取消节点"直接跳过。
     - **模板方法模式是 AQS 复用的秘诀**：AQS 提供 `acquire` / `release` / `acquireShared` / `releaseShared` 四个 `final` 骨架方法，子类只重写 `tryAcquire` / `tryRelease` / `tryAcquireShared` / `tryReleaseShared` 四个抽象方法定义"什么条件下能拿到 state" —— **框架封装公共排队/挂起/唤醒逻辑，子类只声明业务语义**。
     - **AQS 不参与 `synchronized` 锁升级** —— AQS 完全在 Java 层实现，`park` 底层是 `pthread_cond_wait`；`synchronized` 是 JVM 内建同步机制，走偏向锁 → 轻量级锁 → 重量级锁升级。二者是**两条完全独立的技术路径**，选型时不要混淆。
 
@@ -85,7 +85,7 @@ rwl.writeLock().lock();
 - **悬案 1**：CLH 队列的头节点 `head` 为什么是"哑节点"（`thread = null`）？释放锁时到底应该 `unpark(head)` 还是 `unpark(head.next)`？
 - **悬案 2**：`addWaiter` 里为什么要用 `oldTail.setPrevRelaxed(node)` + `compareAndSetTail(oldTail, node)` 两步走？直接一步 CAS 不行吗？
 - **悬案 3**：`shouldParkAfterFailedAcquire` 为什么要**回头**把前驱的 `waitStatus` 改成 `SIGNAL` 再挂起？直接 `park` 不行吗？
-- **悬案 4**：`Node.SHARED` 和 `Node.EXCLUSIVE` 的区别只是一个 `Node` 字段标记吗？共享模式的"传播唤醒"物理机制究竟在源码哪一行？
+- **悬案 4**：`Node.SHARED` 和 `Node.EXCLUSIVE` 的区别只是一个 `Node` 字段标记吗？共享模式的"传播唤醒"底层机制究竟在源码哪一行？
 - **悬案 5**：`park` 可以先于 `unpark` 调用（"许可"语义）—— 这在 AQS 里解决了什么并发竞争问题？
 
 这五个悬案的答案都埋在 400 行左右的 AQS 源码里。掀开看，就都清晰了。
@@ -95,12 +95,12 @@ rwl.writeLock().lock();
 | 痛点 | 对应第 N 层解决 |
 | :-- | :-- |
 | **A**：读 AQS 源码不知道从哪切入 —— 类图看了 10 遍还是茫然 | §2 从 `acquire` / `release` 两个模板方法作为切入点 |
-| **B**：独占 vs 共享的分岔在源码哪一行 —— 说不清"传播唤醒"的物理机制 | §2.6 & §3.3 揭 `setHeadAndPropagate` 是共享模式独有的核心分岔 |
+| **B**：独占 vs 共享的分岔在源码哪一行 —— 说不清"传播唤醒"的底层机制 | §2.6 & §3.3 揭 `setHeadAndPropagate` 是共享模式独有的核心分岔 |
 | **C**：AQS 与 `synchronized` 锁升级什么关系 —— 二者能互相替代吗？ | §3.4 澄清 AQS 全在 Java 层用 `park`、`synchronized` 走 JVM 三级升级，两条独立路径 |
 
 ---
 
-## 2. 第二层：字节码与源码考古 —— AQS 骨架四要素的物理实现
+## 2. 第二层：字节码与源码考古 —— AQS 骨架四要素的底层实现
 
 !!! tip "本层特殊说明"
     AQS 的"字节码考古"聚焦**核心源码方法的关键指令**（如 `enq` 的 CAS 自旋、`parkAndCheckInterrupt` 的 `LockSupport.park`），不再抓 `javap -v` 字节码全景。所有内存布局图与源码块统一用 ```volt``` 语言标记。
@@ -287,7 +287,7 @@ final boolean acquireQueued(final Node node, int arg) {
 
 1. **`addWaiter` 的两步 CAS 妙处**：`node.setPrevRelaxed(oldTail)` 是 `Unsafe.putObject`（无内存屏障、非 volatile 写），此时新节点还没接入队列 —— 只有下一行 `compareAndSetTail(oldTail, node)` 成功才让新节点**真正可达**。这一"先设 prev + 再 CAS tail" 的双步是 AQS 精妙的入队方案：**避免"部分可达节点"污染其他线程的遍历**。
 2. **`oldTail.next = node` 为什么放在 CAS 之后**：`prev` 是节点入队的**必要**指针（`predecessor()` 靠它找前驱），`next` 只是**辅助**指针（`unparkSuccessor` 用它跳过 CANCELLED 快速定位后继）。这也就是为什么 `next` 是普通写、`prev` 字段声明为 `volatile` 却在 `setPrevRelaxed` 中以 relaxed 方式写入（`VarHandle.set`，无内存屏障）—— 保证了 `prev` 的读可见性、`next` 允许"暂时是 null 由 `prev` 兜底遍历"。
-3. **`p == head && tryAcquire(arg)`**：AQS 里"**只有队头后一位有资格试锁**"这条铁律的物理体现 —— 保证严格 FIFO。哑头节点的存在正是为了让"队头就是持锁者"这条不变量始终成立。
+3. **`p == head && tryAcquire(arg)`**：AQS 里"**只有队头后一位有资格试锁**"这条铁律的直接体现 —— 保证严格 FIFO。哑头节点的存在正是为了让"队头就是持锁者"这条不变量始终成立。
 4. **`shouldParkAfterFailedAcquire`**：把前驱的 `waitStatus` 改成 `SIGNAL` 才 `park` —— 这一步是"**先立契约再挂起**"，避免"我 park 了但你没人叫我"的死锁窗口。
 5. **`parkAndCheckInterrupt`** 底层直通 `LockSupport.park(this)`，也就是 `Unsafe.park` / `JVM_Park` / `pthread_cond_wait` 一路直下 OS。
 
@@ -414,13 +414,13 @@ private void setHeadAndPropagate(Node node, int propagate) {
 | `tryXxx` 返回值 | `boolean`（成功 / 失败） | `int`（负数 = 失败；0 = 成功但无剩余；正数 = 成功且有剩余可让下一个抢） |
 | 关键源码分岔点 | `unparkSuccessor(head)` 只 unpark 后一位 | `setHeadAndPropagate` + `doReleaseShared` 递归传播 |
 
-**顿悟点**：**共享模式的"传播"不是并行唤醒，而是链式唤醒** —— 每个共享节点在自己拿到锁后，如果剩余许可还够（`propagate > 0`），就把下一位也 unpark。下一位醒来 `tryAcquireShared` 成功后又调 `setHeadAndPropagate`，就这样一路传下去，直到 `tryAcquireShared` 返回 `< 0` 停下。**这就是 `Semaphore(3).release()` 能同时唤醒 3 个等待线程的物理机制**（严格来说不是"同时"，是"一个接一个链式唤醒"，但从线程调度视角看几乎同时）。
+**顿悟点**：**共享模式的"传播"不是并行唤醒，而是链式唤醒** —— 每个共享节点在自己拿到锁后，如果剩余许可还够（`propagate > 0`），就把下一位也 unpark。下一位醒来 `tryAcquireShared` 成功后又调 `setHeadAndPropagate`，就这样一路传下去，直到 `tryAcquireShared` 返回 `< 0` 停下。**这就是 `Semaphore(3).release()` 能同时唤醒 3 个等待线程的底层机制**（严格来说不是"同时"，是"一个接一个链式唤醒"，但从线程调度视角看几乎同时）。
 
 ---
 
-## 3. 第三层：JVM 内存与物理结构 —— AQS 对象与 CLH 队列的堆内存布局
+## 3. 第三层：JVM 内存与底层结构 —— AQS 对象与 CLH 队列的堆内存布局
 
-### 3.1 AQS 完整内存物理图
+### 3.1 AQS 完整内存机制图
 
 ```volt
 ┌──────────────────────────────────────────────────────────────┐
@@ -458,9 +458,9 @@ Node 对象布局（约 32~40 字节 · 与 JVM 版本 / 是否 64bit / 压缩�
   4B  对齐填充
 ```
 
-**物理常量对齐**（对齐 [12a JVM 内存分区](@java-JVM-内存分区与对象布局) §"对象布局"）：
+**底层常量对齐**（对齐 [12a JVM 内存分区](@java-JVM-内存分区与对象布局) §"对象布局"）：
 
-- 每个 `Node` 对象约 40 字节，等待队列越长 heap 压力越大 —— 这也是"高竞争锁 = 内存压力"的物理来源。
+- 每个 `Node` 对象约 40 字节，等待队列越长 heap 压力越大 —— 这也是"高竞争锁 = 内存压力"的根本来源。
 - `head` 始终是**哑节点**（`thread = null`），持锁者的原始 Node 在 `setHead()` 之后自身变成哑节点 —— **"当前持锁 = 当前 head"** 是 AQS 里最重要的不变量之一。
 - `exclusiveOwnerThread` 继承自 `AbstractOwnableSynchronizer`，只被独占模式使用；共享模式（`Semaphore` / `CountDownLatch`）**根本不设置这个字段**。
 
@@ -500,7 +500,7 @@ sequenceDiagram
     Note over T2,AQS: T2 持锁<br/>T3 依然 park 等待
 ```
 
-### 3.3 共享模式传播机制物理图（回答 §1.2 悬案 4）
+### 3.3 共享模式传播机制机制图（回答 §1.2 悬案 4）
 
 ```mermaid
 sequenceDiagram
@@ -529,7 +529,7 @@ sequenceDiagram
     Note over T0,T2: 一次 releaseShared 触发了<br/>"链式唤醒 + 挂起筛选" 的完整传播
 ```
 
-**顿悟点**：**共享模式的"传播"是"叫一声看是否有人接" + "接得动就继续叫" 的链式过程**，不是并行释放许可。这也是为什么 `Semaphore(3)` 有 5 个 `acquire()` 等待时，一次 `release(1)` 只让 1 个线程真正走通，剩下的都被"叫醒又挂起"（这在 CPU 层是有物理开销的 —— 无谓的挂起唤醒是"传播机制"的一个隐性代价）。
+**顿悟点**：**共享模式的"传播"是"叫一声看是否有人接" + "接得动就继续叫" 的链式过程**，不是并行释放许可。这也是为什么 `Semaphore(3)` 有 5 个 `acquire()` 等待时，一次 `release(1)` 只让 1 个线程真正走通，剩下的都被"叫醒又挂起"（这在 CPU 层是有性能开销的 —— 无谓的挂起唤醒是"传播机制"的一个隐性代价）。
 
 ### 3.4 AQS 与 JVM 锁升级的关系（关键澄清点）
 
@@ -549,7 +549,7 @@ sequenceDiagram
 
 - **AQS 从来不参与 JVM 锁升级** —— 二者是两条完全独立的技术路径。`park` 是 JVM 提供给 Java 的挂起原语（`sun.misc.Unsafe.park`），`synchronized` 是 JVM 自己内部实现的同步机制（走 `ObjectMonitor`）。
 - **底层 OS 系统调用可能一样**（Linux 上都能落到 `pthread_cond_wait`），但**入口和管控完全不同** —— `park` 是"允许在任意时刻挂起一个线程"的通用原语；`synchronized` 的 `pthread_cond_wait` 只在**锁升级到重量级**后才用到。
-- **[10d 并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 会承接**："`ConcurrentHashMap` 的单槽位 `synchronized` 借助 JVM 锁升级达到低竞争零开销 —— 而 `ReentrantLock` 走 AQS 完全没有偏向锁 / 轻量级锁的物理机制，第一次未获取就直接 `park`"。这也是为什么 `ConcurrentHashMap` 从 JDK 8 开始敢把分段锁换成 `synchronized` —— **借的正是 JVM 锁升级的东风**，而 AQS 借不到这股东风。
+- **[10d 并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 会承接**："`ConcurrentHashMap` 的单槽位 `synchronized` 借助 JVM 锁升级达到低竞争零开销 —— 而 `ReentrantLock` 走 AQS 完全没有偏向锁 / 轻量级锁的底层机制，第一次未获取就直接 `park`"。这也是为什么 `ConcurrentHashMap` 从 JDK 8 开始敢把分段锁换成 `synchronized` —— **借的正是 JVM 锁升级的东风**，而 AQS 借不到这股东风。
 
 ---
 
@@ -780,9 +780,9 @@ public boolean tryIncrement(long timeoutMs) throws InterruptedException {
 
 ## 5. 🗺️ 跨战役知识伏笔
 
-本篇我们把 Doug Lea 的 AQS 剥到骨头缝里 —— 它的物理真相是 **一个 `volatile int state` 承担所有语义 + 一条 CLH 双向队列 + 一对 `park` / `unpark` + 一套模板方法**。四件事撑起整个 JUC 包 20+ 个同步器 —— 这是**用最少字段撑起最大语义空间**的极致设计哲学，也是 [10a JMM 与线程同步](@java-并发-JMM与线程同步) 讲的 CAS 硬件语义在 Java 层的第一次架构性组合应用。
+本篇我们把 Doug Lea 的 AQS 剥到骨头缝里 —— 它的底层真相是 **一个 `volatile int state` 承担所有语义 + 一条 CLH 双向队列 + 一对 `park` / `unpark` + 一套模板方法**。四件事撑起整个 JUC 包 20+ 个同步器 —— 这是**用最少字段撑起最大语义空间**的极致设计哲学，也是 [10a JMM 与线程同步](@java-并发-JMM与线程同步) 讲的 CAS 硬件语义在 Java 层的第一次架构性组合应用。
 
-因为在接下来的 [10c 并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 里，你会看到 `ReentrantLock` 公平 vs 非公平的**唯一差异**就是 `tryAcquire` 里有没有一行 `hasQueuedPredecessors()` —— 骨架完全没变、只是 `state` 语义的判断多加了一个条件；`Semaphore` 的公平 vs 非公平差异是**同一行代码的镜像**；`ReentrantReadWriteLock` 的读写共享则是**在同一个 `state` 上做高低 16 位分解 + 独占 + 共享双模式的组合**。到那时你就会明白 —— 本篇讲的骨架四要素 + 独占-共享双模式，就是 10c 全部锁工具的"物理生成规则"，10c 只在讲"业务语义规则"。
+因为在接下来的 [10c 并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 里，你会看到 `ReentrantLock` 公平 vs 非公平的**唯一差异**就是 `tryAcquire` 里有没有一行 `hasQueuedPredecessors()` —— 骨架完全没变、只是 `state` 语义的判断多加了一个条件；`Semaphore` 的公平 vs 非公平差异是**同一行代码的镜像**；`ReentrantReadWriteLock` 的读写共享则是**在同一个 `state` 上做高低 16 位分解 + 独占 + 共享双模式的组合**。到那时你就会明白 —— 本篇讲的骨架四要素 + 独占-共享双模式，就是 10c 全部锁工具的"底层生成规则"，10c 只在讲"业务语义规则"。
 
 进一步在 [10d 并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 里，你会看到 `ConcurrentHashMap` 的 `put` 方法在链表头节点上用**JVM 内建 `synchronized` 而不是 `ReentrantLock`** —— 这是 §3.4 里我们澄清的关键分岔点的正面案例：**当锁粒度已经细到单个哈希桶、且大多数时候零竞争，就应该借 JVM 锁升级的东风**（偏向锁 → 轻量级锁），而不是走 AQS 的"直接 park"重路径。这条选型规则会在 10d 反复回收，且会拓展到 `ThreadPoolExecutor.Worker` —— 后者继承 AQS 但只用最简单的独占模式来实现"任务运行中不响应中断"的语义，是 AQS 在**非锁场景**下最经典的一次借用。
 

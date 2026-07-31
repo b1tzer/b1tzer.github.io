@@ -137,7 +137,7 @@ title: GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排�
     2. **大对象（Humongous）分配失败**：单个对象 > Region 大小的 50% 直接进 Old · Old 满触发 Full GC → 调大 `-XX:G1HeapRegionSize`
     3. **元空间不足**：未设 `-XX:MaxMetaspaceSize` · 类加载过多 → 显式设置上限（Spring Boot 微服务推荐 512m~1g）
 
-### 2.3 读懂一条 ZGC 日志（亚毫秒 STW · 全并发的物理证据）
+### 2.3 读懂一条 ZGC 日志（亚毫秒 STW · 全并发的底层证据）
 
 ```txt
 [0.123s][info][gc,start ] GC(0) Garbage Collection (Warmup)
@@ -153,7 +153,7 @@ title: GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排�
                                                               └─ 总耗时 26ms · 但 STW 合计 < 1.1ms
 ```
 
-**顿悟点**：ZGC 的**总耗时**和 **STW 时间**是两个截然不同的概念 —— G1 时代混为一谈，ZGC 时代必须**只看 `Pause` 开头的三行**判断业务感受。染色指针 + 读屏障的物理机制细节 → [GC 核心机制](@java-JVM-GC核心机制与收集器演进) §"ZGC 染色指针"。
+**顿悟点**：ZGC 的**总耗时**和 **STW 时间**是两个截然不同的概念 —— G1 时代混为一谈，ZGC 时代必须**只看 `Pause` 开头的三行**判断业务感受。染色指针 + 读屏障的底层机制细节 → [GC 核心机制](@java-JVM-GC核心机制与收集器演进) §"ZGC 染色指针"。
 
 ### 2.4 GC 日志关键词速查
 

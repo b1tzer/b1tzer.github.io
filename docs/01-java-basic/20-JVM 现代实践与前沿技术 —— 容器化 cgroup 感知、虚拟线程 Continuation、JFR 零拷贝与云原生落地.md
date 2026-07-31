@@ -7,8 +7,8 @@ title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟�
 
 !!! info "**JVM 现代实践 一句话口诀**"
     - **容器化 JVM 必开 `-XX:+UseContainerSupport`**（JDK 10+ 默认开、JDK 8 需 `8u191+` 显式开），搭配 `-XX:MaxRAMPercentage=75.0` 让 JVM 正确感知 cgroup 内存边界——否则 `-Xmx` 硬编码是唯一防御。**"75% 留堆 · 25% 留堆外"是经验值**：元空间 + 直接内存 + 线程栈 + Code Cache + JVM 本身开销加起来正好 25%。
-    - **虚拟线程（JDK 21+ JEP 444）适合 I/O 密集、不适合 CPU 密集**——载体线程数 = CPU 核数，虚拟线程在阻塞时 unmount 释放载体，是 M:N 线程模型的物理机制。**JDK 21~23 下 `synchronized` 会 pin 住载体线程 → 收益打折**，改用 `ReentrantLock` 可正常 unmount；**JDK 24（JEP 491）彻底修复**，`synchronized` 代码零改动直接受益。虚拟线程专属调度器 `DEFAULT_SCHEDULER` **独立于** `ForkJoinPool.commonPool` —— `parallelStream` 阻塞不会污染虚拟线程调度。
-    - **JFR 是生产环境首选 profiler**——持续开启开销 < 1%，JDK 11+ 完全开源（不再是 Oracle 商业特性）。低开销的物理根源：**事件写入 per-thread 缓冲、无锁竞争 / 无 Java 反射 / 无字符串拼接 / 无 JVMTI Agent 附加成本**——`jdk.jfr` 是 JVM 内建模块。`jcmd <pid> JFR.start duration=60s filename=xxx.jfr` 动态采集，`jfr print` / JMC 分析，事件覆盖 GC / 锁竞争 / I/O / TLAB / 方法采样 300+ 种。
+    - **虚拟线程（JDK 21+ JEP 444）适合 I/O 密集、不适合 CPU 密集**——载体线程数 = CPU 核数，虚拟线程在阻塞时 unmount 释放载体，是 M:N 线程模型的底层机制。**JDK 21~23 下 `synchronized` 会 pin 住载体线程 → 收益打折**，改用 `ReentrantLock` 可正常 unmount；**JDK 24（JEP 491）彻底修复**，`synchronized` 代码零改动直接受益。虚拟线程专属调度器 `DEFAULT_SCHEDULER` **独立于** `ForkJoinPool.commonPool` —— `parallelStream` 阻塞不会污染虚拟线程调度。
+    - **JFR 是生产环境首选 profiler**——持续开启开销 < 1%，JDK 11+ 完全开源（不再是 Oracle 商业特性）。低开销的根本原因：**事件写入 per-thread 缓冲、无锁竞争 / 无 Java 反射 / 无字符串拼接 / 无 JVMTI Agent 附加成本**——`jdk.jfr` 是 JVM 内建模块。`jcmd <pid> JFR.start duration=60s filename=xxx.jfr` 动态采集，`jfr print` / JMC 分析，事件覆盖 GC / 锁竞争 / I/O / TLAB / 方法采样 300+ 种。
     - **分代 ZGC** —— **JDK 21（JEP 439）引入需显式 `-XX:+ZGenerational` · JDK 23（JEP 474）成为默认 · JDK 24+（JEP 490）非分代模式正式移除**。老手记这一条时间线就够：未来 `-XX:+UseZGC` 即分代，无需额外参数。**分代 ZGC = G1 的吞吐 + ZGC 的延迟** —— 套用弱分代假说，新生代复制算法快速回收短命对象，减少标记成本、吞吐追平 G1、延迟仍亚毫秒。
     - **生产红线四件套** —— **无界队列禁用（`LinkedBlockingQueue` 默认 `Integer.MAX_VALUE`）· `ThreadLocal` 必 `remove`（虚拟线程场景百万副本 = 4GB 爆炸）· 必设 `-XX:MaxMetaspaceSize`（JDK 8+ 元空间默认无上限）· 必开 GC 日志与 OOM 自动 dump**。每一条都是血泪教训，不带一条上线 = 早晚翻车。
 
@@ -69,7 +69,7 @@ title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟�
 
 > ⭐ **本层特殊说明**：JVM 现代实践的"字节码考古"聚焦**容器化 cgroup 感知源码路径**、**虚拟线程 `Continuation` 源码（HotSpot 层）**、**JFR 事件模型三大 API** 三条主线 —— 而非常规 `javap -v` 字节码考古（那属于战役一）。
 
-### 2.1 虚拟线程 `Continuation` 源码考古：`Thread.startVirtualThread` 背后的物理链路
+### 2.1 虚拟线程 `Continuation` 源码考古：`Thread.startVirtualThread` 背后的底层链路
 
 **主考古样本**（业务代码看起来平淡无奇）：
 
@@ -115,9 +115,9 @@ private static ForkJoinPool createDefaultScheduler() {
 
 **顿悟点**（悬案 1 的答案）：
 
-- 虚拟线程的调度器 `DEFAULT_SCHEDULER` 是**虚拟线程专属的 ForkJoinPool** ——**不是** `parallelStream` 用的 `ForkJoinPool.commonPool()`，两者**物理隔离**，`parallelStream` 阻塞 I/O 不会污染虚拟线程调度器
+- 虚拟线程的调度器 `DEFAULT_SCHEDULER` 是**虚拟线程专属的 ForkJoinPool** ——**不是** `parallelStream` 用的 `ForkJoinPool.commonPool()`，两者**内存隔离**，`parallelStream` 阻塞 I/O 不会污染虚拟线程调度器
 - `Continuation` 是 JDK 内部 API（`jdk.internal.vm.Continuation`），底层由 HotSpot 的 `runtime/continuation.cpp` 实现，通过 `freeze` / `thaw` 两条 native 方法完成栈帧的堆化与恢复
-- **一次 `Continuation.yield()` = 一次"业务代码的暂停 + 栈帧复制到堆 + 载体线程释放"** —— 这就是 M:N 线程模型的物理机制
+- **一次 `Continuation.yield()` = 一次"业务代码的暂停 + 栈帧复制到堆 + 载体线程释放"** —— 这就是 M:N 线程模型的底层机制
 
 📖 `Continuation` 完整源码链路、`freeze` / `thaw` 汇编级实现、与 Kotlin Coroutine / Go Goroutine 的对比 → 见后续「并发编程」专题相关章节（拆分中），本文不再深展开。
 
@@ -219,7 +219,7 @@ r.enable("jdk.GCPhasePause");
 r.start();
 ```
 
-**低开销的物理原因**（悬案 2 的答案）—— JFR 采样流程的**三层零拷贝设计**：
+**低开销的根本原因**（悬案 2 的答案）—— JFR 采样流程的**三层零拷贝设计**：
 
 ```txt
 业务线程                            JFR Ring Buffer         JFR Disk Writer
@@ -246,7 +246,7 @@ r.start();
 **JDK 8u191+ / JDK 10+ 感知源码**（HotSpot `os_linux.cpp` 的 `os::available_memory`）：
 
 ```txt
-JVM 启动时判断内存上限的物理链路：
+JVM 启动时判断内存上限的底层链路：
 
 ① 优先读 cgroup v1：/sys/fs/cgroup/memory/memory.limit_in_bytes
 ② 或 cgroup v2（JDK 15+）：/sys/fs/cgroup/memory.max
@@ -301,7 +301,7 @@ JVM 启动时判断内存上限的物理链路：
 
 ---
 
-## 3. 第三层：JVM 现代物理架构 —— 容器化 / M:N 线程模型 / 云原生
+## 3. 第三层：JVM 现代硬件架构 —— 容器化 / M:N 线程模型 / 云原生
 
 ### 3.1 容器化 JVM 架构图与版本演进
 
@@ -351,7 +351,7 @@ flowchart TD
     -XX:G1HeapRegionSize=4m
     ```
 
-### 3.2 虚拟线程 M:N 线程模型物理图
+### 3.2 虚拟线程 M:N 线程模型机制图
 
 ```mermaid
 flowchart LR
@@ -451,7 +451,7 @@ flowchart LR
     2. **内存下限**：容器 `requests.memory` ≥ `Xmx + 元空间 + 直接内存 + 线程栈` 总和 × 1.2，否则 HPA 抖
     3. **JIT 预热**：K8s 滚动升级新 Pod 未预热就收流量 → 毛刺 → `readinessProbe` 延迟 + 预热流量，或用 **CDS / AOT** 缩短 JIT 冷启动
 
-### 3.4 JIT 编译层级物理图
+### 3.4 JIT 编译层级机制图
 
 ```txt
 分层编译 (Tiered Compilation) · JDK 8+ 默认开启：
@@ -496,7 +496,7 @@ flowchart LR
 | **JDK 23** | **JEP 474** | **分代成为默认** · 非分代废弃 | `-XX:+UseZGC` 即分代 |
 | **JDK 24+** | **JEP 490** | **非分代 ZGC 正式移除** | 仅剩分代模式 |
 
-**分代 ZGC 的物理收益**（悬案 4 的答案）：
+**分代 ZGC 的性能收益**（悬案 4 的答案）：
 
 - **原 ZGC 的痛点**：全堆统一扫描，每次标记都要扫全堆，**吞吐量偏低**（相比 G1 约 10~15% 差距）——"低延迟"用"高 CPU 占用 + 低吞吐"换来
 - **分代 ZGC 的降维**：套用弱分代假说，新生代复制算法快速回收短命对象，老年代保留 ZGC 染色指针并发转移，**减少标记成本、吞吐量追平 G1、延迟仍亚毫秒**
@@ -739,7 +739,7 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 | 来源 | 伏笔内容 | 落地位置 |
 | :-- | :-- | :-- |
 | **[12c GC 调优实战](@java-JVM-GC调优实战与常见误区)** ★★★★★ | 容器化 JVM（`MaxRAMPercentage` · `UseContainerSupport`）· 虚拟线程 GC 视角 · JFR 深度使用 · 分代 ZGC 参数调优 | §1.1 引子三连击 · §2.3 JFR 事件模型 · §2.4 cgroup 感知源码 · §3.1 容器化架构图 · §4.1 分代 ZGC JEP 时间线 |
-| **[12 JVM 综览](@java-JVM-内存结构与GC) / [12a 内存分区](@java-JVM-内存分区与对象布局)** ★★★★★ | JVM 现代实践 —— 战役收网 · 承接容器化 + 前沿技术 | §3 三张现代物理图（容器化 / M:N 线程 / 云原生）· §4.6 前沿技术速览 |
+| **[12 JVM 综览](@java-JVM-内存结构与GC) / [12a 内存分区](@java-JVM-内存分区与对象布局)** ★★★★★ | JVM 现代实践 —— 战役收网 · 承接容器化 + 前沿技术 | §3 三张现代机制图（容器化 / M:N 线程 / 云原生）· §4.6 前沿技术速览 |
 | **[01 OOP](@java-字节码-面向对象)** ★★★ | 对象头 · Klass Pointer · 32GB 压缩指针边界 —— 容器场景下的堆大小选型 | §2.4 "为什么留 25% 给堆外" + §4.6 技术选型（堆 > 32GB 推荐分代 ZGC，隐含突破压缩指针边界） |
 
 ### 5.2 本文埋下的伏笔
@@ -751,7 +751,7 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 | **`12d` → [10c Lock 与线程池](@java-并发-并发工具Lock与线程池)** | `ReentrantLock` 在虚拟线程场景下的 AQS `park` / `unpark` 与 `Continuation.yield` 协作 —— `10c` 需承接 AQS 在虚拟线程时代的新语义 | ★★★★ |
 | **`12d` → [12c GC 调优实战](@java-JVM-GC调优实战与常见误区)**（已完成） | 容器化 JVM 参数 · JFR 深度使用 · 分代 ZGC 参数 | ✅ 已闭环 |
 | **`12d` → [12b GC 核心机制](@java-JVM-GC核心机制与收集器演进)**（已完成） | 分代 ZGC 染色指针 · 读屏障 · Self-Healing | ✅ 已闭环 |
-| **`12d` → [12a 内存分区与对象布局](@java-JVM-内存分区与对象布局)**（已完成） | 五分区物理布局（堆 / 元空间 / 直接内存 / 线程栈 / Code Cache） | ✅ 已闭环 |
+| **`12d` → [12a 内存分区与对象布局](@java-JVM-内存分区与对象布局)**（已完成） | 五分区内存布局（堆 / 元空间 / 直接内存 / 线程栈 / Code Cache） | ✅ 已闭环 |
 
 ### 5.3 Q&A 归属指引
 

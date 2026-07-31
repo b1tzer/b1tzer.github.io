@@ -123,11 +123,11 @@ private static void lambda$main$0();   // 💥 编译器合成的 lambda body
         该合成类是 `ACC_SYNTHETIC + ACC_FINAL` 的独立顶层类（`Class#isAnonymousClass()` 返回 `false`），JDK 8~14 通过 `Unsafe.defineAnonymousClass` 加载，**JDK 15+ 改走 Hidden Class**（`Lookup.defineHiddenClass`）。**上述过程属于 OpenJDK/HotSpot 当前实现细节**——JLS/JVMS 只要求 `invokedynamic` 通过标准 API 产出 `CallSite`，并未规定生成手段是 ASM，也未规定必须走内部类策略；Graal、OpenJ9 或未来的 Valhalla 优化都可能采用不同做法。
 
 3. **`lambda$main$0`** 是编译器为 Lambda body 合成的 `private static` 方法，`REF_invokeStatic` 说明它以静态方式被调用——**注意：Lambda 的 body 编译后是宿主类内一个真实的静态合成方法，但对应的实现类 `LambdaProbe$$Lambda$1` 是运行时才生成的合成类，默认不会以 `.class` 文件形式落盘**（用 `-Djdk.internal.lambda.dumpProxyClasses=<目录>` 可以 dump 出来观察）。
-4. **第二次以后**执行到偏移 0 的 `invokedynamic`：JVM 直接从 `ConstantCallSite` 缓存里拿之前绑定的 `MethodHandle`——**不再走 BootstrapMethod**，接近 `invokevirtual` 的直接分派开销。这就是"Lambda 首次调用略慢，稳态零反射零装箱"的物理真相。
+4. **第二次以后**执行到偏移 0 的 `invokedynamic`：JVM 直接从 `ConstantCallSite` 缓存里拿之前绑定的 `MethodHandle`——**不再走 BootstrapMethod**，接近 `invokevirtual` 的直接分派开销。这就是"Lambda 首次调用略慢，稳态零反射零装箱"的底层真相。
 
 !!! note "📖 术语家族：`CallSite` / `BootstrapMethod` / `LambdaMetafactory` —— `invokedynamic` 三件套"
     **字面义**：
-    - `CallSite` = "调用点"，字面就是字节码里"这条 `invokedynamic` 指令的位置"，物理上是 JVM 里持有一个 `MethodHandle` 引用的对象。
+    - `CallSite` = "调用点"，字面就是字节码里"这条 `invokedynamic` 指令的位置"，就是 JVM 里持有一个 `MethodHandle` 引用的对象。
     - `BootstrapMethod` = "引导方法"，字面就是"首次执行 `invokedynamic` 时用来引导初始化 `CallSite` 的方法"。
     - `LambdaMetafactory` = "Lambda 元工厂"——负责**元级别**（meta-level）制造 Lambda 实现类，"元"指的是"制造类的类"，即通过反射+ASM 在运行期生成新的 `.class`。
 
@@ -334,7 +334,7 @@ public static long countLongNames(List<String> names) {
 
 **核心机制**：Java Stream 的中间操作（`filter`/`map`）**只是构建一条 `Sink` 装饰链**——每一步返回的 `ReferencePipeline$StatelessOp` 持有当前 Lambda 对应的**函数式接口实例**（`Predicate` / `Function` 引用，本质上是 `LambdaMetafactory` 生成的合成类实例，通过 `invokeinterface` 分派，**不是** `MethodHandle.invokeExact`），把它作为 `Sink` 的一段追加到链尾，**不遍历数据**。直到遇到终端操作（`count` / `collect` / `forEach`），JDK 才会调用 `AbstractPipeline#evaluate` 从数据源发起遍历，把整条 `Sink` 链依次触发。
 
-**这就是"三行无状态 Stream 只遍历一次源"的物理原因**——中间操作构建的是装饰链而非独立遍历。JIT 层面，`Sink.accept()` 的整条链在热点路径上会被 JIT **完全内联**成一个平坦的循环体，接近手写 `for` 的性能。
+**这就是"三行无状态 Stream 只遍历一次源"的根本原因**——中间操作构建的是装饰链而非独立遍历。JIT 层面，`Sink.accept()` 的整条链在热点路径上会被 JIT **完全内联**成一个平坦的循环体，接近手写 `for` 的性能。
 
 !!! warning "边界：有状态中间操作会打断单次遍历假设"
     以上"单次遍历"仅对**全部由无状态中间操作**（`filter` / `map` / `peek` / `flatMap`）构成的管道成立。链上一旦出现**有状态中间操作**——`sorted` / `distinct` / `limit` / `skip` / `takeWhile` / `dropWhile`——语义上就需要在该节点缓冲、屏障或提前短路：
@@ -348,11 +348,11 @@ public static long countLongNames(List<String> names) {
 
 ---
 
-## 3. 第三层：物理内存布局 —— Lambda 实例账单、合成类的 Metaspace 代价、`commonPool` 物理配额
+## 3. 第三层：内存布局 —— Lambda 实例账单、合成类的 Metaspace 代价、`commonPool` 内存配额
 
 ### 3.1 Lambda 实例：非捕获通常复用 vs 捕获每次新建
 
-用 `-XX:+UnlockDiagnosticVMOptions -XX:+PrintClassLoaderData` 或 JOL（Java Object Layout）观察 Lambda 实例的物理结构：
+用 `-XX:+UnlockDiagnosticVMOptions -XX:+PrintClassLoaderData` 或 JOL（Java Object Layout）观察 Lambda 实例的底层结构：
 
 ```txt
 非捕获 Lambda（openjdk 17，64 位，压缩指针开启）
@@ -377,14 +377,14 @@ public static long countLongNames(List<String> names) {
 总计 32 字节
 ```
 
-**物理账单**：
+**内存账单**：
 
 - **非捕获 Lambda**：**1 个运行期生成的合成类**（Metaspace 常驻）+ **1 个由 `ConstantCallSite` 缓存的实例**（OpenJDK 当前实现下通常复用，JLS §15.27.4 允许但不强制），单个实例固定 16 字节；
 - **捕获 Lambda**：**1 个运行期生成的合成类** + **每次执行 `invokedynamic` 通过 `get$Lambda` 静态工厂新建的实例**，每个实例大小由捕获变量决定。
 
 **Metaspace 代价**：每一个 Lambda 表达式在 OpenJDK 当前实现下都会导致 `InnerClassLambdaMetafactory` 在**运行期动态生成一个合成类**（`LambdaProbe$$Lambda$N/0x...`，JDK 15+ 为 Hidden Class），该类的元数据存在 **Metaspace**（详见 12a 内存分区篇）。一个 Java 8+ 中等规模应用（比如 Spring Boot 微服务），启动阶段可能触发数百到数千个 Lambda 生成（具体数量随业务规模变化），对应的 Metaspace 占用属于**稳态开销**——JDK 8~14 下（`Unsafe.defineAnonymousClass`）不随 ClassLoader 之外的机制回收；JDK 15+ 的 Hidden Class 则可以随其无强引用后被 GC 回收。这也是 06 篇 §3.2 讲过的"MethodHandle 稳态代价"在 Lambda 场景的具体体现。
 
-### 3.2 与匿名内部类的物理对比
+### 3.2 与匿名内部类的直接对比
 
 | 对比项 | 匿名内部类 | Lambda |
 | :-- | :-- | :-- |
@@ -399,9 +399,9 @@ public static long countLongNames(List<String> names) {
 
 这张表回答了本篇开篇导读第 1 条口诀——**Lambda 不是匿名内部类的语法糖**。它在字节码 / 类加载 / 堆布局 / JIT 优化四个层面**处处不同**。
 
-### 3.3 Stream 流水线：`Sink` 链的物理结构
+### 3.3 Stream 流水线：`Sink` 链的底层结构
 
-`filter(p1).map(f1).map(f2).collect(...)` 在 JDK 内部构建的 `Sink` 链物理布局：
+`filter(p1).map(f1).map(f2).collect(...)` 在 JDK 内部构建的 `Sink` 链内存布局：
 
 ```txt
                 源数据 Spliterator
@@ -434,11 +434,11 @@ public static long countLongNames(List<String> names) {
 └───────────────────────────────────────────┘
 ```
 
-**关键物理事实**：`ReferencePipeline$StatelessOp` 每一层都是**一个堆上对象**（继承自 `AbstractPipeline`，包含 `previousStage` / `sourceStage` / `nextStage` / `sourceSpliterator` / `combinedFlags` 等约 8~10 个字段），加上对象头共**数十字节**（具体大小随 JDK 版本变化）。此外，每一个 Lambda 表达式本身也是一个堆上对象。所以每写一次 `.filter().map().map().collect(...)`，堆上会产生**若干个 `StatelessOp` + `Head` + `TerminalOp` + 每一段 Lambda 实例**——这是"Stream 比 for 循环在小数据集上更慢"的**物理来源**。
+**关键硬件事实**：`ReferencePipeline$StatelessOp` 每一层都是**一个堆上对象**（继承自 `AbstractPipeline`，包含 `previousStage` / `sourceStage` / `nextStage` / `sourceSpliterator` / `combinedFlags` 等约 8~10 个字段），加上对象头共**数十字节**（具体大小随 JDK 版本变化）。此外，每一个 Lambda 表达式本身也是一个堆上对象。所以每写一次 `.filter().map().map().collect(...)`，堆上会产生**若干个 `StatelessOp` + `Head` + `TerminalOp` + 每一段 Lambda 实例**——这是"Stream 比 for 循环在小数据集上更慢"的**根本来源**。
 
-### 3.4 `ForkJoinPool.commonPool` 全局物理账单
+### 3.4 `ForkJoinPool.commonPool` 全局内存账单
 
-这是 §1.1 事故的物理根因。`ForkJoinPool.commonPool` 的构造与配额：
+这是 §1.1 事故的根本原因。`ForkJoinPool.commonPool` 的构造与配额：
 
 ```txt
 ┌──────────────────────────────────────────────────────────────┐
@@ -460,7 +460,7 @@ public static long countLongNames(List<String> names) {
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**物理约束**：JVM 里**只有 1 个** `commonPool`，池子大小是**JVM 启动时确定**（可用 `-Djava.util.concurrent.ForkJoinPool.common.parallelism=N` 显式覆盖，也可通过 `ForkJoinPool.common.threadFactory` 系统属性替换线程工厂）。§1.1 里 `supplierClient.placeOrder` 阻塞 800ms → 7 个 Worker 被占满 → 所有依赖 `commonPool` 的 `parallelStream` 与无 executor 版 `CompletableFuture.*Async` 全部排队饥饿。
+**硬性约束**：JVM 里**只有 1 个** `commonPool`，池子大小是**JVM 启动时确定**（可用 `-Djava.util.concurrent.ForkJoinPool.common.parallelism=N` 显式覆盖，也可通过 `ForkJoinPool.common.threadFactory` 系统属性替换线程工厂）。§1.1 里 `supplierClient.placeOrder` 阻塞 800ms → 7 个 Worker 被占满 → 所有依赖 `commonPool` 的 `parallelStream` 与无 executor 版 `CompletableFuture.*Async` 全部排队饥饿。
 
 !!! note "API 与 commonPool 的绑定并非全部无条件"
     - **`Arrays.parallelSort`**：源码里先判断 `n <= MIN_ARRAY_SORT_GRAN`（`8192`）或 `ForkJoinPool.getCommonPoolParallelism() == 1`，两者任一成立就**回退为 `DualPivotQuicksort.sort` 串行执行**，此时**不走 commonPool**。
@@ -492,7 +492,7 @@ public List<Result> reMigrate(List<String> ids) {
 ```
 
 ```java
-// ✅ 标准范式：自建业务专属 executor，与 commonPool 物理隔离
+// ✅ 标准范式：自建业务专属 executor，与 commonPool 内存隔离
 private static final ExecutorService IO_POOL = new ThreadPoolExecutor(
     32, 64, 60L, TimeUnit.SECONDS,
     new LinkedBlockingQueue<>(1000),
@@ -525,7 +525,7 @@ public List<Result> reMigrate(List<String> ids) {
 
 ### 4.2 红线 2：Lambda 严禁捕获可变外部状态（`effectively final` 的语言级根因）
 
-**技术依据**：JLS §15.27.2 明文规定 Lambda 只能捕获 `effectively final` 的局部变量。语义根源在于 Java 局部变量捕获采用**按值复制**——把变量当前的值拷贝进 Lambda 实例的字段（`get$Lambda(...)` 静态工厂的参数）。如果允许源变量重新赋值，Lambda 拿到的仍是历史快照，容易造成"表面上看应该看到新值"的语义错觉，因此语言层**直接禁止**。这与匿名内部类的规则一致（Java 8 之前是 `final`，Java 8 起放宽为"事实 final"），**是语言级的语义规则，不是 JIT 优化的物理前提**。
+**技术依据**：JLS §15.27.2 明文规定 Lambda 只能捕获 `effectively final` 的局部变量。语义根源在于 Java 局部变量捕获采用**按值复制**——把变量当前的值拷贝进 Lambda 实例的字段（`get$Lambda(...)` 静态工厂的参数）。如果允许源变量重新赋值，Lambda 拿到的仍是历史快照，容易造成"表面上看应该看到新值"的语义错觉，因此语言层**直接禁止**。这与匿名内部类的规则一致（Java 8 之前是 `final`，Java 8 起放宽为"事实 final"），**是语言级的语义规则，不是 JIT 优化的硬性前提**。
 
 ```java
 // ❌ 反模式：编译期报错——试图捕获非 final 局部变量
@@ -662,12 +662,12 @@ names.stream()
 
 ## 5. 🗺️ 跨战役知识伏笔
 
-本篇我们把 Java 8 的 Lambda / Stream / 方法引用剥到骨头缝里——它们的物理真相是 **`invokedynamic` + `LambdaMetafactory.metafactory` 生成 `ConstantCallSite`**，而 `CallSite` 内部持有的正是 [06 反射性能篇](@java-字节码-反射与MethodHandle) 讲的 `MethodHandle`。请把"**Lambda = `invokedynamic` + `CallSite` + `LambdaMetafactory` 运行期生成匿名类**"这个物理事实焊死在脑海——这是理解后续所有并发/异步/框架设计的**共同基座**。
+本篇我们把 Java 8 的 Lambda / Stream / 方法引用剥到骨头缝里——它们的底层真相是 **`invokedynamic` + `LambdaMetafactory.metafactory` 生成 `ConstantCallSite`**，而 `CallSite` 内部持有的正是 [06 反射性能篇](@java-字节码-反射与MethodHandle) 讲的 `MethodHandle`。请把"**Lambda = `invokedynamic` + `CallSite` + `LambdaMetafactory` 运行期生成匿名类**"这个硬件事实焊死在脑海——这是理解后续所有并发/异步/框架设计的**共同基座**。
 
 因为在紧接着的战役二 [08 集合框架](@java-数据结构-集合框架) 与 [09 数据结构精讲](@java-数据结构-数据结构精讲) 里，你会看到 `HashMap.forEach(BiConsumer)`、`ConcurrentHashMap.computeIfAbsent(k, Function)` 这些"接受 Lambda 的 API"——它们在字节码层面全部是本篇讲的 `invokedynamic` 机制的落地形态，`ConcurrentHashMap.computeIfAbsent` 里的 `mappingFunction.apply(k)` 一行调用背后，正是 `LambdaMetafactory` 生成的匿名类 + `MethodHandle` 常量折叠。
 
-进一步，在战役三 [10a 并发基础](@java-并发-JMM与线程同步) → [10b AQS 设计哲学](@java-并发-AQS设计哲学) → [10c 并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 里，你会看到 `ThreadPoolExecutor#execute(Runnable r)`、`CompletableFuture#thenApply(Function fn)` 全都在收本篇的账——Lambda 一旦被扔进线程池，本篇 §4.3 讲的"this 捕获内存泄漏"就会与线程池的 `ThreadLocal` 生命周期发生真正的化学反应；本篇 §4.1 讲的 `commonPool` 全局共享物理约束，也会与 10c 讲的 `ForkJoinPool` 工作窃取算法首次交汇。
+进一步，在战役三 [10a 并发基础](@java-并发-JMM与线程同步) → [10b AQS 设计哲学](@java-并发-AQS设计哲学) → [10c 并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 里，你会看到 `ThreadPoolExecutor#execute(Runnable r)`、`CompletableFuture#thenApply(Function fn)` 全都在收本篇的账——Lambda 一旦被扔进线程池，本篇 §4.3 讲的"this 捕获内存泄漏"就会与线程池的 `ThreadLocal` 生命周期发生真正的化学反应；本篇 §4.1 讲的 `commonPool` 全局共享硬性约束，也会与 10c 讲的 `ForkJoinPool` 工作窃取算法首次交汇。
 
 最后到战役五 [13 NIO 与 IO 模型](@java-OS-NIO与IO模型) 的 `CompletableFuture.thenComposeAsync` 异步编排、以及生态里 Netty 的 `ChannelFuture.addListener(Lambda)`、Reactor 的 `Flux.map(Function)` —— **它们全部建立在本篇讲的 `CallSite` 常量折叠机制上**。到那时，你今天在字节码里挖出的每一条 `invokedynamic` 指令、每一份 `LambdaMetafactory` 生成的匿名类、每一次 `ForkJoinPool.commonPool` 的 Worker 抢占，都会变成你打通"字节码—反射—Lambda—并发—异步—网络"整条战线的关键钥匙。
 
-而当你真正读懂本篇的 §2.3（非捕获 Lambda 通常复用同一实例）与 §3.4（`commonPool` 物理配额），回头再看战役四 [12a JVM 内存分区](@java-JVM-内存分区与对象布局) §7 讲的 Metaspace 布局，会看到 Lambda 只是 Java 语言层现代化的一次公开亮相；`invokedynamic + MethodHandle` 家族在此后被复用到 JDK 9 的字符串拼接（`StringConcatFactory`）、JDK 17 的模式匹配 `switch`（`SwitchBootstraps`）、以及 Records 序列化——这**是 Java 现代化演进中的一条主线**，但并非本质。同一时期还有**至少五条并行主线**共同塑造了今天的 Java：模块系统（JPMS）、G1/ZGC/Shenandoah 三代 GC 演进、虚拟线程（Loom）、值类型（Valhalla，进行中）、密封类/Record/模式匹配（Amber）——`MethodHandle` 家族与这些并列，不是它们的上位概念。
+而当你真正读懂本篇的 §2.3（非捕获 Lambda 通常复用同一实例）与 §3.4（`commonPool` 内存配额），回头再看战役四 [12a JVM 内存分区](@java-JVM-内存分区与对象布局) §7 讲的 Metaspace 布局，会看到 Lambda 只是 Java 语言层现代化的一次公开亮相；`invokedynamic + MethodHandle` 家族在此后被复用到 JDK 9 的字符串拼接（`StringConcatFactory`）、JDK 17 的模式匹配 `switch`（`SwitchBootstraps`）、以及 Records 序列化——这**是 Java 现代化演进中的一条主线**，但并非本质。同一时期还有**至少五条并行主线**共同塑造了今天的 Java：模块系统（JPMS）、G1/ZGC/Shenandoah 三代 GC 演进、虚拟线程（Loom）、值类型（Valhalla，进行中）、密封类/Record/模式匹配（Amber）——`MethodHandle` 家族与这些并列，不是它们的上位概念。

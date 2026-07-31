@@ -8,7 +8,7 @@ title: 并发工具：Lock 与线程池 —— AQS 应用视角、StampedLock �
 !!! info "**并发工具 一句话口诀**"
     - **JUC 所有锁与同步器都是"AQS `state` 上定义不同语义"的产物**：`ReentrantLock` 用 `state` 存重入次数；`ReentrantReadWriteLock` 用高 16 位存读锁计数、低 16 位存写锁计数；`Semaphore` 用 `state` 存剩余许可；`CountDownLatch` 用 `state` 存倒计数。**一个 `volatile int` 撑起半个 JUC 包**——这是设计哲学的复用力：AQS 提供 CLH 排队 + `park`/`unpark` 骨架，子类只需在 `tryAcquire` / `tryRelease` / `tryAcquireShared` / `tryReleaseShared` 四个钩子里定义"`state` 是什么"和"什么时候能获取"。
     - **`StampedLock` 三种模式（写锁 / 悲观读 / 乐观读）不是简单的"读写锁升级"，是"用无锁乐观读把读操作降到零同步开销"**：乐观读拿到一个 8 字节的 `stamp`（`long` 版本号），读完数据后用 `validate(stamp)` 校验 stamp 是否变化，未变化就直接返回，变化则退化到 `readLock()` 悲观读。在读远多于写的场景比 `ReentrantReadWriteLock` 快 4~10 倍。**代价是不可重入、不支持 `Condition`、不能用 `try-with-resources` 自动释放**——老手用它前必须把这三条限制刻在脑子里。
-    - **`LongAdder` = "分段 Cell 数组 + CAS 竞争分流"的物理实现**：低竞争走 `base` 字段的单 CAS；高竞争时把一个 `AtomicLong` 的 CAS 分散到 `cells[]` 上，每个线程通过 `getProbe() & (n-1)` 路由到自己的 `Cell`，`sum()` 时遍历求和。`Striped64.Cell` 用 `@Contended` 注解让每个 `Cell` 独占一条 128 字节的填充区，规避 CPU 缓存行伪共享——这也是"`AtomicLong` 是精确读、`LongAdder` 是最终一致"的物理根源：`sum()` 遍历过程中其他线程仍在写 `Cell`，读到的是**扫过时的快照总和**而非某个原子瞬间的值。
+    - **`LongAdder` = "分段 Cell 数组 + CAS 竞争分流"的底层实现**：低竞争走 `base` 字段的单 CAS；高竞争时把一个 `AtomicLong` 的 CAS 分散到 `cells[]` 上，每个线程通过 `getProbe() & (n-1)` 路由到自己的 `Cell`，`sum()` 时遍历求和。`Striped64.Cell` 用 `@Contended` 注解让每个 `Cell` 独占一条 128 字节的填充区，规避 CPU 缓存行伪共享——这也是"`AtomicLong` 是精确读、`LongAdder` 是最终一致"的根本原因：`sum()` 遍历过程中其他线程仍在写 `Cell`，读到的是**扫过时的快照总和**而非某个原子瞬间的值。
     - **线程池 7 参数 = "核心 → 队列 → 最大 → 拒绝"四段式漏斗**，参数背后是一个 `AtomicInteger ctl` 编码 32 位状态：**高 3 位 = 5 种运行状态（`RUNNING` / `SHUTDOWN` / `STOP` / `TIDYING` / `TERMINATED`）、低 29 位 = 工作线程数**。用一个 `int` 同时读写状态 + 线程数是"避免多字段同步"的经典设计——`RUNNING = -1 << 29` 让 `RUNNING < SHUTDOWN < STOP < TIDYING < TERMINATED` 单调递增，状态迁移用简单的整数比较即可判断，这条位编码技巧后面还会在 `ConcurrentHashMap.sizeCtl` 上重现。
 
 **你能立刻答上来吗？**
@@ -30,7 +30,7 @@ title: 并发工具：Lock 与线程池 —— AQS 应用视角、StampedLock �
 > - **CAS 硬件语义、`LOCK CMPXCHG`、MESI、`synchronized` 锁升级、Mark Word** → [10a JMM 与线程同步](@java-并发-JMM与线程同步)
 > - **`ConcurrentHashMap` 完整源码、`CopyOnWriteArrayList` 弱一致性、并发容器排查** → [10d 并发集合与实战陷阱](@java-并发-并发集合与实战陷阱)
 > - **虚拟线程 pin 到载体线程（`synchronized` / native 会 pin、`ReentrantLock` 不 pin）** → [12d JVM 现代实践](@java-JVM-现代实践与前沿技术)
-> - **`ForkJoinPool.commonPool` 与 `parallelStream` 的物理约束** → [07 函数式编程](@java-字节码-函数式编程)
+> - **`ForkJoinPool.commonPool` 与 `parallelStream` 的硬性约束** → [07 函数式编程](@java-字节码-函数式编程)
 
 ---
 
@@ -85,7 +85,7 @@ public class RiskAsyncExecutor {
 1. **读写锁翻车**：`get()` QPS 从 1 万飙到 3 万后 P99 从 2ms 涨到 40ms。压测发现 `ReentrantReadWriteLock.readLock().lock()` 在高并发下**存在写锁饥饿保护逻辑**——`readerShouldBlock()` 会检查等待队列头部是否是写锁请求，若是则新来的读者也必须排队。这在读极密集场景下反而让每个读线程都经历一次 `park`/`unpark` 上下文切换。**根因是选错了工具**：读远多于写的缓存场景，`StampedLock` 的乐观读能把 `get()` 降到零同步开销（只做一次 `validate` 8 字节比较，无 `park`/`unpark`）。
 2. **线程池 OOM**：某个下游服务超时，`doRiskCheck` 里的 HTTP 调用阻塞在 `SocketRead0` 上，20 个核心线程全部卡住。`Executors.newFixedThreadPool(20)` 内部使用 `new LinkedBlockingQueue<>()`——**无参构造器的默认容量是 `Integer.MAX_VALUE`**。请求持续涌入，队列疯狂堆积到千万级 `Runnable`，堆内存被 `LinkedBlockingQueue.Node` 撑爆，Full GC 无法回收活对象，JVM `OutOfMemoryError: Java heap space`。
 
-**两条事故根因合并成一句话**：并发工具选型不看"能不能用"，看"物理特性是否匹配当前场景"。读写锁选错 `StampedLock` 就是选错，线程池选 `newFixedThreadPool` 就是隐性接受了"无界队列 + OOM 风险"这个隐藏合同。
+**两条事故根因合并成一句话**：并发工具选型不看"能不能用"，看"硬件特性是否匹配当前场景"。读写锁选错 `StampedLock` 就是选错，线程池选 `newFixedThreadPool` 就是隐性接受了"无界队列 + OOM 风险"这个隐藏合同。
 
 ### 1.2 反问引子：老手也未必答得上的 5 个悬案
 
@@ -187,7 +187,7 @@ public final boolean hasQueuedPredecessors() {
 
 - **非公平锁的 `lock()` 是"两次 CAS 抢锁"**：第一次在 `lock()` 入口直接 CAS，无视队列有没有等待者；第二次在 `nonfairTryAcquire` 里再来一次 CAS。这就是**新线程"插队"**——不排队直接抢，抢到就走。
 - **公平锁多的这一行 `!hasQueuedPredecessors()` 就是全部差异**：它遍历 CLH 队列头部三个节点（`h`、`h.next`、可能的 `s`），判断队列前面是否有"不是当前线程"的等待者。有则立即返回 `false`，让当前线程去 AQS 排队。**这一步的开销就是"一次 volatile 读 head + 一次 volatile 读 tail + 一次条件判断"**——单次调用是 O(1) 常量时间，但在 QPS 10 万+ 的高竞争下累计上下文切换是真实成本。
-- **P3C 手册"公平锁慢 5~10 倍"的物理来源**：不是 `hasQueuedPredecessors` 本身慢，而是**"公平锁禁止插队 → 每次锁释放都必须唤醒队列头部线程 → 队列头部线程从 `park` 状态被 `unpark` → 上下文切换 + CPU 缓存失效"**。非公平锁允许新来的线程直接拿走锁，避免了很多次 `park`/`unpark`。
+- **P3C 手册"公平锁慢 5~10 倍"的根本来源**：不是 `hasQueuedPredecessors` 本身慢，而是**"公平锁禁止插队 → 每次锁释放都必须唤醒队列头部线程 → 队列头部线程从 `park` 状态被 `unpark` → 上下文切换 + CPU 缓存失效"**。非公平锁允许新来的线程直接拿走锁，避免了很多次 `park`/`unpark`。
 
 !!! note "📖 术语家族：`*Lock` 三代锁族 —— JUC 显式锁演进"
     **字面义**：JUC 提供的三代显式锁 API，都基于 AQS 骨架实现（除 `StampedLock` 外），但各自定位不同——第一代解决"synchronized 能力欠缺"，第二代解决"读写并发"，第三代解决"读密集场景的零同步开销"。
@@ -205,7 +205,7 @@ public final boolean hasQueuedPredecessors() {
 
     **命名规律**：`Reentrant*Lock` = "可重入"前缀标注支持同线程多次获取；`Stamped*` = "带戳（stamp）"前缀标注每次锁操作都返回一个 8 字节版本号，用于校验或释放。
 
-    **易混点**：`StampedLock` 是**唯一不继承 AQS** 的显式锁——它的 `state` 从 AQS 的 `int` 扩展为 `long`（8 字节），高位是序列号，低位是锁状态标志。这是它能实现"乐观读零同步开销"的物理前提——序列号可以承载"写锁变化历史"，而 AQS 的 `int state` 只能承载"当前锁状态"。
+    **易混点**：`StampedLock` 是**唯一不继承 AQS** 的显式锁——它的 `state` 从 AQS 的 `int` 扩展为 `long`（8 字节），高位是序列号，低位是锁状态标志。这是它能实现"乐观读零同步开销"的硬性前提——序列号可以承载"写锁变化历史"，而 AQS 的 `int state` 只能承载"当前锁状态"。
 
 ### 2.2 `ReentrantReadWriteLock`：一个 `state` 用位分解存两把锁
 
@@ -247,10 +247,10 @@ protected final int tryAcquireShared(int unused) {
 **顿悟点三条**：
 
 1. **`state` 加 `SHARED_UNIT`（`1 << 16 = 65536`）不是加 1**：因为读锁计数占高 16 位，加 1 只会影响低 16 位（写锁）。用位分解节省了一个字段。
-2. **`readerShouldBlock()` 是"写锁优先防饥饿"的物理来源**：公平模式下检查 `hasQueuedPredecessors`；非公平模式下检查队列头部是否是**独占请求**（写锁）——是则读者主动排队让写锁先来。§1.1 事故中读写锁 P99 涨到 40ms 就是这条逻辑触发了：读密集场景下写锁请求偶发出现，一次 `readerShouldBlock` 就把后续读者全推进 AQS 队列，造成雪崩式上下文切换。
-3. **读锁重入次数用 `ThreadLocal<HoldCounter>` 单独维护**：因为读锁允许多线程同时持有，`state` 里只能记"总读锁计数"，无法记"每个线程持有几次"。所以每个线程用 `ThreadLocal` 单独存一个 `HoldCounter` 记录自己的重入次数。这就是"读锁重入 65536 次也不会污染写锁位"的物理依据——它根本没写进 `state`。
+2. **`readerShouldBlock()` 是"写锁优先防饥饿"的根本来源**：公平模式下检查 `hasQueuedPredecessors`；非公平模式下检查队列头部是否是**独占请求**（写锁）——是则读者主动排队让写锁先来。§1.1 事故中读写锁 P99 涨到 40ms 就是这条逻辑触发了：读密集场景下写锁请求偶发出现，一次 `readerShouldBlock` 就把后续读者全推进 AQS 队列，造成雪崩式上下文切换。
+3. **读锁重入次数用 `ThreadLocal<HoldCounter>` 单独维护**：因为读锁允许多线程同时持有，`state` 里只能记"总读锁计数"，无法记"每个线程持有几次"。所以每个线程用 `ThreadLocal` 单独存一个 `HoldCounter` 记录自己的重入次数。这就是"读锁重入 65536 次也不会污染写锁位"的硬件依据——它根本没写进 `state`。
 
-**读写锁降级/升级的物理链**：
+**读写锁降级/升级的底层链路**：
 
 ```txt
 写锁持有 (state = 1, 二进制 = ...00000001)
@@ -321,7 +321,7 @@ public boolean validate(long stamp) {
 
 **顿悟点四条**：
 
-1. **乐观读期间不占任何锁位**：`tryOptimisticRead` 只是返回一个 `long` stamp，不修改 `state`、不 CAS、不入队。这就是"零同步开销"的物理来源。
+1. **乐观读期间不占任何锁位**：`tryOptimisticRead` 只是返回一个 `long` stamp，不修改 `state`、不 CAS、不入队。这就是"零同步开销"的根本来源。
 2. **`validate` 里的 `VarHandle.acquireFence()` 是关键**：它建立 acquire 内存屏障，保证乐观读期间的字段读操作**不会被重排到 `validate` 之后**（否则可能读到写锁修改后的中间态数据但校验通过）。这就是 [10a JMM 与线程同步](@java-并发-JMM与线程同步) 里 `VarHandle` 家族的实际应用点。
 3. **校验的是 `SBITS` 位（序列号）**：每次写锁获取都会 `state += WBIT`（写锁位）+ 序列号递增，导致 `state & SBITS` 变化。乐观读期间只要没有写锁介入，`stamp & SBITS == state & SBITS` 就成立。
 4. **三大限制刻在源码里**：
@@ -362,7 +362,7 @@ static final class Cell {
 **顿悟点四条**：
 
 1. **`base` 承担低竞争场景**：无 CAS 冲突时，`add(x)` 就是一次 `casBase(b, b+x)`——性能和 `AtomicLong.getAndAdd` 相同。
-2. **`getProbe() & m` 是"分段路由"的物理机制**：`getProbe()` 从当前线程获取一个 `int` 探针（Thread 的 `threadLocalRandomProbe` 字段，`ThreadLocalRandom` 初始化时分配），与 `cells.length - 1` 位与得到路由下标。**同一个线程始终路由到同一个 Cell**，多线程分散到不同 Cell，天然规避 CAS 冲突。
+2. **`getProbe() & m` 是"分段路由"的底层机制**：`getProbe()` 从当前线程获取一个 `int` 探针（Thread 的 `threadLocalRandomProbe` 字段，`ThreadLocalRandom` 初始化时分配），与 `cells.length - 1` 位与得到路由下标。**同一个线程始终路由到同一个 Cell**，多线程分散到不同 Cell，天然规避 CAS 冲突。
 3. **`cells[]` 数组不是一开始就分配**：只在首次 CAS 冲突时才由 `longAccumulate` 触发扩容（初始容量 2，翻倍到不超过 `NCPU`），并且每次扩容都是**幂等的**——只在冲突路径上懒惰构造。
 4. **`sum()` 是最终一致，不是原子快照**：
 
@@ -385,7 +385,7 @@ public long sum() {
 !!! note "📖 术语家族：`*Adder` / `*Accumulator` 分段计数族"
     **字面义**：JDK 8 引入的高并发计数器族——`Adder` 强调"只加"（限定累加语义），`Accumulator` 强调"自定义累积函数"（可传入 `LongBinaryOperator` 实现 max/min/位运算等任意二元操作）。
 
-    **在本框架中的含义**：都基于 `Striped64` 骨架实现"分段计数 + `@Contended` 规避伪共享"的物理机制。适用于"多写少读、允许最终一致"的高并发计数场景。
+    **在本框架中的含义**：都基于 `Striped64` 骨架实现"分段计数 + `@Contended` 规避伪共享"的底层机制。适用于"多写少读、允许最终一致"的高并发计数场景。
 
     **家族成员**：
 
@@ -455,7 +455,7 @@ protected boolean tryReleaseShared(int releases) {
 
 1. **`Semaphore.state` = 剩余许可数**：`acquire(1)` 让 `state - 1`，`release(1)` 让 `state + 1`——就是一个可增可减的信号量。
 2. **`CountDownLatch.state` = 剩余倒计数**：`countDown()` 让 `state - 1`（不能加），`await()` 在 `state == 0` 时返回。**一次性、不可重置**——`state` 归零后 `tryReleaseShared` 直接返回 false。
-3. **`CyclicBarrier` 底层不是 AQS**：它用 `ReentrantLock` + `Condition` 组合实现——因为需要"多个线程互相等待、达到阈值一起唤醒、支持重置"，这三条契约用 `Condition` 的等待队列更自然。这也是 §3.1 三者对比时"底层不同"的物理来源。
+3. **`CyclicBarrier` 底层不是 AQS**：它用 `ReentrantLock` + `Condition` 组合实现——因为需要"多个线程互相等待、达到阈值一起唤醒、支持重置"，这三条契约用 `Condition` 的等待队列更自然。这也是 §3.1 三者对比时"底层不同"的根本来源。
 
 ### 2.6 线程池 `ctl` 位编码：一个 `AtomicInteger` 存"状态 + 线程数"
 
@@ -489,9 +489,9 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
 
 ---
 
-## 3. 第三层：物理内存布局 —— 同步器对比、阻塞队列六件套、`Cell` 缓存行伪共享
+## 3. 第三层：内存布局 —— 同步器对比、阻塞队列六件套、`Cell` 缓存行伪共享
 
-### 3.1 `Semaphore` / `CountDownLatch` / `CyclicBarrier` 三者物理对比
+### 3.1 `Semaphore` / `CountDownLatch` / `CyclicBarrier` 三者直接对比
 
 | 维度 | `Semaphore` | `CountDownLatch` | `CyclicBarrier` |
 | :-- | :-- | :-- | :-- |
@@ -508,9 +508,9 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
 - `CountDownLatch` = **倒计时发射按钮**（一次性，按下就无法回滚）
 - `CyclicBarrier` = **集合发车**（凑够 N 人就发一趟，下一趟从头再来）
 
-### 3.2 阻塞队列 6 种物理选型（回收 [09 数据结构精讲](@java-数据结构-数据结构精讲) 伏笔）
+### 3.2 阻塞队列 6 种技术选型（回收 [09 数据结构精讲](@java-数据结构-数据结构精讲) 伏笔）
 
-`BlockingQueue` 是 `ThreadPoolExecutor.workQueue` 的物理选型池——每种队列的底层结构决定了线程池的性能特征：
+`BlockingQueue` 是 `ThreadPoolExecutor.workQueue` 的技术选型池——每种队列的底层结构决定了线程池的性能特征：
 
 | 队列 | 底层数据结构 | 有界性 | 特点 | 线程池搭档 |
 | :-- | :-- | :-- | :-- | :-- |
@@ -524,12 +524,12 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
 **顿悟点两条**：
 
 1. **`LinkedBlockingQueue` 的默认无界是生产事故的高发地**：`Executors.newFixedThreadPool(N)` 内部 `new LinkedBlockingQueue<Runnable>()`——无参构造的容量是 `Integer.MAX_VALUE`。§1.1 事故就是这条链路——线程全部阻塞在 IO 上后，任务无限堆积到队列，最终堆 OOM。
-2. **`DelayQueue` 底层是最小堆**（回收 [09 数据结构精讲](@java-数据结构-数据结构精讲) §5 的堆结构）：`DelayedWorkQueue`（`ScheduledThreadPoolExecutor` 的定制堆）在此基础上加了"到期时间"作为堆序键，未到期的任务不会被 `take`。这就是"`schedule(cmd, 5, SECONDS)` 提交后线程池不会立即执行"的物理来源。
+2. **`DelayQueue` 底层是最小堆**（回收 [09 数据结构精讲](@java-数据结构-数据结构精讲) §5 的堆结构）：`DelayedWorkQueue`（`ScheduledThreadPoolExecutor` 的定制堆）在此基础上加了"到期时间"作为堆序键，未到期的任务不会被 `take`。这就是"`schedule(cmd, 5, SECONDS)` 提交后线程池不会立即执行"的根本来源。
 
 !!! note "📖 术语家族：`*BlockingQueue` 阻塞队列族"
     **字面义**：JUC 阻塞队列六件套——`Blocking` 前缀标注"队列空/满时会阻塞对应操作方"，这是与 `LinkedList` / `ArrayDeque` 等普通队列的核心差异。
 
-    **在本框架中的含义**：`ThreadPoolExecutor.workQueue` 的物理选型池——每种队列的底层数据结构决定了线程池的性能特征、内存开销和 OOM 风险。
+    **在本框架中的含义**：`ThreadPoolExecutor.workQueue` 的技术选型池——每种队列的底层数据结构决定了线程池的性能特征、内存开销和 OOM 风险。
 
     **家族成员**：
 
@@ -545,7 +545,7 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
 
     **命名规律**：`<结构前缀>BlockingQueue`——`Array` 前缀 = 数组实现，`Linked` 前缀 = 链表实现，`Priority` 前缀 = 优先级堆，`Synchronous` 前缀 = 无缓冲直接移交，`Delay` 前缀 = 延迟到期出队。
 
-### 3.3 `LongAdder` `Cell` 数组的内存物理图
+### 3.3 `LongAdder` `Cell` 数组的内存机制图
 
 ```txt
 ┌─────────────────────────────────────────────────────────┐
@@ -581,9 +581,9 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
 2. **`@Contended` 在 JDK 9+ 需要 `-XX:-RestrictContended` 才能生效**（对非 `java.*` 包的用户代码）——`jdk.internal.vm.annotation.Contended` 属于 JDK 内部注解，用户代码要用同名注解需要显式开启 `-XX:-RestrictContended`。
 3. **"空间换时间"极致案例**：每个 `Cell` 多花 128 字节内存（16 倍于 `long` 的 8 字节），换来多核并发下的近乎线性加速。同样的技巧在 `Disruptor` 的 `RingBuffer` 上也有应用。
 
-### 3.4 线程池 7 参数物理漏斗
+### 3.4 线程池 7 参数性能瓶颈
 
-`ThreadPoolExecutor` 的构造参数决定了任务提交后的物理走向：
+`ThreadPoolExecutor` 的构造参数决定了任务提交后的最终走向：
 
 ```mermaid
 flowchart TB
@@ -606,7 +606,7 @@ flowchart TB
     style Reject fill:#ff9999
 ```
 
-**顿悟点**：**核心 → 队列 → 最大 → 拒绝** 是严格的四段式漏斗——不是"核心满了就创建非核心"，而是"核心满了先入队，队列也满了才创建非核心"。这决定了 `LinkedBlockingQueue` 无界队列下**非核心线程永远不会被创建**（因为队列永远 `offer` 成功）——这是"`newFixedThreadPool` 的 `maximumPoolSize` 参数形同虚设"的物理来源。
+**顿悟点**：**核心 → 队列 → 最大 → 拒绝** 是严格的四段式漏斗——不是"核心满了就创建非核心"，而是"核心满了先入队，队列也满了才创建非核心"。这决定了 `LinkedBlockingQueue` 无界队列下**非核心线程永远不会被创建**（因为队列永远 `offer` 成功）——这是"`newFixedThreadPool` 的 `maximumPoolSize` 参数形同虚设"的根本来源。
 
 ### 3.5 `ThreadPoolExecutor.execute()` 完整源码链路
 
@@ -914,12 +914,12 @@ public class HybridService {
 
 ## 5. 🗺️ 跨战役知识伏笔
 
-本篇我们把 JUC 的锁与线程池剥到源码层——它们的物理真相是 **"AQS `state` 上定义不同语义 + CAS 分段规避高竞争 + 位编码合并多字段同步"**。请把"**锁族 = AQS 骨架的语义特化，线程池 `ctl` = 位分解的经典应用**"这个物理事实焊死在脑海——这是理解后续所有并发容器与虚拟线程的**共同基座**。
+本篇我们把 JUC 的锁与线程池剥到源码层——它们的底层真相是 **"AQS `state` 上定义不同语义 + CAS 分段规避高竞争 + 位编码合并多字段同步"**。请把"**锁族 = AQS 骨架的语义特化，线程池 `ctl` = 位分解的经典应用**"这个硬件事实焊死在脑海——这是理解后续所有并发容器与虚拟线程的**共同基座**。
 
 因为在紧接着的战役三收官篇 [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 里，你会看到 `ConcurrentHashMap.sizeCtl` 复用了本文 §2.6 讲的**位编码技巧**——它用一个 `volatile int` 存"数组是否正在初始化 + 扩容线程数"两条状态；本文 §3.5 讲的 `execute` 三阶段决策也会与 CHM 的 `transfer` 迁移逻辑发生化学反应——同样是"CAS + `synchronized` 单槽位"的组合技，只是同步器从"任务队列"变成"哈希桶头节点"。同样在 §3.2 讲的六种阻塞队列，CHM 内部虽然不用它们，但 `LinkedTransferQueue` 的 CAS 无锁算法思想直接对应 CHM 的 `casTabAt` / `setTabAt` 家族——都是 `Unsafe.compareAndSetReference` 在数组元素上的应用。
 
-进一步，在战役四 [内存分区与对象布局](@java-JVM-内存分区与对象布局) §"对象布局与对齐填充"里，你会看到本文 §3.3 讲的 `Cell` 每格 128 字节的物理构成——`@Contended` 注解在 JVM 层如何影响 `InstanceKlass` 的字段偏移量计算、如何让 GC 扫描时跳过填充位。到那时你会真正理解"128 字节不是 `long` 本身多花了 15 倍内存，是 JVM 在字段前后各挖了一个 60 字节的坑"。
+进一步，在战役四 [内存分区与对象布局](@java-JVM-内存分区与对象布局) §"对象布局与对齐填充"里，你会看到本文 §3.3 讲的 `Cell` 每格 128 字节的底层构成——`@Contended` 注解在 JVM 层如何影响 `InstanceKlass` 的字段偏移量计算、如何让 GC 扫描时跳过填充位。到那时你会真正理解"128 字节不是 `long` 本身多花了 15 倍内存，是 JVM 在字段前后各挖了一个 60 字节的坑"。
 
-再进一步，在战役四 [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 讲虚拟线程时，你会看到本文 §4.1 讲的"选 `ReentrantLock` 还是 `synchronized`"再次浮出水面——**`synchronized` 会 pin 虚拟线程到载体线程**（因为 monitor 是 native 结构，载体线程不能切走），**`ReentrantLock` 不会 pin**（因为它是 Java 层的 AQS，`park`/`unpark` 可以协作让出载体线程）。这个物理差异是"JDK 21 虚拟线程时代 `ReentrantLock` 复兴"的**唯一技术依据**，也让本文 §4.1 红线 1 的建议出现了微妙反转——虚拟线程场景下，选 `ReentrantLock` 反而成了默认选项。
+再进一步，在战役四 [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 讲虚拟线程时，你会看到本文 §4.1 讲的"选 `ReentrantLock` 还是 `synchronized`"再次浮出水面——**`synchronized` 会 pin 虚拟线程到载体线程**（因为 monitor 是 native 结构，载体线程不能切走），**`ReentrantLock` 不会 pin**（因为它是 Java 层的 AQS，`park`/`unpark` 可以协作让出载体线程）。这个本质差异是"JDK 21 虚拟线程时代 `ReentrantLock` 复兴"的**唯一技术依据**，也让本文 §4.1 红线 1 的建议出现了微妙反转——虚拟线程场景下，选 `ReentrantLock` 反而成了默认选项。
 
-而当你真正读懂本篇的 §2.4（`LongAdder` 分段计数）与 §3.3（`Cell` 缓存行伪共享），回头再看 [函数式编程](@java-字节码-函数式编程) §3.4 讲的 `ForkJoinPool.commonPool` 的 `WorkQueue` 数组——每个 `WorkQueue` 内部同样用 `@Contended` 独占缓存行，这是"工作窃取算法能在多核上实现线性加速"的物理来源。同样的技巧还会在 `Disruptor` 的 `Sequence` 计数器、Netty 的 `EventLoop` 任务队列、Reactor 的 `Sink` 内部状态字段上反复出现——**它们全部建立在本篇讲的"分段 + `@Contended`"物理机制上**。到那时，你今天在 JUC 源码里挖出的每一条 `state` 位分解、每一份 `@Contended` 填充、每一次 `ctl` 位编码，都会变成你打通"锁—同步器—并发容器—虚拟线程—响应式编程"整条战线的关键钥匙。
+而当你真正读懂本篇的 §2.4（`LongAdder` 分段计数）与 §3.3（`Cell` 缓存行伪共享），回头再看 [函数式编程](@java-字节码-函数式编程) §3.4 讲的 `ForkJoinPool.commonPool` 的 `WorkQueue` 数组——每个 `WorkQueue` 内部同样用 `@Contended` 独占缓存行，这是"工作窃取算法能在多核上实现线性加速"的根本来源。同样的技巧还会在 `Disruptor` 的 `Sequence` 计数器、Netty 的 `EventLoop` 任务队列、Reactor 的 `Sink` 内部状态字段上反复出现——**它们全部建立在本篇讲的"分段 + `@Contended`"底层机制上**。到那时，你今天在 JUC 源码里挖出的每一条 `state` 位分解、每一份 `@Contended` 填充、每一次 `ctl` 位编码，都会变成你打通"锁—同步器—并发容器—虚拟线程—响应式编程"整条战线的关键钥匙。

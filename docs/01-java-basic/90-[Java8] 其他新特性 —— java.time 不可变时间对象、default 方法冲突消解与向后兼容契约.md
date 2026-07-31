@@ -293,7 +293,7 @@ public void hello();
      4: return
 ```
 
-**顿悟点（一句话）**：`X.super.m()` 语法糖会编译成 `invokespecial InterfaceMethod`（**接口级** `invokespecial`，Java 8 前只有类级）——这是"平级冲突必须显式消除"能被 JVM 精确识别的物理基础。
+**顿悟点（一句话）**：`X.super.m()` 语法糖会编译成 `invokespecial InterfaceMethod`（**接口级** `invokespecial`，Java 8 前只有类级）——这是"平级冲突必须显式消除"能被 JVM 精确识别的底层基础。
 
 > 📖 **深度分析**（`invokespecial` / `invokevirtual` / `invokeinterface` / `invokestatic` / `invokedynamic` 五条 `invoke*` 指令族的完整对比）见 [01 面向对象](@java-字节码-面向对象) §"`invoke*` 五条指令族"。
 
