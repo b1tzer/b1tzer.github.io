@@ -16,12 +16,12 @@ title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟�
 
 > 📖 **边界声明**：本文聚焦"现代 JVM 的容器化 / 虚拟线程 / JFR / JIT / 云原生落地"（工程视角 + 前沿追踪），以下主题请见对应姊妹文档：
 >
-> - **JVM 基础内存分区、对象头、压缩指针 32GB 边界** → [12a 内存分区与对象布局](@java-JVM-内存分区与对象布局)（本文只用"堆 / 元空间 / 直接内存 / 线程栈 / Code Cache 五分区"结论）
-> - **传统 GC 算法、三色标记、写屏障、G1 Region、ZGC 染色指针** → [12b GC 核心机制](@java-JVM-GC核心机制与收集器演进)（本文只讨论"现代场景下如何用 · JEP 演进"）
-> - **通用 GC 参数调优、GC 日志分析、OOM 排查五字诀** → [12c GC 调优实战](@java-JVM-GC调优实战与常见误区)（本文只补齐"容器 + 前沿场景"专属参数）
-> - **虚拟线程中的 JMM、happens-before、内存屏障基础** → [10a JMM 与线程同步](@java-并发-JMM与线程同步)
-> - **传统线程池 7 参数、拒绝策略、Fork/Join Pool** → [10c 并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池)
-> - **NIO / Netty `PooledByteBufAllocator` / DirectByteBuffer 堆外内存** → [13 NIO 与 IO 模型深度解析](@java-OS-NIO与IO模型)
+> - **JVM 基础内存分区、对象头、压缩指针 32GB 边界** → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)（本文只用"堆 / 元空间 / 直接内存 / 线程栈 / Code Cache 五分区"结论）
+> - **传统 GC 算法、三色标记、写屏障、G1 Region、ZGC 染色指针** → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)（本文只讨论"现代场景下如何用 · JEP 演进"）
+> - **通用 GC 参数调优、GC 日志分析、OOM 排查五字诀** → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)（本文只补齐"容器 + 前沿场景"专属参数）
+> - **虚拟线程中的 JMM、happens-before、内存屏障基础** → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步)
+> - **传统线程池 7 参数、拒绝策略、Fork/Join Pool** → [并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池)
+> - **NIO / Netty `PooledByteBufAllocator` / DirectByteBuffer 堆外内存** → [NIO 与 IO 模型深度解析](@java-OS-NIO与IO模型)
 
 ---
 
@@ -185,7 +185,7 @@ Thread.ofVirtual().start(() -> {
 - **JDK 24+ 长期方案**：无需改动，JVM 底层重构 monitor 语义
 - **JVM 参数辅助排查**：`-Djdk.tracePinnedThreads=full` 打印 pin 事件栈（JDK 21~23 排查利器）
 
-📖 `ReentrantLock` / AQS / `LockSupport.park` 完整机制 → [10b AQS 设计哲学](@java-并发-AQS设计哲学)，本文不重讲。
+📖 `ReentrantLock` / AQS / `LockSupport.park` 完整机制 → [AQS 设计哲学](@java-并发-AQS设计哲学)，本文不重讲。
 
 ### 2.3 JFR 事件模型：为什么持续开启开销 < 1%
 
@@ -473,15 +473,15 @@ flowchart LR
     -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining   内联详情
 ```
 
-📖 逃逸分析 / 标量替换 / 锁消除的完整机制 → [12c GC 调优实战](@java-JVM-GC调优实战与常见误区) §"误区 3：对象一定在堆上分配"（栈上分配的真相是标量替换），本文只讨论"JIT 在现代场景下如何调优"。
+📖 逃逸分析 / 标量替换 / 锁消除的完整机制 → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) §"误区 3：对象一定在堆上分配"（栈上分配的真相是标量替换），本文只讨论"JIT 在现代场景下如何调优"。
 
 ### 3.5 内存屏障与可见性
 
-- **JMM happens-before 8 条规则**（程序次序、监视器锁、`volatile`、传递性…）→ 完整规则见 [10a JMM 与线程同步](@java-并发-JMM与线程同步) §"happens-before 8 条"
+- **JMM happens-before 8 条规则**（程序次序、监视器锁、`volatile`、传递性…）→ 完整规则见 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) §"happens-before 8 条"
 - **`volatile` 写后 `StoreLoad` 屏障** · x86 实现为 `lock addl` 指令
 - **`final` 字段的内存语义**：构造器 `return` 前对 `final` 字段的写入，对通过对象引用访问的其他线程均可见 —— **前提是 `this` 引用未在构造期间逃逸**
 
-📖 `volatile` / `final` 双重屏障的字节码指令级分析 → [10a JMM 与线程同步](@java-并发-JMM与线程同步)。
+📖 `volatile` / `final` 双重屏障的字节码指令级分析 → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步)。
 
 ---
 
@@ -502,7 +502,7 @@ flowchart LR
 - **分代 ZGC 的降维**：套用弱分代假说，新生代复制算法快速回收短命对象，老年代保留 ZGC 染色指针并发转移，**减少标记成本、吞吐量追平 G1、延迟仍亚毫秒**
 - **顿悟点**：**"分代 ZGC = G1 的吞吐 + ZGC 的延迟"** —— JDK 21+ 大堆场景（> 16GB）可以放心用，无需在 G1 / ZGC 之间纠结
 
-📖 ZGC 染色指针 4 位编码、读屏障字节码、Self-Healing 机制 → [12b GC 核心机制](@java-JVM-GC核心机制与收集器演进) §"ZGC 染色指针"。
+📖 ZGC 染色指针 4 位编码、读屏障字节码、Self-Healing 机制 → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) §"ZGC 染色指针"。
 
 ### 4.2 GraalVM Native Image vs CRaC · Serverless 冷启动降维
 
@@ -673,7 +673,7 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
     new ThreadPoolExecutor.CallerRunsPolicy());
 ```
 
-📖 线程池 7 参数与生命周期源码 → [10c 并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池)。
+📖 线程池 7 参数与生命周期源码 → [并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池)。
 
 ### 4.6 前沿技术速览（2025 年视角）
 
@@ -738,20 +738,20 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 
 | 来源 | 伏笔内容 | 落地位置 |
 | :-- | :-- | :-- |
-| **[12c GC 调优实战](@java-JVM-GC调优实战与常见误区)** ★★★★★ | 容器化 JVM（`MaxRAMPercentage` · `UseContainerSupport`）· 虚拟线程 GC 视角 · JFR 深度使用 · 分代 ZGC 参数调优 | §1.1 引子三连击 · §2.3 JFR 事件模型 · §2.4 cgroup 感知源码 · §3.1 容器化架构图 · §4.1 分代 ZGC JEP 时间线 |
-| **[12 JVM 综览](@java-JVM-内存结构与GC) / [12a 内存分区](@java-JVM-内存分区与对象布局)** ★★★★★ | JVM 现代实践 —— 战役收网 · 承接容器化 + 前沿技术 | §3 三张现代机制图（容器化 / M:N 线程 / 云原生）· §4.6 前沿技术速览 |
-| **[01 OOP](@java-字节码-面向对象)** ★★★ | 对象头 · Klass Pointer · 32GB 压缩指针边界 —— 容器场景下的堆大小选型 | §2.4 "为什么留 25% 给堆外" + §4.6 技术选型（堆 > 32GB 推荐分代 ZGC，隐含突破压缩指针边界） |
+| **[GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)** ★★★★★ | 容器化 JVM（`MaxRAMPercentage` · `UseContainerSupport`）· 虚拟线程 GC 视角 · JFR 深度使用 · 分代 ZGC 参数调优 | §1.1 引子三连击 · §2.3 JFR 事件模型 · §2.4 cgroup 感知源码 · §3.1 容器化架构图 · §4.1 分代 ZGC JEP 时间线 |
+| **[JVM 综览](@java-JVM-内存结构与GC) / [内存分区](@java-JVM-内存分区与对象布局)** ★★★★★ | JVM 现代实践 —— 战役收网 · 承接容器化 + 前沿技术 | §3 三张现代机制图（容器化 / M:N 线程 / 云原生）· §4.6 前沿技术速览 |
+| **[OOP](@java-字节码-面向对象)** ★★★ | 对象头 · Klass Pointer · 32GB 压缩指针边界 —— 容器场景下的堆大小选型 | §2.4 "为什么留 25% 给堆外" + §4.6 技术选型（堆 > 32GB 推荐分代 ZGC，隐含突破压缩指针边界） |
 
 ### 5.2 本文埋下的伏笔
 
 | 本篇 → 目标篇 | 伏笔内容 | 优先级 |
 | :-- | :-- | :-- |
-| **`12d` → [13 NIO 与 IO 模型](@java-OS-NIO与IO模型)** | 直接内存 GC 回收路径 · `DirectByteBuffer.Cleaner` · Netty `PooledByteBufAllocator` 管理堆外内存 · Panama FFM API（JEP 442）替代 JNI —— `13` 需承接堆外内存工程视角完整链路 | ★★★★★ |
+| **`12d` → [Java NIO 与 I/O 模型](@java-OS-NIO与IO模型)** | 直接内存 GC 回收路径 · `DirectByteBuffer.Cleaner` · Netty `PooledByteBufAllocator` 管理堆外内存 · Panama FFM API（JEP 442）替代 JNI —— `13` 需承接堆外内存工程视角完整链路 | ★★★★★ |
 | **`12d` → 后续「并发编程」HotSpot 专题（拆分中）** | `Continuation` `freeze` / `thaw` 汇编级实现 · `VirtualThread` 与 `ForkJoinPool` 调度器协作 · `ScopedValue` 完整 API —— 后续并发专题需承接 M:N 线程模型完整源码 | ★★★★★ |
-| **`12d` → [10c Lock 与线程池](@java-并发-并发工具Lock与线程池)** | `ReentrantLock` 在虚拟线程场景下的 AQS `park` / `unpark` 与 `Continuation.yield` 协作 —— `10c` 需承接 AQS 在虚拟线程时代的新语义 | ★★★★ |
-| **`12d` → [12c GC 调优实战](@java-JVM-GC调优实战与常见误区)**（已完成） | 容器化 JVM 参数 · JFR 深度使用 · 分代 ZGC 参数 | ✅ 已闭环 |
-| **`12d` → [12b GC 核心机制](@java-JVM-GC核心机制与收集器演进)**（已完成） | 分代 ZGC 染色指针 · 读屏障 · Self-Healing | ✅ 已闭环 |
-| **`12d` → [12a 内存分区与对象布局](@java-JVM-内存分区与对象布局)**（已完成） | 五分区内存布局（堆 / 元空间 / 直接内存 / 线程栈 / Code Cache） | ✅ 已闭环 |
+| **`12d` → [Lock 与线程池](@java-并发-并发工具Lock与线程池)** | `ReentrantLock` 在虚拟线程场景下的 AQS `park` / `unpark` 与 `Continuation.yield` 协作 —— `10c` 需承接 AQS 在虚拟线程时代的新语义 | ★★★★ |
+| **`12d` → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)**（已完成） | 容器化 JVM 参数 · JFR 深度使用 · 分代 ZGC 参数 | ✅ 已闭环 |
+| **`12d` → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)**（已完成） | 分代 ZGC 染色指针 · 读屏障 · Self-Healing | ✅ 已闭环 |
+| **`12d` → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)**（已完成） | 五分区内存布局（堆 / 元空间 / 直接内存 / 线程栈 / Code Cache） | ✅ 已闭环 |
 
 ### 5.3 Q&A 归属指引
 
@@ -765,4 +765,4 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 | 分代 ZGC 和原来的 ZGC 有什么区别？我该用哪个？ | §4.1 |
 | Serverless 为什么用 GraalVM Native Image 反而更快？和传统 JIT 的取舍是什么？ | §4.2 + §4.6 |
 
-📖 **JIT 逃逸分析源码、`volatile` 双重屏障、`Continuation` 汇编实现**三类深度源码题已在 [12c GC 调优实战](@java-JVM-GC调优实战与常见误区) / [10a JMM 与线程同步](@java-并发-JMM与线程同步) / HotSpot 专题给出，本文不再重复。
+📖 **JIT 逃逸分析源码、`volatile` 双重屏障、`Continuation` 汇编实现**三类深度源码题已在 [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) / [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) / HotSpot 专题给出，本文不再重复。

@@ -30,11 +30,11 @@ title: Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内
 >
 > - **Netty 的 Reactor 线程模型 + Pipeline + ByteBuf 完整源码** → `@netty` 专题（本文只讲 NIO 原生痛点 + Netty 解决方案摘要，不完整展开 Netty 源码）
 > - **Kafka Broker 如何用 sendfile 实现 Producer / Consumer 高吞吐** → `@kafka` 专题（本文只讲 sendfile 减拷贝底层原理，不重讲 Kafka Segment 文件结构）
-> - **`FileChannel.map()` 内存映射文件（mmap）的底层原理 + Page Cache** → [12d JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) §"mmap 与堆外内存"
-> - **`DirectByteBuffer` 的堆外内存分配 + `Cleaner` 回收机制 + `-XX:MaxDirectMemorySize`** → [12a JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"直接内存"
-> - **线程池 7 参数 / Reactor 主从模型** → [10c 并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池)（本文只讲 Netty BossGroup / WorkerGroup 摘要）
+> - **`FileChannel.map()` 内存映射文件（mmap）的底层原理 + Page Cache** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) §"mmap 与堆外内存"
+> - **`DirectByteBuffer` 的堆外内存分配 + `Cleaner` 回收机制 + `-XX:MaxDirectMemorySize`** → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"直接内存"
+> - **线程池 7 参数 / Reactor 主从模型** → [并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池)（本文只讲 Netty BossGroup / WorkerGroup 摘要）
 > - **`epoll_wait` 阻塞时线程如何休眠 / 唤醒（Linux 内核等待队列）** → 属 OS 内核专题，本文只讲 Java 视角的"阻塞"语义
-> - **Java AIO（`AsynchronousChannel`）完整源码链路 + `io_uring` 在 JDK 21+ 的进展** → [12d JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)（本文只讲"为什么 Netty 不用 AIO"结论）
+> - **Java AIO（`AsynchronousChannel`）完整源码链路 + `io_uring` 在 JDK 21+ 的进展** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)（本文只讲"为什么 Netty 不用 AIO"结论）
 
 ---
 
@@ -214,7 +214,7 @@ sendfile(4, 3, [0], 10737418240) = 10737418240
 - **Linux 2.4+ scatter/gather DMA 进一步优化**：连"内核缓冲区 → Socket 缓冲区"的 CPU 拷贝也省掉、只留 2 次纯 DMA（磁盘 → 内核缓冲区、内核缓冲区 → 网卡）。
 - **`transferTo` 的返回值是实际传输字节数**：可能小于请求量（受内核 socket 缓冲区大小限制），**生产代码必须循环调用直到返回 0**——否则大文件传输会静默截断。
 
-> 📖 完整"直接缓冲区 vs 堆缓冲区"直接对比 → [12a JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"直接内存"。
+> 📖 完整"直接缓冲区 vs 堆缓冲区"直接对比 → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"直接内存"。
 
 ---
 
@@ -626,8 +626,8 @@ b.bind(8080).sync();
 
 > 📖 引用其他篇的家族：
 >
-> - `DirectByteBuffer` / `Cleaner` / `-XX:MaxDirectMemorySize` → [12a JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"直接内存"
-> - `FileChannel.map()` / mmap / Page Cache → [12d JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) §"mmap 与堆外内存"
+> - `DirectByteBuffer` / `Cleaner` / `-XX:MaxDirectMemorySize` → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"直接内存"
+> - `FileChannel.map()` / mmap / Page Cache → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) §"mmap 与堆外内存"
 > - Netty `Bootstrap` / `EventLoopGroup` / `ChannelPipeline` / `ByteBuf` → `@netty` 专题
 > - Kafka `LogSegment` + `sendfile` 高吞吐链路 → `@kafka` 专题
 
@@ -644,26 +644,26 @@ b.bind(8080).sync();
 | **Q5**：JDK NIO 空轮询 Bug 到底是什么？Netty 怎么绕过去？ | 本篇 | 答"epoll LT 模式 + JDK 未清理无效 fd 的组合病症 · `selector.select()` 无限返回 0 CPU 100% · Netty 检测空轮询次数 > 阈值（默认 512）→ 重建 Selector → 旧 Channel 重新 register"，详见 §4.5 |
 | Netty Pipeline / ChannelHandler / ByteBuf 完整源码 | `📖` 引用 | → `@netty` 专题 |
 | Kafka 消费者拉消息为什么这么快 | `📖` 引用 | → `@kafka` · 本篇只讲 sendfile 底层 |
-| `ByteBuffer.allocateDirect()` 的堆外内存怎么回收 | `📖` 引用 | → [12a JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"直接内存" |
+| `ByteBuffer.allocateDirect()` 的堆外内存怎么回收 | `📖` 引用 | → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"直接内存" |
 
-> 📖 **Netty Pipeline 完整源码、Kafka Broker 高吞吐秘密、DirectByteBuffer 堆外内存回收链路**已在 `@netty` / `@kafka` / [12a JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 给出答案，本文不再重复，专注"epoll 红黑树 + sendfile 零拷贝 + Selector / Channel / Buffer 三大组件"题。
+> 📖 **Netty Pipeline 完整源码、Kafka Broker 高吞吐秘密、DirectByteBuffer 堆外内存回收链路**已在 `@netty` / `@kafka` / [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 给出答案，本文不再重复，专注"epoll 红黑树 + sendfile 零拷贝 + Selector / Channel / Buffer 三大组件"题。
 
 ### 5.4 伏笔登记与回收
 
 **本文回收的伏笔**：
 
-- ✅ 回收 [10c 并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池) 的伏笔："BIO Tomcat 线程池打满 vs NIO Reactor 少线程多连接—— `13` 承接 C10K 场景的 NIO 解决方案"（★★★★）
+- ✅ 回收 [并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池) 的伏笔："BIO Tomcat 线程池打满 vs NIO Reactor 少线程多连接—— `13` 承接 C10K 场景的 NIO 解决方案"（★★★★）
     - **落地位置**：§1.1 生产事故现场 + §4.1 红线 1
-- ✅ 回收 [08 集合框架](@java-数据结构-集合框架) 的伏笔："`ConcurrentHashMap` 在 Netty EventLoop 里作为高并发 fd → handler 映射—— `13` 承接使用场景"（★★★）
+- ✅ 回收 [集合框架](@java-数据结构-集合框架) 的伏笔："`ConcurrentHashMap` 在 Netty EventLoop 里作为高并发 fd → handler 映射—— `13` 承接使用场景"（★★★）
     - **落地位置**：§4.5 红线 5（Netty attribute map 作为 CHM 使用场景一笔带过）
-- ✅ 回收 [12a JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 的伏笔："`DirectByteBuffer` 堆外内存内存位置—— `13` 承接 NIO 直接缓冲区省一次堆到堆外拷贝的使用价值"（★★★★）
+- ✅ 回收 [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 的伏笔："`DirectByteBuffer` 堆外内存内存位置—— `13` 承接 NIO 直接缓冲区省一次堆到堆外拷贝的使用价值"（★★★★）
     - **落地位置**：§2.3 sendfile 对比末尾 + §3.6 三大组件协作图
 
 **本文埋下的伏笔**：
 
 | 本篇 → 目标篇 | 伏笔内容 | 优先级 |
 | :-- | :-- | :-- |
-| `13 NIO 与 IO 模型` → [12d JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) | `io_uring` 真异步 I/O + JDK 21+ Loom 虚拟线程重新让 BIO 变香—— `12d` 需承接前沿场景 | ★★★★★ |
+| `13 NIO 与 IO 模型` → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) | `io_uring` 真异步 I/O + JDK 21+ Loom 虚拟线程重新让 BIO 变香—— `12d` 需承接前沿场景 | ★★★★★ |
 | `13 NIO 与 IO 模型` → `@netty` 专题 | Netty 主从 Reactor + Pipeline + ByteBuf 完整源码——本篇只做摘要引子 | ★★★★★ |
 | `13 NIO 与 IO 模型` → `@kafka` 专题 | Kafka Broker sendfile 消费链路 + LogSegment 文件结构——本篇只讲 sendfile 内核底层链路 | ★★★★ |
 

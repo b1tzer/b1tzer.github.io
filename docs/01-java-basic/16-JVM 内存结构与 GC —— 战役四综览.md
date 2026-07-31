@@ -19,7 +19,7 @@ title: JVM 内存结构与 GC —— 战役四综览：内存分区 / GC 机制 
 > - 调优方法论 / GC 日志分析 / OOM 四字诀 / 生产 checklist → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) §1~§7
 > - 容器化 JVM / 虚拟线程 Loom / JFR / async-profiler / CRaC / Valhalla / Panama → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) §1~§7
 > - 类加载子系统五阶段 + 双亲委派模型 → [类加载机制与双亲委派模型](@java-JVM-类加载机制与双亲委派模型)（战役四序章，独立成篇）
-> - JMM 与 `synchronized` 锁升级时 Mark Word 状态位跃迁 → [JMM 与线程同步](@java-并发-JMM与线程同步) §4（属于战役三，非本战役内容）
+> - JMM 与 `synchronized` 锁升级时 Mark Word 状态位跃迁 → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) §4（属于战役三，非本战役内容）
 
 ---
 

@@ -26,13 +26,13 @@ title: 类加载机制与双亲委派模型 —— 五阶段字节码触发时�
 
 > 📖 **边界声明**：本文是**战役四 · JVM Runtime 的序章**，聚焦"字节码 → 类加载 → 方法区"这条跨战役因果链的中转站。以下主题请见对应专题：
 >
-> - **对象头 `Klass Pointer` 位分布 / `Klass` 元数据在 Metaspace 的完整对象布局 / `oop-Klass` 二元模型** → [12a JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)
-> - **`ClassLoaderData` 作为类卸载最小单元 + 三色标记对 `Klass` 的可达性分析** → [12b GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)
-> - **元空间 OOM 三大根因（类加载器泄漏 / 动态代理生成 / CGLIB 未卸载）排查与调优** → [12c GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)
-> - **Hidden Class（JDK 15+）与 `Lookup.defineHiddenClass` / GraalVM AOT / 模块系统 `--add-opens`** → [12d JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)
-> - **`invokedynamic` + `LambdaMetafactory` 触发的 Lambda 类加载完整链路** → [07 函数式编程](@java-字节码-函数式编程)
-> - **反射 `Class.forName()` 与 `MethodHandles.Lookup` 触发类加载的完整调用链** → [06 反射与 MethodHandle](@java-字节码-反射与MethodHandle)
-> - **APT / ASM / Byte Buddy / Javassist 编译期字节码生成的加载入口** → [03 注解](@java-字节码-注解)
+> - **对象头 `Klass Pointer` 位分布 / `Klass` 元数据在 Metaspace 的完整对象布局 / `oop-Klass` 二元模型** → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)
+> - **`ClassLoaderData` 作为类卸载最小单元 + 三色标记对 `Klass` 的可达性分析** → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)
+> - **元空间 OOM 三大根因（类加载器泄漏 / 动态代理生成 / CGLIB 未卸载）排查与调优** → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)
+> - **Hidden Class（JDK 15+）与 `Lookup.defineHiddenClass` / GraalVM AOT / 模块系统 `--add-opens`** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)
+> - **`invokedynamic` + `LambdaMetafactory` 触发的 Lambda 类加载完整链路** → [函数式编程](@java-字节码-函数式编程)
+> - **反射 `Class.forName()` 与 `MethodHandles.Lookup` 触发类加载的完整调用链** → [反射与 MethodHandle](@java-字节码-反射与MethodHandle)
+> - **APT / ASM / Byte Buddy / Javassist 编译期字节码生成的加载入口** → [注解](@java-字节码-注解)
 
 ---
 
@@ -139,7 +139,7 @@ $ java -verbose:class -cp . Sample 2>&1 | grep "com.example.Foo"
 
 看到 `Loaded` 代表**加载**完成；`<clinit>` 是否执行需靠静态块打日志验证（因为 `-verbose:class` 只覆盖加载事件，不覆盖初始化事件）。
 
-> 📖 `invoke*` 五条方法调用指令族的完整解剖详见 [01 面向对象](@java-字节码-面向对象) §"术语家族卡片：`invoke*` 家族"；本文只借用 `invokestatic` / `invokedynamic` 的"触发加载"性质。
+> 📖 `invoke*` 五条方法调用指令族的完整解剖详见 [面向对象](@java-字节码-面向对象) §"术语家族卡片：`invoke*` 家族"；本文只借用 `invokestatic` / `invokedynamic` 的"触发加载"性质。
 
 ### 2.2 主考古样本二：`ConstantValue` 属性 —— 准备阶段赋非零值的唯一硬件依据
 
@@ -276,7 +276,7 @@ public class Singleton {
 
 **顿悟点**：无论是编译产物 `.class` 文件、Lambda 生成的 `LambdaProbe$$Lambda$1`、还是 ASM 运行时织入的字节码，**最终都要走 `defineClass` 才能进入方法区**——这是 JIT 与 AOT 无法绕过的"字节流 → JVM 类型系统"内存边界。
 
-> 📖 `invokedynamic` + `LambdaMetafactory` 触发的 Hidden Class 加载完整链路详见 [07 函数式编程](@java-字节码-函数式编程) §"`invokedynamic` 引导链路"；`Lookup.defineHiddenClass` 的现代实践详见 [12d JVM 现代实践](@java-JVM-现代实践与前沿技术) §"Hidden Class"。
+> 📖 `invokedynamic` + `LambdaMetafactory` 触发的 Hidden Class 加载完整链路详见 [函数式编程](@java-字节码-函数式编程) §"`invokedynamic` 引导链路"；`Lookup.defineHiddenClass` 的现代实践详见 [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) §"Hidden Class"。
 
 ---
 
@@ -319,7 +319,7 @@ Metaspace（方法区）                                       Heap（Java 堆�
 2. **`ClassLoaderData`（CLD）是 GC 卸载类的最小单元**——整体回收 / 整体保留，不存在"卸载 CLD 里一部分类"的操作。这就是元空间 OOM 排查时"泄漏一个类加载器 = 泄漏它加载的整个类树"的根本原因
 3. **同一个 `Foo.class` 字节流被两个 CL 各调用一次 `defineClass()`**，产生**两个独立的 `Klass`**——方法区两份元数据、堆里两个 `Class<Foo>` 镜像、`Foo == Foo` 返回 `false`。这**闭环了 §1.1 的热部署事故**：`isAssignableFrom` 只查父类链，父类链走到 `OrderRule` 就已经分叉了两条独立的 `Klass` 血脉
 
-> 📖 `Klass` 骨架在 Metaspace 里的完整字段布局（`ConstantPool` / `Method` / `vtable` / `itable` 各字段偏移）详见 [12a JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"元空间对象布局"；`ClassLoaderData` 与 GC 可达性分析详见 [12b GC 核心机制](@java-JVM-GC核心机制与收集器演进) §"类卸载与 CLD 回收"。
+> 📖 `Klass` 骨架在 Metaspace 里的完整字段布局（`ConstantPool` / `Method` / `vtable` / `itable` 各字段偏移）详见 [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"元空间对象布局"；`ClassLoaderData` 与 GC 可达性分析详见 [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) §"类卸载与 CLD 回收"。
 
 ### 3.2 类加载五阶段与内存状态跃迁
 
@@ -763,19 +763,19 @@ if (commonInterface.isInstance(obj)) {
 
 | 埋点篇 | 承接内容 | 落地位置 |
 | :-- | :-- | :-- |
-| ✅ [00 综览](@java-概览) | "类加载器族的完整家族卡片—— `11` 需在战役四序章首次承接" | §3.5 术语家族卡片：`ClassLoader` 类加载器族 |
-| ✅ [03 注解](@java-字节码-注解) | "APT 编译期织入的字节码最终仍要走 `defineClass` 才能进入方法区" | §2.4 `defineClass` 唯一入口机制图 |
-| ✅ [07 函数式编程](@java-字节码-函数式编程) | "`invokedynamic` 触发的 Hidden Class 加载走 `Lookup.defineHiddenClass` 而非 `Unsafe.defineAnonymousClass`" | §2.1 6 类触发指令表 + §2.4 加载路径收敛图 |
+| ✅ [综览](@java-概览) | "类加载器族的完整家族卡片—— `11` 需在战役四序章首次承接" | §3.5 术语家族卡片：`ClassLoader` 类加载器族 |
+| ✅ [注解](@java-字节码-注解) | "APT 编译期织入的字节码最终仍要走 `defineClass` 才能进入方法区" | §2.4 `defineClass` 唯一入口机制图 |
+| ✅ [函数式编程](@java-字节码-函数式编程) | "`invokedynamic` 触发的 Hidden Class 加载走 `Lookup.defineHiddenClass` 而非 `Unsafe.defineAnonymousClass`" | §2.1 6 类触发指令表 + §2.4 加载路径收敛图 |
 
 ### 5.2 本文埋下的伏笔
 
 | 本篇 → 目标篇 | 伏笔内容 | 优先级 |
 | :-- | :-- | :-- |
-| `11 类加载` → [12a 内存分区与对象布局](@java-JVM-内存分区与对象布局) | `Klass` 骨架在 Metaspace 里的完整对象布局（`ConstantPool` / `Method` / `vtable` / `itable` 各字段偏移）——本篇 §3.1 只画了三元强引用外壳，字段级位分布留给 `12a` | ★★★★★ |
-| `11 类加载` → [12b GC 核心机制](@java-JVM-GC核心机制与收集器演进) | `ClassLoaderData` 作为类卸载最小单元 + `Klass` 与 `ClassLoader` 相互强引用的 GC 可达性分析——本篇 §3.1 结论"只要 CL 不被 GC，Klass 就无法卸载"的完整可达性证明留给 `12b` | ★★★★★ |
-| `11 类加载` → [12c GC 调优实战](@java-JVM-GC调优实战与常见误区) | 元空间 OOM（`OutOfMemoryError: Metaspace`）的三大根因（类加载器泄漏 / 动态代理生成 / 未卸载 CGLIB）与 `-XX:MaxMetaspaceSize` 调优——本篇 §3.1 埋下"泄漏一个 CL = 泄漏整个类树"的排查主线 | ★★★★ |
-| `11 类加载` → [12d JVM 现代实践](@java-JVM-现代实践与前沿技术) | Hidden Class（JDK 15+）与 `Lookup.defineHiddenClass` / 模块系统 `--add-opens` / GraalVM AOT 的类加载差异——本篇 §2.4 已埋 `Lookup.defineHiddenClass` 的入口，完整机制留给 `12d` | ★★★★ |
+| `11 类加载` → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) | `Klass` 骨架在 Metaspace 里的完整对象布局（`ConstantPool` / `Method` / `vtable` / `itable` 各字段偏移）——本篇 §3.1 只画了三元强引用外壳，字段级位分布留给 `12a` | ★★★★★ |
+| `11 类加载` → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) | `ClassLoaderData` 作为类卸载最小单元 + `Klass` 与 `ClassLoader` 相互强引用的 GC 可达性分析——本篇 §3.1 结论"只要 CL 不被 GC，Klass 就无法卸载"的完整可达性证明留给 `12b` | ★★★★★ |
+| `11 类加载` → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) | 元空间 OOM（`OutOfMemoryError: Metaspace`）的三大根因（类加载器泄漏 / 动态代理生成 / 未卸载 CGLIB）与 `-XX:MaxMetaspaceSize` 调优——本篇 §3.1 埋下"泄漏一个 CL = 泄漏整个类树"的排查主线 | ★★★★ |
+| `11 类加载` → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) | Hidden Class（JDK 15+）与 `Lookup.defineHiddenClass` / 模块系统 `--add-opens` / GraalVM AOT 的类加载差异——本篇 §2.4 已埋 `Lookup.defineHiddenClass` 的入口，完整机制留给 `12d` | ★★★★ |
 
 ---
 
-> 📖 **元空间 OOM 排查、Hidden Class 完整机制、模块系统 `--add-opens` 详细行为、动态代理与 CGLIB 类泄漏排查** 等实战调优题已在 [12c GC 调优实战](@java-JVM-GC调优实战与常见误区) / [12d JVM 现代实践](@java-JVM-现代实践与前沿技术) 给出答案，本文专注"五阶段字节码触发时机 + 双亲委派递归链路 + `ClassLoader + 全限定名` 二元组"三层机制。
+> 📖 **元空间 OOM 排查、Hidden Class 完整机制、模块系统 `--add-opens` 详细行为、动态代理与 CGLIB 类泄漏排查** 等实战调优题已在 [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) / [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 给出答案，本文专注"五阶段字节码触发时机 + 双亲委派递归链路 + `ClassLoader + 全限定名` 二元组"三层机制。

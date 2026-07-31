@@ -24,13 +24,13 @@ title: 并发工具：Lock 与线程池 —— AQS 应用视角、StampedLock �
 
 ---
 
-> 📖 **边界声明**：本文站在"AQS 应用层"视角展开——把 [10b AQS 设计哲学](@java-并发-AQS设计哲学) 讲的 `state` / CLH 队列 / 模板方法作为**已知前置**，聚焦"锁与同步器如何在 AQS 上定义各自语义"以及"线程池的 `ctl` 位编码 + `execute` 三阶段决策"。以下主题请见对应专题：
+> 📖 **边界声明**：本文站在"AQS 应用层"视角展开——把 [AQS 设计哲学](@java-并发-AQS设计哲学) 讲的 `state` / CLH 队列 / 模板方法作为**已知前置**，聚焦"锁与同步器如何在 AQS 上定义各自语义"以及"线程池的 `ctl` 位编码 + `execute` 三阶段决策"。以下主题请见对应专题：
 >
-> - **AQS 骨架、CLH 队列、`state` 通用语义、`park`/`unpark` 挂起链路** → [10b AQS 设计哲学](@java-并发-AQS设计哲学)
-> - **CAS 硬件语义、`LOCK CMPXCHG`、MESI、`synchronized` 锁升级、Mark Word** → [10a JMM 与线程同步](@java-并发-JMM与线程同步)
-> - **`ConcurrentHashMap` 完整源码、`CopyOnWriteArrayList` 弱一致性、并发容器排查** → [10d 并发集合与实战陷阱](@java-并发-并发集合与实战陷阱)
-> - **虚拟线程 pin 到载体线程（`synchronized` / native 会 pin、`ReentrantLock` 不 pin）** → [12d JVM 现代实践](@java-JVM-现代实践与前沿技术)
-> - **`ForkJoinPool.commonPool` 与 `parallelStream` 的硬性约束** → [07 函数式编程](@java-字节码-函数式编程)
+> - **AQS 骨架、CLH 队列、`state` 通用语义、`park`/`unpark` 挂起链路** → [AQS 设计哲学](@java-并发-AQS设计哲学)
+> - **CAS 硬件语义、`LOCK CMPXCHG`、MESI、`synchronized` 锁升级、Mark Word** → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步)
+> - **`ConcurrentHashMap` 完整源码、`CopyOnWriteArrayList` 弱一致性、并发容器排查** → [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱)
+> - **虚拟线程 pin 到载体线程（`synchronized` / native 会 pin、`ReentrantLock` 不 pin）** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)
+> - **`ForkJoinPool.commonPool` 与 `parallelStream` 的硬性约束** → [函数式编程](@java-字节码-函数式编程)
 
 ---
 
@@ -102,7 +102,7 @@ public class RiskAsyncExecutor {
 ## 2. 第二层：源码考古 —— AQS 应用视角下的锁族源码解剖
 
 !!! note "本层特殊说明"
-    本文的"考古"聚焦**关键源码方法的语义**（如 `NonfairSync.tryAcquire` / `LongAdder.add` / `ThreadPoolExecutor.execute`），而非 `javap -v` 字节码全景——因为 JUC 顶层 API 的顿悟浓度在**源码语义层**，字节码层只是这些源码的 `invokevirtual` 直接映射。想看字节码层原理，回 [02 异常处理](@java-字节码-异常处理) 和 [10a JMM 与线程同步](@java-并发-JMM与线程同步)。
+    本文的"考古"聚焦**关键源码方法的语义**（如 `NonfairSync.tryAcquire` / `LongAdder.add` / `ThreadPoolExecutor.execute`），而非 `javap -v` 字节码全景——因为 JUC 顶层 API 的顿悟浓度在**源码语义层**，字节码层只是这些源码的 `invokevirtual` 直接映射。想看字节码层原理，回 [异常处理](@java-字节码-异常处理) 和 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步)。
 
 ### 2.1 `ReentrantLock` 公平 vs 非公平：`tryAcquire` 源码差异只在一行
 
@@ -322,7 +322,7 @@ public boolean validate(long stamp) {
 **顿悟点四条**：
 
 1. **乐观读期间不占任何锁位**：`tryOptimisticRead` 只是返回一个 `long` stamp，不修改 `state`、不 CAS、不入队。这就是"零同步开销"的根本来源。
-2. **`validate` 里的 `VarHandle.acquireFence()` 是关键**：它建立 acquire 内存屏障，保证乐观读期间的字段读操作**不会被重排到 `validate` 之后**（否则可能读到写锁修改后的中间态数据但校验通过）。这就是 [10a JMM 与线程同步](@java-并发-JMM与线程同步) 里 `VarHandle` 家族的实际应用点。
+2. **`validate` 里的 `VarHandle.acquireFence()` 是关键**：它建立 acquire 内存屏障，保证乐观读期间的字段读操作**不会被重排到 `validate` 之后**（否则可能读到写锁修改后的中间态数据但校验通过）。这就是 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 里 `VarHandle` 家族的实际应用点。
 3. **校验的是 `SBITS` 位（序列号）**：每次写锁获取都会 `state += WBIT`（写锁位）+ 序列号递增，导致 `state & SBITS` 变化。乐观读期间只要没有写锁介入，`stamp & SBITS == state & SBITS` 就成立。
 4. **三大限制刻在源码里**：
     - **不可重入**：`readLock()` 不检查当前线程是否已持有——同一线程再次调用会**死锁**（因为写锁被自己持有时，读锁请求会等待自己释放）。
@@ -485,7 +485,7 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
 
 1. **`RUNNING = -1 << 29` 的补码是 `111 00000...0`**：让 `RUNNING < SHUTDOWN < STOP < TIDYING < TERMINATED`（数值上单调递增），状态迁移时用简单的整数比较就能判断"当前状态是否已经过某个阶段"（如 `if (runStateAtLeast(c, SHUTDOWN))`）。
 2. **`advanceRunState(STOP)` 只改高 3 位，不覆盖工作线程数**：源码里 `ctl.compareAndSet(c, ctlOf(STOP, workerCountOf(c)))`——先 `workerCountOf(c)` 提取低 29 位，再 `ctlOf(STOP, wc)` 用位或合并，`compareAndSet` 保证 CAS 期间没有其他线程修改。
-3. **`workerCountOf` 用 `& COUNT_MASK` 是位运算捷径**：等价于 `c % (1 << 29)` 但快 5~10 倍——同一条设计哲学在 [08 集合框架](@java-数据结构-集合框架) 的 `HashMap.hash & (n-1)` 上已经见过一次，这里是它在并发工具的第二次公开亮相。这个位编码技巧后面还会在 `ConcurrentHashMap.sizeCtl` 上第三次重现。
+3. **`workerCountOf` 用 `& COUNT_MASK` 是位运算捷径**：等价于 `c % (1 << 29)` 但快 5~10 倍——同一条设计哲学在 [集合框架](@java-数据结构-集合框架) 的 `HashMap.hash & (n-1)` 上已经见过一次，这里是它在并发工具的第二次公开亮相。这个位编码技巧后面还会在 `ConcurrentHashMap.sizeCtl` 上第三次重现。
 
 ---
 
@@ -508,7 +508,7 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
 - `CountDownLatch` = **倒计时发射按钮**（一次性，按下就无法回滚）
 - `CyclicBarrier` = **集合发车**（凑够 N 人就发一趟，下一趟从头再来）
 
-### 3.2 阻塞队列 6 种技术选型（回收 [09 数据结构精讲](@java-数据结构-数据结构精讲) 伏笔）
+### 3.2 阻塞队列 6 种技术选型（回收 [数据结构精讲](@java-数据结构-数据结构精讲) 伏笔）
 
 `BlockingQueue` 是 `ThreadPoolExecutor.workQueue` 的技术选型池——每种队列的底层结构决定了线程池的性能特征：
 
@@ -517,14 +517,14 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
 | `ArrayBlockingQueue` | 数组 + `ReentrantLock`（单锁） | 有界（构造时必填） | FIFO、写读锁共用 | 生产推荐的**固定大小**线程池 |
 | `LinkedBlockingQueue` | 链表 + 双 `ReentrantLock`（`takeLock` / `putLock` 读写分离） | 可选（**无参构造默认 `Integer.MAX_VALUE`**） | FIFO、读写分离锁、吞吐更高 | `newFixedThreadPool` / `newSingleThreadExecutor`（**默认无界是坑**） |
 | `SynchronousQueue` | 无缓冲队列、直接移交（TransferQueue） | 无 | 生产者阻塞直到消费者拿走（0 容量） | `newCachedThreadPool`（**线程数无界是坑**） |
-| `PriorityBlockingQueue` | 二叉堆（回收 [09 数据结构精讲](@java-数据结构-数据结构精讲)）+ `ReentrantLock` | 无界（可扩容） | 按优先级 poll、无 FIFO 保证 | 优先级任务调度 |
+| `PriorityBlockingQueue` | 二叉堆（回收 [数据结构精讲](@java-数据结构-数据结构精讲)）+ `ReentrantLock` | 无界（可扩容） | 按优先级 poll、无 FIFO 保证 | 优先级任务调度 |
 | `DelayQueue` | 二叉堆（`PriorityQueue`）+ `ReentrantLock` | 无界 | 到期才可 take，未到期 `poll` 返回 null | `ScheduledThreadPoolExecutor` 定时任务底座 |
 | `LinkedTransferQueue` | 链表 + CAS 无锁算法 | 无界 | 支持 `transfer()` 直接移交（消费者未取则阻塞） | JDK 7+ 高级用法、Fork/Join 场景 |
 
 **顿悟点两条**：
 
 1. **`LinkedBlockingQueue` 的默认无界是生产事故的高发地**：`Executors.newFixedThreadPool(N)` 内部 `new LinkedBlockingQueue<Runnable>()`——无参构造的容量是 `Integer.MAX_VALUE`。§1.1 事故就是这条链路——线程全部阻塞在 IO 上后，任务无限堆积到队列，最终堆 OOM。
-2. **`DelayQueue` 底层是最小堆**（回收 [09 数据结构精讲](@java-数据结构-数据结构精讲) §5 的堆结构）：`DelayedWorkQueue`（`ScheduledThreadPoolExecutor` 的定制堆）在此基础上加了"到期时间"作为堆序键，未到期的任务不会被 `take`。这就是"`schedule(cmd, 5, SECONDS)` 提交后线程池不会立即执行"的根本来源。
+2. **`DelayQueue` 底层是最小堆**（回收 [数据结构精讲](@java-数据结构-数据结构精讲) §5 的堆结构）：`DelayedWorkQueue`（`ScheduledThreadPoolExecutor` 的定制堆）在此基础上加了"到期时间"作为堆序键，未到期的任务不会被 `take`。这就是"`schedule(cmd, 5, SECONDS)` 提交后线程池不会立即执行"的根本来源。
 
 !!! note "📖 术语家族：`*BlockingQueue` 阻塞队列族"
     **字面义**：JUC 阻塞队列六件套——`Blocking` 前缀标注"队列空/满时会阻塞对应操作方"，这是与 `LinkedList` / `ArrayDeque` 等普通队列的核心差异。
@@ -643,7 +643,7 @@ public void execute(Runnable command) {
 
 ### 4.1 红线 1：`ReentrantLock` vs `synchronized` 的选型不是"性能"，是"能力"
 
-**技术依据**：现代 JVM（JDK 8+）下 `synchronized` 有锁升级加持（偏向锁 → 轻量级锁 → 重量级锁），低竞争性能与 `ReentrantLock` 持平（见 [10a JMM 与线程同步](@java-并发-JMM与线程同步) §"锁升级"）。选 `ReentrantLock` 的唯一合理理由是它提供了**四种 `synchronized` 无法实现的能力**：可中断锁 / 公平锁 / 尝试获取（`tryLock`）/ 多条件变量（`Condition`）。
+**技术依据**：现代 JVM（JDK 8+）下 `synchronized` 有锁升级加持（偏向锁 → 轻量级锁 → 重量级锁），低竞争性能与 `ReentrantLock` 持平（见 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) §"锁升级"）。选 `ReentrantLock` 的唯一合理理由是它提供了**四种 `synchronized` 无法实现的能力**：可中断锁 / 公平锁 / 尝试获取（`tryLock`）/ 多条件变量（`Condition`）。
 
 ```java
 // ❌ 反模式：为了"性能"用 ReentrantLock 替代 synchronized
@@ -918,7 +918,7 @@ public class HybridService {
 
 因为在紧接着的战役三收官篇 [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 里，你会看到 `ConcurrentHashMap.sizeCtl` 复用了本文 §2.6 讲的**位编码技巧**——它用一个 `volatile int` 存"数组是否正在初始化 + 扩容线程数"两条状态；本文 §3.5 讲的 `execute` 三阶段决策也会与 CHM 的 `transfer` 迁移逻辑发生化学反应——同样是"CAS + `synchronized` 单槽位"的组合技，只是同步器从"任务队列"变成"哈希桶头节点"。同样在 §3.2 讲的六种阻塞队列，CHM 内部虽然不用它们，但 `LinkedTransferQueue` 的 CAS 无锁算法思想直接对应 CHM 的 `casTabAt` / `setTabAt` 家族——都是 `Unsafe.compareAndSetReference` 在数组元素上的应用。
 
-进一步，在战役四 [内存分区与对象布局](@java-JVM-内存分区与对象布局) §"对象布局与对齐填充"里，你会看到本文 §3.3 讲的 `Cell` 每格 128 字节的底层构成——`@Contended` 注解在 JVM 层如何影响 `InstanceKlass` 的字段偏移量计算、如何让 GC 扫描时跳过填充位。到那时你会真正理解"128 字节不是 `long` 本身多花了 15 倍内存，是 JVM 在字段前后各挖了一个 60 字节的坑"。
+进一步，在战役四 [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"对象布局与对齐填充"里，你会看到本文 §3.3 讲的 `Cell` 每格 128 字节的底层构成——`@Contended` 注解在 JVM 层如何影响 `InstanceKlass` 的字段偏移量计算、如何让 GC 扫描时跳过填充位。到那时你会真正理解"128 字节不是 `long` 本身多花了 15 倍内存，是 JVM 在字段前后各挖了一个 60 字节的坑"。
 
 再进一步，在战役四 [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 讲虚拟线程时，你会看到本文 §4.1 讲的"选 `ReentrantLock` 还是 `synchronized`"再次浮出水面——**`synchronized` 会 pin 虚拟线程到载体线程**（因为 monitor 是 native 结构，载体线程不能切走），**`ReentrantLock` 不会 pin**（因为它是 Java 层的 AQS，`park`/`unpark` 可以协作让出载体线程）。这个本质差异是"JDK 21 虚拟线程时代 `ReentrantLock` 复兴"的**唯一技术依据**，也让本文 §4.1 红线 1 的建议出现了微妙反转——虚拟线程场景下，选 `ReentrantLock` 反而成了默认选项。
 

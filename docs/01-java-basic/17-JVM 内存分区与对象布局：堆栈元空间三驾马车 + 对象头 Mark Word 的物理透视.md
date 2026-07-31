@@ -137,7 +137,7 @@ Space losses: 0 bytes internal + 4 bytes external = 4 bytes total
 3. **OFFSET 12~15 · 4 字节 `int` value**：唯一的实例字段
 4. **对齐填充**：`8 + 4 + 4 = 16` 字节，恰好是 8 的倍数，本例无需额外 padding
 
-**顿悟点**：**一个 `new Integer(0)` 占 16 字节 —— 而它承载的 int 数据只有 4 字节**，对象头 + 对齐开销占 75%。这就是为什么 `int[]` 数组永远比 `Integer[]` 数组省内存 2~3 倍的根本原因，也是 [08 集合框架](@java-数据结构-集合框架) 讲 `HashMap.Node = 48 字节` 的对齐推导起点。
+**顿悟点**：**一个 `new Integer(0)` 占 16 字节 —— 而它承载的 int 数据只有 4 字节**，对象头 + 对齐开销占 75%。这就是为什么 `int[]` 数组永远比 `Integer[]` 数组省内存 2~3 倍的根本原因，也是 [集合框架](@java-数据结构-集合框架) 讲 `HashMap.Node = 48 字节` 的对齐推导起点。
 
 ### 2.3 `markWord.hpp` 源码考古 —— Mark Word 64 bit 的精确定义
 
@@ -421,7 +421,7 @@ Thread-1 (私有)
 - **同一个字段在五种状态下"存不同的东西"**，判断当前是哪种状态只需读低 2 bit + 第 3 bit（偏向标志）
 - **GC 标记态复用**：Serial / Parallel GC 用 forwarding pointer 记录转发地址；G1 / ZGC 有自己的着色指针，但同样借用 Mark Word 的低位分派
 
-> 📖 **Mark Word 三处穿刺**：本篇讲**位分布**（哪些位存什么）· [10a JMM 与线程同步](@java-并发-JMM与线程同步) 讲**状态位跃迁**（锁升级时机）· [12b GC 核心机制](@java-JVM-GC核心机制与收集器演进) 讲**GC 使用**（三色标记 + forwarding pointer）。
+> 📖 **Mark Word 三处穿刺**：本篇讲**位分布**（哪些位存什么）· [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 讲**状态位跃迁**（锁升级时机）· [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 讲**GC 使用**（三色标记 + forwarding pointer）。
 
 > 📖 `Klass` / `oop` 二元模型 + `invokevirtual` 查 vtable 完整展开请见 [面向对象（OOP）](@java-字节码-面向对象) §"对象头与 Klass Pointer"。
 
@@ -651,7 +651,7 @@ public String cacheKey(String userInput) {
 
     **易混点**：`-XX:+UseCompressedOops` 控制对象**引用字段**压缩 · `-XX:+UseCompressedClassPointers` 控制对象头 **Klass Pointer** 压缩 —— **两者独立开关但默认都开**，堆 > 32GB 时 `UseCompressedOops` 自动关闭，`UseCompressedClassPointers` 仍可保留（因为它压缩的是元空间指针，不受堆大小限制）。
 
-> 📖 `Mark Word` 五态多态复用 → 本篇为 **Mark Word 三处穿刺**的**首发源头**（讲位分布）；[10a JMM 与线程同步](@java-并发-JMM与线程同步) 承接锁升级视角、[12b GC 核心机制](@java-JVM-GC核心机制与收集器演进) 承接 GC 标记视角
+> 📖 `Mark Word` 五态多态复用 → 本篇为 **Mark Word 三处穿刺**的**首发源头**（讲位分布）；[并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 承接锁升级视角、[GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 承接 GC 标记视角
 >
 > 📖 `Klass` / `oop` 二元模型完整展开 → [面向对象（OOP）](@java-字节码-面向对象) §"对象头与 Klass Pointer"（本文只讲对象头位分布，不重讲 `invokevirtual` 查表机制）
 
@@ -659,17 +659,17 @@ public String cacheKey(String userInput) {
 
 **本文回收的伏笔**：
 
-- ✅ 回收 [00 Java 基础与 JVM 概览](@java-概览) 埋下的："`-Xmx` 管不到哪些区" → §1.1 生产事故引子 + §3.5 三块堆外内存 + §4 红线 1 完整穿刺
-- ✅ 回收 [01 面向对象](@java-字节码-面向对象) 埋下的："对象头 = Mark Word 8 字节 + Klass Pointer 4/8 字节" → §3.6 对象内存布局完整图 + Mark Word 五态多态复用表 + §3.7 32GB 边界推导
-- ✅ 回收 [08 集合框架](@java-数据结构-集合框架) 埋下的："`LinkedList` 节点 40 字节 / `HashMap.Node` 48 字节" → §3.6 通用公式"对象头 + 实例数据 + 对齐填充 + 8 字节向上取整"
+- ✅ 回收 [Java 基础与 JVM 概览](@java-概览) 埋下的："`-Xmx` 管不到哪些区" → §1.1 生产事故引子 + §3.5 三块堆外内存 + §4 红线 1 完整穿刺
+- ✅ 回收 [面向对象](@java-字节码-面向对象) 埋下的："对象头 = Mark Word 8 字节 + Klass Pointer 4/8 字节" → §3.6 对象内存布局完整图 + Mark Word 五态多态复用表 + §3.7 32GB 边界推导
+- ✅ 回收 [集合框架](@java-数据结构-集合框架) 埋下的："`LinkedList` 节点 40 字节 / `HashMap.Node` 48 字节" → §3.6 通用公式"对象头 + 实例数据 + 对齐填充 + 8 字节向上取整"
 
 **本文埋下的伏笔（待后续战役回收）**：
 
 | 本篇 → 目标篇 | 伏笔内容 | 优先级 |
 | :-- | :-- | :-- |
-| `12a` → [10a JMM 与线程同步](@java-并发-JMM与线程同步) | Mark Word 五态多态复用 —— `10a` 需承接偏向 → 轻量 → 重量 → GC 标记的状态位跃迁 | ★★★★★ |
-| `12a` → [12b GC 核心机制](@java-JVM-GC核心机制与收集器演进) | Mark Word GC 标记态（低 2 bit = `11`）+ forwarding pointer —— `12b` 需承接三色标记算法中 Mark Word 的具体使用 | ★★★★★ |
-| `12a` → [12c GC 调优实战](@java-JVM-GC调优实战与常见误区) | 容器内存 = `-Xmx + MaxMetaspaceSize + ReservedCodeCacheSize + MaxDirectMemorySize + Xss × 线程数 + 200m 兜底` —— `12c` 需承接完整 checklist + `jcmd VM.native_memory` 排查链路 | ★★★★ |
-| `12a` → [12d JVM 现代实践](@java-JVM-现代实践与前沿技术) | ZGC 在堆 > 32GB 时的对象密度对比 + Loom 虚拟线程栈内存模型 —— `12d` 需承接前沿场景 | ★★★★ |
+| `12a` → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) | Mark Word 五态多态复用 —— `10a` 需承接偏向 → 轻量 → 重量 → GC 标记的状态位跃迁 | ★★★★★ |
+| `12a` → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) | Mark Word GC 标记态（低 2 bit = `11`）+ forwarding pointer —— `12b` 需承接三色标记算法中 Mark Word 的具体使用 | ★★★★★ |
+| `12a` → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) | 容器内存 = `-Xmx + MaxMetaspaceSize + ReservedCodeCacheSize + MaxDirectMemorySize + Xss × 线程数 + 200m 兜底` —— `12c` 需承接完整 checklist + `jcmd VM.native_memory` 排查链路 | ★★★★ |
+| `12a` → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) | ZGC 在堆 > 32GB 时的对象密度对比 + Loom 虚拟线程栈内存模型 —— `12d` 需承接前沿场景 | ★★★★ |
 
-> 📖 **GC 三色标记完整链路、`synchronized` 锁升级四阶段、容器 RSS 超限排查** 请分别到 [GC 核心机制](@java-JVM-GC核心机制与收集器演进) / [JMM 与线程同步](@java-并发-JMM与线程同步) / [GC 调优实战](@java-JVM-GC调优实战与常见误区) 查看，本文专注"内存分区底层结构 + 对象头 Mark Word 五态多态"这条主线。
+> 📖 **GC 三色标记完整链路、`synchronized` 锁升级四阶段、容器 RSS 超限排查** 请分别到 [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) / [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) / [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) 查看，本文专注"内存分区底层结构 + 对象头 Mark Word 五态多态"这条主线。
