@@ -93,7 +93,7 @@ public class RiskAsyncExecutor {
 - **悬案 2**：`ReentrantReadWriteLock` 的 `state` 高 16 位存读锁计数，如果一个线程重入读锁 65536 次，`state` 会发生什么？
 - **悬案 3**：`StampedLock` 乐观读为什么能做到"零同步开销"？它的 `stamp` 校验用了什么内存屏障？
 - **悬案 4**：`LongAdder` 的 `cells[]` 数组为什么初始为 `null`？扩容策略是什么？`@Contended` 注解在 JDK 9+ 的模块化下需要什么参数才能生效？
-- **悬案 5**：`ThreadPoolExecutor.ctl` 用 `AtomicInteger` 存"状态 + 线程数"，执行 `advanceRunState(STOP)` 时会不会覆盖工作线程数？源码里的 `ctlOf(rs, workerCountOf(c))` 是什么位运算魔法？
+- **悬案 5**：`ThreadPoolExecutor.ctl` 用 `AtomicInteger` 存"状态 + 线程数"，执行 `advanceRunState(STOP)` 时会不会覆盖工作线程数？源码里的 `ctlOf(rs, workerCountOf(c))` 是什么位运算技巧？
 
 这五个悬案的答案都在 JDK 源码里。掀开 `java.util.concurrent.locks.*` 和 `ThreadPoolExecutor` 就都清晰了。
 
@@ -247,7 +247,7 @@ protected final int tryAcquireShared(int unused) {
 **顿悟点三条**：
 
 1. **`state` 加 `SHARED_UNIT`（`1 << 16 = 65536`）不是加 1**：因为读锁计数占高 16 位，加 1 只会影响低 16 位（写锁）。用位分解节省了一个字段。
-2. **`readerShouldBlock()` 是"写锁优先防饥饿"的根本来源**：公平模式下检查 `hasQueuedPredecessors`；非公平模式下检查队列头部是否是**独占请求**（写锁）——是则读者主动排队让写锁先来。§1.1 事故中读写锁 P99 涨到 40ms 就是这条逻辑触发了：读密集场景下写锁请求偶发出现，一次 `readerShouldBlock` 就把后续读者全推进 AQS 队列，造成雪崩式上下文切换。
+2. **`readerShouldBlock()` 是"写锁优先防饥饿"的根本来源**：公平模式下检查 `hasQueuedPredecessors`；非公平模式下检查队列头部是否是**独占请求**（写锁）——是则读者主动排队让写锁先来。§1.1 事故中读写锁 P99 涨到 40ms 就是这条逻辑触发了：读密集场景下写锁请求偶发出现，一次 `readerShouldBlock` 就把后续读者全推进 AQS 队列，造成大量上下文切换。
 3. **读锁重入次数用 `ThreadLocal<HoldCounter>` 单独维护**：因为读锁允许多线程同时持有，`state` 里只能记"总读锁计数"，无法记"每个线程持有几次"。所以每个线程用 `ThreadLocal` 单独存一个 `HoldCounter` 记录自己的重入次数。这就是"读锁重入 65536 次也不会污染写锁位"的硬件依据——它根本没写进 `state`。
 
 **读写锁降级/升级的底层链路**：
@@ -567,7 +567,7 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
   cells[1].value ─┼─ 全部落在同一条 CPU 缓存行（64 字节）
   cells[2].value ─┘
   → 多核修改不同 Cell 时，MESI 协议触发缓存行同步（Cache Line Bouncing）
-  → 单个 Cell 的 CAS 会让其他核的整条缓存行失效，性能崩溃
+  → 单个 Cell 的 CAS 会让其他核的整条缓存行失效，性能骤降
 
 @Contended 后：
   每个 Cell 前后各填充 128 字节，独占一条缓存行
@@ -579,7 +579,7 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
 
 1. **CPU 缓存行 = 64 字节**（Intel x86 / AMD / ARM 主流架构统一），前后各填充 128 字节是为了防止"预取到下一条缓存行"也被伪共享影响。
 2. **`@Contended` 在 JDK 9+ 需要 `-XX:-RestrictContended` 才能生效**（对非 `java.*` 包的用户代码）——`jdk.internal.vm.annotation.Contended` 属于 JDK 内部注解，用户代码要用同名注解需要显式开启 `-XX:-RestrictContended`。
-3. **"空间换时间"极致案例**：每个 `Cell` 多花 128 字节内存（16 倍于 `long` 的 8 字节），换来多核并发下的近乎线性加速。同样的技巧在 `Disruptor` 的 `RingBuffer` 上也有应用。
+3. **"空间换时间"典型案例**：每个 `Cell` 多花 128 字节内存（16 倍于 `long` 的 8 字节），换来多核并发下的近乎线性加速。同样的技巧在 `Disruptor` 的 `RingBuffer` 上也有应用。
 
 ### 3.4 线程池 7 参数性能瓶颈
 
@@ -639,7 +639,7 @@ public void execute(Runnable command) {
 
 ---
 
-## 4. 第四层：工程红线 —— 6 条钢铁准则 + `❌ 反模式 / ✅ 标准范式` 双代码块
+## 4. 第四层：工程红线 —— 6 条关键准则 + `❌ 反模式 / ✅ 标准范式` 双代码块
 
 ### 4.1 红线 1：`ReentrantLock` vs `synchronized` 的选型不是"性能"，是"能力"
 
@@ -914,7 +914,7 @@ public class HybridService {
 
 ## 5. 🗺️ 跨战役知识伏笔
 
-本篇我们把 JUC 的锁与线程池剥到源码层——它们的底层真相是 **"AQS `state` 上定义不同语义 + CAS 分段规避高竞争 + 位编码合并多字段同步"**。请把"**锁族 = AQS 骨架的语义特化，线程池 `ctl` = 位分解的经典应用**"这个硬件事实焊死在脑海——这是理解后续所有并发容器与虚拟线程的**共同基座**。
+本篇我们把 JUC 的锁与线程池拆解到源码层——它们的底层机制是 **"AQS `state` 上定义不同语义 + CAS 分段规避高竞争 + 位编码合并多字段同步"**。请把"**锁族 = AQS 骨架的语义特化，线程池 `ctl` = 位分解的经典应用**"这个硬件事实记住——这是理解后续所有并发容器与虚拟线程的**共同基座**。
 
 因为在紧接着的战役三收官篇 [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 里，你会看到 `ConcurrentHashMap.sizeCtl` 复用了本文 §2.6 讲的**位编码技巧**——它用一个 `volatile int` 存"数组是否正在初始化 + 扩容线程数"两条状态；本文 §3.5 讲的 `execute` 三阶段决策也会与 CHM 的 `transfer` 迁移逻辑发生化学反应——同样是"CAS + `synchronized` 单槽位"的组合技，只是同步器从"任务队列"变成"哈希桶头节点"。同样在 §3.2 讲的六种阻塞队列，CHM 内部虽然不用它们，但 `LinkedTransferQueue` 的 CAS 无锁算法思想直接对应 CHM 的 `casTabAt` / `setTabAt` 家族——都是 `Unsafe.compareAndSetReference` 在数组元素上的应用。
 

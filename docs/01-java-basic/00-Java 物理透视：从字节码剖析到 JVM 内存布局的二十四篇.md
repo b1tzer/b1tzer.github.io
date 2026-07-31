@@ -7,7 +7,7 @@ title: Java 底层透视：从字节码剖析到 JVM 内存布局的二十四篇
 
 > 先回答五个问题，再决定要不要往下读。
 
-**①** 你手里的 Spring Boot 服务启动需要 45 秒。你知道其中有多少秒花在 `Method.invoke` 的 JNI 跳板上吗？为什么 JDK 18 后这个数字会闷声下降？
+**①** 你手里的 Spring Boot 服务启动需要 45 秒。你知道有多少秒花在 `Method.invoke` 的 JNI 跳板上吗？为什么 JDK 18 后这个数字会悄然下降？
 
 **②** `list.parallelStream().map(this::rpcCall).collect(...)` 看起来一行就能把 QPS 翻倍，为什么上线后反而把线程池打爆了？那个隐藏的 `ForkJoinPool.commonPool()` 到底属于谁？
 
@@ -73,7 +73,7 @@ flowchart TB
         direction LR
         Z41["15 类加载 · 16 综览<br/>17 内存分区 · 18 GC 机制 · 19 GC 调优 · 20 现代实践"]
     end
-    subgraph Z5["🎯 战役五 · 向 OS 举刀（击穿内核）"]
+    subgraph Z5["🎯 战役五 · 深入 OS 内核"]
         direction LR
         Z51["21 NIO 与 IO 模型（epoll / sendfile / 零拷贝）"]
     end
@@ -261,7 +261,7 @@ flowchart TB
 
 ---
 
-### 🎯 战役五 · 向 OS 举刀（击穿内核）
+### 🎯 战役五 · 深入 OS 内核
 
 | # | 知识点 | 核心一句话 |
 | :--: | :-- | :-- |

@@ -7,7 +7,7 @@ title: AQS 设计哲学 —— state 心脏、CLH 队列、模板方法与独占
 
 !!! info "**AQS 设计哲学一句话口诀**"
     - **AQS = `state`（volatile int）+ CLH 双向队列 + 模板方法 + 独占/共享双模式** —— 四件事撑起 20+ 个 JUC 同步器。所有 `Lock` / `Semaphore` / `CountDownLatch` / `ReadWriteLock` / `ThreadPoolExecutor.Worker` 都是"在 `state` 上定义不同语义 + 复用模板方法"的产物。
-    - **`state` 是 AQS 的心脏 —— 一个 `volatile int` 承载所有语义**：`ReentrantLock` 里 `state` = 重入次数、`Semaphore` 里 = 剩余许可数、`CountDownLatch` 里 = 倒计数、`ReentrantReadWriteLock` 里 = 高 16 位读锁 + 低 16 位写锁计数。**用最少的字段撑起最大语义空间**，是 Doug Lea 设计哲学的极致体现。
+    - **`state` 是 AQS 的心脏 —— 一个 `volatile int` 承载所有语义**：`ReentrantLock` 里 `state` = 重入次数、`Semaphore` 里 = 剩余许可数、`CountDownLatch` 里 = 倒计数、`ReentrantReadWriteLock` 里 = 高 16 位读锁 + 低 16 位写锁计数。**用最少的字段撑起最大语义空间**，是 Doug Lea 设计哲学的典型体现。
     - **CLH 双向队列是严格 FIFO 公平性的硬件保证**：每个等待线程封装成 `Node`（`prev` / `next` 双向指针 + 状态位 `waitStatus`），头节点持有锁的哑节点、尾节点是新入队、`park()` / `unpark()` 是挂起唤醒对。CLH 名字来自三位作者（Craig / Landin / Hagersten），原始 CLH 是**单向自旋队列**，AQS 变体升级为**双向 + `park` 阻塞**，`prev` 支持"取消节点"直接跳过。
     - **模板方法模式是 AQS 复用的秘诀**：AQS 提供 `acquire` / `release` / `acquireShared` / `releaseShared` 四个 `final` 骨架方法，子类只重写 `tryAcquire` / `tryRelease` / `tryAcquireShared` / `tryReleaseShared` 四个抽象方法定义"什么条件下能拿到 state" —— **框架封装公共排队/挂起/唤醒逻辑，子类只声明业务语义**。
     - **AQS 不参与 `synchronized` 锁升级** —— AQS 完全在 Java 层实现，`park` 底层是 `pthread_cond_wait`；`synchronized` 是 JVM 内建同步机制，走偏向锁 → 轻量级锁 → 重量级锁升级。二者是**两条完全独立的技术路径**，选型时不要混淆。
@@ -165,7 +165,7 @@ public abstract class AbstractQueuedSynchronizer
 | `FutureTask` | 任务运行状态位（NEW / COMPLETING / NORMAL / EXCEPTIONAL / CANCELLED / INTERRUPTING / INTERRUPTED） | 共享 | JDK 7+ 用 `state` 存 7 种任务生命周期状态 |
 | `SynchronousQueue.TransferStack` | 复杂状态位 + 节点组合 | 共享 | 高级用法：`state` 只做辅助 |
 
-**顿悟点**：**一个 `volatile int`** 通过**位分解 / 计数语义 / 标志语义** 承担了 JUC 里所有 20+ 同步器的所有状态 —— 这就是"最少字段撑起最大语义空间"的设计哲学。而 `ReentrantReadWriteLock` 的**高低 16 位分解**是这条哲学的极致表达：
+**顿悟点**：**一个 `volatile int`** 通过**位分解 / 计数语义 / 标志语义** 承担了 JUC 里所有 20+ 同步器的所有状态 —— 这就是"最少字段撑起最大语义空间"的设计哲学。而 `ReentrantReadWriteLock` 的**高低 16 位分解**是这条哲学的典型表达：
 
 ```java
 // ReentrantReadWriteLock.Sync 源码节选（JDK 17）
@@ -357,7 +357,7 @@ private void unparkSuccessor(Node node) {
 
 **回收 `10a` §"CAS 硬件三层同义族" 埋下的伏笔**：`10a` 讲了 CAS 是硬件级原子操作、`park` 是 OS 级挂起原语，但没展开 AQS 是如何组合使用这两者的。本节完整承接：**`state` 上的 CAS 用于"低竞争快速通过"、`park` / `unpark` 用于"高竞争排队挂起"**，AQS = "CAS 快路径 + `park` 慢路径" 的经典组合。
 
-### 2.6 共享模式完整链路 —— `setHeadAndPropagate` 的传播魔法
+### 2.6 共享模式完整链路 —— `setHeadAndPropagate` 的传播机制
 
 ```java
 // AQS —— 共享模式获取
@@ -553,7 +553,7 @@ sequenceDiagram
 
 ---
 
-## 4. 第四层：工程红线 —— 5 条钢铁准则 + `❌ 反模式 / ✅ 标准范式`
+## 4. 第四层：工程红线 —— 5 条关键准则 + `❌ 反模式 / ✅ 标准范式`
 
 ### 4.1 红线 1：读 AQS 源码的第一步 —— 先看子类怎么用 `state`，不要从 `acquire` 骨架切入
 
@@ -591,7 +591,7 @@ final boolean nonfairTryAcquire(int acquires) {
 // 然后再回头看 acquire 骨架 —— 就知道 tryAcquire 失败后框架会做什么了
 ```
 
-**降维范式**：读 AQS 子类源码的固定顺序 —— **`grep tryAcquire` → 看 `state` 语义 → 回看骨架**。这个顺序反过来的话，10 遍都读不懂。
+**工程范式**：读 AQS 子类源码的固定顺序 —— **`grep tryAcquire` → 看 `state` 语义 → 回看骨架**。这个顺序反过来的话，10 遍都读不懂。
 
 ### 4.2 红线 2：自定义同步器必须继承 AQS 的 `Sync` 内部类，禁止直接 extends AQS
 
@@ -649,7 +649,7 @@ public class MyLock implements Lock {
 }
 ```
 
-**降维范式**：**"业务外层 + Sync 内层" 是 AQS 唯一的正确使用姿势**。JDK 里 20+ 同步器全部遵循此模式，没有一个例外 —— 这不是可选偏好，是 AQS 契约的一部分。
+**工程范式**：**"业务外层 + Sync 内层" 是 AQS 唯一的正确使用姿势**。JDK 里 20+ 同步器全部遵循此模式，没有一个例外 —— 这不是可选偏好，是 AQS 契约的一部分。
 
 ### 4.3 红线 3：`tryAcquire` / `tryRelease` 内禁止调用 `park` / `unpark` 或阻塞 API
 
@@ -658,7 +658,7 @@ public class MyLock implements Lock {
 ```java
 // ❌ 反模式：tryAcquire 里做阻塞操作
 protected boolean tryAcquire(int acquires) {
-    // 💥 灾难：tryAcquire 在 acquire 骨架的自旋 CAS 循环中被反复调用
+    // 💥 问题：tryAcquire 在 acquire 骨架的自旋 CAS 循环中被反复调用
     //     一次阻塞 = 整个 AQS 排队机制卡死
     try {
         Thread.sleep(100);        // ❌ 阻塞
@@ -681,7 +681,7 @@ protected boolean tryAcquire(int acquires) {
 }
 ```
 
-**降维范式**：**`tryXxx` 是"业务判断层"，永远不阻塞、永远快速返回**。任何"想让某个条件下阻塞等待" 的需求都应该让 `tryAcquire` 返回 `false`，把阻塞交给框架的 `parkAndCheckInterrupt`。
+**工程范式**：**`tryXxx` 是"业务判断层"，永远不阻塞、永远快速返回**。任何"想让某个条件下阻塞等待" 的需求都应该让 `tryAcquire` 返回 `false`，把阻塞交给框架的 `parkAndCheckInterrupt`。
 
 ### 4.4 红线 4：`park` / `unpark` 是 AQS 的唯一挂起原语，禁止在 AQS 内混用 `wait` / `notify`
 
@@ -721,7 +721,7 @@ class GoodSync extends AbstractQueuedSynchronizer {
 }
 ```
 
-**降维范式**：**AQS 内部只能存在一套挂起 / 唤醒机制**，任何和 `park` / `unpark` 并行的挂起原语都会破坏排队一致性。这条红线在自定义同步器时**必须**遵守。
+**工程范式**：**AQS 内部只能存在一套挂起 / 唤醒机制**，任何和 `park` / `unpark` 并行的挂起原语都会破坏排队一致性。这条红线在自定义同步器时**必须**遵守。
 
 ### 4.5 红线 5：AQS 与 `synchronized` 的选型分界 —— 按需求维度选，不是按性能选
 
@@ -774,13 +774,13 @@ public boolean tryIncrement(long timeoutMs) throws InterruptedException {
 }
 ```
 
-**降维范式**：**选 `synchronized` 还是 `ReentrantLock` 的唯一判据是"需要不需要 AQS 的高级特性"**，性能不是判据。JDK 6+ 之后 `synchronized` 的偏向锁 + 轻量级锁优化让它在**低竞争场景下比 `ReentrantLock` 更快**（因为 AQS 首次未获取即 `park` 有 OS 挂起代价），不要迷信"`ReentrantLock` 更快"的过时说法。
+**工程范式**：**选 `synchronized` 还是 `ReentrantLock` 的唯一判据是"需要不需要 AQS 的高级特性"**，性能不是判据。JDK 6+ 之后 `synchronized` 的偏向锁 + 轻量级锁优化让它在**低竞争场景下比 `ReentrantLock` 更快**（因为 AQS 首次未获取即 `park` 有 OS 挂起代价），不要迷信"`ReentrantLock` 更快"的过时说法。
 
 ---
 
 ## 5. 🗺️ 跨战役知识伏笔
 
-本篇我们把 Doug Lea 的 AQS 剥到骨头缝里 —— 它的底层真相是 **一个 `volatile int state` 承担所有语义 + 一条 CLH 双向队列 + 一对 `park` / `unpark` + 一套模板方法**。四件事撑起整个 JUC 包 20+ 个同步器 —— 这是**用最少字段撑起最大语义空间**的极致设计哲学，也是 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 讲的 CAS 硬件语义在 Java 层的第一次架构性组合应用。
+本篇我们把 Doug Lea 的 AQS 剥到骨头缝里 —— 它的底层机制是 **一个 `volatile int state` 承担所有语义 + 一条 CLH 双向队列 + 一对 `park` / `unpark` + 一套模板方法**。四件事撑起整个 JUC 包 20+ 个同步器 —— 这是**用最少字段撑起最大语义空间**的典型设计哲学，也是 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 讲的 CAS 硬件语义在 Java 层的第一次架构性组合应用。
 
 因为在接下来的 [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 里，你会看到 `ReentrantLock` 公平 vs 非公平的**唯一差异**就是 `tryAcquire` 里有没有一行 `hasQueuedPredecessors()` —— 骨架完全没变、只是 `state` 语义的判断多加了一个条件；`Semaphore` 的公平 vs 非公平差异是**同一行代码的镜像**；`ReentrantReadWriteLock` 的读写共享则是**在同一个 `state` 上做高低 16 位分解 + 独占 + 共享双模式的组合**。到那时你就会明白 —— 本篇讲的骨架四要素 + 独占-共享双模式，就是 10c 全部锁工具的"底层生成规则"，10c 只在讲"业务语义规则"。
 

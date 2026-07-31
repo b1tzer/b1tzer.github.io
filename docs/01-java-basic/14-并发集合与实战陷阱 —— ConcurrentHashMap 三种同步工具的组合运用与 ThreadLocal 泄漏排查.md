@@ -63,7 +63,7 @@ public class OrderRuleEngine {
 }
 ```
 
-大促当天订单数飙到 10 万，`activeOrders.add(o)` 每次都要 `Arrays.copyOf` 一份长度 10 万的数组——**单次 add 的时间复杂度是 O(n)，N 次 add 累计就是 O(N²)**。更致命的是每次 `copyOf` 都触发一次新数组分配 + 老数组变垃圾，Eden 区被瞬间刷爆，`Young GC` 一秒好几次，GC 时间占比冲到 40%，业务线程时间片全被吃干。
+大促当天订单数飙到 10 万，`activeOrders.add(o)` 每次都要 `Arrays.copyOf` 一份长度 10 万的数组——**单次 add 的时间复杂度是 O(n)，N 次 add 累计就是 O(N²)**。更关键的是每次 `copyOf` 都触发一次新数组分配 + 老数组变垃圾，Eden 区被快速占满，`Young GC` 一秒好几次，GC 时间占比冲到 40%，业务线程时间片全被吃干。
 
 这个事故直接暴露了三个老手的盲区：
 
@@ -120,7 +120,7 @@ public class TraceInterceptor implements HandlerInterceptor {
 
 ## 2. 第二层：源码考古 —— CHM / CoW / ThreadLocal 的源码底层链路
 
-> ⭐ **本层特殊说明**：并发容器的"字节码考古"聚焦**源码穿刺**主线，不再抓通用 `invokevirtual` 全景（那属于战役一），而是抓"CHM 内部那几段决定底层结构的关键代码"与"`ThreadLocalMap` 的不对称引用设计"。`javap -v -p ConcurrentHashMap.class` 可观察到 `Unsafe.compareAndSetReference` / `getReferenceAcquire` 调用点。
+> ⭐ **本层特殊说明**：并发容器的"字节码考古"聚焦**源码剖析**主线，不再抓通用 `invokevirtual` 全景（那属于战役一），而是抓"CHM 内部那几段决定底层结构的关键代码"与"`ThreadLocalMap` 的不对称引用设计"。`javap -v -p ConcurrentHashMap.class` 可观察到 `Unsafe.compareAndSetReference` / `getReferenceAcquire` 调用点。
 
 ### 2.1 `ConcurrentHashMap.put()` 完整源码链路
 
@@ -272,7 +272,7 @@ private final void transfer(Node<K,V>[] tab, Node<K,V>[] nextTab) {
 }
 ```
 
-`ForwardingNode` 是并发扩容的**灵魂**——它是一个 hash 值恒为 `MOVED = -1` 的特殊节点，持有 `nextTable` 引用：
+`ForwardingNode` 是并发扩容的**核心**——它是一个 hash 值恒为 `MOVED = -1` 的特殊节点，持有 `nextTable` 引用：
 
 ```java
 static final class ForwardingNode<K,V> extends Node<K,V> {
@@ -339,7 +339,7 @@ static final class CounterCell {
 
 1. **`addCount(x, ...)` 先 CAS `baseCount`，冲突再散到 `CounterCell[]`**——这是 [`10c` § LongAdder 分段计数](@java-并发-并发工具Lock与线程池) 讲过的同一个套路，用在 CHM 上是为了让 `size()` 计数不成为写热点。
 2. **`@Contended` 让每个 `CounterCell` 独占 128 字节缓存行**——避免多个 `Cell` 落在同一缓存行导致 MESI 一致性风暴（[`10a` § MESI](@java-并发-JMM与线程同步) 已讲）。
-3. **`size()` 返回值是最终一致快照**——`sumCount` 遍历过程中其他线程仍在写 `Cell`，读到的是"扫过时的快照总和"，不是某个原子瞬间的精确值。老手不能拿 `size()` 当 `while` 循环上限用，第 4 层红线 2 有降维范式。
+3. **`size()` 返回值是最终一致快照**——`sumCount` 遍历过程中其他线程仍在写 `Cell`，读到的是"扫过时的快照总和"，不是某个原子瞬间的精确值。老手不能拿 `size()` 当 `while` 循环上限用，第 4 层红线 2 有工程范式。
 
 ### 2.5 `CopyOnWriteArrayList.add()` 完整源码
 
@@ -689,7 +689,7 @@ static final class Node<K,V> {
 
 ---
 
-## 4. 第四层：工程红线与降维架构
+## 4. 第四层：工程红线与优化架构
 
 ### 红线 1 · 多线程 Map 一律 `ConcurrentHashMap`
 
@@ -892,11 +892,11 @@ List<String> tags = List.of("a", "b", "c");            // JDK 9+
 Map<String, Integer> scores = Map.of("A", 90, "B", 85);
 ```
 
-**降维金句**：*"能不可变就不可变——**最好的锁就是没有锁**。"*
+**核心结论**：*"能不可变就不可变——**最好的锁就是没有锁**。"*
 
 ---
 
-**战役三降维总结**：
+**战役三核心总结**：
 
 > *"战役三的所有并发问题都收敛到三条根源：**可见性**（10a JMM 缓存一致性）· **原子性**（10a CAS `LOCK CMPXCHG`）· **有序性**（10a 内存屏障）。理解了 10a 的三条硬件事实、10b 的 AQS 骨架（一个 `volatile int` + CLH 队列 + `park`/`unpark`）、10c 的锁与线程池（`state` 语义定义 + `ctl` 位编码）、以及本文的三种同步工具组合运用（CAS + `synchronized` + 转发协议），20 年 Java 并发的所有 bug 都能追溯到这套底层机制。"*
 

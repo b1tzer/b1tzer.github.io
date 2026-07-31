@@ -113,8 +113,8 @@ DirectMem --> OS
 综览型页面唯一允许承担的"稀缺硬件常识"就是下面这三条——它们不属于任何一篇姊妹文档的核心机制章节，但每一条都决定了老手在读姊妹文档时能否**站对定位**：
 
 1. **JVM 整体架构 ≠ 运行时数据区**："内存结构"只是 4 大子系统之一。把 JIT / Code Cache / GC 子系统全部塞进"内存结构"讨论会导致解释链跑偏——它们属于**执行引擎**，与运行时数据区并列。
-2. **JIT 属于执行引擎，Code Cache 是 JIT 的产物**：Code Cache 位于**本地内存**（不在 JVM 堆内，也不在元空间内），受 `-XX:ReservedCodeCacheSize` 控制，默认 240 MB。Code Cache 打满后 JIT 停摆、程序退化解释执行，QPS 会**断崖式下跌**——这条常识 `12d` 篇会承接调优矩阵。
-3. **直接内存 `DirectMemory` 不受 JVM 堆管理**：`ByteBuffer.allocateDirect(N)` / Netty PooledByteBufAllocator 走的是本地内存，堆参数 `-Xmx` 管不到它。上限由独立参数 `-XX:MaxDirectMemorySize` 控制（默认 = `-Xmx`）。**容器里 JVM 被 OOM Killer 杀却看不到 Java 堆 OOM 日志**的经典事故，十有八九是直接内存打爆——这条常识由 `12c` 篇承接排查手册。
+2. **JIT 属于执行引擎，Code Cache 是 JIT 的产物**：Code Cache 位于**本地内存**（不在 JVM 堆内，也不在元空间内），受 `-XX:ReservedCodeCacheSize` 控制，默认 240 MB。Code Cache 打满后 JIT 停摆、程序退化解释执行，QPS 会**急剧下降**——这条常识 `12d` 篇会承接调优矩阵。
+3. **直接内存 `DirectMemory` 不受 JVM 堆管理**：`ByteBuffer.allocateDirect(N)` / Netty PooledByteBufAllocator 走的是本地内存，堆参数 `-Xmx` 管不到它。上限由独立参数 `-XX:MaxDirectMemorySize` 控制（默认 = `-Xmx`）。**容器里 JVM 被 OOM Killer 杀却看不到 Java 堆 OOM 日志**的经典事故，十有八九是直接内存溢出——这条常识由 `12c` 篇承接排查手册。
 
 📖 各子系统深度展开 → [类加载机制与双亲委派模型](@java-JVM-类加载机制与双亲委派模型)（类加载子系统） / [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)（运行时数据区） / [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)（JIT 分层编译 + Code Cache 调优）
 

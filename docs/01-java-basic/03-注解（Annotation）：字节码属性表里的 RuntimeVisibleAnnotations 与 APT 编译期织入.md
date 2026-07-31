@@ -36,7 +36,7 @@ public class OrderService {
 ```java
 public void checkPermission(Method method) {
     RequiresRole annotation = method.getAnnotation(RequiresRole.class);
-    // 💥 线上惨剧：在特定高并发或复杂场景下，这里竟然偶发报出 NullPointerException！
+    // 💥 线上事故：在特定高并发或复杂场景下，这里竟然偶发报出 NullPointerException！
     String role = annotation.value(); 
     if (!"ADMIN".equals(role)) {
         throw new AccessDeniedException();
@@ -67,7 +67,7 @@ public void checkPermission(Method method) {
 
 ### 2.1 隐形的贴纸：RuntimeVisibleAnnotations 属性表
 
-我们反编译一段被 `@RequiresRole("ADMIN")` 修饰的方法，通过 `javap -p -v OrderService.class` 强行查看其底层的二进制属性区：
+我们反编译一段被 `@RequiresRole("ADMIN")` 修饰的方法，通过 `javap -p -v OrderService.class` 查看其底层的二进制属性区：
 
 ```volt
 public void cancelOrder(java.lang.String);
@@ -89,7 +89,7 @@ public void cancelOrder(java.lang.String);
 
 看清了吗？在 `Code:` 属性区的 `0: return` 之外，JVM 为这个方法额外开辟了一块叫 **`RuntimeVisibleAnnotations`** 的只读数据区（这正是字节码规范中规定的十四种核心属性表之一）。
 
-这里面用非常死板的 KV 格式记录着：这里贴着一张叫 `com/example/RequiresRole` 的标签，它的参数 `value` 对应的常量池字符串是 `"ADMIN"`。当 JVM 把这个类加载到方法区（元空间）时，主执行引擎在运行 `cancelOrder` 方法时对这张标签完全视而不见。**注解对方法本身的字节码执行流程不会产生任何一丝一毫的主动干预**。
+这里面用明确的 KV 格式记录着：这里贴着一张叫 `com/example/RequiresRole` 的标签，它的参数 `value` 对应的常量池字符串是 `"ADMIN"`。当 JVM 把这个类加载到方法区（元空间）时，主执行引擎在运行 `cancelOrder` 方法时对这张标签完全视而不见。**注解对方法本身的字节码执行流程不会产生任何一丝一毫的主动干预**。
 
 ### 2.2 注解的本质居然是接口？
 
@@ -110,7 +110,7 @@ public interface com.example.RequiresRole extends java.lang.annotation.Annotatio
 
 现在，更加魔幻且矛盾的问题来了：
 
-既然注解在运行时只是方法区里一段冷冰冰的“只读属性表字符串”，且注解本身在底层的本质是个“抽象接口”，那为什么我们在代码中写下下面这段反射代码时，竟然能顺畅地调用方法并拿到返回值？
+既然注解在运行时只是方法区里一段“只读属性表字符串”，且注解本身在底层的本质是个“抽象接口”，那为什么我们在代码中写下下面这段反射代码时，竟然能顺畅地调用方法并拿到返回值？
 
 ```java
 RequiresRole anno = method.getAnnotation(RequiresRole.class);
@@ -119,7 +119,7 @@ String role = anno.value(); // anno 是接口，value() 是抽象方法，怎么
 
 抽象接口是绝对不可能被直接 `new` 实例化并调用方法的。JVM 到底在底层玩了什么瞒天过海的把戏？
 
-我们通过在程序启动时加上 JVM 参数 `-Dsun.misc.ProxyGenerator.saveGeneratedFiles=true`（或在新版本 JDK 中使用 `-Djdk.proxy.ProxyGenerator.saveGeneratedFiles=true`），强行将 JVM 在运行时偷偷生成的内部类全部 Dump 到磁盘上。运行之后，你会惊奇地发现你的项目根目录下多出了一个非法的类文件：**`$Proxy0.class`**。我们立刻将其反编译：
+我们通过在程序启动时加上 JVM 参数 `-Dsun.misc.ProxyGenerator.saveGeneratedFiles=true`（或在新版本 JDK 中使用 `-Djdk.proxy.ProxyGenerator.saveGeneratedFiles=true`），将 JVM 在运行时生成的内部类全部 Dump 到磁盘上。运行之后，你会发现你的项目根目录下多出了一个内部类文件：**`$Proxy0.class`**。我们立刻将其反编译：
 
 ```java
 // 💥 JVM 在运行时瞒着所有人动态伪造的代理类！
@@ -150,7 +150,7 @@ public final class $Proxy0 extends Proxy implements RequiresRole {
 1. JVM 拿着当前方法的程序计数器指针，去方法区的类元数据里翻看 `RuntimeVisibleAnnotations` 属性表。
 2. 找到了字符串 `"ADMIN"` 后，JVM 的 `sun.reflect.annotation.AnnotationParser` 核心组件启动。
 3. 它在堆内存中动态拼装、并当场向 JVM 注册一个专门实现了你这个注解接口的 JDK 动态代理类（$Proxy）。
-4. 这个代理类内部死死持有一个 Map，里面塞满了从属性表里读出来的配置（如 {"value", "ADMIN"}）。
+4. 这个代理类内部持有一个 Map，里面塞满了从属性表里读出来的配置（如 {"value", "ADMIN"}）。
 5. 最终返回给你的 anno 引用，本质上就是一个被伪造出来的、封装了 `AnnotationInvocationHandler` 的动态代理实例。当你调用 `anno.value()` 时，底层其实是在去查那个运行时 Map 的只读字符串。
 
 通过这一层字节码与运行时考古，我们彻底看清了运行时注解的核心骨架。
@@ -163,7 +163,7 @@ public final class $Proxy0 extends Proxy implements RequiresRole {
 
 通过前两层的字节码考古与运行时 Dump 验证，我们揭开了运行时注解（`RUNTIME`）依赖 **`RuntimeVisibleAnnotations` 属性表** 与 **运行时 JDK 动态代理（`$Proxy`）** 的核心骨架。
 
-然而，如果所有的注解都必须在运行时通过反射查表、动态代理并生成代理类，那么在高并发或大批量使用的场景下，垃圾回收器（GC）和方法区（元空间 Metaspace）将会承受巨大的性能压力。为了在性能与灵活性之间达成妥协，Java 在生命周期的底层设置了严密的分野，并演化出了彻底抹平运行时开销的时空降维打击武器——**APT（Annotation Processing Tool）**。
+然而，如果所有的注解都必须在运行时通过反射查表、动态代理并生成代理类，那么在高并发或大批量使用的场景下，垃圾回收器（GC）和方法区（元空间 Metaspace）将会承受巨大的性能压力。为了在性能与灵活性之间达成妥协，Java 在生命周期的底层设置了严密的分野，并演化出了完全消除运行时开销的编译期机制——**APT（Annotation Processing Tool）**。
 
 ### 3.1 三大保留策略（`RetentionPolicy`）的内存本质分野
 
@@ -191,7 +191,7 @@ public final class $Proxy0 extends Proxy implements RequiresRole {
 - Lombok 的 `@Data` 声明的是 `SOURCE`。它在变成 `.class` 文件前就被丢进了垃圾桶，因此运行时反射自然“查无此人”。
 - Spring 的 `@Transactional` 声明的是 `RUNTIME`。它必须常驻于元空间，等待 Spring 在运行时通过反射去抠出里面的元数据字符串。
 
-### 3.2 APT 的时空降维打击：在编译期拦截抽象语法树（AST）
+### 3.2 APT 的编译期机制：拦截抽象语法树（AST）
 
 既然 SOURCE 级别的注解在编译后就消失了，那为什么 Lombok 的 `@Data` 却能凭空变出大段的 `getter/setter` 字节码？
 
@@ -201,12 +201,12 @@ public final class $Proxy0 extends Proxy implements RequiresRole {
 flowchart TD
     A["1. 解析源码 (.java)"] --> B["2. 生成抽象语法树 (AST)"]
     B --> C{"3. 触发 APT 轮询检查<br>是否存在对应的注解处理器？"}
-    C -->|"是 (如 Lombok)"| D["4. 降维打击：直接操作 JCTree 修改抽象语法树<br>（凭空织入 getter/setter 节点）"]
+    C -->|"是 (如 Lombok)"| D["4. 操作 JCTree 修改抽象语法树<br>（织入 getter/setter 节点）"]
     D --> A
     C -->|"否 / 轮询结束"| E["5. 字节码生成器<br>将最终的 AST 翻译为 .class 文件"]
 ```
 
-在第 4 步中，Lombok 的处理器（如 `GetterProcessor`）利用了 JDK 的内部私有 API——**`com.sun.tools.javac.tree.JCTree`**。它像一把外科手术刀一样，绕过了普通的编译器限制，直接在内存中的抽象语法树（AST）上强行嫁接了 `getAge()`、`setAge()` 的抽象节点。
+在第 4 步中，Lombok 的处理器（如 `GetterProcessor`）利用了 JDK 的内部私有 API——**`com.sun.tools.javac.tree.JCTree`**。它利用 JDK 内部私有 API，直接在内存中的抽象语法树（AST）上插入了 `getAge()`、`setAge()` 的抽象节点。
 
 最终，当编译器在第 5 步将这棵被篡改过的语法树翻译成二进制的 `.class` 文件时，里面就已经塞满了合法的 `getter/setter` 字节码。
 
@@ -227,7 +227,7 @@ Spring 运行时注解处理链路（Runtime Reflection Path）:
 │ [第二步：反射查表]                                                            │
 │   通过 Method.getAnnotation() 触发底层 C++ 符号表反查 ──► JVM 动态伪造 $Proxy    │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ [第三步：CGLIB/JDK 动态代理强行包裹]                                           │
+│ [第三步：CGLIB/JDK 动态代理包裹]                                           │
 │   发现存在事务注解 ──► 动态在堆内存中生成一个全新的 Proxy 实例包裹原始 Bean     │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │ [第四步：每次调用的高频反射惩罚]                                              │
@@ -243,7 +243,7 @@ Spring 运行时注解处理链路（Runtime Reflection Path）:
 
 理解了注解在字节码属性表里的贴纸本质，以及动态代理伪造、编译期 AST 篡改的技术底牌后，我们在进行系统开发和自定义注解设计时，就必须严守以下三条钢铁工程红线。
 
-### 4.1 🚨 工程红线 1：死守 `RetentionPolicy` 分野，拒绝元空间（Metaspace）浪费
+### 4.1 🚨 工程红线 1：严守 `RetentionPolicy` 分野，拒绝元空间（Metaspace）浪费
 
 在团队内部自定义注解时，绝大多数开发者会为了图省事，不管三七二十一直接复制粘贴一把梭：`@Retention(RetentionPolicy.RUNTIME)`。这是一个极具毁灭性的坏习惯。
 
@@ -252,7 +252,7 @@ Spring 运行时注解处理链路（Runtime Reflection Path）:
     - 如果你编写的自定义注解只是为了给内部的构建工具、Maven 打包插件、或者前端 APT 代码生成工具使用（例如自动生成接口的静态配置元数据），**必须降维声明为 `SOURCE`**。
     - 如果你编写的注解是为了在编译后进行代码合规性静态扫描，或者在类加载前进行字节码拦截，**必须降维声明为 `CLASS`**。
   
-死守这一红线，能防止成百上千个无用的注解元数据字符串常驻于 JVM 珍贵的元空间（Metaspace）中，从根源上规避元空间无故膨胀、频繁触发 Full GC 甚至引爆元空间 OOM 的隐患。
+严守这一红线，能防止成百上千个无用的注解元数据字符串常驻于 JVM 的元空间（Metaspace）中，从根源上规避元空间无故膨胀、频繁触发 Full GC 甚至触发元空间 OOM 的隐患。
 
 ### 4.2 🚨 工程红线 2：拔除高频 AOP 切面注解的“运行时反射检索”
 
@@ -298,20 +298,20 @@ public Object interceptOptimized(ProceedingJoinPoint joinPoint, RequiresRole req
 很多初学架构的开发者，在设计缓存组件时，由于对注解的底层贴纸本质缺乏敬畏，常常试图在运行时动态去改变注解的内部属性：
 
 ```java
-// ❌ 严重的认知破产：试图动态修改注解的刚性属性
+// ❌ 严重的认知误区：试图动态修改注解的刚性属性
 @Cacheable(value = getCurrentTenantId()) // 报错：编译期无法通过！
 public User findUser(String id) { ... }
 ```
 
 - 硬性规则：我们在第二层中已经证明，注解方法的返回值在编译期被硬编码为 **常量池（Constant Pool）中的只读符号**。注解内部的属性（如 `@Cacheable(value = "XX")`）本质上是 `public static final` 的编译期常量。它在编译完成后就已经被写死了，是具有极强硬性的元数据。
-- 架构解耦策略：如果你的业务场景需要面对极强的运行时动态变化性（例如：根据当前登录用户的不同环境动态改变缓存过期时间、动态改变路由目标），绝对不要盲目堆叠静态注解。此时必须优雅地退回到经典的面向对象设计，或者利用 Spring 提供的 Spring EL 表达式（SpEL）（在注解里写下字符串 "#tenantId"），强行逼迫 Spring 在运行时动用专用的表达式解析引擎来动态计算值，以此来击碎注解的常量刚性死锁。
+- 架构解耦策略：如果你的业务场景需要面对极强的运行时动态变化性（例如：根据当前登录用户的不同环境动态改变缓存过期时间、动态改变路由目标），绝对不要盲目堆叠静态注解。此时必须优雅地退回到经典的面向对象设计，或者利用 Spring 提供的 Spring EL 表达式（SpEL）（在注解里写下字符串 "#tenantId"），让 Spring 在运行时通过专用的表达式解析引擎来动态计算值，以此来化解注解的常量刚性约束。
 
 ---
 
 ## 5. 🗺️ 跨战役知识伏笔
 
-本章我们彻底戳穿了运行时注解的底牌：它并非魔法，而是在运行时依靠 JDK 动态代理 在内存中临时欺骗 JVM 并伪造出的一个 **`$Proxy` 代理实例**。
+本章我们看清了运行时注解的机制：它并非特殊机制，而是在运行时依靠 JDK 动态代理，在内存中动态生成一个 **`$Proxy` 代理实例**。
 
-请把这个运行时偷偷生成的 `$Proxy0` 类的直观形象深深记录下来。因为在后续的 《反射性能底层原理与 MethodHandle》 以及战役三的 《并发基础：JMM 与线程同步》 中，我们将会看到，正是这些由注解衍生出来的、数量庞大的运行时动态代理类，在面对 JVM 极其高傲的 **JIT（即时编译器）** 的 **方法内联（Method Inlining）** 与 **逃逸分析（Escape Analysis）** 优化时，是如何因为指针类型的不确定性，而沦为阻碍编译器进行硬件级性能优化的最大绊脚石。
+请把这个运行时偷偷生成的 `$Proxy0` 类的直观形象深深记录下来。因为在后续的 《反射性能底层原理与 MethodHandle》 以及战役三的 《并发基础：JMM 与线程同步》 中，我们将会看到，正是这些由注解衍生出来的、数量庞大的运行时动态代理类，在面对 JVM **JIT（即时编译器）** 的 **方法内联（Method Inlining）** 与 **逃逸分析（Escape Analysis）** 优化时，会因为指针类型的不确定性，阻碍编译器进行性能优化。
 
-到那时，你今天在字节码世界里看清的每一张“属性表贴纸”，都会变成你打破分布式框架性能天花板的终极武器。
+到那时，你今天在字节码世界里看清的每一张“属性表贴纸”，都会变成你优化分布式框架性能的关键钥匙。

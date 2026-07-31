@@ -83,9 +83,9 @@ if (stringList instanceof List<String>) { }
 
 这对术语一举解释了两个看似割裂的现象：为什么 `if (stringList instanceof List<?>)` 编译通过、而 `if (stringList instanceof List<String>)` 编译失败？——因为 `List<?>` 是 reifiable 的，JVM 运行时只需要检查"对象是不是某种 List"；而 `List<String>` 是 non-reifiable 的，JVM 运行时**根本没有一个独立的"List<String>"类型可以拿来比对**。同一条 `instanceof` 指令，只能在 reifiable type 上工作。
 
-### 1.2 堆污染（Heap Pollution）：一颗延迟引爆的时间炸弹
+### 1.2 堆污染（Heap Pollution）：一颗延迟触发的时间炸弹
 
-如果上面的悬案还停留在"编译期拒载"的层面，那么下面这种线上灾难则更隐蔽、更难定位——它**在污染发生的瞬间不报错，直到下游不相干的业务方法读取时才轰然崩溃**：
+如果上面的悬案还停留在"编译期拒载"的层面，那么下面这种线上问题则更隐蔽、更难定位——它**在污染发生的瞬间不报错，直到下游不相干的业务方法读取时才抛出异常**：
 
 ```java
 public class GenericAnomaly {
@@ -99,23 +99,23 @@ public class GenericAnomaly {
         List<String> secureList = new ArrayList<>();
         secureList.add("正常业务数据");
 
-        // 灾难发生：由于接口对接，安全的泛型列表被传入了遗留库
+        // 问题出现：由于接口对接，安全的泛型列表被传入了遗留库
         legacyInject(secureList);
 
-        // 💥 线上引爆：代码执行到这里时，突然轰然抛出 ClassCastException！
+        // 💥 线上报错：代码执行到这里时，抛出 ClassCastException！
         String data = secureList.get(1); // 期待拿到 String，实际拿到了 Integer
         System.out.println(data);
     }
 }
 ```
 
-**Bug 现场痛点**：这段代码最恶心的地方在于，堆内存被污染的那个瞬间（`rawList.add(1024)` 时），程序没有任何一丝一毫的报错或异常。它像一颗被埋下的时间炸弹，静静地躺在堆内存里，直到下游不知道多少层、不相干的业务方法执行 `secureList.get(1)` 试图取出数据时，才突然引爆崩溃。排查人员看着报错行，百思不得其解：为什么声明为 `List<String>` 的容器里会蹦出一个 `Integer`？
+**Bug 现场痛点**：这段代码最麻烦的地方在于，堆内存被污染的那个瞬间（`rawList.add(1024)` 时），程序没有任何报错或异常。它像一颗被埋下的定时炸弹，静静地躺在堆内存里，直到下游不知道多少层、不相干的业务方法执行 `secureList.get(1)` 试图取出数据时，才突然抛出异常。排查人员看着报错行，百思不得其解：为什么声明为 `List<String>` 的容器里会蹦出一个 `Integer`？
 
-这背后的根因，同样要等到第二层字节码考古现场才能揭晓：由于类型擦除把 `List<String>` 拉平成 `Object`，遗留库往里塞 `Integer` 时 JVM 一路放行；直到下游执行 `get(1)` 时，字节码里的 `checkcast #class java/lang/String` 发现内存里真实对象是 `Integer`，无法通过类型检查，才当场暴怒抛出 `ClassCastException`。
+这背后的根因，同样要等到第二层字节码考古现场才能揭晓：由于类型擦除把 `List<String>` 拉平成 `Object`，遗留库往里塞 `Integer` 时 JVM 一路放行；直到下游执行 `get(1)` 时，字节码里的 `checkcast #class java/lang/String` 发现内存里真实对象是 `Integer`，无法通过类型检查，才立即抛出 `ClassCastException`。
 
-⭐ 但这里必须澄清一个更根本的 JVM 层真相——**并不是 JVM 明知道"这是 `List<String>`"却故意选择放行**，而是**在 JVM 的运行时类型系统里，这个 List 对象本身根本没有一个可以强制验证"所有元素必须是 String"的运行时参数化类型约束**。换句话说，JVM 从始至终看到的都只是一个裸的 `ArrayList`，"每个元素必须是 String" 这件事**从未以任何运行时可执行的形式存在过**——它只作为编译期的静态类型契约存在于 `javac` 的类型推导过程中。这也正是 4.2 节"必须用匿名子类钉住泛型"红线之外，另一种极端反模式——**裸用 Raw Type 主动阉割了编译器的类型安全检查，给堆污染敞开了底层后门**。
+⭐ 但这里必须澄清一个更根本的 JVM 层真相——**并不是 JVM 明知道"这是 `List<String>`"却故意选择放行**，而是**在 JVM 的运行时类型系统里，这个 List 对象本身根本没有一个可以强制验证"所有元素必须是 String"的运行时参数化类型约束**。换句话说，JVM 从始至终看到的都只是一个裸的 `ArrayList`，"每个元素必须是 String" 这件事**从未以任何运行时可执行的形式存在过**——它只作为编译期的静态类型契约存在于 `javac` 的类型推导过程中。这也正是 4.2 节"必须用匿名子类钉住泛型"红线之外，另一种极端反模式——**裸用 Raw Type 绕过了编译器的类型安全检查，给堆污染提供了入口**。
 
-于是，堆污染的完整因果链可以被拆成"写入路径无阻 + 读取路径引爆"两条独立轨道：
+于是，堆污染的完整因果链可以被拆成"写入路径无阻 + 读取路径触发"两条独立轨道：
 
 ```txt
 写入路径：
@@ -129,7 +129,7 @@ public class GenericAnomaly {
 
 ### 1.3 高并发热点：`List<Integer>` 的隐形装箱内存税
 
-另一个隐形但极其毁灭性的工业级坏习惯，是在高并发热点路径上大量使用 `List<Integer>` 甚至 `Map<Long, Integer>`：
+另一个隐形但严重的工业级坏习惯，是在高并发热点路径上大量使用 `List<Integer>` 甚至 `Map<Long, Integer>`：
 
 ```java
 // ❌ 严重生产反模式：QPS 5 万的接口用 List<Integer> 装载订单 ID
@@ -142,7 +142,7 @@ public List<Integer> pickTopOrders(List<Order> orders) {
 }
 ```
 
-这段代码在单元测试时看起来毫无异样。然而一旦部署到高并发生产，QPS 一冲上 5 万，YoungGen 里就会瞬间堆满**海量的 `Integer` 装箱对象**——每一个 `int → Integer` 的隐式装箱都在 Eden 区分配一个 16 字节的对象（对象头 12B + int 字段 4B）。CPU 缓存命中率骤降，Minor GC 频率飙升，接口 P99 延迟呈台阶式劣化。
+这段代码在单元测试时看起来毫无异样。然而一旦部署到高并发生产，QPS 一冲上 5 万，YoungGen 里就会快速堆满**海量的 `Integer` 装箱对象**——每一个 `int → Integer` 的隐式装箱都在 Eden 区分配一个 16 字节的对象（对象头 12B + int 字段 4B）。CPU 缓存命中率骤降，Minor GC 频率飙升，接口 P99 延迟呈台阶式劣化。
 
 ⚠️ **这里必须锁死一个极易被误传的因果关系**：这个成本**不是**"类型擦除直接导致的"。真正的因果链是两条**独立**的机制，只是恰好在同一段代码里同时出现：
 
@@ -164,7 +164,7 @@ public List<Integer> pickTopOrders(List<Order> orders) {
 
 **链 A 与链 B 都会在 `List<Integer>` 的字节码里同时出现**（`checkcast Integer` 紧挨着 `Integer.intValue()`），但它们各自源于不同的设计决策——链 A 是为了让老 Class 文件跨版本兼容而选择"擦除到擦除边界"，链 B 是因为 JVM 类型系统里 primitive 与 reference 是两套完全独立的类型域、泛型参数只能承载 reference。**即使 Java 未来通过 Valhalla 引入 reified 泛型（保留 `List<T>` 的 T 到运行时），只要 Universal Generics 未同步落地、`List<int>` 仍然不合法，装箱的开销依然不会消失**。这条反向假设是链 A 与链 B 独立的最硬反证。
 
-究竟是什么在默默吞噬着 CPU 时钟周期？想要彻底破案，我们需要降维打击，直接进入 Class 文件的字节码世界，看看**类型擦除究竟是如何逼迫 CPU 在指令层做装箱苦力的**（严格来说是"链 A 与链 B 在字节码里如何相邻共存"）。
+究竟是什么在默默吞噬着 CPU 时钟周期？想要彻底破案，我们需要深入字节码层面，直接进入 Class 文件的字节码世界，看看**类型擦除究竟是如何让 CPU 在指令层做装箱的**（严格来说是"链 A 与链 B 在字节码里如何相邻共存"）。
 
 ---
 
@@ -220,7 +220,7 @@ class ComparableBox<T extends Comparable<T>> {
 !!! note "📖 术语家族：`*Signature` 与 Class 文件属性表族"
     **字面义**：`Signature` = "签名 / 手写签字"——一份对"擦除前长什么样"的书面追认凭证，用于在字节码层面上重建擦除前的泛型形态。
 
-    **在本框架中的含义**：`Signature` 是 JVM Class 文件规范里**专门给泛型保命的一张属性表**（JVMS §4.7.9）。虽然 JVM 运行时执行引擎完全无视它，但**编译器（跨类编译）、反射 API、Spring `ResolvableType` 等框架都从这张表反查泛型信息**。它是"类型擦除并未真的把泛型信息销毁，只是把它挪到了执行引擎看不见的地方"的底层证据。
+    **在本框架中的含义**：`Signature` 是 JVM Class 文件规范里**专门给泛型保留信息的一张属性表**（JVMS §4.7.9）。虽然 JVM 运行时执行引擎完全无视它，但**编译器（跨类编译）、反射 API、Spring `ResolvableType` 等框架都从这张表反查泛型信息**。它是"类型擦除并未真的把泛型信息销毁，只是把它挪到了执行引擎看不见的地方"的底层证据。
 
     **同家族成员**（均为 Class 文件的 Attribute，JVMS §4.7）：
 
@@ -313,9 +313,9 @@ public void probe();
 看清了吗？这段字节码有两处不容忽视的底层证据：
 
 1. **`invokeinterface List.add:(Ljava/lang/Object;)Z`**：接口 `List<E>` 在字节码里的方法签名彻底退化为 `add(Object)`，编译器根本没有生成 `add(String)` 版本。
-2. **`checkcast class java/lang/String`**：`get(0)` 返回类型是裸 `Object`，编译器在字节码里**主动、隐式、无条件**地插入了一条 `checkcast` 指令，把 `Object` 强行验证并"贴标签"为 `String`。
+2. **`checkcast class java/lang/String`**：`get(0)` 返回类型是裸 `Object`，编译器在字节码里**主动、隐式、无条件**地插入了一条 `checkcast` 指令，把 `Object` 验证并转为 `String`。
 
-这就是所谓"类型擦除运行时零开销"的最大谎言的破绽——**擦除本身零开销，但为了维持类型安全承诺，编译器在每一个泛型返回值使用点都要插入一条 `checkcast`**。
+这就是所谓"类型擦除运行时零开销"这一常见误解的真相——**擦除本身零开销，但为了维持类型安全承诺，编译器在每一个泛型返回值使用点都要插入一条 `checkcast`**。
 
 **`checkcast` 的底层操作**（HotSpot 在 x86 上的落地）：
 
@@ -561,7 +561,7 @@ flowchart TB
 
 ### 3.5 Spring `ResolvableType`：泛型反射的工业级封装
 
-Spring 对 `ParameterizedType` 做了极其精美的封装：`ResolvableType` 支持嵌套泛型的透视：
+Spring 对 `ParameterizedType` 做了精巧的封装：`ResolvableType` 支持嵌套泛型的透视：
 
 ```java
 // 获取 Map<String, List<Integer>> 的嵌套类型
@@ -695,7 +695,7 @@ Spring / MyBatis / Jackson 等主流框架的反射工具类（`ReflectionUtils`
 
 ### 4.4 🚨 工程红线 4：`? extends` / `? super` 通配符按 PECS 用足，不要退化到裸类型
 
-Joshua Bloch 在《Effective Java》里立下的 **PECS = Producer Extends, Consumer Super** 原则，本质是泛型不变性（Invariance）的**降维武器**：
+Joshua Bloch 在《Effective Java》里立下的 **PECS = Producer Extends, Consumer Super** 原则，本质是泛型不变性（Invariance）的**解决方案**：
 
 | 角色 | 通配符 | 语义 | 典型场景 |
 | :-- | :-- | :-- | :-- |
@@ -837,12 +837,12 @@ Class 文件 → Signature → Reflection → ParameterizedType → ResolvableTy
 
 ## 6. 🗺️ 跨战役知识伏笔
 
-本章我们深挖了泛型在 Class 文件里留下的两张"签名报表"——`descriptor` 与 `Signature`，以及编译器在使用点自动插入的 **`checkcast`** 类型断言指令。请把"每一次泛型返回值使用都伴随一次 `checkcast`"这个硬件事实焊在你的脑海中。
+本章我们深挖了泛型在 Class 文件里留下的两张"签名报表"——`descriptor` 与 `Signature`，以及编译器在使用点自动插入的 **`checkcast`** 类型断言指令。请把这个硬件事实记住："每一次泛型返回值使用都伴随一次 `checkcast`"
 
-因为在接下来的《反射性能底层原理与 MethodHandle》里，我们将看到反射 API 为了处理**擦除后的方法签名 + 使用点必须重新 checkcast**这两条硬约束，是如何被 JIT 编译器判定为"无法内联的黑盒"——而 JDK 7 引入的 `MethodHandle` 又是如何通过**将 `checkcast` 常量折叠到 CallSite 里**，把反射的性能开销降到与直接调用同一数量级的。
+因为在接下来的《反射性能底层原理与 MethodHandle》里，我们将看到反射 API 为了处理**擦除后的方法签名 + 使用点必须重新 checkcast**这两条硬约束，是如何被 JIT 编译器判定为"难以内联"——而 JDK 7 引入的 `MethodHandle` 又是如何通过**将 `checkcast` 常量折叠到 CallSite 里**，把反射的性能开销降到与直接调用同一数量级的。
 
-进一步，在下一篇《[Java 8] 函数式编程》里，我们会看到 `invokedynamic` 是如何绕开桥接方法这道障碍，让 Lambda 表达式直接在字节码层面变成"零装箱、零反射、零桥接"的最高效函数指针——**Lambda 的性能红利，本质上就是它一次性避开了本章讲的桥接方法与 checkcast 两大历史包袱**。
+进一步，在下一篇《[Java 8] 函数式编程》里，我们会看到 `invokedynamic` 是如何绕开桥接方法这道障碍，让 Lambda 表达式直接在字节码层面变成"零装箱、零反射、零桥接"的最高效函数指针——**Lambda 的性能红利，本质上就是它一次性避开了本章讲的桥接方法与 checkcast 两大机制**。
 
 最后到战役三的《并发集合与实战陷阱》，你会看到 `ConcurrentHashMap<K, V>` 内部的 `Node<K,V>` 与 `TreeNode<K,V>` 在字节码层面都是裸的 `Object` 引用；而 CAS 操作的每一次 `Node.next` 更新都建立在**擦除后的裸引用比较**之上——正是本章的类型擦除机制，让 CAS 无锁化在泛型集合上成为可能。
 
-到那时，你今天在字节码世界里扣下的每一条 `checkcast` 与每一张 `Signature` 报表，都会变成你打通"泛型—反射—Lambda—CAS"整条战线的关键钥匙。
+到那时，你今天在字节码世界里搞清的每一条 `checkcast` 与每一张 `Signature`，都会变成你打通"泛型—反射—Lambda—CAS"整条战线的关键钥匙。

@@ -82,7 +82,7 @@ public class RuleEngine {
 
 **根本原因**（层 3.1 完整揭开）：**JVM 中"两个类相等"的精确定义是 `ClassLoader + 全限定名` 二元组**。旧的 `URLClassLoader` 实例与新的 `URLClassLoader` 实例是两个不同对象，即便加载了同名字节流，产生的也是**方法区里两个独立的 `Klass`**。`currentHandler.getClass()` 属于旧 CL，`newImpl` 属于新 CL——JVM 眼里就是两个不同的类，`isAssignableFrom` 只查父类链，父类链走到 `OrderRule` 就已经分叉了。
 
-### 1.2 生产事故现场：JDK 8 → 11 升级后 `sun.misc.Unsafe` 无声崩溃
+### 1.2 生产事故现场：JDK 8 → 11 升级后 `sun.misc.Unsafe` 静默失败
 
 同一个团队，在把服务从 JDK 8 升级到 JDK 11 的当天，日志刷屏 `NoClassDefFoundError: sun/misc/BASE64Encoder`。DBA 部门更狠——他们放在 `$JAVA_HOME/lib/ext` 下的 JCE 加密扩展 JAR **静默失效**，签名校验一直失败，直到线上告警才发现。
 
@@ -95,7 +95,7 @@ public class RuleEngine {
 - `Bootstrap ClassLoader` **从加载 `rt.jar` 改为加载 `java.base` 等平台模块**
 - `ext/` 目录**被彻底移除**，`sun.misc.*` 默认不导出
 
-这不是"兼容问题"，是**加载器血统全线换代**。老代码里的 `(URLClassLoader) getSystemClassLoader()` 强转、`sun.misc.Unsafe` 的直接使用、`ext/` 目录的扩展点——**每一条都踩中了这次重构的雷区**。
+这不是"兼容问题"，是**加载器体系全面换代**。老代码里的 `(URLClassLoader) getSystemClassLoader()` 强转、`sun.misc.Unsafe` 的直接使用、`ext/` 目录的扩展点——**每一条都触发了这次重构的破坏性变更**。
 
 ### 1.3 三条痛点收敛到四层结构
 
@@ -424,7 +424,7 @@ flowchart LR
 | :-- | :-- | :-- | :-- |
 | **中层加载器名称** | `Extension ClassLoader` | `Platform ClassLoader` | `getSystemClassLoader().getParent()` 类型变了 |
 | **中层加载器父类** | `URLClassLoader` | `BuiltinClassLoader`（模块感知） | `ext/` 目录不再被扫描，用户扩展入口关闭 |
-| **App 加载器父类** | `URLClassLoader` | `BuiltinClassLoader` | `(URLClassLoader) getSystemClassLoader()` 强转崩溃 |
+| **App 加载器父类** | `URLClassLoader` | `BuiltinClassLoader` | `(URLClassLoader) getSystemClassLoader()` 强转失败 |
 
 **这就是 §1.2 事故的完整根本原因**——Spring Boot 早期版本（2.0 前）在 `LaunchedURLClassLoader` 初始化时依赖 `(URLClassLoader) parent`，升级 JDK 9+ 后直接 `ClassCastException`。修复方案是把强转改为 `MethodHandles.Lookup` 反射调用 `URLClassLoader::getURLs`（或走模块化 API `ModuleLayer::configuration`）。
 
@@ -474,7 +474,7 @@ flowchart LR
 
 ---
 
-## 4. 第四层：工程红线 —— 5 条硬性禁令与降维范式
+## 4. 第四层：工程红线 —— 5 条硬性禁令与工程范式
 
 ### 红线 1：自定义类加载器只重写 `findClass()`，绝不重写 `loadClass()`
 
@@ -753,7 +753,7 @@ if (commonInterface.isInstance(obj)) {
 }
 ```
 
-**降维金句**：*"类加载篇的所有'为什么'都收敛到三条主线：**字节码 6 类触发时机** 决定加载/初始化的执行时刻、**`ClassLoader + 全限定名` 二元组** 决定 `Klass` 唯一性、**双亲委派递归链路** 决定安全边界。理解了这三条主线，`ClassNotFoundException` / `NoClassDefFoundError` / SPI / Tomcat / 热部署 / OSGi 都是这些主线的排列组合。"*
+**核心结论**：*"类加载篇的所有'为什么'都收敛到三条主线：**字节码 6 类触发时机** 决定加载/初始化的执行时刻、**`ClassLoader + 全限定名` 二元组** 决定 `Klass` 唯一性、**双亲委派递归链路** 决定安全边界。理解了这三条主线，`ClassNotFoundException` / `NoClassDefFoundError` / SPI / Tomcat / 热部署 / OSGi 都是这些主线的排列组合。"*
 
 ---
 

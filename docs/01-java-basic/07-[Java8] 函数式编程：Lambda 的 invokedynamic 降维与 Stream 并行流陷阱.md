@@ -1,15 +1,15 @@
 ---
 doc_id: java-字节码-函数式编程
-title: [Java8] 函数式编程：Lambda 的 invokedynamic 降维与 Stream 并行流陷阱
+title: [Java8] 函数式编程：Lambda 的 invokedynamic 优化与 Stream 并行流陷阱
 ---
 
-# [Java8] 函数式编程：Lambda 的 invokedynamic 降维与 Stream 并行流陷阱
+# [Java8] 函数式编程：Lambda 的 invokedynamic 优化与 Stream 并行流陷阱
 
-在日常开发中，我们太习惯把 Lambda 和 Stream 当成提高代码颜值的“提效工具”了。直到有一天，线上由于一行看似优雅的 `list.parallelStream().map(this::rpcCall)` 导致整个 JVM 的并行计算基座瞬间瘫痪，大家才深刻意识到：**不了解底层原理的优雅，往往是灾难的开始**。
+在日常开发中，我们太习惯把 Lambda 和 Stream 当成提高代码颜值的“提效工具”了。直到有一天，线上由于一行看似优雅的 `list.parallelStream().map(this::rpcCall)` 导致整个 JVM 的并行计算基座瞬间卡顿，大家才意识到：**不了解底层原理的优雅，往往会带来线上问题**。
 
 为了说透 Lambda 的运行期本质和 Stream 的避坑指南，我们不妨先回答这 5 个直击灵魂的开发、面试高频问题：
 
-- 吞吐之灾：`list.parallelStream().map(this::rpcCall).collect(...)` 里的 RPC 是 100ms 的 HTTP 调用，你的接口 QPS 不仅没翻倍，为什么线上系统反而全线崩溃了？
+- 吞吐之灾：`list.parallelStream().map(this::rpcCall).collect(...)` 里的 RPC 是 100ms 的 HTTP 调用，你的接口 QPS 不仅没翻倍，为什么线上系统反而全线超时了？
 - 实例之谜：同一个非捕获 Lambda `Runnable r = () -> System.out.println("x");` 在循环里执行 1000 万次，到底会 new 出多少个实例？
 - 指纹之谜：为什么方法引用 `String::length` 和等价 Lambda `s -> s.length()` 在 `javap` 字节码里看起来极为相似，但 `BootstrapMethod` 参数里的指纹却完全不同？两者的性能差异到底有没有意义？
 - 捕获本质：`effectively final` 限制下，Lambda 捕获局部变量到底捕的是值还是引用？为什么 `int` 与 `List<String>` 的“捕获后能否观察到外部修改”答案完全相反？
@@ -65,7 +65,7 @@ public class InventoryReplenishService {
 
 ---
 
-## 2. 第二层：字节码考古 —— `invokedynamic` + `LambdaMetafactory` 的降维打击
+## 2. 第二层：字节码考古 —— `invokedynamic` + `LambdaMetafactory` 的核心机制
 
 ### 2.1 Lambda 编译产物：一条 `invokedynamic` + 一个 BootstrapMethod
 
@@ -476,7 +476,7 @@ public static long countLongNames(List<String> names) {
 
 ---
 
-## 4. 第四层：工程红线 —— 5 条钢铁准则 + `❌ 反模式 / ✅ 标准范式` 双代码块
+## 4. 第四层：工程红线 —— 5 条关键准则 + `❌ 反模式 / ✅ 标准范式` 双代码块
 
 ### 4.1 红线 1：`parallelStream` 严禁做阻塞 I/O 或长任务
 

@@ -50,7 +50,7 @@ Application started: Injecting dependencies via reflection ...
 Application started in 20~30 seconds  // 💥 冷启动瓶颈
 ```
 
-在传统单体架构里 20~30 秒冷启动勉强可忍，但在 K8s 弹性扩容、Serverless 冷启动、CI/CD 流水线里就是致命瓶颈。**问题不在反射本身，而在这几万到几十万次调用里绝大多数都发生在"极低频"边界之内**——绝大多数 Bean 的字段注入只发生 1~3 次，永远够不到反射自我优化的门槛（假设你在 JDK ≤17 上运行）。
+在传统单体架构里 20~30 秒冷启动勉强可忍，但在 K8s 弹性扩容、Serverless 冷启动、CI/CD 流水线里就是关键瓶颈。**问题不在反射本身，而在这几万到几十万次调用里绝大多数都发生在"极低频"边界之内**——绝大多数 Bean 的字段注入只发生 1~3 次，永远够不到反射自我优化的门槛（假设你在 JDK ≤17 上运行）。
 
 要破解这个悬案，我们必须搞清楚：`Method.invoke` 内部在**不同 JDK 版本**上到底走什么样的调用链？JDK 18 之后的实现（JEP 416）是否已经把这个瓶颈缓解？
 
@@ -712,7 +712,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 
 ---
 
-## 4. 第四层：工程红线与高并发降维契约
+## 4. 第四层：工程红线与高并发优化契约
 
 ⚠️ **本章的口径**：以下 4 条是**工程实践中能带来可观性能改善或封装完整性提升**的规范。**注意区分**：
 
@@ -792,7 +792,7 @@ public class ServiceB {
 
 **核心事实**：反射 `Method.invoke` 与 `static final MethodHandle.invokeExact` 在**稳态性能上有可观差距**（§3.3 已给量级排序），差距的根本原因是：`invokeExact` 的签名多态调用 + `LambdaForm` 常量传播 + JIT 内联三重优化。
 
-**决策模型（真正的工程红线）**：**不要**基于 QPS 阈值一刀切决定是否升级——正确的决策路径是：
+**决策模型（真正的工程做法）**：**不要**基于 QPS 阈值武断判定是否升级——正确的决策路径是：
 
 ```txt
 是否升级到 MethodHandle？
@@ -859,7 +859,7 @@ public class FastSerializer {
 }
 ```
 
-**动态字段场景的降维方案**：如果字段集合无法在编译期锁定（如通用 ORM），使用 `LambdaMetafactory` 在启动期把 `MethodHandle` 转成 `Function<T, R>` 是更进一步的方案——运行期就是普通 Lambda，通常能获得接近直接方法调用的性能（具体收益取决于 JIT 状态与调用点）：
+**动态字段场景的进一步方案**：如果字段集合无法在编译期锁定（如通用 ORM），使用 `LambdaMetafactory` 在启动期把 `MethodHandle` 转成 `Function<T, R>` 是更进一步的方案——运行期就是普通 Lambda，通常能获得接近直接方法调用的性能（具体收益取决于 JIT 状态与调用点）：
 
 ```java
 // ✅ 高性能框架必备：LambdaMetafactory 把 MethodHandle 熔炼为 Function 接口
@@ -1006,7 +1006,7 @@ private OrderService orderService;       // ✅ JDK 动态代理
 
 紧接着的 [Java 8 函数式编程](@java-字节码-函数式编程)（战役一收官篇）会揭示：**每一个 Lambda 表达式在字节码层都被编译为一条 `invokedynamic`，`BootstrapMethod` 是 `LambdaMetafactory.metafactory`**——Bootstrap 方法在首次调用时通过 `MethodHandle` 生成实现目标函数式接口（`Function` / `Consumer` / `Predicate`）的对象并封装到 `ConstantCallSite`；此后每次调用都直接沿 `CallSite` 分派，性能接近直接方法调用，摆脱了泛型篇的桥接方法与 `checkcast` 开销。
 
-**读到那里，你会顿悟**：Lambda 不是"编译期语法糖"，而是**运行期通过 `invokedynamic` + `MethodHandle` 生成的匿名类**——本章 §4.2 提到的 `LambdaMetafactory` 熔炼术，就是把冷冰冰的反射 `Method` 转成"和 Lambda 完全一样的底层形态"的降维打击。
+**读到那里，你会顿悟**：Lambda 不是"编译期语法糖"，而是**运行期通过 `invokedynamic` + `MethodHandle` 生成的匿名类**——本章 §4.2 提到的 `LambdaMetafactory` 熔炼术，就是把反射 `Method` 转成"和 Lambda 完全一样的底层形态"的性能优化手段。
 
 ### 5.2 伏笔二 · `VarHandle` + `Unsafe` → 通向 J.U.C 并发原语
 

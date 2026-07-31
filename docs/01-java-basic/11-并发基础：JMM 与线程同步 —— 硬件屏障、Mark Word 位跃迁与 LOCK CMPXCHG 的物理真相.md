@@ -1,14 +1,14 @@
 ---
 doc_id: java-并发-JMM与线程同步
-title: 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃迁与 LOCK CMPXCHG 的底层真相
+title: 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃迁与 LOCK CMPXCHG 的物理实现
 ---
 
-# 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃迁与 LOCK CMPXCHG 的底层真相
+# 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃迁与 LOCK CMPXCHG 的物理实现
 
 !!! info "**并发基础 · 一句话口诀**"
     - **JMM 不是"内存模型"，是"重排序契约 + 内存屏障使用手册"**：JLS §17.4.5 的 8 条 happens-before 规则决定"哪些代码不能重排、哪些必须建立可见性"，编译器 / JIT 依据这份契约插入四种 JMM 屏障（`LoadLoad` / `StoreStore` / `LoadStore` / `StoreLoad`），最终在 x86 上落成 `sfence` / `lfence` / `mfence` 或 `LOCK` 前缀指令。**四种 JMM 屏障在 x86 上有三种是空指令（TSO 天然有序），只有 `StoreLoad` 需要真实 `mfence`**——这就是"x86 上 volatile 读几乎零成本、volatile 写才是唯一显著开销"的根本原因。
     - **`synchronized` 锁升级四阶段 = Mark Word 前 8 字节最低 3 位的位跃迁**：无锁（`001`）→ 偏向锁（`101` + 线程 ID）→ 轻量级锁（`00` + 栈锁记录指针）→ 重量级锁（`10` + `ObjectMonitor` 指针）。**JDK 15 起（[JEP 374](https://openjdk.org/jeps/374)）默认关闭偏向锁**——现代应用几乎全是多线程竞争场景，偏向锁的撤销开销大于收益，实际链路已退化为"无锁 → 轻量级锁 → 重量级锁"。这一条与 01 OOP 篇 §3 Mark Word 段落埋下的伏笔在此闭环。
-    - **CAS 不是软件魔法，是 CPU `LOCK CMPXCHG` + MESI 缓存一致性协议的组合**：`LOCK` 前缀让缓存行独占（首选缓存锁 · 跨行降级为总线锁），MESI 协议保证其他核对应缓存行置为 Invalid——**硬件保证的原子性**，比软件锁（重量级 `synchronized` 陷入内核 `pthread_mutex`）快 10~100 倍。Java 层的 `AtomicInteger.compareAndSet` / JDK 内部的 `Unsafe.compareAndSwapInt` / CPU 指令 `LOCK CMPXCHG` 是**同一件事在三个层级上的投影**（术语家族卡片一）。
+    - **CAS 不是软件技巧，是 CPU `LOCK CMPXCHG` + MESI 缓存一致性协议的组合**：`LOCK` 前缀让缓存行独占（首选缓存锁 · 跨行降级为总线锁），MESI 协议保证其他核对应缓存行置为 Invalid——**硬件保证的原子性**，比软件锁（重量级 `synchronized` 陷入内核 `pthread_mutex`）快 10~100 倍。Java 层的 `AtomicInteger.compareAndSet` / JDK 内部的 `Unsafe.compareAndSwapInt` / CPU 指令 `LOCK CMPXCHG` 是**同一件事在三个层级上的投影**（术语家族卡片一）。
     - **`volatile` 只保证可见性 + 有序性，**不**保证原子性**：可见性靠 volatile 读/写强制刷新主内存；有序性靠内存屏障禁止部分重排序；原子性需要另外用 `AtomicInteger.incrementAndGet` 或 `synchronized` 兜底。`i++` 编译成 `getfield → iconst_1 → iadd → putfield` 四步字节码，中间任何时刻都可能被抢占——**volatile 修饰 i 依然会丢失更新**，这是并发编程最经典的死角。
 
 **你能立刻答上来吗？**（老手引子 · 5 连击）
@@ -73,7 +73,7 @@ public class RouteStrategyRegistry {
 
 上线一周后偶发核心告警：`NullPointerException: strategies is null` 从 `RouteStrategyRegistry.getInstance().strategies.get(...)` 抛出。诡异之处在于——**`instance` 明明已经被 `new` 了**（否则第一次 `if (instance == null)` 就会拦下、走 `synchronized` 块），但拿到手的 `instance.strategies` 却是 `null`。
 
-事后拉线程 dump 看到的底层真相是：某个线程 A 在 `synchronized` 块里执行 `instance = new RouteStrategyRegistry()`，CPU 把这条语句编译成的**三条字节码**（`new` 分配堆内存 → `<init>` 执行构造器 → `putstatic` 把引用赋给 `instance`）**允许把第 2 步和第 3 步重排序**——先把"引用"塞进 `instance` 字段（让 `instance != null`），再回头慢悠悠调用构造器初始化 `strategies` / `loader` / `breaker`。这中间，恰巧线程 B 走到第一层 `if (instance == null)` 判断，看到 `instance` 非 null 直接返回——**它拿到的是一个"引用有效但字段全部未初始化"的半成品对象**。
+事后拉线程 dump 看到的底层机制是：某个线程 A 在 `synchronized` 块里执行 `instance = new RouteStrategyRegistry()`，CPU 把这条语句编译成的**三条字节码**（`new` 分配堆内存 → `<init>` 执行构造器 → `putstatic` 把引用赋给 `instance`）**允许把第 2 步和第 3 步重排序**——先把"引用"塞进 `instance` 字段（让 `instance != null`），再回头慢悠悠调用构造器初始化 `strategies` / `loader` / `breaker`。这中间，恰巧线程 B 走到第一层 `if (instance == null)` 判断，看到 `instance` 非 null 直接返回——**它拿到的是一个"引用有效但字段全部未初始化"的半成品对象**。
 
 修复只需要一个字：给 `instance` 加 `volatile`。这一个字为什么就能救命，答案藏在 §2.1 的字节码考古里——**`putstatic` 前后的内存屏障禁止了 `<init>` 与 `putstatic` 的重排序**，让"引用可见"和"字段可见"两件事在执行时序上强制对齐。
 
@@ -200,7 +200,7 @@ flowchart LR
 
 **顿悟四条**：
 
-1. **偏向锁 = "假设只有一个线程用"的极致优化**——首次 `synchronized` 时用一次 CAS 把 `threadID` 写进 Mark Word；同一线程后续进入只需比较 `threadID`，**连 CAS 都不用**。但一旦有第二个线程尝试获取，就必须"撤销偏向"——需要在 safepoint 停下持有偏向锁的线程、读其栈找是否还持锁、决定是升级为轻量级锁还是回退到无锁，这个过程的开销远超一次普通 CAS。
+1. **偏向锁 = "假设只有一个线程用"的极限优化**——首次 `synchronized` 时用一次 CAS 把 `threadID` 写进 Mark Word；同一线程后续进入只需比较 `threadID`，**连 CAS 都不用**。但一旦有第二个线程尝试获取，就必须"撤销偏向"——需要在 safepoint 停下持有偏向锁的线程、读其栈找是否还持锁、决定是升级为轻量级锁还是回退到无锁，这个过程的开销远超一次普通 CAS。
 2. **JDK 15 起（[JEP 374](https://openjdk.org/jeps/374)）默认禁用偏向锁**——现代 Java 应用几乎全靠 `java.util.concurrent` 高性能锁支撑（`ReentrantLock` / `StampedLock` / 各种 `Atomic*`），纯 `synchronized` 且真的"单线程无竞争"的场景已经极少。偏向锁撑大了 HotSpot 里 Mark Word 和 `ObjectMonitor` 的代码复杂度、维护成本极高——收益不再匹配代价。**JDK 15+ 上锁升级链路已退化为"无锁 → 轻量级 → 重量级"三级**。
 3. **轻量级锁 = 栈上 Lock Record + CAS**——JVM 在当前线程栈帧里开一块 Lock Record，把对象头的 Mark Word 拷进去（Displaced Mark Word），然后 CAS 把对象头替换成"指向 Lock Record 的指针 + `00` 标志"。释放锁时反向 CAS 把 Mark Word 恢复。轻量级锁的核心假设是"竞争概率低、CAS 一次就成功"，一旦 CAS 失败会自旋若干次（早期 10 次，JDK 6+ 自适应），仍失败才膨胀为重量级锁。
 4. **重量级锁 = `ObjectMonitor` + `pthread_mutex`**——锁膨胀后对象头 Mark Word 变成"指向 `ObjectMonitor` 的指针 + `10` 标志"。`ObjectMonitor` 里持有 `_owner` / `_recursions` / `_EntryList` / `_WaitSet` / `_cxq` 五个关键字段（HotSpot `src/hotspot/share/runtime/objectMonitor.hpp`），获取失败的线程会被 `park()` 挂起（陷入内核 `pthread_cond_wait`）——这是重量级锁"慢"的根本来源，也是"用户态→内核态切换"的开销。
@@ -210,7 +210,7 @@ flowchart LR
 !!! note "📖 术语家族：Mark Word 锁状态标志位 —— 对象头承载的 5 种锁态"
     **字面义**：Mark Word 是对象头的第一个 8 字节槽位，字面就是"标记字"——用来承载 hashCode、分代年龄（age）、锁状态、GC 状态等**运行期动态信息**。
 
-    **在本框架中的含义**：Mark Word 的**最低 3 位**（1 位偏向标志 + 2 位锁标志）编码了 5 种锁态，是 HotSpot JVM 实现 `synchronized` 锁升级的**唯一状态机字段**。同一个对象在生命周期中会在这 5 种锁态之间跃迁，Mark Word 的其余高位则承担 hashCode（无锁态）/ 线程 ID（偏向态）/ 栈锁指针（轻量态）/ Monitor 指针（重量态）**不同的载荷**——单个 8 字节被复用出了极致的密度。
+    **在本框架中的含义**：Mark Word 的**最低 3 位**（1 位偏向标志 + 2 位锁标志）编码了 5 种锁态，是 HotSpot JVM 实现 `synchronized` 锁升级的**唯一状态机字段**。同一个对象在生命周期中会在这 5 种锁态之间跃迁，Mark Word 的其余高位则承担 hashCode（无锁态）/ 线程 ID（偏向态）/ 栈锁指针（轻量态）/ Monitor 指针（重量态）**不同的载荷**——单个 8 字节被复用出了很高的密度。
 
     **家族成员**（3 位标志 `biased | lock:2` 的完整枚举）：
 
@@ -269,7 +269,7 @@ public final int getAndAddInt(Object o, long offset, int delta) {
     - `compareAndSwap` = "比较并交换"——JDK 内部（`Unsafe`）与 CPU 指令的原始命名。
     - `LOCK CMPXCHG` = x86-64 的原子指令——`CMP` + `XCHG` 的融合体，`LOCK` 前缀是硬件锁定信号。
 
-    **在本框架中的含义**：三个名字指的是**同一件事在三个层级上的投影**——Java API 层 → JDK 内部封装层 → CPU 硬件层。理解这个"三层同义"，才能理解"为什么 CAS 是硬件原语而非软件模拟"——它不是在 Java 层拼出来的锁，而是 CPU 提供的一条原子指令的层层封装。
+    **在本框架中的含义**：三个名字指的是**同一件事在三个层级上的投影**——Java API 层 → JDK 内部封装层 → CPU 硬件层。理解这个"三层同义"，才能理解"为什么 CAS 是硬件原语而非软件模拟"——它不是在 Java 层拼出来的锁，而是 CPU 提供的一条原子指令的多层封装。
 
     **家族成员**：
 
@@ -752,13 +752,13 @@ public Response handle(@RequestHeader("X-User-Id") long userId) {
 private static final TransmittableThreadLocal<UserContext> CONTEXT = new TransmittableThreadLocal<>();
 ```
 
-**降维金句**：*"并发编程的所有'为什么'都收敛到三条硬件事实：**`LOCK CMPXCHG` 让 CPU 保证原子性**、**MESI 协议让多核缓存一致**、**内存屏障让重排序可控**。JMM 是这三条硬件事实的 Java 侧语义封装，`synchronized` / `volatile` / CAS 都是它们的语法糖。老手工作十年，最终会在心底把三个词焊死：**LOCK · MESI · Barrier**——所有并发正确性都是这三张牌的组合。"*
+**核心结论**：*"并发编程的所有'为什么'都收敛到三条硬件事实：**`LOCK CMPXCHG` 让 CPU 保证原子性**、**MESI 协议让多核缓存一致**、**内存屏障让重排序可控**。JMM 是这三条硬件事实的 Java 侧语义封装，`synchronized` / `volatile` / CAS 都是它们的语法糖。老手工作十年，最终会在心底把三个词焊死：**LOCK · MESI · Barrier**——所有并发正确性都是这三张牌的组合。"*
 
 ---
 
 ## 5. 🗺️ 跨战役知识伏笔
 
-本篇我们把 JMM 从"内存模型"这个玄学包装里剥出来——它的底层真相是 **CPU 内存屏障 + MESI 缓存一致性协议 + `LOCK` 前缀原子指令**三张牌的组合。请把这个硬件事实焊死在脑海——它是理解后续所有并发/异步/框架设计的**硬件地基**。
+本篇我们把 JMM 从"内存模型"这个抽象包装里剥离——它的底层机制是 **CPU 内存屏障 + MESI 缓存一致性协议 + `LOCK` 前缀原子指令**三张牌的组合。请把这个硬件事实焊死在脑海——它是理解后续所有并发/异步/框架设计的**硬件地基**。
 
 紧接着的 [AQS 设计哲学](@java-并发-AQS设计哲学) 会承接本篇 §3.3 的 `park` / `unpark` 二元信号量语义——AQS 的 CLH 队列在节点入队后调用 `LockSupport.park(this)` 挂起，前驱节点释放锁时调用 `LockSupport.unpark(next)` 精确唤醒后继。**AQS 的"精确唤醒"能力来源于 `unpark(Thread)` 而非 `notify` 的公共队列语义**——今天在 §3.3 场景 ② 里看到的"unpark 可先发制人、根本不进内核"的性能优势，明天到 AQS 里就是"高性能队列锁的核心加速手段"。同时本篇 §2.4 的 `LOCK CMPXCHG` 会在 10b §2 变成 AQS `compareAndSetState` 的 JIT 汇编——底层是同一条 x86 指令，AQS 只是在其上加了 CLH 队列这层调度。
 
@@ -768,4 +768,4 @@ private static final TransmittableThreadLocal<UserContext> CONTEXT = new Transmi
 
 最后到战役四 [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §7 讲对象头完整位分布时，会回收本篇 §2.3 的 Mark Word 锁状态族——本篇讲了 5 种锁态的低 3 位编码，12a 篇会完整展开 hashCode（31 bit）、age（4 bit）、压缩指针下的位分布优化、[JEP 450 Compact Object Headers](https://openjdk.org/jeps/450) 的未来演进。到 [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 讲虚拟线程时，会承接本篇讲的 `synchronized` 重量级锁陷入内核 `park` 的底层路径——**虚拟线程 pin 到载体线程的最重要触发因素之一，就是持有 `synchronized` 锁时的 `park`**（因为 HotSpot 无法把 monitor 状态从载体栈搬到虚拟线程栈），这也是 JDK 21 之前 Loom 早期版本"虚拟线程 + `synchronized` 有坑"的根本原因，JDK 24 [JEP 491] 正在系统性移除这个 pin 点。
 
-当你真正读懂本篇的 §2.4（`LOCK CMPXCHG` + MESI 的组合）与 §2.5（`VarHandle` 六种访问模式），回头看 06 反射篇 §2.4 的 `MethodHandle` / `VarHandle` 家族——会顿悟"JDK 9 引入的一整套 `java.lang.invoke.*` 包，本质上是把 `Unsafe` 里的所有 native 原语（内存屏障、原子操作、字段直读）**类型安全化 + 语义显式化**的公开 API"。到 [集合框架](@java-数据结构-集合框架) §2.2 讲桥接方法的 `checkcast` 兜底、[数据结构精讲](@java-数据结构-数据结构精讲) §3 讲 `ConcurrentSkipListMap` 的 `VarHandle` 无锁跳表，你会看到 `VarHandle.compareAndSet` 一次次以不同姿态复用同一套硬件原语——**并发正确性从来不是软件魔法，是 CPU 硬件保证 + 语言层契约 + 编译器插入屏障三方合作的产物**。到那时，你今天在 §2 挖出的每一条 `mfence`、每一次 Mark Word 位跃迁、每一句 `LOCK XADD`，都会变成打通整条并发战线的关键钥匙。
+当你真正读懂本篇的 §2.4（`LOCK CMPXCHG` + MESI 的组合）与 §2.5（`VarHandle` 六种访问模式），回头看 06 反射篇 §2.4 的 `MethodHandle` / `VarHandle` 家族——会顿悟"JDK 9 引入的一整套 `java.lang.invoke.*` 包，本质上是把 `Unsafe` 里的所有 native 原语（内存屏障、原子操作、字段直读）**类型安全化 + 语义显式化**的公开 API"。到 [集合框架](@java-数据结构-集合框架) §2.2 讲桥接方法的 `checkcast` 兜底、[数据结构精讲](@java-数据结构-数据结构精讲) §3 讲 `ConcurrentSkipListMap` 的 `VarHandle` 无锁跳表，你会看到 `VarHandle.compareAndSet` 一次次以不同姿态复用同一套硬件原语——**并发正确性从来不是软件技巧，是 CPU 硬件保证 + 语言层契约 + 编译器插入屏障三方合作的产物**。到那时，你今天在 §2 挖出的每一条 `mfence`、每一次 Mark Word 位跃迁、每一句 `LOCK XADD`，都会变成打通整条并发战线的关键钥匙。
