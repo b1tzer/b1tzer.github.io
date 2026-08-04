@@ -22,19 +22,6 @@ title: AQS 设计哲学 —— state 心脏、CLH 队列、模板方法与独占
 
 如果任何一个问题让你迟疑超过 3 秒——继续读。
 
-> 📖 **本文讲**：AQS 骨架四要素（`state` / CLH / 模板方法 / 独占-共享双模式）、`state` 多语义承载、CLH 节点状态机、独占模式完整源码链路、共享模式传播机制、`park` / `unpark` 与 AQS 的绑定。
->
-> 📖 **本文不讲**（`📖` 引用到姊妹文档）：
->
-> - **CAS 硬件语义 · `LOCK CMPXCHG` · MESI 协议** → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) §"CAS 硬件三层同义族"
-> - **`AtomicInteger` / `AtomicStampedReference` / ABA 问题完整解答** → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步)
-> - **`ReentrantLock` 公平 vs 非公平完整实现** → [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池)
-> - **`ReentrantReadWriteLock` 完整源码 + 读写锁降级** → [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池)
-> - **`StampedLock` 三种模式（写 / 悲观读 / 乐观读）** → [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池)
-> - **`LongAdder` / `Striped64` 分段计数** → [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) §"LongAdder 分段思想"
-> - **`Semaphore` / `CountDownLatch` / `CyclicBarrier` 完整源码与对比** → [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池)
-> - **`ConcurrentHashMap` 单槽位 `synchronized` 借助锁升级** → [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱)
-
 ---
 
 ## 1. 第一层：业务痛点 —— 从"AQS 名字听得多"到"骨架说不清"
@@ -80,15 +67,15 @@ rwl.writeLock().lock();
 
 **这就是 AQS 设计哲学的第一道题**：Doug Lea 用**一个 32 位 `volatile int`** 承担了整个 JUC 包 20 多个同步器的所有状态。理解不了这一点，就永远读不懂 AQS 的源码。
 
-### 1.2 反问引子：老手也未必答得上的 5 个 AQS 悬案
+### 1.2 反问引子：老手也未必答得上的 5 个 AQS 问题
 
-- **悬案 1**：CLH 队列的头节点 `head` 为什么是"哑节点"（`thread = null`）？释放锁时到底应该 `unpark(head)` 还是 `unpark(head.next)`？
-- **悬案 2**：`addWaiter` 里为什么要用 `oldTail.setPrevRelaxed(node)` + `compareAndSetTail(oldTail, node)` 两步走？直接一步 CAS 不行吗？
-- **悬案 3**：`shouldParkAfterFailedAcquire` 为什么要**回头**把前驱的 `waitStatus` 改成 `SIGNAL` 再挂起？直接 `park` 不行吗？
-- **悬案 4**：`Node.SHARED` 和 `Node.EXCLUSIVE` 的区别只是一个 `Node` 字段标记吗？共享模式的"传播唤醒"底层机制究竟在源码哪一行？
-- **悬案 5**：`park` 可以先于 `unpark` 调用（"许可"语义）—— 这在 AQS 里解决了什么并发竞争问题？
+- **问题 1**：CLH 队列的头节点 `head` 为什么是"哑节点"（`thread = null`）？释放锁时到底应该 `unpark(head)` 还是 `unpark(head.next)`？
+- **问题 2**：`addWaiter` 里为什么要用 `oldTail.setPrevRelaxed(node)` + `compareAndSetTail(oldTail, node)` 两步走？直接一步 CAS 不行吗？
+- **问题 3**：`shouldParkAfterFailedAcquire` 为什么要**回头**把前驱的 `waitStatus` 改成 `SIGNAL` 再挂起？直接 `park` 不行吗？
+- **问题 4**：`Node.SHARED` 和 `Node.EXCLUSIVE` 的区别只是一个 `Node` 字段标记吗？共享模式的"传播唤醒"底层机制究竟在源码哪一行？
+- **问题 5**：`park` 可以先于 `unpark` 调用（"许可"语义）—— 这在 AQS 里解决了什么并发竞争问题？
 
-这五个悬案的答案都埋在 400 行左右的 AQS 源码里。掀开看，就都清晰了。
+这五个问题的答案都埋在 400 行左右的 AQS 源码里。掀开看，就都清晰了。
 
 ### 1.3 痛点清单：为什么这篇必须硬啃
 
@@ -500,7 +487,7 @@ sequenceDiagram
     Note over T2,AQS: T2 持锁<br/>T3 依然 park 等待
 ```
 
-### 3.3 共享模式传播机制机制图（回答 §1.2 悬案 4）
+### 3.3 共享模式传播机制机制图（回答 §1.2 问题 4）
 
 ```mermaid
 sequenceDiagram

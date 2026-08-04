@@ -37,7 +37,7 @@ title: 反射（Reflection）：调用链、字节码指令与 JIT 内联的三�
 
 ## 1. 第一层：业务痛点 —— 从"框架启动慢"到"热点接口 P99 飙升"
 
-### 1.1 悬案一：Spring 冷启动被 10 万次反射拖到 30 秒级
+### 1.1 问题一：Spring 冷启动被 10 万次反射拖到 30 秒级
 
 先看一段几乎所有 Spring Boot 项目在服务发现/自动装配场景里都会经历的现象（**以下为示意场景，非实际生产数据**）：
 
@@ -52,9 +52,9 @@ Application started in 20~30 seconds  // 💥 冷启动瓶颈
 
 在传统单体架构里 20~30 秒冷启动勉强可忍，但在 K8s 弹性扩容、Serverless 冷启动、CI/CD 流水线里就是关键瓶颈。**问题不在反射本身，而在这几万到几十万次调用里绝大多数都发生在"极低频"边界之内**——绝大多数 Bean 的字段注入只发生 1~3 次，永远够不到反射自我优化的门槛（假设你在 JDK ≤17 上运行）。
 
-要破解这个悬案，我们必须搞清楚：`Method.invoke` 内部在**不同 JDK 版本**上到底走什么样的调用链？JDK 18 之后的实现（JEP 416）是否已经把这个瓶颈缓解？
+要破解这个问题，我们必须搞清楚：`Method.invoke` 内部在**不同 JDK 版本**上到底走什么样的调用链？JDK 18 之后的实现（JEP 416）是否已经把这个瓶颈缓解？
 
-### 1.2 悬案二：热点接口 Jackson 反序列化撞上 GC 抖动
+### 1.2 问题二：热点接口 Jackson 反序列化撞上 GC 抖动
 
 再看一段高并发生产环境里几乎每个团队都写过的代码：
 
@@ -230,7 +230,7 @@ CSM.returnCallerClass()
 2. **性能有得有失**：`Method` / `Field` / `Constructor` 存到 `static final` 字段时，JIT 常量折叠能让新实现比旧实现**快 43~57%**；反之若存在 `Map` / 数组等非常量位置里，`Field` 访问可能**慢 51~77%**
 3. **`sun.misc.Unsafe` 移除加速**：反射不再依赖 `Unsafe`，为最终移除 `sun.misc.Unsafe` 铺路
 
-**这就是 §1.1 悬案的现代真相**：Spring 5.x + JDK 8/11/17 冷启动路径中，`MethodAccessor` inflation 是**反射相关成本的一个可观贡献者**——注意冷启动整体耗时还涉及类加载、Classpath 扫描、BeanDefinition 注册、条件装配、依赖注入、代理创建等大量非反射成本，反射只是其中一环；JDK 18+ 基于 `MethodHandle` 重构反射后，HotSpot 对位于稳定常量位置（`static final` 等）的反射元数据可以进行更积极的优化，因此某些反射场景的性能**明显改善**。
+**这就是 §1.1 问题的现代真相**：Spring 5.x + JDK 8/11/17 冷启动路径中，`MethodAccessor` inflation 是**反射相关成本的一个可观贡献者**——注意冷启动整体耗时还涉及类加载、Classpath 扫描、BeanDefinition 注册、条件装配、依赖注入、代理创建等大量非反射成本，反射只是其中一环；JDK 18+ 基于 `MethodHandle` 重构反射后，HotSpot 对位于稳定常量位置（`static final` 等）的反射元数据可以进行更积极的优化，因此某些反射场景的性能**明显改善**。
 
 ⚠️ **但注意**：这并不意味着 `Method.invoke` 与 `MethodHandle.invokeExact` 或直接调用**等价**——`Method.invoke` 仍然有自己的 API 语义层（参数检查、参数适配、访问检查、异常包装等），这些开销无法被 JEP 416 消除。若你的项目还没升级到 JDK 21，或反射目标存到了非稳定位置，性能特征则更接近 §2.1 的经典模型。
 
@@ -481,7 +481,7 @@ public final class com.sun.proxy.$Proxy0
 | 只调用少数几次（不触发 inflation） | 0 | 全程 JNI 慢路径 |
 | 调用次数超过阈值（触发 inflation） | 典型 KB 量级 | 每个热点方法产生一个 `GeneratedMethodAccessor` 类 |
 
-**这就是 §1.1 Spring 启动悬案在 HotSpot ≤17 上的底层证据**：Spring 冷启动里大量反射调用**次数达不到 inflation 阈值**，全部困在 JNI 慢路径里，每次调用都要跨 Java/Native 边界。
+**这就是 §1.1 Spring 启动问题在 HotSpot ≤17 上的底层证据**：Spring 冷启动里大量反射调用**次数达不到 inflation 阈值**，全部困在 JNI 慢路径里，每次调用都要跨 Java/Native 边界。
 
 ⚠️ **反面案例：不要盲目调 `-Dsun.reflect.inflationThreshold=0`**
 

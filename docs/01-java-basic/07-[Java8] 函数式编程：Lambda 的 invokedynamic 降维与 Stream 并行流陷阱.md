@@ -53,15 +53,15 @@ public class InventoryReplenishService {
 
 **这就是"Lambda 让代码变简洁"的最贵版本代价**——`.parallelStream()` 打字只要 6 个键、语义清晰、代码好看，但它在 JVM 里真实调度到的 `ForkJoinPool.commonPool` 是**全局共享的稀缺资源**，且从字节码到线程池的整条链路，Java 语言层面**没有给你任何编译期警告**。
 
-### 1.2 反问引子：老手也未必答得上的 5 个 Lambda 悬案
+### 1.2 反问引子：老手也未必答得上的 5 个 Lambda 问题
 
-- **悬案 1**：`Comparator<String> c = (a, b) -> a.compareTo(b);` 在 `javap -c` 里是一条 `invokedynamic` 指令。它到底在"动态"什么？和 06 篇里的反射 `invokeExact` 是同一条 JVM 指令吗？
-- **悬案 2**：非捕获 Lambda（如 `() -> "hello"`）在 1 亿次循环里究竟创建了多少个 `Runnable` 实例？如果只有 1 个，那么捕获了循环变量 `i` 的 `() -> i` 又是多少个？
-- **悬案 3**：`String::length`（方法引用）和 `s -> s.length()`（等价 Lambda）在 `javap` 输出里看上去很像，但它们的 `BootstrapMethod` 参数有什么本质区别？两者的性能到底能不能拉开差距？
-- **悬案 4**：`list.stream().filter(x -> x > 0).map(x -> x * 2).collect(toList())` 里创建了几个 `Stream<T>` 对象？中间操作到底何时执行？
-- **悬案 5**：`parallelStream` 里为什么禁止使用 `ThreadLocal`？`InheritableThreadLocal` 又为什么在 `commonPool` 里也不管用？
+- **问题 1**：`Comparator<String> c = (a, b) -> a.compareTo(b);` 在 `javap -c` 里是一条 `invokedynamic` 指令。它到底在"动态"什么？和 06 篇里的反射 `invokeExact` 是同一条 JVM 指令吗？
+- **问题 2**：非捕获 Lambda（如 `() -> "hello"`）在 1 亿次循环里究竟创建了多少个 `Runnable` 实例？如果只有 1 个，那么捕获了循环变量 `i` 的 `() -> i` 又是多少个？
+- **问题 3**：`String::length`（方法引用）和 `s -> s.length()`（等价 Lambda）在 `javap` 输出里看上去很像，但它们的 `BootstrapMethod` 参数有什么本质区别？两者的性能到底能不能拉开差距？
+- **问题 4**：`list.stream().filter(x -> x > 0).map(x -> x * 2).collect(toList())` 里创建了几个 `Stream<T>` 对象？中间操作到底何时执行？
+- **问题 5**：`parallelStream` 里为什么禁止使用 `ThreadLocal`？`InheritableThreadLocal` 又为什么在 `commonPool` 里也不管用？
 
-这五个悬案的答案都写在字节码里。掀开 `javap -c -v` 就都清晰了。
+这五个问题的答案都写在字节码里。掀开 `javap -c -v` 就都清晰了。
 
 ---
 
@@ -266,7 +266,7 @@ private static java.lang.String lambda$main$1(java.lang.String prefix, int seq);
 
 #### 2.3.1 捕获的是引用副本：`int` 与 `List<String>` 的行为反差
 
-回收开篇悬案 4。Lambda 对局部变量的捕获**统一采用按值复制 —— 把该局部变量的当前值写入合成类字段**（对应上面 `get$Lambda(String, int)` 静态工厂的实参），无论变量本身是基本类型还是引用类型都一样。差别完全来自 **两类变量本身存的东西不同**：
+回收开篇问题 4。Lambda 对局部变量的捕获**统一采用按值复制 —— 把该局部变量的当前值写入合成类字段**（对应上面 `get$Lambda(String, int)` 静态工厂的实参），无论变量本身是基本类型还是引用类型都一样。差别完全来自 **两类变量本身存的东西不同**：
 
 - **基本类型**：字段存的就是那个值，拷贝后与外部“断链”。外部后续去重新赋值也无法影响 Lambda 里看到的拷贝。
 - **引用类型**：字段存的是 **引用（指针）** 的拷贝。拷贝后的指针仍指向堆上同一个对象，因此不管是 Lambda 内部还是外部代码对该对象的**内容修改**，双方都看得到。

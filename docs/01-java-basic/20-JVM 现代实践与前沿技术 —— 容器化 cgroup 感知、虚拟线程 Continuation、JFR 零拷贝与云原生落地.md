@@ -5,26 +5,6 @@ title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟�
 
 # JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟线程 Continuation、JFR 零拷贝与云原生落地
 
-!!! info "**JVM 现代实践 一句话口诀**"
-    - **容器化 JVM 必开 `-XX:+UseContainerSupport`**（JDK 10+ 默认开、JDK 8 需 `8u191+` 显式开），搭配 `-XX:MaxRAMPercentage=75.0` 让 JVM 正确感知 cgroup 内存边界——否则 `-Xmx` 硬编码是唯一防御。**"75% 留堆 · 25% 留堆外"是经验值**：元空间 + 直接内存 + 线程栈 + Code Cache + JVM 本身开销加起来正好 25%。
-    - **虚拟线程（JDK 21+ JEP 444）适合 I/O 密集、不适合 CPU 密集**——载体线程数 = CPU 核数，虚拟线程在阻塞时 unmount 释放载体，是 M:N 线程模型的底层机制。**JDK 21~23 下 `synchronized` 会 pin 住载体线程 → 收益打折**，改用 `ReentrantLock` 可正常 unmount；**JDK 24（JEP 491）彻底修复**，`synchronized` 代码零改动直接受益。虚拟线程专属调度器 `DEFAULT_SCHEDULER` **独立于** `ForkJoinPool.commonPool` —— `parallelStream` 阻塞不会污染虚拟线程调度。
-    - **JFR 是生产环境首选 profiler**——持续开启开销 < 1%，JDK 11+ 完全开源（不再是 Oracle 商业特性）。低开销的根本原因：**事件写入 per-thread 缓冲、无锁竞争 / 无 Java 反射 / 无字符串拼接 / 无 JVMTI Agent 附加成本**——`jdk.jfr` 是 JVM 内建模块。`jcmd <pid> JFR.start duration=60s filename=xxx.jfr` 动态采集，`jfr print` / JMC 分析，事件覆盖 GC / 锁竞争 / I/O / TLAB / 方法采样 300+ 种。
-    - **分代 ZGC** —— **JDK 21（JEP 439）引入需显式 `-XX:+ZGenerational` · JDK 23（JEP 474）成为默认 · JDK 24+（JEP 490）非分代模式正式移除**。老手记这一条时间线就够：未来 `-XX:+UseZGC` 即分代，无需额外参数。**分代 ZGC = G1 的吞吐 + ZGC 的延迟** —— 套用弱分代假说，新生代复制算法快速回收短命对象，减少标记成本、吞吐追平 G1、延迟仍亚毫秒。
-    - **生产红线四件套** —— **无界队列禁用（`LinkedBlockingQueue` 默认 `Integer.MAX_VALUE`）· `ThreadLocal` 必 `remove`（虚拟线程场景百万副本 = 4GB 爆炸）· 必设 `-XX:MaxMetaspaceSize`（JDK 8+ 元空间默认无上限）· 必开 GC 日志与 OOM 自动 dump**。每一条都是实践总结，不带一条上线 = 早晚翻车。
-
-<!-- -->
-
-> 📖 **边界声明**：本文聚焦"现代 JVM 的容器化 / 虚拟线程 / JFR / JIT / 云原生落地"（工程视角 + 前沿追踪），以下主题请见对应姊妹文档：
->
-> - **JVM 基础内存分区、对象头、压缩指针 32GB 边界** → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)（本文只用"堆 / 元空间 / 直接内存 / 线程栈 / Code Cache 五分区"结论）
-> - **传统 GC 算法、三色标记、写屏障、G1 Region、ZGC 染色指针** → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)（本文只讨论"现代场景下如何用 · JEP 演进"）
-> - **通用 GC 参数调优、GC 日志分析、OOM 排查五字诀** → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)（本文只补齐"容器 + 前沿场景"专属参数）
-> - **虚拟线程中的 JMM、happens-before、内存屏障基础** → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步)
-> - **传统线程池 7 参数、拒绝策略、Fork/Join Pool** → [并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池)
-> - **NIO / Netty `PooledByteBufAllocator` / DirectByteBuffer 堆外内存** → [NIO 与 IO 模型深度解析](@java-OS-NIO与IO模型)
-
----
-
 ## 1. 第一层：业务痛点 —— 从"容器 OOMKilled"到"虚拟线程 pin 载体线程"
 
 ### 1.1 生产事故现场：老手也翻车的"现代 JVM 三连击"

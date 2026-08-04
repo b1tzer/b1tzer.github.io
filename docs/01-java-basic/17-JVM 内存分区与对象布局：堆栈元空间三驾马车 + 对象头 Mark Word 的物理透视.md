@@ -13,18 +13,6 @@ title: JVM 内存分区与对象布局 —— 堆栈元空间三驾马车 + 对�
     - **偏向锁 JEP 374 已"事实退休"但未正式移除**：JDK 15 默认关闭 + 标记 deprecated；JDK 18 起 `-XX:+UseBiasedLocking` 标记为 obsolete（可用但产生警告）；**至今尚无 JEP 将其真正从代码中删除**，Mark Word 位布局里的偏向锁字段仍然存在 —— 但业务开发者可当作不存在。
     - **StringTable 从 JDK 7 起在堆里、不在元空间**：类级别的运行时常量池（每 Class 一份，存字面量 + 符号引用）在元空间；**全局的字符串常量池（`StringTable`，Hashtable 结构）在堆里**。`intern()` 撑爆的是 `Java heap space`，不是 `Metaspace`。JDK 6 桶数 1009 → JDK 7+ 桶数 60013（约 60× 跨越）。
 
-<!-- -->
-
-> 📖 **边界声明**：本文聚焦"JVM 运行时数据区的底层结构 + 对象在堆中的内存布局"，以下主题请见对应姊妹文档：
->
-> - **GC 算法、三色标记、G1 / ZGC 实现** → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)
-> - **GC 调优参数、OOM 排查、生产 checklist** → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)
-> - **容器化 JVM、JFR、虚拟线程内存模型** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)
-> - **`synchronized` 锁升级完整流程（Mark Word 状态位跃迁：无锁 → 偏向 → 轻量 → 重量）** → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) §"锁升级四阶段"
-> - **`Klass` / `oop` 二元模型 + `invokevirtual` 查 vtable / itable 完整展开** → [面向对象（OOP）](@java-字节码-面向对象) §"对象头与 Klass Pointer"
-> - **`LinkedList` 节点 40 字节 / `HashMap.Node` 48 字节的完整推导** → [集合框架](@java-数据结构-集合框架) §"每元素内存底层构成图"
-> - **`String` 常量池的字节码考古（`ldc` 指令 + `CONSTANT_String_info`）+ Compact Strings** → [字符串底层原理](@java-字节码-字符串底层原理)
-
 ---
 
 ## 1. 第一层：业务痛点 —— 从"`-Xmx=2g` 却 RSS 4g 被 OOMKilled"到"`intern()` 撑满的到底是哪块内存"

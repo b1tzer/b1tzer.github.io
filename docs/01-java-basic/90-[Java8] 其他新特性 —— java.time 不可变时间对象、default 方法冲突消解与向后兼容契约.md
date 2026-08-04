@@ -5,12 +5,6 @@ title: [Java8] 其他新特性 —— java.time 不可变时间对象、default 
 
 # [Java8] 其他新特性 —— java.time 不可变时间对象、default 方法冲突消解与向后兼容契约
 
-!!! info "**Java 8 其他新特性 · 一句话口诀（番外）**"
-    - **本篇是"语法参考手册"而非"顿悟型深度源码文档"**——打开时机应该是：写代码想不起 `LocalDate` / `LocalDateTime` / `ZonedDateTime` 用哪个、`SimpleDateFormat` 多线程共享要不要改、`default` 方法多接口冲突怎么消除时——**进来查表、抄示范、抄坑清单即可**；不要期待字节码级别顿悟（那些在 [函数式编程](@java-字节码-函数式编程) / [面向对象](@java-字节码-面向对象) 里）。
-    - **新日期 API 的杀手锏是"不可变 + 时区显式"两条设计准则**——`LocalDate` / `LocalDateTime` / `ZonedDateTime` / `Instant` 全部是**不可变对象**（每次 `plusDays` / `withZone` 都返回新对象），因此天然线程安全；`ZonedDateTime` 把时区从 `LocalDateTime` 里显式拆出来，逼你在跨时区场景**主动决定时区归属**。这两条准则是"多线程共享 `SimpleDateFormat` 数据错乱"与"服务器时区不一致导致时间偏差"两大传统坑的根治方案。
-    - **接口默认方法（`default`）不是"接口有了实现能力"，是"接口可以在不破坏实现类的前提下追加新方法"的向后兼容工具**——JDK 8 要在 `Collection` 上加 `stream()` / `forEach()`，如果没有 `default` 就得改数万个实现类；`default` 让接口演化"零破坏"。**但滥用会退化成"畸形抽象类"**（接口没有实例字段，`default` 方法里存不了状态）。
-    - **`default` 方法冲突的三条优先级不需要死记，理解一句话就够**："**具体优先于抽象、类优先于接口、平级必须显式**"。类里的方法赢过接口 `default` 方法；子接口 `default` 方法赢过父接口 `default` 方法；两个平级接口的同名 `default` 方法冲突，编译器强制你在实现类里用 `X.super.m()` 显式指定来源。
-
 **你能立刻答上来吗？**
 
 - `LocalDate` / `LocalDateTime` / `ZonedDateTime` / `Instant` 四个类的适用场景各是什么？为什么数据库存时间戳一律用 `Instant` 或 `TIMESTAMP` 而不是 `LocalDateTime`？
@@ -20,17 +14,6 @@ title: [Java8] 其他新特性 —— java.time 不可变时间对象、default 
 - 服务器时区北京、数据库时区 UTC，你用 `LocalDateTime.now()` 存进数据库会发生什么？
 
 任何一个问题让你迟疑超过 3 秒——继续读。
-
----
-
-> 📖 **边界声明**：本文是**番外语法参考页**，专注"能直接查表抄用"的 Java 8 剩余语法特性（`java.time` 新日期 API + 接口 `default` / `static` / `private` 方法）。以下主题请见对应专题：
->
-> - **Lambda + 函数式接口 + Stream + `invokedynamic` 深度机制** → [函数式编程](@java-字节码-函数式编程)
-> - **`Optional` 使用范式与 `null` 治理设计哲学** → [函数式编程](@java-字节码-函数式编程) 附录
-> - **接口 `default` 方法背后的 `invokespecial` / `invokeinterface` 字节码差异与虚方法表演化** → [面向对象](@java-字节码-面向对象) §"`invoke*` 指令族"
-> - **`DateTimeFormatter` 内部的不可变对象 + 无锁并发原理** → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) §"不可变对象与安全发布"
-> - **`ThreadLocal` 内存泄漏与探测式清理** → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步)
-> - **MyBatis / JPA / Hibernate 的时间类型 TypeHandler 配置细节** → 外部专题（`@mybatis-*` / `@spring-data-jpa-*`）
 
 ---
 

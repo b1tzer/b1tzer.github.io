@@ -24,16 +24,6 @@ title: 并发工具：Lock 与线程池 —— AQS 应用视角、StampedLock �
 
 ---
 
-> 📖 **边界声明**：本文站在"AQS 应用层"视角展开——把 [AQS 设计哲学](@java-并发-AQS设计哲学) 讲的 `state` / CLH 队列 / 模板方法作为**已知前置**，聚焦"锁与同步器如何在 AQS 上定义各自语义"以及"线程池的 `ctl` 位编码 + `execute` 三阶段决策"。以下主题请见对应专题：
->
-> - **AQS 骨架、CLH 队列、`state` 通用语义、`park`/`unpark` 挂起链路** → [AQS 设计哲学](@java-并发-AQS设计哲学)
-> - **CAS 硬件语义、`LOCK CMPXCHG`、MESI、`synchronized` 锁升级、Mark Word** → [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步)
-> - **`ConcurrentHashMap` 完整源码、`CopyOnWriteArrayList` 弱一致性、并发容器排查** → [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱)
-> - **虚拟线程 pin 到载体线程（`synchronized` / native 会 pin、`ReentrantLock` 不 pin）** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)
-> - **`ForkJoinPool.commonPool` 与 `parallelStream` 的硬性约束** → [函数式编程](@java-字节码-函数式编程)
-
----
-
 ## 1. 第一层：业务痛点 —— 从"生产环境读写锁翻车"到"线程池 OOM"
 
 ### 1.1 生产事故现场：读写锁选错、线程池无界，同一天塌了两次
@@ -87,15 +77,15 @@ public class RiskAsyncExecutor {
 
 **两条事故根因合并成一句话**：并发工具选型不看"能不能用"，看"硬件特性是否匹配当前场景"。读写锁选错 `StampedLock` 就是选错，线程池选 `newFixedThreadPool` 就是隐性接受了"无界队列 + OOM 风险"这个隐藏合同。
 
-### 1.2 反问引子：老手也未必答得上的 5 个悬案
+### 1.2 反问引子：老手也未必答得上的 5 个问题
 
-- **悬案 1**：`ReentrantLock` 公平锁 `tryAcquire` 里的 `hasQueuedPredecessors()` 遍历 CLH 队列——它遍历几次？为什么阿里 P3C 手册说"公平锁比非公平锁慢 5~10 倍"？
-- **悬案 2**：`ReentrantReadWriteLock` 的 `state` 高 16 位存读锁计数，如果一个线程重入读锁 65536 次，`state` 会发生什么？
-- **悬案 3**：`StampedLock` 乐观读为什么能做到"零同步开销"？它的 `stamp` 校验用了什么内存屏障？
-- **悬案 4**：`LongAdder` 的 `cells[]` 数组为什么初始为 `null`？扩容策略是什么？`@Contended` 注解在 JDK 9+ 的模块化下需要什么参数才能生效？
-- **悬案 5**：`ThreadPoolExecutor.ctl` 用 `AtomicInteger` 存"状态 + 线程数"，执行 `advanceRunState(STOP)` 时会不会覆盖工作线程数？源码里的 `ctlOf(rs, workerCountOf(c))` 是什么位运算技巧？
+- **问题 1**：`ReentrantLock` 公平锁 `tryAcquire` 里的 `hasQueuedPredecessors()` 遍历 CLH 队列——它遍历几次？为什么阿里 P3C 手册说"公平锁比非公平锁慢 5~10 倍"？
+- **问题 2**：`ReentrantReadWriteLock` 的 `state` 高 16 位存读锁计数，如果一个线程重入读锁 65536 次，`state` 会发生什么？
+- **问题 3**：`StampedLock` 乐观读为什么能做到"零同步开销"？它的 `stamp` 校验用了什么内存屏障？
+- **问题 4**：`LongAdder` 的 `cells[]` 数组为什么初始为 `null`？扩容策略是什么？`@Contended` 注解在 JDK 9+ 的模块化下需要什么参数才能生效？
+- **问题 5**：`ThreadPoolExecutor.ctl` 用 `AtomicInteger` 存"状态 + 线程数"，执行 `advanceRunState(STOP)` 时会不会覆盖工作线程数？源码里的 `ctlOf(rs, workerCountOf(c))` 是什么位运算技巧？
 
-这五个悬案的答案都在 JDK 源码里。掀开 `java.util.concurrent.locks.*` 和 `ThreadPoolExecutor` 就都清晰了。
+这五个问题的答案都在 JDK 源码里。掀开 `java.util.concurrent.locks.*` 和 `ThreadPoolExecutor` 就都清晰了。
 
 ---
 

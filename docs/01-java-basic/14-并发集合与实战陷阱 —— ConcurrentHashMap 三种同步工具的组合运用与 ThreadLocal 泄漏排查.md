@@ -5,12 +5,6 @@ title: 并发集合与实战陷阱 —— ConcurrentHashMap 三种同步工具�
 
 # 并发集合与实战陷阱 —— ConcurrentHashMap 三种同步工具的组合运用与 ThreadLocal 泄漏排查
 
-!!! info "**并发集合与实战陷阱 一句话口诀**"
-    - **`ConcurrentHashMap` JDK 8 = "CAS 无锁 + `synchronized` 单槽位 + 并发扩容" 三件事**：空桶用 `casTabAt` 无锁插入（最快路径）· 非空桶用 `synchronized (f)` 锁住头节点（借助 JVM 锁升级，低竞争几乎零开销）· 并发扩容通过 `ForwardingNode.hash == MOVED == -1` 让多线程协作迁移。**这是 JUC 三种同步工具（CAS · `synchronized` · AQS-like 转发协议）在一个数据结构里的完整组合运用**。
-    - **`sizeCtl` 是 `ConcurrentHashMap` 的"多语义状态字段"**：`> 0` 是扩容阈值 · `= 0` 是默认容量占位 · `= -1` 是正在 `initTable` · `< -1` 时高 16 位是扩容 stamp（校验位）+ 低 16 位是参与扩容的线程数 + 1。**一个 `volatile int` 撑起 5 种状态**——与 `10b` AQS `state`、`10c` 线程池 `ctl` 一脉相承，都是 Doug Lea "用最少字段撑最大语义空间"的复用力。
-    - **`CopyOnWriteArrayList` 的弱一致性不是 bug，是设计**：写操作复制整个数组、迭代器基于快照 `array` 引用、读操作永不阻塞——代价是"读不到最新写"+"O(N²) 累计拷贝成本"+"旧快照 GC 压力"。**适用场景锁死为读远多于写 + 数据量小 + 可接受最终一致**（Spring `ApplicationListener` 列表、路由表、白名单）；把它当"通用线程安全 List"用是老手最容易踩的坑。
-    - **并发编程所有 bug 都收敛到 3 条根源**：① 可见性——忘加 `volatile` / 用错 `synchronized` 位置；② 原子性——`read-modify-write` 三步操作没加锁（`i++` / `check-then-act`）；③ 有序性——DCL 单例没加 `volatile` / 依赖对象初始化字段值。**理解 `10a` 的三条硬件事实（缓存一致性、`LOCK CMPXCHG`、内存屏障）就能推演所有陷阱**。
-
 **你能立刻答上来吗？**
 
 - `ConcurrentHashMap.put()` 究竟什么时候走 CAS、什么时候走 `synchronized`、什么时候走 `helpTransfer`？完整决策链能一次画出来吗？
@@ -21,17 +15,6 @@ title: 并发集合与实战陷阱 —— ConcurrentHashMap 三种同步工具�
 - `InheritableThreadLocal` 在线程池里为什么"看似能用其实失效"？跨线程池传递上下文的正确姿势是什么？
 
 任何一个问题让你迟疑超过 3 秒——继续读。
-
----
-
-> 📖 **边界声明**：本文是战役三 · 并发全景的**收官篇**，站在"组合运用"视角，把 [`10a` JMM 与线程同步](@java-并发-JMM与线程同步) 的三条硬件事实 + [`10b` AQS 设计哲学](@java-并发-AQS设计哲学) 的 `state` / CLH / 模板方法 + [`10c` 并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) **作为已知前置**，聚焦"并发容器如何把三种同步工具组合起来"与"20 年 Java 并发的 5 大实战陷阱"。以下主题请见对应专题：
->
-> - **CAS 硬件语义 / `LOCK CMPXCHG` / MESI / `synchronized` 锁升级 / Mark Word** → [`10a` JMM 与线程同步](@java-并发-JMM与线程同步)
-> - **AQS 骨架 / `state` 通用语义 / CLH 队列 / `park` 挂起 / 模板方法** → [`10b` AQS 设计哲学](@java-并发-AQS设计哲学)
-> - **`ReentrantLock` / `StampedLock` / `LongAdder` / 线程池 7 参数 / `ctl` 位编码** → [`10c` 并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池)
-> - **HashMap 三级结构（数组 + 链表 + 红黑树）+ 位运算捷径** → [`08` 集合框架](@java-数据结构-集合框架)
-> - **红黑树完整旋转变色 + 跳表结构** → [`09` 数据结构精讲](@java-数据结构-数据结构精讲)
-> - **虚拟线程 pin 到载体线程排查（`synchronized` pin、`ReentrantLock` 不 pin）** → [`12d` JVM 现代实践](@java-JVM-现代实践与前沿技术)
 
 ---
 

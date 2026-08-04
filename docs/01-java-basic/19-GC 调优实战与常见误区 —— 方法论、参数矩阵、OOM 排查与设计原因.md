@@ -5,25 +5,6 @@ title: GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排�
 
 # GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排查与设计原因
 
-!!! info "**GC 调优实战 一句话口诀**"
-    - **调优不是猜参数** —— 先定**目标**（吞吐 / 延迟 / 内存 · **三者互斥**），再**测量**（`-Xlog:gc*` + JFR），最后**小步迭代**（一次只改一个参数 · 每次跑回归验证）。**上来就 `-Xmx8g -XX:+UseG1GC -XX:MaxGCPauseMillis=50` 是猜测不是调优**。
-    - **堆不是越大越好** —— CMS / G1 下堆越大 · 单次 Full GC 停顿越长；只有 **ZGC / Shenandoah** 能靠染色指针 + 读屏障做到"停顿与堆大小无关"，所以只有它们下**大堆才安全**。
-    - **`System.gc()` 是建议不是命令** —— 生产必加 `-XX:+DisableExplicitGC`，否则三方库一行 `System.gc()` 就能让你整夜加班。**唯一例外**：依赖 `DirectByteBuffer.Cleaner` 回收堆外内存时改用 `-XX:+ExplicitGCInvokesConcurrent`（允许但降为并发）。
-    - **OOM 四字诀** —— **堆（Java heap space）查对象链**、**栈（StackOverflowError）查递归**、**元空间（Metaspace）查代理类**、**直接内存（Direct buffer memory）查 NIO**。对号入座、不越界。
-    - **生产必开三件套** —— GC 日志（`-Xlog:gc*`）+ OOM 堆转储（`-XX:+HeapDumpOnOutOfMemoryError`）+ 禁用显式 GC（`-XX:+DisableExplicitGC`）。**出事才有现场可查**，比事后 100 行日志分析都值。
-
-<!-- -->
-
-> 📖 **边界声明**：本文聚焦"GC 调优方法论、参数矩阵与 OOM 排查流程"（工程实战视角），以下主题请见对应姊妹文档：
->
-> - **GC 算法、三色标记、写屏障、染色指针、五大收集器实现原理** → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)（本文只讨论"参数调优 · 日志阅读 · 排查流程"，不重讲原理）
-> - **内存分区、对象头、Mark Word、压缩指针 32GB 边界** → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)
-> - **容器化 JVM、虚拟线程、JFR 深度使用、分代 ZGC（JEP 439 / JEP 474）落地** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)
-> - **`Reference` 强度族与 `WeakHashMap` / `ThreadLocalMap` 泄漏机制** → [集合框架](@java-数据结构-集合框架) / [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)
-> - **CMS 三大缺陷（浮动垃圾 / 碎片 / 并发模式失败）源码级展开** → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) §"CMS 四阶段"
-
----
-
 ## 1. 调优方法论：目标 → 测量 → 分析 → 验证
 
 ### 1.1 生产事故引子：老手也翻车的"参数盲目配置"三连击

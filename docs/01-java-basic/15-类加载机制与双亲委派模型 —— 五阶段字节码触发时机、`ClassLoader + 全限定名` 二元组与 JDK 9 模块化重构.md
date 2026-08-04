@@ -5,12 +5,6 @@ title: 类加载机制与双亲委派模型 —— 五阶段字节码触发时�
 
 # 类加载机制与双亲委派模型 —— 五阶段字节码触发时机、`ClassLoader + 全限定名` 二元组与 JDK 9 模块化重构
 
-!!! info "**类加载 一句话口诀**"
-    - **类加载五阶段"加载 → 验证 → 准备 → 解析 → 初始化"不是概念清单，是 JVMS §5 定义的执行时序**：`加载` 由字节码指令（`new` / `getstatic` / `putstatic` / `invokestatic` / `invokedynamic` / `ldc → Class`）**被动触发**，`初始化` 由 6 条"必须立即初始化"规则触发，中间三阶段（`验证` / `准备` / `解析`）合称 `Linking`。理解这套时序才能一次性理解 `ClassNotFoundException`（加载阶段找不到 `.class` 字节流）与 `NoClassDefFoundError`（曾经加载成功但初始化时 `<clinit>` 抛异常）的本质差异。
-    - **JVM 中"两个类相等"的精确定义 = `ClassLoader + 全限定名` 二元组**：同一个 `com.example.Foo` 被 `AppClassLoader` 和 `MyClassLoader` 各加载一次，在 JVM 内部就是两个独立的 `Klass`，`instanceof` 返回 `false`、`ClassCastException` 一触即发。这是"热部署换新 ClassLoader 实现类替换"与"Tomcat 多应用隔离依赖版本冲突"共享的**同一条底层机制**。
-    - **双亲委派不是"继承关系"而是"组合关系 + 递归委托"**：`ClassLoader.loadClass()` 内部 `parent.loadClass()` 递归上溯，只有父加载器抛 `ClassNotFoundException` 才回落到 `findClass()`——这条递归链是"用户无法自定义 `java.lang.String` 替换核心类"的唯一硬件防线；破坏它必须**重写 `loadClass()`** 而非 `findClass()`。
-    - **JDK 8 → 9 类加载器族发生了底层结构重构**：`Extension ClassLoader` 被 `Platform ClassLoader` 取代（不再接受用户扩展、`ext` 目录被移除）、`Bootstrap ClassLoader` 从加载 `rt.jar` 改为加载 `java.base` 等平台模块、`AppClassLoader` 从 `URLClassLoader` 子类改为 `BuiltinClassLoader` 子类。**升级 JDK 9+ 时读不到 `ext/` 目录扩展的类、`sun.misc.*` 类找不到，都是这次重构的直接后果**。
-
 **你能立刻答上来吗？**
 
 - `ClassNotFoundException` 与 `NoClassDefFoundError` 分别在类加载五阶段的**哪一阶段**抛出？实际触发点差异是什么？
@@ -21,18 +15,6 @@ title: 类加载机制与双亲委派模型 —— 五阶段字节码触发时�
 - JDK 8 升级到 JDK 11，`getSystemClassLoader() instanceof URLClassLoader` 从 `true` 变 `false`——为什么？`ext/` 目录扩展 JAR 为什么被静默忽略？
 
 任何一个问题让你迟疑超过 3 秒——继续读。
-
----
-
-> 📖 **边界声明**：本文是**战役四 · JVM Runtime 的序章**，聚焦"字节码 → 类加载 → 方法区"这条跨战役因果链的中转站。以下主题请见对应专题：
->
-> - **对象头 `Klass Pointer` 位分布 / `Klass` 元数据在 Metaspace 的完整对象布局 / `oop-Klass` 二元模型** → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)
-> - **`ClassLoaderData` 作为类卸载最小单元 + 三色标记对 `Klass` 的可达性分析** → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)
-> - **元空间 OOM 三大根因（类加载器泄漏 / 动态代理生成 / CGLIB 未卸载）排查与调优** → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)
-> - **Hidden Class（JDK 15+）与 `Lookup.defineHiddenClass` / GraalVM AOT / 模块系统 `--add-opens`** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)
-> - **`invokedynamic` + `LambdaMetafactory` 触发的 Lambda 类加载完整链路** → [函数式编程](@java-字节码-函数式编程)
-> - **反射 `Class.forName()` 与 `MethodHandles.Lookup` 触发类加载的完整调用链** → [反射与 MethodHandle](@java-字节码-反射与MethodHandle)
-> - **APT / ASM / Byte Buddy / Javassist 编译期字节码生成的加载入口** → [注解](@java-字节码-注解)
 
 ---
 

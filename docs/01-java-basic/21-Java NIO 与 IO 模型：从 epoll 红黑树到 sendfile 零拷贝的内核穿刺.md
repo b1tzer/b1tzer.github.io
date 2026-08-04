@@ -5,14 +5,6 @@ title: Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内
 
 # Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内核透视
 
-!!! info "**Java NIO 与 I/O 模型 一句话口诀**"
-    - **五种 I/O 模型两阶段记忆法**：`阶段一 = 等待数据（内核等网卡）` + `阶段二 = 拷贝数据（内核 → 用户空间）`。**同步 vs 异步的结构分水岭只看阶段二**——阶段二由**应用线程**拷贝就是同步（BIO / NIO / 多路复用 / 信号驱动全在此列）；阶段二由**内核**完成才是真异步（Java AIO / `io_uring`）。
-    - **Java NIO 对应的 OS 模型是"I/O 多路复用"、不是"非阻塞 I/O"**：`Selector` → `epoll_create1`、`Channel.register` → `epoll_ctl`、`selector.select` → `epoll_wait`——Java 层的"NIO"是营销名词，OS 层的准确称呼是"I/O 多路复用"，**`Selector` 本身是阻塞的**，只是阻塞的是 Selector 而非单个 Channel。
-    - **epoll 的三个系统调用 = O(1) 就绪查询的底层基石**：`epoll_create1` 建 `eventpoll` 对象（**红黑树** 存注册的 fd + **就绪链表** 存已就绪 fd）→ `epoll_ctl` 注册 fd 到红黑树 + 为该 fd 的网卡驱动挂 `ep_poll_callback` 钩子 → `epoll_wait` 只扫就绪链表（**O(1) 与 fd 总数无关**）——select / poll 的 O(n) 全量扫描痛点被彻底消灭。
-    - **`FileChannel.transferTo()` 底层是 sendfile —— 4 次拷贝减到 3 次甚至 2 次**：传统 `read + write` 走"磁盘 → 内核缓冲区 → 用户缓冲区 → Socket 缓冲区 → 网卡"共 4 次拷贝；sendfile 直接"内核缓冲区 → Socket 缓冲区"再一次 DMA 到网卡（3 次）；**Linux 2.4+ scatter/gather DMA 可省掉 CPU 拷贝、只留 2 次纯 DMA**——Kafka 消费者拉消息、Nginx 静态文件、Netty `DefaultFileRegion` 都靠这一条。
-    - **`ByteBuffer` 的 `flip()/clear()/compact()` 是 NIO 老手最容易翻车的 API**：4 个属性 `mark / position / limit / capacity` + `flip` 从写切读、`clear` 从读切写（**不清数据只重置指针**）、`compact` 从读切写但保留未读数据——忘 `flip()` 是新手最常见 Bug；Netty `ByteBuf` 用 `readerIndex / writerIndex` 双指针把这个心智负担彻底废掉。
-    - **JDK NIO 空轮询 Bug 是 epoll LT 模式 + JDK 未清理无效 fd 的组合病症**：`selector.select()` 本应阻塞、却在 Linux 某些内核版本下无限返回 0（CPU 100%）；Netty 的解法是**检测空轮询次数 > 阈值（默认 512）→ 重建 Selector → 把旧 Channel 全部重新 register**——这是"Netty 比原生 NIO 更靠谱"的核心原因之一。
-
 **你能立刻答上来吗？**
 
 - `Selector.select()` 到底是 select、poll 还是 epoll？JVM 是怎么根据 OS 选实现的？
@@ -23,18 +15,6 @@ title: Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内
 - Netty 为什么不用 Java AIO（`AsynchronousChannel`）？Linux 的 AIO 到底缺什么？
 
 任何一个问题让你迟疑超过 3 秒——继续读。
-
----
-
-> 📖 **边界声明**：本文聚焦"Java NIO 三大组件 + Linux epoll 底层机制 + sendfile 零拷贝"三条主线，以下主题请见对应姊妹文档：
->
-> - **Netty 的 Reactor 线程模型 + Pipeline + ByteBuf 完整源码** → `@netty` 专题（本文只讲 NIO 原生痛点 + Netty 解决方案摘要，不完整展开 Netty 源码）
-> - **Kafka Broker 如何用 sendfile 实现 Producer / Consumer 高吞吐** → `@kafka` 专题（本文只讲 sendfile 减拷贝底层原理，不重讲 Kafka Segment 文件结构）
-> - **`FileChannel.map()` 内存映射文件（mmap）的底层原理 + Page Cache** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) §"mmap 与堆外内存"
-> - **`DirectByteBuffer` 的堆外内存分配 + `Cleaner` 回收机制 + `-XX:MaxDirectMemorySize`** → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"直接内存"
-> - **线程池 7 参数 / Reactor 主从模型** → [并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池)（本文只讲 Netty BossGroup / WorkerGroup 摘要）
-> - **`epoll_wait` 阻塞时线程如何休眠 / 唤醒（Linux 内核等待队列）** → 属 OS 内核专题，本文只讲 Java 视角的"阻塞"语义
-> - **Java AIO（`AsynchronousChannel`）完整源码链路 + `io_uring` 在 JDK 21+ 的进展** → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术)（本文只讲"为什么 Netty 不用 AIO"结论）
 
 ---
 

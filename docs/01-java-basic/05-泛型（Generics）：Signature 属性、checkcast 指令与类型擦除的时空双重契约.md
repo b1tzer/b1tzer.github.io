@@ -41,7 +41,7 @@ title: 泛型（Generics）：Signature 属性、checkcast 指令与类型擦除
 
 ## 1. 第一层：业务痛点与反直觉幻觉
 
-### 1.1 经典 `instanceof` 悬案：一个类真的能"重载"两次吗？
+### 1.1 经典 `instanceof` 问题：一个类真的能"重载"两次吗？
 
 先看一段几乎每位老手都写过、却几乎每位老手都被 IDE 无情打脸过的代码：
 
@@ -85,7 +85,7 @@ if (stringList instanceof List<String>) { }
 
 ### 1.2 堆污染（Heap Pollution）：一颗延迟触发的时间炸弹
 
-如果上面的悬案还停留在"编译期拒载"的层面，那么下面这种线上问题则更隐蔽、更难定位——它**在污染发生的瞬间不报错，直到下游不相干的业务方法读取时才抛出异常**：
+如果上面的问题还停留在"编译期拒载"的层面，那么下面这种线上问题则更隐蔽、更难定位——它**在污染发生的瞬间不报错，直到下游不相干的业务方法读取时才抛出异常**：
 
 ```java
 public class GenericAnomaly {
@@ -271,7 +271,7 @@ public <T extends java.lang.Comparable<T>> java.util.List<T> pick(java.util.Map<
 - **`descriptor`**：`(Ljava/util/Map;)Ljava/util/List;` —— 类型参数已擦除，`Map<String, T>` 变成裸的 `Map`，`List<T>` 变成裸的 `List`。**这是 JVM 执行引擎唯一认可的方法身份**。
 - **`Signature` 属性**：`<T::Ljava/lang/Comparable<TT;>;>(Ljava/util/Map<Ljava/lang/String;TT;>;)Ljava/util/List<TT;>;` —— 擦除前的完整泛型签名，把类型参数 `T`、上界 `Comparable<T>`、`Map` 的两个具体类型参数、`List` 的返回泛型全部保留下来。
 
-这也就完美解释了 1.1 节的"重载悬案"：`javac` 判定方法重载时看的是 `descriptor`，两个 `process` 方法的 `descriptor` 都是 `(Ljava/util/List;)V` **完全一致**，被直接判为重复方法，`Signature` 属性根本进不了裁决现场。
+这也就完美解释了 1.1 节的"重载问题"：`javac` 判定方法重载时看的是 `descriptor`，两个 `process` 方法的 `descriptor` 都是 `(Ljava/util/List;)V` **完全一致**，被直接判为重复方法，`Signature` 属性根本进不了裁决现场。
 
 ### 2.3 拆解 `checkcast`：编译器自动插入的强转补丁
 
@@ -396,7 +396,7 @@ public void set(java.lang.Object);
 !!! warning "反射时会被桥接方法坑到"
     通过 `getClass().getDeclaredMethods()` 遍历 `StringBox` 时，你会拿到**两个** `set` 方法：一个 `set(String)`（真正实现）和一个 `set(Object)`（桥接方法）。如果反射调用桥接版本，会多一次 `checkcast` 的开销。**降维范式**：反射遍历方法时一律加 `if (method.isBridge()) continue;` 过滤。
 
-通过这一层字节码考古，我们不难发现：JVM 靠 `Signature` 属性保住了泛型的**编译期契约痕迹**，靠 `checkcast` + 桥接方法保住了**运行期契约兜底**。字节码的指令优化只解决了"行为的正确"，想要彻底破获 1.2 节留下的装箱风暴悬案，我们必须跨越字节码，踏入 JVM 运行时对象在堆内存上的字节排布。
+通过这一层字节码考古，我们不难发现：JVM 靠 `Signature` 属性保住了泛型的**编译期契约痕迹**，靠 `checkcast` + 桥接方法保住了**运行期契约兜底**。字节码的指令优化只解决了"行为的正确"，想要彻底破获 1.2 节留下的装箱风暴问题，我们必须跨越字节码，踏入 JVM 运行时对象在堆内存上的字节排布。
 
 ---
 
@@ -775,7 +775,7 @@ public class JsonMapper {
              └────────────── Bridge Method
 ```
 
-于是本篇讨论过的每一个悬案，都能在这张图上找到明确坐标：
+于是本篇讨论过的每一个问题，都能在这张图上找到明确坐标：
 
 ### 为什么 `process(List<String>)` 与 `process(List<Integer>)` 不能重载？
 
