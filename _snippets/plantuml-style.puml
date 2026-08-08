@@ -1,0 +1,35 @@
+' ─────────────────────────────────────────────────────────────
+' PlantUML 公共样式（skinparam）
+' 用途：所有 kroki-plantuml 代码块共用的样式定义
+' 由 hooks/inject_plantuml_style.py 在构建时自动注入到每张图
+'
+' 设计原则：
+'   此处仅放置"真正全局"的设置（背景、字体、阴影、箭头、圆角）。
+'   不在此处定义 rectangle / package 的填充色，
+'   以免覆盖各图中节点级别的颜色标注（如 `rectangle "X" #E6FFFA`）。
+'   各图可自行在图内定义节点配色。
+'
+' 设计目标：
+'   1. 透明背景，适配 MkDocs 明/暗主题
+'   2. 无阴影、圆角、浅灰箭头，风格现代扁平
+'   3. 与站点正文字体协调
+' ─────────────────────────────────────────────────────────────
+skinparam backgroundColor transparent
+skinparam shadowing true
+skinparam defaultFontName "Sans Serif"
+skinparam defaultFontSize 13
+skinparam roundCorner 8
+skinparam ArrowColor #555555
+skinparam ArrowThickness 1.2
+
+skinparam rectangle {
+  BackgroundColor #F7FAFC
+  BorderColor #4A5568
+  FontColor #1A202C
+}
+skinparam package {
+  BackgroundColor #EDF2F7
+  BorderColor #2D3748
+  FontColor #1A202C
+  FontStyle bold
+}
