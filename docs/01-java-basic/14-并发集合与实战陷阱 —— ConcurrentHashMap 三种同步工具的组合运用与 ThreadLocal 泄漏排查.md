@@ -887,23 +887,10 @@ Map<String, Integer> scores = Map.of("A", 90, "B", 85);
 
 ## 5. 🗺️ 跨篇章知识关联
 
-### 5.1 本文承接的知识点
-
-| 上游篇 → 本篇 | 承接内容 | 落地章节 | 状态 |
-| :-- | :-- | :-- | :-- |
-| [`08` 集合框架](@java-数据结构-集合框架) → 本文 | `ConcurrentHashMap` 完整源码 · `sizeCtl` / `transfer` / `ForwardingNode` · CoW 弱一致 | §2.1~§2.5 + §3.1~§3.3 | ✅ 已闭环（★★★★★） |
-| [`09` 数据结构精讲](@java-数据结构-数据结构精讲) → 本文 | `ConcurrentSkipListMap` 无锁 CAS 跳表原理 | §3.5 | ✅ 已闭环（★★★★★） |
-| [`10a` JMM 与线程同步](@java-并发-JMM与线程同步) → 本文 | `synchronized` 锁升级让 CHM 单槽位锁近乎零开销 · `@Contended` 避免伪共享 | §2.1 + §2.4 | ✅ 已闭环（★★★★） |
-| [`10c` Lock 与线程池](@java-并发-并发工具Lock与线程池) → 本文 | `ctl` 位编码 → `sizeCtl` 位编码同构 · `LongAdder` 分段 → `CounterCell` 分段 | §2.2 + §2.4 | ✅ 已闭环（★★★★） |
-
-### 5.2 本文关联的知识点（面向第四部分 · JVM Runtime）
-
-| 本篇 → 目标篇 | 关联内容 | 优先级 |
-| :-- | :-- | :-- |
-| 本文 → [`12a` 内存分区与对象布局](@java-JVM-内存分区与对象布局) | `ForwardingNode.hash == MOVED == -1` 的"哨兵节点"设计模式 · 与对象头 Mark Word 特殊位对照 | ★★ |
-| 本文 → [`12b` GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) | `CopyOnWriteArrayList` 旧快照数组阻止 GC · Young GC 压力线性上升 · 引用族与 GC Root | ★★★ |
-| 本文 → [`12c` GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) | `ThreadLocal` 泄漏 heap dump 定位 `ThreadLocalMap.table` · OOM 排查流程 | ★★★★ |
-| 本文 → [`12d` JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) | CHM 内部大量 `synchronized (f)` · 虚拟线程执行 CHM 时载体线程会被 pin · JDK 21+ 的适配之路 | ★★★★★ |
+- [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 展开本篇 `ForwardingNode.hash == MOVED == -1` 的哨兵节点设计模式，对照对象头 Mark Word 特殊位。
+- [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 展开本篇 `CopyOnWriteArrayList` 旧快照数组对 Young GC 压力的影响。
+- [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) 展开本篇 ThreadLocal 泄漏的 heap dump 定位方法（`ThreadLocalMap.table`）。
+- [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 展开本篇 CHM 内部大量 `synchronized` 对虚拟线程 pin 的影响。
 
 ---
 

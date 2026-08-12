@@ -896,12 +896,7 @@ public class HybridService {
 
 ## 5. 🗺️ 跨篇章知识关联
 
-本篇我们把 JUC 的锁与线程池拆解到源码层——它们的底层机制是 **"AQS `state` 上定义不同语义 + CAS 分段规避高竞争 + 位编码合并多字段同步"**。**锁族 = AQS 骨架的语义特化，线程池 `ctl` = 位分解的经典应用**——这是理解后续所有并发容器与虚拟线程的**共同基座**。
-
-在 [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 里，你会看到 `ConcurrentHashMap.sizeCtl` 复用了本文 §2.6 讲的**位编码技巧**——它用一个 `volatile int` 存"数组是否正在初始化 + 扩容线程数"两条状态；本文 §3.5 讲的 `execute` 三阶段决策也会与 CHM 的 `transfer` 迁移逻辑发生化学反应——同样是"CAS + `synchronized` 单槽位"的组合技，只是同步器从"任务队列"变成"哈希桶头节点"。同样在 §3.2 讲的六种阻塞队列，CHM 内部虽然不用它们，但 `LinkedTransferQueue` 的 CAS 无锁算法思想直接对应 CHM 的 `casTabAt` / `setTabAt` 家族——都是 `Unsafe.compareAndSetReference` 在数组元素上的应用。
-
-[JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"对象布局与对齐填充"里，你会看到本文 §3.3 讲的 `Cell` 每格 128 字节的底层构成——`@Contended` 注解在 JVM 层如何影响 `InstanceKlass` 的字段偏移量计算、如何让 GC 扫描时跳过填充位。`@Contended` 注解在 JVM 层"128 字节不是 `long` 本身多花了 15 倍内存，是 JVM 在字段前后各挖了一个 60 字节的坑"。
-
-再[JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 讲虚拟线程时，你会看到本文 §4.1 讲的"选 `ReentrantLock` 还是 `synchronized`"再次浮出水面——**`synchronized` 会 pin 虚拟线程到载体线程**（因为 monitor 是 native 结构，载体线程不能切走），**`ReentrantLock` 不会 pin**（因为它是 Java 层的 AQS，`park`/`unpark` 可以协作让出载体线程）。这个本质差异是"JDK 21 虚拟线程时代 `ReentrantLock` 复兴"的**唯一技术依据**，也让本文 §4.1 红线 1 的建议出现了微妙反转——虚拟线程场景下，选 `ReentrantLock` 反而成了默认选项。
-
-本篇 §2.4（`LongAdder` 分段计数）与 §3.3（`Cell` 缓存行伪共享），回头再看 [函数式编程](@java-字节码-函数式编程) §3.4 讲的 `ForkJoinPool.commonPool` 的 `WorkQueue` 数组——每个 `WorkQueue` 内部同样用 `@Contended` 独占缓存行，这是"工作窃取算法能在多核上实现线性加速"的根本来源。同样的技巧还会在 `Disruptor` 的 `Sequence` 计数器、Netty 的 `EventLoop` 任务队列、Reactor 的 `Sink` 内部状态字段上反复出现——**它们全部建立在本篇讲的"分段 + `@Contended`"底层机制上**。本篇在 JUC 源码中分析的每一条 `state` 位分解、每一份 `@Contended` 填充、每一次 `ctl` 位编码，都会变成你打通"锁—同步器—并发容器—虚拟线程—响应式编程"整条战线的关键钥匙。
+- [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 复用本篇 §2.6 的位编码技巧：`ConcurrentHashMap.sizeCtl` 用一个 `volatile int` 存"是否初始化 + 扩容线程数"；本篇 §3.5 的 `execute` 三阶段决策对应 CHM 的 `transfer` 迁移逻辑。
+- [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 展开本篇 §3.3 的 `Cell` 128 字节底层构成：`@Contended` 注解如何影响 `InstanceKlass` 字段偏移量计算、如何让 GC 扫描跳过填充位。
+- [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 承接本篇 §4.1 的锁选型：`synchronized` 会 pin 虚拟线程到载体线程，`ReentrantLock` 不会——这是虚拟线程时代锁选型的唯一技术依据。
+- [函数式编程](@java-字节码-函数式编程) 展开本篇 §2.4 / §3.3 的 `@Contended` 缓存行填充在 `ForkJoinPool.commonPool` 的 `WorkQueue` 数组上的应用。

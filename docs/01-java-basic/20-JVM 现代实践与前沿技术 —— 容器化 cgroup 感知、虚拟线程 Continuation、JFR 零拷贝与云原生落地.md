@@ -714,35 +714,5 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 
 ## 5. 🗺️ 跨篇章知识关联
 
-### 5.1 本文承接的知识点
-
-| 来源 | 关联内容 | 落地位置 |
-| :-- | :-- | :-- |
-| **[GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)** ★★★★★ | 容器化 JVM（`MaxRAMPercentage` · `UseContainerSupport`）· 虚拟线程 GC 视角 · JFR 深度使用 · 分代 ZGC 参数调优 | §1.1 引子三连击 · §2.3 JFR 事件模型 · §2.4 cgroup 感知源码 · §3.1 容器化架构图 · §4.1 分代 ZGC JEP 时间线 |
-| **[JVM 综览](@java-JVM-内存结构与GC) / [内存分区](@java-JVM-内存分区与对象布局)** ★★★★★ | JVM 现代实践 —— 收束篇 · 承接容器化 + 前沿技术 | §3 三张现代机制图（容器化 / M:N 线程 / 云原生）· §4.6 前沿技术速览 |
-| **[OOP](@java-字节码-面向对象)** ★★★ | 对象头 · Klass Pointer · 32GB 压缩指针边界 —— 容器场景下的堆大小选型 | §2.4 "为什么留 25% 给堆外" + §4.6 技术选型（堆 > 32GB 推荐分代 ZGC，隐含突破压缩指针边界） |
-
-### 5.2 本文关联的知识点
-
-| 本篇 → 目标篇 | 关联内容 | 优先级 |
-| :-- | :-- | :-- |
-| **`12d` → [Java NIO 与 I/O 模型](@java-OS-NIO与IO模型)** | 直接内存 GC 回收路径 · `DirectByteBuffer.Cleaner` · Netty `PooledByteBufAllocator` 管理堆外内存 · Panama FFM API（JEP 442）替代 JNI —— `13` 需承接堆外内存工程视角完整链路 | ★★★★★ |
-| **`12d` → 后续「并发编程」HotSpot 专题（拆分中）** | `Continuation` `freeze` / `thaw` 汇编级实现 · `VirtualThread` 与 `ForkJoinPool` 调度器协作 · `ScopedValue` 完整 API —— 后续并发专题需承接 M:N 线程模型完整源码 | ★★★★★ |
-| **`12d` → [Lock 与线程池](@java-并发-并发工具Lock与线程池)** | `ReentrantLock` 在虚拟线程场景下的 AQS `park` / `unpark` 与 `Continuation.yield` 协作 —— `10c` 需承接 AQS 在虚拟线程时代的新语义 | ★★★★ |
-| **`12d` → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)**（已完成） | 容器化 JVM 参数 · JFR 深度使用 · 分代 ZGC 参数 | ✅ 已闭环 |
-| **`12d` → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进)**（已完成） | 分代 ZGC 染色指针 · 读屏障 · Self-Healing | ✅ 已闭环 |
-| **`12d` → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)**（已完成） | 五分区内存布局（堆 / 元空间 / 直接内存 / 线程栈 / Code Cache） | ✅ 已闭环 |
-
-### 5.3 Q&A 归属指引
-
-按项目规则 §5.1 原则 ③，深度源码型收网篇不设独立 Q&A 章节。本文相关的现代实战、JEP 演进、前沿选型题在正文各层已给出答案：
-
-| 题目 | 答案所在 |
-| :-- | :-- |
-| 容器里跑 JVM 明明 `-Xmx` 设小了为何还被 OOM Killer 杀？如何一次性根治？ | §1.1 引子 1 + §2.4 + §4.4 红线 4 |
-| 虚拟线程到底适合什么场景？为什么 `synchronized` 会让它失效？JDK 24 怎么修的？ | §1.1 引子 2 + §2.1 + §2.2 |
-| JFR 和 async-profiler 怎么选？为什么 JFR 能持续开启开销 < 1%？ | §2.3 + §4.3 |
-| 分代 ZGC 和原来的 ZGC 有什么区别？我该用哪个？ | §4.1 |
-| Serverless 为什么用 GraalVM Native Image 反而更快？和传统 JIT 的取舍是什么？ | §4.2 + §4.6 |
-
-📖 **JIT 逃逸分析源码、`volatile` 双重屏障、`Continuation` 汇编实现**三类深度源码题已在 [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) / [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) / HotSpot 专题给出，本文不再重复。
+- [Java NIO 与 I/O 模型](@java-OS-NIO与IO模型) 承接本篇直接内存的 GC 回收路径，展开 `DirectByteBuffer.Cleaner`、Netty `PooledByteBufAllocator` 与 Panama FFM API（JEP 442）。
+- [Lock 与线程池](@java-并发-并发工具Lock与线程池) 承接本篇虚拟线程场景的锁选型：`ReentrantLock` 的 AQS `park` / `unpark` 与 `Continuation.yield` 协作。

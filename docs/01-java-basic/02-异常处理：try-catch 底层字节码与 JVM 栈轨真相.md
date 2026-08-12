@@ -450,6 +450,5 @@ try {
 
 ## 5. 🗺️ 跨篇章知识关联
 
-- [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 承接本篇 §3.2 的栈帧内存布局，展开堆中对象存活判定与 GC Root 遍历机制。
 - [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 展开本篇 §3.3 的 `fillInStackTrace()` Native 栈回溯：在虚拟线程（Virtual Thread）场景下，高频率的栈回溯可能触发载体线程（Carrier Thread）的 `synchronized` 固定（Pin）问题。
 - [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 承接本篇 §4.1 的异常控制流讨论，展开线程池中 `execute` vs `submit` 的异常传播差异。

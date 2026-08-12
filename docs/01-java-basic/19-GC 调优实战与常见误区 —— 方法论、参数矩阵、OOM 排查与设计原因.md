@@ -458,18 +458,5 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
 ## 10. 🗺️ 跨篇章知识关联
 
-### 10.1 本文承接的知识点
-
-- ✅ 回收 [GC 核心机制](@java-JVM-GC核心机制与收集器演进) 关联的知识点："**写屏障代价 5%~10%、CMS 三大缺陷、G1 RSet 内存开销、ZGC 读屏障额外开销** —— `12c` 需承接完整 GC 参数调优链路 + Full GC 排查 checklist + G1 vs ZGC 生产选型"（★★★★★）
-    - **落地位置**：§2 GC 日志分析（G1 Young/Mixed/Full + ZGC 亚毫秒 STW 完整日志样本）· §3 决策树 · §4 OOM 五字诀 · §5 参数矩阵 · §6 误区 3 & 4 · §8 Q4 收集器选型
-- ✅ 回收 [JVM 内存结构与 GC 综览](@java-JVM-内存结构与GC) / [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 关联的知识点："GC 调优 checklist + 生产黄金参数组合 —— `12c` 需完整承接"（★★★★）
-    - **落地位置**：§5.2 生产黄金参数组合 + §9 上线 Checklist 11 条
-
-### 10.2 本文关联的知识点
-
-| 本篇 → 目标篇 | 关联内容 | 优先级 |
-| :-- | :-- | :-- |
-| `12c` → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) | 容器化 JVM（`MaxRAMPercentage` · `UseContainerSupport`）· 虚拟线程 GC 视角 · JFR 深度使用 · 分代 ZGC（JEP 439 / JEP 474）参数调优 —— `12d` 需承接容器 & 前沿场景 | ★★★★★ |
-| `12c` → [NIO 与 IO 模型深度解析](@java-OS-NIO与IO模型) | 直接内存 GC 回收路径 · `DirectByteBuffer.Cleaner` · `-XX:+ExplicitGCInvokesConcurrent` · Netty `PooledByteBufAllocator` —— `13` 需承接堆外内存工程视角 | ★★★★ |
-| `12c` → [GC 核心机制](@java-JVM-GC核心机制与收集器演进) | 写屏障 / CMS 缺陷 / G1 RSet / ZGC 读屏障源码级机理 | ✅ 已闭环 |
-| `12c` → [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) | `ThreadLocal` 在线程池未 remove 导致堆 OOM | ✅ 已闭环 |
+- [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 承接本篇的容器化 JVM 参数与分代 ZGC 调优，展开虚拟线程 GC 视角与 JFR 深度使用。
+- [Java NIO 与 I/O 模型](@java-OS-NIO与IO模型) 承接本篇直接内存的 GC 回收路径，展开 `DirectByteBuffer.Cleaner` 与 Netty `PooledByteBufAllocator` 的堆外内存工程视角。
