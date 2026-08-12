@@ -623,7 +623,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 }
 ```
 
-同样，翻开 `ConcurrentHashMap` 源码（JDK 21），你会看到它的关键状态字段（`SIZECTL` / `TRANSFERINDEX` / `BASECOUNT` / `CELLSBUSY`）**依然通过 `jdk.internal.misc.Unsafe`**（`U.objectFieldOffset` + CAS 操作）实现，**并没有**改用 `VarHandle`。需注意：这里说的是 CHM 中使用 `Unsafe` 的**关键内部状态字段**，而非“全类所有字段都走 Unsafe”；同时具体实现会随 JDK 版本演化，若需基于此行为写代码应以对应版本的 OpenJDK 源码为准。
+同样，在 `ConcurrentHashMap` 源码（JDK 21）中，其关键状态字段（`SIZECTL` / `TRANSFERINDEX` / `BASECOUNT` / `CELLSBUSY`）**依然通过 `jdk.internal.misc.Unsafe`**（`U.objectFieldOffset` + CAS 操作）实现，**并没有**改用 `VarHandle`。需注意：这里说的是 CHM 中使用 `Unsafe` 的**关键内部状态字段**，而非“全类所有字段都走 Unsafe”；同时具体实现会随 JDK 版本演化，若需基于此行为写代码应以对应版本的 OpenJDK 源码为准。
 
 **这里需要区分两个概念（澄清一个常见误解）**：
 

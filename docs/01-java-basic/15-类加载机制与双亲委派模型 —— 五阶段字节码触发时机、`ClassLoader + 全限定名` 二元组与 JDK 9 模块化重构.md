@@ -741,23 +741,7 @@ if (commonInterface.isInstance(obj)) {
 
 ## 5. 🗺️ 跨篇章知识关联
 
-### 5.1 本文承接的知识点
-
-| 埋点篇 | 承接内容 | 落地位置 |
-| :-- | :-- | :-- |
-| ✅ [综览](@java-概览) | "类加载器族的完整家族卡片—— `11` 需在第四部分序章首次承接" | §3.5 术语家族卡片：`ClassLoader` 类加载器族 |
-| ✅ [注解](@java-字节码-注解) | "APT 编译期织入的字节码最终仍要走 `defineClass` 才能进入方法区" | §2.4 `defineClass` 唯一入口机制图 |
-| ✅ [函数式编程](@java-字节码-函数式编程) | "`invokedynamic` 触发的 Hidden Class 加载走 `Lookup.defineHiddenClass` 而非 `Unsafe.defineAnonymousClass`" | §2.1 6 类触发指令表 + §2.4 加载路径收敛图 |
-
-### 5.2 本文关联的知识点
-
-| 本篇 → 目标篇 | 关联内容 | 优先级 |
-| :-- | :-- | :-- |
-| `11 类加载` → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) | `Klass` 骨架在 Metaspace 里的完整对象布局（`ConstantPool` / `Method` / `vtable` / `itable` 各字段偏移）——本篇 §3.1 只画了三元强引用外壳，字段级位分布留给 `12a` | ★★★★★ |
-| `11 类加载` → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) | `ClassLoaderData` 作为类卸载最小单元 + `Klass` 与 `ClassLoader` 相互强引用的 GC 可达性分析——本篇 §3.1 结论"只要 CL 不被 GC，Klass 就无法卸载"的完整可达性证明留给 `12b` | ★★★★★ |
-| `11 类加载` → [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) | 元空间 OOM（`OutOfMemoryError: Metaspace`）的三大根因（类加载器泄漏 / 动态代理生成 / 未卸载 CGLIB）与 `-XX:MaxMetaspaceSize` 调优——本篇 §3.1 埋下"泄漏一个 CL = 泄漏整个类树"的排查主线 | ★★★★ |
-| `11 类加载` → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) | Hidden Class（JDK 15+）与 `Lookup.defineHiddenClass` / 模块系统 `--add-opens` / GraalVM AOT 的类加载差异——本篇 §2.4 已埋 `Lookup.defineHiddenClass` 的入口，完整机制留给 `12d` | ★★★★ |
-
----
-
-> 📖 **元空间 OOM 排查、Hidden Class 完整机制、模块系统 `--add-opens` 详细行为、动态代理与 CGLIB 类泄漏排查** 等实战调优题已在 [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) / [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 给出答案，本文专注"五阶段字节码触发时机 + 双亲委派递归链路 + `ClassLoader + 全限定名` 二元组"三层机制。
+- [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 展开本篇 §3.1 的 `Klass` 骨架在 Metaspace 中的字段级位分布（`ConstantPool` / `Method` / `vtable` / `itable`）。
+- [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 展开本篇 §3.1 的 `ClassLoaderData` 类卸载最小单元，以及 `Klass` 与 `ClassLoader` 相互强引用的 GC 可达性分析。
+- [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) 展开本篇 §3.1 的元空间 OOM 三大根因（类加载器泄漏 / 动态代理生成 / 未卸载 CGLIB）。
+- [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 展开本篇 §2.4 的 Hidden Class（JDK 15+）与 `Lookup.defineHiddenClass`、模块系统 `--add-opens`、GraalVM AOT 类加载差异。

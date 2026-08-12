@@ -738,11 +738,10 @@ private static final TransmittableThreadLocal<UserContext> CONTEXT = new Transmi
 
 ## 5. 🗺️ 跨篇章知识关联
 
-JMM 的底层机制是 **CPU 内存屏障 + MESI 缓存一致性协议 + `LOCK` 前缀原子指令**的组合，这是后续所有并发/异步/框架设计的硬件基础。
-
 - [AQS 设计哲学](@java-并发-AQS设计哲学) 承接本篇 §3.3 的 `park` / `unpark` 二元信号量语义。AQS 的 CLH 队列在节点入队后调用 `LockSupport.park(this)` 挂起，前驱节点释放锁时调用 `LockSupport.unpark(next)` 精确唤醒后继——**`unpark(Thread)` 的精确唤醒能力（而非 `notify` 的公共队列语义）是 AQS 高性能队列锁的基础**。同时本篇 §2.4 的 `LOCK CMPXCHG` 是 AQS `compareAndSetState` 的底层 x86 指令，AQS 在其上叠加了 CLH 队列调度。
 - [Lock 与线程池](@java-并发-并发工具Lock与线程池) 展开本篇 §4.4 的 `LongAdder` → `Striped64` 类（`Cell` 数组初始化时机、`@Contended` 缓存行填充、`probe` 线程哈希 rehash）；`ReentrantLock` 公平/非公平锁对比 §2.3 中 `synchronized` 的隐式锁升级；线程池 `Worker` 类用 AQS `state` 编码"执行中 + shutdown"双状态。本篇 §3.5 的 `ThreadLocal` 引用强度族陷阱，是 Alibaba TransmittableThreadLocal 存在的根本动机。
 - [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 展开本篇 §2.3 中 `ConcurrentHashMap` 单槽位 `synchronized` 的锁升级机制——CHM `putVal` 对链表头节点加轻量级锁，`sizeCtl` 用 `LOCK CMPXCHG` 无锁初始化，`ForwardingNode` 借助 `Unsafe.compareAndSwapObject` 扩容换表——**每一处并发原语都是 CPU 屏障 + MESI + LOCK 前缀的组合**。
 - [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §7 展开本篇 §2.3 的 Mark Word 完整位分布（hashCode 31 bit、age 4 bit、压缩指针优化、[JEP 450 Compact Object Headers](https://openjdk.org/jeps/450)）。[JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 讲虚拟线程时，承接 `synchronized` 重量级锁陷入内核 `park` 的路径——**持有 `synchronized` 锁时的 `park` 是虚拟线程 pin 到载体线程的关键触发因素**（HotSpot 无法把 monitor 状态从载体栈搬到虚拟线程栈），JDK 24 [JEP 491] 正在系统性移除这个 pin 点。
 
-本篇 §2.4（`LOCK CMPXCHG` + MESI）与 §2.5（`VarHandle` 六种访问模式）的底层原语，在 [Java8 函数式编程](@java-字节码-函数式编程) §2.1 的 `invokedynamic` / `MethodHandle` 家族中也有对应——JDK 9 引入的 `java.lang.invoke.*` 包本质上是将 `Unsafe` 的 native 原语（内存屏障、原子操作、字段直读）**类型安全化 + 语义显式化**的公开 API。到 [集合框架](@java-数据结构-集合框架) §2.2 的桥接方法 `checkcast`、[数据结构精讲](@java-数据结构-数据结构精讲) §3 的 `ConcurrentSkipListMap` 无锁跳表，`VarHandle.compareAndSet` 以不同姿态复用同一套硬件原语——**并发正确性是 CPU 硬件保证 + 语言层契约 + 编译器插入屏障三方合作的产物**。
+- [Java8 函数式编程](@java-字节码-函数式编程) §2.1 展开本篇 §2.5 的 `VarHandle` 家族：JDK 9 引入的 `java.lang.invoke.*` 将 `Unsafe` 的 native 原语类型安全化。
+- [数据结构精讲](@java-数据结构-数据结构精讲) §3 展开本篇 §2.5 的 `VarHandle.compareAndSet` 在 `ConcurrentSkipListMap` 无锁跳表中的复用。

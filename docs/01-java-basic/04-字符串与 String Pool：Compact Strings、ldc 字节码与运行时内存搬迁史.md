@@ -647,7 +647,5 @@ Arrays.fill(passwordBuffer, '\0'); // 立即将缓冲区清零
 
 ## 8. 🗺️ 跨篇章知识关联
 
-本篇中 `String` 的内存膨胀、Compact Strings 布局与 StringTable 搬迁，所有的内存操作、引用复制、以及字节数组的流转，都发生在 JVM 的**堆内存（Java Heap）**边界之内。
-
-- [Java NIO 与 IO 模型](@java-OS-NIO与IO模型) 展开跨出 Java 堆的场景：当需要单机十万并发、触及操作系统内核的零拷贝（Zero-Copy）时，需要在内核空间上开辟堆外直接内存（`DirectByteBuffer`），本篇的 `byte[]` 字节排列将通过 `mmap` 与 `sendfile` 系统调用在网卡与磁盘总线上传输。
+- [Java NIO 与 IO 模型](@java-OS-NIO与IO模型) 展开本篇的字节数组跨出 Java 堆的场景：零拷贝（Zero-Copy）与堆外直接内存（`DirectByteBuffer`）。
 - [Java8 函数式编程](@java-字节码-函数式编程) §2.1 展开本篇 §6.3 中作为拼接入口出现的 `invokedynamic` 指令，提供完整的 `CallSite` / `BootstrapMethod` / `LambdaMetafactory` 家族拆解。

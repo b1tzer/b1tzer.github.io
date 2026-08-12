@@ -81,7 +81,7 @@ BIO 线程模型：一连接一线程
 
 ## 2. 第二层：字节码考古 —— `strace` + `sun.nio.ch.*` 源码 + `SelectorProvider` 三件套剖析
 
-> ⭐ **本层特殊说明**：NIO 的"字节码考古"不是抓 `javap -v`，而是抓 **JVM 到 OS 内核的三件观测工具**：`strace -e trace=<syscall>` 抓真实系统调用序列、`sun.nio.ch.EPollSelectorImpl` 看 JDK 内部实现、`SelectorProvider.provider()` 看多平台分派——这是"从 JVM 下沉到 OS 内核"的部分收官动线。
+> ⭐ **本层特殊说明**：NIO 的"字节码考古"不是抓 `javap -v`，而是抓 **JVM 到 OS 内核的三件观测工具**：`strace -e trace=<syscall>` 抓真实系统调用序列、`sun.nio.ch.EPollSelectorImpl` 看 JDK 内部实现、`SelectorProvider.provider()` 看多平台分派——这是"从 JVM 下沉到 OS 内核"的观察路径。
 
 ### 2.1 `strace` 抓 `Selector.select()` 的真实系统调用
 
@@ -202,6 +202,25 @@ sendfile(4, 3, [0], 10737418240) = 10737418240
 
 ### 3.1 五种 I/O 模型两阶段对比图（核心机制图 1）
 
+!!! note "📖 术语家族：I/O 模型（I/O Model）五态族"
+    **字面义**：I/O Model —— 应用程序与内核之间数据传输的模式。
+
+    **在 Unix/Linux 中的含义**：POSIX 定义的五种 I/O 模型，Java 三种 API（BIO / NIO / AIO）分别对应其中几种；**同步 vs 异步的结构分水岭只看阶段二**。
+
+    **家族成员**：
+
+    | 成员 | 阶段一（等数据） | 阶段二（拷贝数据） | Java API |
+    | :-- | :-- | :-- | :-- |
+    | 阻塞 I/O | 阻塞 | 阻塞 | `java.io.*`（BIO） |
+    | 非阻塞 I/O | 轮询 EWOULDBLOCK | 阻塞 | `SocketChannel.configureBlocking(false)` 单独使用 |
+    | I/O 多路复用 | select/poll/epoll 阻塞 | 阻塞 | `java.nio.channels.Selector`（Java NIO） |
+    | 信号驱动 I/O | 立即返回、SIGIO 通知 | 阻塞 | Java 无对应 API |
+    | 异步 I/O | 不阻塞 | 不阻塞 | `AsynchronousChannel`（Java AIO） / `io_uring` |
+
+    **命名规律**：**是否阻塞 × 阶段** = 5 种组合；**同步 vs 异步只看阶段二**。
+
+    **易混点**：Java NIO 属于"I/O 多路复用"、**不是"非阻塞 I/O"**——`Selector.select()` 是阻塞的、只是阻塞的是 Selector 而非单个 Channel。
+
 ```txt
 ┌──────────────┬──────────────────────────────┬───────────────────────┐
 │   I/O 模型    │      阶段一：等待数据          │   阶段二：数据拷贝       │
@@ -230,6 +249,25 @@ sendfile(4, 3, [0], 10737418240) = 10737418240
 - **Java NIO 属于"I/O 多路复用"、不属于"非阻塞 I/O"**：`Selector.select()` 是**阻塞的**、只是阻塞的是 Selector 而非单个 Channel——**JDK NIO 的 Channel 底层同时开了 `SOCK_NONBLOCK`**（非阻塞 socket）、但监听靠 Selector 阻塞——这是"多路复用"的准确实质含义。
 
 ### 3.2 epoll 内核数据结构图（核心机制图 2）
+
+!!! note "📖 术语家族：`epoll_*` 系统调用族"
+    **字面义**：`epoll` = **e**vent **poll**、Linux 2.6+ 提供的高性能 I/O 多路复用机制。
+
+    **在 Linux 内核中的含义**：`linux/fs/eventpoll.c` 实现的一整套系统调用，JDK NIO 在 Linux 上的底层实现完全对应到这套系统调用。
+
+    **家族成员**：
+
+    | 成员 | 作用 | 时间复杂度 | JDK 层调用 |
+    | :-- | :-- | :-- | :-- |
+    | `epoll_create1(flags)` | 创建 epoll 实例（红黑树 + 就绪链表）、返回 epoll fd | O(1) | `Selector.open()` |
+    | `epoll_ctl(epfd, ADD/MOD/DEL, fd, event)` | 注册 / 修改 / 删除 fd | O(log n) 红黑树操作 | `channel.register()` / `key.interestOps()` / `key.cancel()` |
+    | `epoll_wait(epfd, events, maxevents, timeout)` | 阻塞等待就绪 fd | **O(1)** 只扫就绪链表 | `selector.select()` / `selectNow()` |
+    | `EPOLL_CTL_ADD` / `EPOLL_CTL_MOD` / `EPOLL_CTL_DEL` | `epoll_ctl` 的操作码 | — | 隐含在 JDK 内部 |
+    | `EPOLLIN` / `EPOLLOUT` / `EPOLLET` / `EPOLLONESHOT` | 事件 / 触发方式标志 | — | `SelectionKey.OP_READ` / `OP_WRITE` 等 |
+
+    **命名规律**：`epoll_<动作>` = 系统调用；`EPOLL_<常量>` = 操作码或事件标志。一一对应到 JDK 的 `sun.nio.ch.EPoll` native 方法。
+
+    **易混点**：`epoll_wait` 的 O(1) 指**扫就绪链表**、不是"扫红黑树"——红黑树只在 `epoll_ctl` 注册时用到（O(log n)）；数据到达网卡时 `ep_poll_callback` 把 `epitem` **推**进就绪链表，`epoll_wait` 醒来只需摘链表头部。
 
 ```txt
 epoll 内核态数据结构（Linux linux/fs/eventpoll.c）：
@@ -562,112 +600,4 @@ b.bind(8080).sync();
 
 ## 5. 🗺️ 跨篇章知识关联
 
-### 5.1 术语家族卡片一：I/O 模型五态族（全站首次承接）
-
-!!! note "📖 术语家族：I/O 模型（I/O Model）五态族"
-    **字面义**：I/O Model —— 应用程序与内核之间数据传输的模式。
-
-    **在 Unix/Linux 中的含义**：POSIX 定义的五种 I/O 模型，Java 三种 API（BIO / NIO / AIO）分别对应其中几种；**同步 vs 异步的结构分水岭只看阶段二**。
-
-    **家族成员**：
-
-    | 成员 | 阶段一（等数据） | 阶段二（拷贝数据） | Java API |
-    | :-- | :-- | :-- | :-- |
-    | 阻塞 I/O | 阻塞 | 阻塞 | `java.io.*`（BIO） |
-    | 非阻塞 I/O | 轮询 EWOULDBLOCK | 阻塞 | `SocketChannel.configureBlocking(false)` 单独使用 |
-    | I/O 多路复用 | select/poll/epoll 阻塞 | 阻塞 | `java.nio.channels.Selector`（Java NIO） |
-    | 信号驱动 I/O | 立即返回、SIGIO 通知 | 阻塞 | Java 无对应 API |
-    | 异步 I/O | 不阻塞 | 不阻塞 | `AsynchronousChannel`（Java AIO） / `io_uring` |
-
-    **命名规律**：**是否阻塞 × 阶段** = 5 种组合；**同步 vs 异步只看阶段二**。
-
-    **易混点**：Java NIO 属于"I/O 多路复用"、**不是"非阻塞 I/O"**——`Selector.select()` 是阻塞的、只是阻塞的是 Selector 而非单个 Channel。
-
-### 5.2 术语家族卡片二：`epoll_*` 系统调用族（全站首次承接）
-
-!!! note "📖 术语家族：`epoll_*` 系统调用族"
-    **字面义**：`epoll` = **e**vent **poll**、Linux 2.6+ 提供的高性能 I/O 多路复用机制。
-
-    **在 Linux 内核中的含义**：`linux/fs/eventpoll.c` 实现的一整套系统调用，JDK NIO 在 Linux 上的底层实现完全对应到这套系统调用。
-
-    **家族成员**：
-
-    | 成员 | 作用 | 时间复杂度 | JDK 层调用 |
-    | :-- | :-- | :-- | :-- |
-    | `epoll_create1(flags)` | 创建 epoll 实例（红黑树 + 就绪链表）、返回 epoll fd | O(1) | `Selector.open()` |
-    | `epoll_ctl(epfd, ADD/MOD/DEL, fd, event)` | 注册 / 修改 / 删除 fd | O(log n) 红黑树操作 | `channel.register()` / `key.interestOps()` / `key.cancel()` |
-    | `epoll_wait(epfd, events, maxevents, timeout)` | 阻塞等待就绪 fd | **O(1)** 只扫就绪链表 | `selector.select()` / `selectNow()` |
-    | `EPOLL_CTL_ADD` / `EPOLL_CTL_MOD` / `EPOLL_CTL_DEL` | `epoll_ctl` 的操作码 | — | 隐含在 JDK 内部 |
-    | `EPOLLIN` / `EPOLLOUT` / `EPOLLET` / `EPOLLONESHOT` | 事件 / 触发方式标志 | — | `SelectionKey.OP_READ` / `OP_WRITE` 等 |
-
-    **命名规律**：`epoll_<动作>` = 系统调用；`EPOLL_<常量>` = 操作码或事件标志。一一对应到 JDK 的 `sun.nio.ch.EPoll` native 方法。
-
-    **易混点**：`epoll_wait` 的 O(1) 指**扫就绪链表**、不是"扫红黑树"——红黑树只在 `epoll_ctl` 注册时用到（O(log n)）；数据到达网卡时 `ep_poll_callback` 把 `epitem` **推**进就绪链表，`epoll_wait` 醒来只需摘链表头部。
-
-> 📖 引用其他篇的家族：
->
-> - `DirectByteBuffer` / `Cleaner` / `-XX:MaxDirectMemorySize` → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"直接内存"
-> - `FileChannel.map()` / mmap / Page Cache → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) §"mmap 与堆外内存"
-> - Netty `Bootstrap` / `EventLoopGroup` / `ChannelPipeline` / `ByteBuf` → `@netty` 专题
-> - Kafka `LogSegment` + `sendfile` 高吞吐链路 → `@kafka` 专题
-
-### 5.3 Q&A 归属分配
-
-按 §5.1 原则 ③，深度源码型只留源码机制题、其他题目 `📖` 引用。
-
-| 题干 | 归属 | 处理 |
-| :-- | :-- | :-- |
-| **Q1**：Java NIO 属于五种 I/O 模型的哪一种？为什么不是"非阻塞 I/O"？ | 本篇 | 答"I/O 多路复用 · `Selector.select()` 是阻塞的、只是阻塞的是 Selector 而非单个 Channel · 同步 vs 异步的结构分水岭只看阶段二"，详见 §3.1 |
-| **Q2**：select / poll / epoll 的核心区别？epoll 的 O(1) 复杂度是怎么做到的？ | 本篇 | 答"红黑树存注册 fd + 就绪链表存就绪 fd · epoll_wait 只扫就绪链表、不遍历红黑树 · 网卡驱动 IRQ 回调把就绪 fd 推进链表"，详见 §3.2、§3.3 |
-| **Q3**：`FileChannel.transferTo()` 为什么比 `read + write` 快？零拷贝到底"零"了什么？ | 本篇 | 答"底层 sendfile · 用户空间一个字节都不经过 · Linux 2.4+ scatter/gather DMA 减到 2 次拷贝 · '零'的是 CPU 参与、DMA 拷贝始终存在"，详见 §3.5 |
-| **Q4**：Netty 为什么不用 Java AIO？Linux 的 AIO 到底缺什么？ | 本篇 | 答"Linux 传统 POSIX AIO 用线程池模拟、性能不如 epoll · Netty 在 Linux 用 epoll、macOS 用 kqueue，均属 I/O 多路复用 · `io_uring` 才是真异步 I/O（JDK 21+ 探索）" |
-| **Q5**：JDK NIO 空轮询 Bug 到底是什么？Netty 怎么绕过去？ | 本篇 | 答"epoll LT 模式 + JDK 未清理无效 fd 的组合病症 · `selector.select()` 无限返回 0 CPU 100% · Netty 检测空轮询次数 > 阈值（默认 512）→ 重建 Selector → 旧 Channel 重新 register"，详见 §4.5 |
-| Netty Pipeline / ChannelHandler / ByteBuf 完整源码 | `📖` 引用 | → `@netty` 专题 |
-| Kafka 消费者拉消息为什么这么快 | `📖` 引用 | → `@kafka` · 本篇只讲 sendfile 底层 |
-| `ByteBuffer.allocateDirect()` 的堆外内存怎么回收 | `📖` 引用 | → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"直接内存" |
-
-> 📖 **Netty Pipeline 完整源码、Kafka Broker 高吞吐秘密、DirectByteBuffer 堆外内存回收链路**已在 `@netty` / `@kafka` / [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 给出答案，本文不再重复，专注"epoll 红黑树 + sendfile 零拷贝 + Selector / Channel / Buffer 三大组件"题。
-
-### 5.4 知识关联登记
-
-**本文承接的知识点**：
-
-- ✅ 回收 [并发工具：Lock 与线程池](@java-并发-并发工具Lock与线程池) 的知识点："BIO Tomcat 线程池打满 vs NIO Reactor 少线程多连接—— `13` 承接 C10K 场景的 NIO 解决方案"（★★★★）
-    - **落地位置**：§1.1 生产事故现场 + §4.1 红线 1
-- ✅ 回收 [集合框架](@java-数据结构-集合框架) 的知识点："`ConcurrentHashMap` 在 Netty EventLoop 里作为高并发 fd → handler 映射—— `13` 承接使用场景"（★★★）
-    - **落地位置**：§4.5 红线 5（Netty attribute map 作为 CHM 使用场景一笔带过）
-- ✅ 回收 [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 的知识点："`DirectByteBuffer` 堆外内存内存位置—— `13` 承接 NIO 直接缓冲区省一次堆到堆外拷贝的使用价值"（★★★★）
-    - **落地位置**：§2.3 sendfile 对比末尾 + §3.6 三大组件协作图
-
-**本文关联的知识点（待后续展开）**：
-
-| 本篇 → 目标篇 | 关联内容 | 优先级 |
-| :-- | :-- | :-- |
-| `13 NIO 与 IO 模型` → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) | `io_uring` 真异步 I/O + JDK 21+ Loom 虚拟线程重新让 BIO 变香—— `12d` 需承接前沿场景 | ★★★★★ |
-| `13 NIO 与 IO 模型` → `@netty` 专题 | Netty 主从 Reactor + Pipeline + ByteBuf 完整源码——本篇只做摘要引子 | ★★★★★ |
-| `13 NIO 与 IO 模型` → `@kafka` 专题 | Kafka Broker sendfile 消费链路 + LogSegment 文件结构——本篇只讲 sendfile 内核底层链路 | ★★★★ |
-
-### 5.5 字节码 → JVM → OS 三层因果链闭合
-
-本篇是**本部分唯一一篇 OS 视角文档**，也是全站"应用代码 → JVM → 内核 → 硬件"四层抽象贯穿的最终收官：
-
-```mermaid
-flowchart LR
-    A[应用代码<br/>Selector.select] --> B[JVM 层<br/>EPollSelectorImpl.epfd]
-    B --> C[Native 层<br/>sun.nio.ch.EPoll.wait]
-    C --> D[内核层<br/>epoll_wait 系统调用]
-    D --> E[数据结构<br/>eventpoll.rdllist 就绪链表]
-    E --> F[硬件层<br/>网卡 IRQ + DMA]
-
-    style A fill:#e8ffe1
-    style D fill:#fff4e1
-    style F fill:#ffe1e1
-```
-
-**收官总结**：
-
-- **第一部分（字节码考古）** 提供了 `invokedynamic` / `invokevirtual` / `checkcast` 这些 JVM 指令；
-- **第四部分（JVM Runtime）** 提供了 Mark Word / Metaspace / GC Barrier 这些 JVM 数据结构；
-- **本部分（向 OS 举刀）** 提供了 `epoll_wait` / `sendfile` / `eventpoll.rdllist` 这些**内核系统调用与数据结构**。
-
-三层因果链闭合后，**Netty / Kafka / Nginx 的高吞吐秘密全部揭开**——它们只是"epoll 红黑树 + 就绪链表 + sendfile 零拷贝"这两条主线在不同场景下的排列组合。
+- [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 承接本篇的 `io_uring` 真异步 I/O，展开 JDK 21+ Loom 虚拟线程对 I/O 模型的影响。
