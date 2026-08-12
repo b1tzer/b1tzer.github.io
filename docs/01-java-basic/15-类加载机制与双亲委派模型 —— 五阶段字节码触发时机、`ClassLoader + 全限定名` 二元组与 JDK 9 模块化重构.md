@@ -91,7 +91,7 @@ public class RuleEngine {
 
 ## 2. 第二层：字节码考古 —— 6 类触发指令、`<clinit>` 合成规则与 `defineClass` 唯一入口
 
-> ⭐ **本层特殊说明**：类加载篇的"字节码考古"聚焦**触发类加载的 6 类字节码指令 + `<clinit>` 合成规则 + `defineClass` 唯一入口**，是"字节码 → 类加载 → JVM 内存"跨战役因果链的关键中转站。所有战役一（字节码考古）埋下的伏笔——`invokestatic` 触发静态方法调用类、`invokedynamic` 触发 CallSite 类加载、`ldc → Class` 的"轻触"性质——都在本层收敛。
+> ⭐ **本层特殊说明**：类加载篇的"字节码考古"聚焦**触发类加载的 6 类字节码指令 + `<clinit>` 合成规则 + `defineClass` 唯一入口**，是"字节码 → 类加载 → JVM 内存"跨篇章因果链的关键中转站。所有第一部分（字节码考古）介绍的知识——`invokestatic` 触发静态方法调用类、`invokedynamic` 触发 CallSite 类加载、`ldc → Class` 的"轻触"性质——都在本层收敛。
 
 ### 2.1 主考古样本一：触发类加载的 6 类字节码指令
 
@@ -106,7 +106,7 @@ invokedynamic #<BSM>          → 触发 CallSite 目标类加载 + 初始化  �
 ldc #<Class Foo>              → 只触发 Foo 的加载，不初始化 ⚠️ JDK 5+ 修订
 ```
 
-**顿悟点**：
+**关键结论**：
 
 - `ldc → Class` 指令**只触发加载**，不触发初始化——这就是 `Foo.class.getName()` **不会**执行 `Foo` 的 `<clinit>()` 的根本原因；而 `Class.forName("Foo")` 会（因其 `initialize=true` 默认值走完整链路）
 - `invokedynamic` 是 JDK 7 新增的第 5 类触发指令——JDK 8 的 Lambda、JDK 9 的字符串拼接、JDK 15 的 Hidden Class 都借这条指令入场
@@ -165,7 +165,7 @@ public static final long BIG;
   // ❌ 无 ConstantValue 属性
 ```
 
-**顿悟三条**：
+**关键结论**：
 
 1. `field_info.attributes` 里的 `ConstantValue` 属性是**准备阶段赋非零值**的**唯一硬件依据**（JVMS §4.7.2）
 2. 仅 **8 种基本类型 + `String`** 的 `final static` 字面量能产生 `ConstantValue`——`Integer` 装箱、`enum`、`new Foo()` 全部走 `<clinit>` 路径
@@ -211,13 +211,13 @@ static {};
     27: return
 ```
 
-**顿悟三条**：
+**关键结论**：
 
 1. `<clinit>()` 是**编译器合成方法**，`ACC_STATIC` 标志，与 `<init>()`（实例构造方法）并列——但**只此一个**（无重载），因为静态代码块和静态字段赋值会被**合并到同一个** `<clinit>()`
 2. 合并顺序 = **源码书写顺序**——静态字段赋值和静态代码块交错时，字节码里也按同样顺序生成 `putstatic` 与代码块指令
 3. `<clinit>()` 的**多线程单次执行**由 JVM 保证：JDK 6 之前是 `synchronized(this)` 的全局锁，JDK 7 起改为 `ClassLoader.getClassLoadingLock(name)` 的 **per-class 锁**——不同类的 `<clinit>` 可以并发，同一类的 `<clinit>` 只执行一次
 
-**顿悟金句**：静态内部类单例模式（Bill Pugh Singleton）的线程安全，根源不在 `synchronized` 也不在 `volatile`，而在 `<clinit>()` 的 JVM 契约——JVM 保证每个类的 `<clinit>` 在多线程首次访问时**只执行一次**，且执行完成前其他线程阻塞在 per-class 锁上。
+**关键结论**：静态内部类单例模式（Bill Pugh Singleton）的线程安全，根源不在 `synchronized` 也不在 `volatile`，而在 `<clinit>()` 的 JVM 契约——JVM 保证每个类的 `<clinit>` 在多线程首次访问时**只执行一次**，且执行完成前其他线程阻塞在 per-class 锁上。
 
 ```java
 public class Singleton {
@@ -256,7 +256,7 @@ public class Singleton {
                               加入 ClassLoaderData 的 klass 链表    ← 归属确定
 ```
 
-**顿悟点**：无论是编译产物 `.class` 文件、Lambda 生成的 `LambdaProbe$$Lambda$1`、还是 ASM 运行时织入的字节码，**最终都要走 `defineClass` 才能进入方法区**——这是 JIT 与 AOT 无法绕过的"字节流 → JVM 类型系统"内存边界。
+**关键结论**：无论是编译产物 `.class` 文件、Lambda 生成的 `LambdaProbe$$Lambda$1`、还是 ASM 运行时织入的字节码，**最终都要走 `defineClass` 才能进入方法区**——这是 JIT 与 AOT 无法绕过的"字节流 → JVM 类型系统"内存边界。
 
 > 📖 `invokedynamic` + `LambdaMetafactory` 触发的 Hidden Class 加载完整链路详见 [函数式编程](@java-字节码-函数式编程) §"`invokedynamic` 引导链路"；`Lookup.defineHiddenClass` 的现代实践详见 [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) §"Hidden Class"。
 
@@ -295,7 +295,7 @@ Metaspace（方法区）                                       Heap（Java 堆�
                                              CLD → 反向持有该 CLD 内所有 Klass
 ```
 
-**顿悟三条**：
+**关键结论**：
 
 1. **`Klass` 与 `ClassLoader` 相互强引用**——`Klass.java_mirror` 指向堆中 `Class<Foo>` 对象；`Class<Foo>.classLoader` 字段指回 `AppClassLoader`；`AppClassLoader.classes` 反向持有已加载类列表。**只要 `ClassLoader` 对象不被 GC，它加载的所有 `Klass` 都无法卸载**——这是"热部署必须换新 CL 实例，旧实例断开引用后类才会真正卸载"的**硬性必要条件**
 2. **`ClassLoaderData`（CLD）是 GC 卸载类的最小单元**——整体回收 / 整体保留，不存在"卸载 CLD 里一部分类"的操作。这就是元空间 OOM 排查时"泄漏一个类加载器 = 泄漏它加载的整个类树"的根本原因
@@ -370,7 +370,7 @@ AppClassLoader.loadClass("com.example.Foo")
               └── defineClass()                       ← 字节流 → Klass
 ```
 
-**顿悟四条**：
+**关键结论**：
 
 1. 递归调用链是**深度优先向上遍历**——"父加载器优先"是**递归返回顺序**的自然结果，不是 `if (parent != null) parent.load; else self.load;` 这种直觉理解
 2. **`findLoadedClass()` 每层都要检查一次**——这是"同一个类不会被同一 CLD 加载两次"的硬件保证，也是"重写 `findClass()` 保留双亲委派"的底层基础
@@ -739,19 +739,19 @@ if (commonInterface.isInstance(obj)) {
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔
+## 5. 🗺️ 跨篇章知识关联
 
-### 5.1 本文回收的伏笔
+### 5.1 本文承接的知识点
 
 | 埋点篇 | 承接内容 | 落地位置 |
 | :-- | :-- | :-- |
-| ✅ [综览](@java-概览) | "类加载器族的完整家族卡片—— `11` 需在战役四序章首次承接" | §3.5 术语家族卡片：`ClassLoader` 类加载器族 |
+| ✅ [综览](@java-概览) | "类加载器族的完整家族卡片—— `11` 需在第四部分序章首次承接" | §3.5 术语家族卡片：`ClassLoader` 类加载器族 |
 | ✅ [注解](@java-字节码-注解) | "APT 编译期织入的字节码最终仍要走 `defineClass` 才能进入方法区" | §2.4 `defineClass` 唯一入口机制图 |
 | ✅ [函数式编程](@java-字节码-函数式编程) | "`invokedynamic` 触发的 Hidden Class 加载走 `Lookup.defineHiddenClass` 而非 `Unsafe.defineAnonymousClass`" | §2.1 6 类触发指令表 + §2.4 加载路径收敛图 |
 
-### 5.2 本文埋下的伏笔
+### 5.2 本文关联的知识点
 
-| 本篇 → 目标篇 | 伏笔内容 | 优先级 |
+| 本篇 → 目标篇 | 关联内容 | 优先级 |
 | :-- | :-- | :-- |
 | `11 类加载` → [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) | `Klass` 骨架在 Metaspace 里的完整对象布局（`ConstantPool` / `Method` / `vtable` / `itable` 各字段偏移）——本篇 §3.1 只画了三元强引用外壳，字段级位分布留给 `12a` | ★★★★★ |
 | `11 类加载` → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) | `ClassLoaderData` 作为类卸载最小单元 + `Klass` 与 `ClassLoader` 相互强引用的 GC 可达性分析——本篇 §3.1 结论"只要 CL 不被 GC，Klass 就无法卸载"的完整可达性证明留给 `12b` | ★★★★★ |

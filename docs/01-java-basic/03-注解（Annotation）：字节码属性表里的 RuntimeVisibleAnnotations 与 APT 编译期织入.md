@@ -9,39 +9,39 @@ title: 注解（Annotation）：字节码属性表里的 `RuntimeVisibleAnnotati
 
 ## 1. 业务痛点
 
-### 1.1 同样是注解，为什么命运差这么远？
+### 1.1 三种注解，三种生命周期
 
-在写下一个 `@` 符号的时候，几乎没有人会认真区分——它究竟能活多久、能在什么时点干啥。但注解与注解之间，实际上存在十分悬殊的命运分野：
+三个标注了 `@` 的注解，写法完全一样，运行时行为却截然不同：
 
-- Lombok 的 `@Data` 能在编译期凭空生成整套 `getter/setter` 字节码，但运行时拿着反射去抠属性 ——查无此人。
-- Spring 的 `@Transactional` 则完好存活到运行时的堆内存里，反射能直接拿到传播行为、回滚规则等属性。
-- Google AutoService 的 `@AutoService` 在编译期写好 `META-INF/services` 后就不知去向，既不需要保留到 `.class`，也不需要入内存。
+- Lombok 的 `@Data`：编译期生成 `getter/setter` 字节码，但运行时用反射查——不存在。
+- Spring 的 `@Transactional`：完整保留到运行时，反射可以读取传播行为、回滚规则等属性。
+- Google AutoService 的 `@AutoService`：编译期生成 `META-INF/services` 后即被丢弃，既不进 `.class`，也不入内存。
 
-三者写法长得一模一样，都叫"注解"，但在编译器、`.class` 文件、JVM 内存这条时间线上，它们的位置完全不同。**注解本身不是机制，只是一张贴纸；真正决定它能干啥的，是贴纸被贴在了生命周期的哪一段**。
+差异的根因不在注解本身——注解只是附着在类/方法/字段上的一段元数据。决定它何时生效、何时消失的，是它的**保留策略（`@Retention`）**和**消费方（编译器 vs 运行时框架）**的组合。
 
-### 1.2 一个典型的侧面例证
+### 1.2 一个典型场景
 
-一个自定义权限校验注解如果错将 `@Retention` 写成 `SOURCE` 或 `CLASS`，那么切面里的下面这行代码会在运行时直接拿到 `null`：
+自定义权限校验注解如果错将 `@Retention` 设为 `SOURCE` 或 `CLASS`：
 
 ```java
 @Target(ElementType.METHOD)
-@Retention(RetentionPolicy.SOURCE)   // ❌ 就这一个字决定了命运
+@Retention(RetentionPolicy.SOURCE)   // 保留策略决定了运行时能否查到
 public @interface RequiresRole { String value(); }
 
 // 切面里：
 RequiresRole annotation = method.getAnnotation(RequiresRole.class);
-String role = annotation.value();  // 💥 NPE
+String role = annotation.value();  // NPE —— 运行时注解已被丢弃
 ```
 
-这类情况在开发环境下往往不会暴露（因为包含处理器的时机不同），一旦上线，就会变成一起看上去完全无法理解的 NPE。而情况往往只有一个：**写注解的人与读注解的人，对它该活多久的理解不一致**。
+这类问题在开发环境下可能不暴露（编译期处理器的行为掩盖了缺失），上线后就是一个难以定位的 NPE。根因通常只有一个：**声明注解的人与消费注解的人，对保留策略的理解不一致**。
 
-要看清这一切，就得直接反编译 `.class` 文件，把注解在字节码中的真实形态抓出来。
+要理清这个问题，需要直接看 `.class` 文件中注解的真实存储形态。
 
 ---
 
 ## 2. 字节码考古
 
-先给出一个容易被忽视的事实：**Java 的注解在 `.class` 文件里没有任何可执行指令，它只是附着在类、方法、方法参数或字段上的一段属性表（Attribute Table）内的只读元数据**。
+先明确一个基本事实：**Java 注解在 `.class` 文件中没有任何可执行指令，它只是附着在类、方法、方法参数或字段上的一段属性表（Attribute Table）内的只读元数据**。
 
 ### 2.1 属性表里的贴纸：`RuntimeVisibleAnnotations`
 
@@ -74,7 +74,7 @@ public void cancelOrder(java.lang.String);
     **在字节码规范中的含义**：附在 `ClassFile` / `field_info` / `method_info` / `Code` 结构上的**只读属性表**之一（JVMS §4.7），不产生任何可执行指令。
     **同家族成员**：
 
-    | 成员 | 贴在哪里 | 类加载时命运 | 规范出处 |
+| 成员 | 附着位置 | 类加载时留存状态 | 规范出处 |
     | :-- | :-- | :-- | :-- |
     | `RuntimeVisibleAnnotations` | 类 / 方法 / 字段 | 读入元空间常驻 | JVMS §4.7.16 |
     | `RuntimeInvisibleAnnotations` | 同上 | 读入后丢弃 | JVMS §4.7.17 |
@@ -148,7 +148,7 @@ public final class $Proxy0 extends Proxy implements RequiresRole {
 4. 这个代理类内部持有一个 Map，里面塞满了从属性表里读出来的配置（如 {"value", "ADMIN"}）。
 5. 最终返回给你的 `anno` 引用，是一个封装了 `AnnotationInvocationHandler` 的 JDK 动态代理实例。调用 `anno.value()` 实际上是查询这个运行时 Map 中的只读字符串。
 
-运行时注解的运作机制到此已经完整：`RuntimeVisibleAnnotations` 属性表提供存储，`AnnotationParser` + JDK 动态代理提供访问层。但 §1.1 提到的命运分野还没解完：Lombok / Spring / AutoService 三张贴纸的具体归局，得交给下一层的 `RetentionPolicy` 与 APT 回答。
+运行时注解的运作机制：`RuntimeVisibleAnnotations` 属性表提供存储，`AnnotationParser` + JDK 动态代理提供访问层。下一层要回答的是 Lombok / Spring / AutoService 三种注解的生命周期差异——这取决于 `RetentionPolicy` 与 APT。
 
 ---
 
@@ -160,7 +160,7 @@ public final class $Proxy0 extends Proxy implements RequiresRole {
 
 ### 3.1 三大保留策略（`RetentionPolicy`）的内存本质分野
 
-在语法层，我们通过 `@Retention` 决定注解的寿命。在 JVM 的内存结构中，这三大策略直接决定了元数据在内存空间中的生死存亡：
+在语法层，通过 `@Retention` 决定注解的保留级别。在 JVM 的内存结构中，这三级策略直接决定了元数据在内存中的是否留存：
 
 ```txt
  源码文件 (.java) ───────► 字节码文件 (.class) ───────► JVM 方法区内存 (Metaspace)
@@ -179,11 +179,10 @@ public final class $Proxy0 extends Proxy implements RequiresRole {
  └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-理解了这层内存分野，§1.1 里 Lombok / Spring 的双标就不再奇怪了：
+结合这层内存差异回看 §1.1 的三个案例：
 
-- Lombok 的 `@Data` 声明的是 `SOURCE`。它在变成 `.class` 文件前就被丢进了垃圾桶，因此运行时反射自然“查无此人”。
-- Spring 的 `@Transactional` 声明的是 `RUNTIME`。它必须常驻于元空间，等待 Spring 在运行时通过反射去抠出里面的元数据字符串。
-
+- Lombok 的 `@Data` 声明 `SOURCE`。编译为 `.class` 文件前已被丢弃，运行时反射无法查到。
+- Spring 的 `@Transactional` 声明 `RUNTIME`。常驻元空间，供 Spring 在运行时通过反射读取其中的元数据。
 ### 3.2 APT 的编译期机制：直接改写抽象语法树（AST）
 
 既然 SOURCE 级别的注解在编译后就消失了，那 Lombok 的 `@Data` 是怎么变出 `getter/setter` 字节码的？
@@ -201,7 +200,7 @@ flowchart TD
 
 这里的核心区别是：**APT 改的是 AST，不是字节码**。Lombok 与字节码增强工具（ASM / Byte Buddy / Javassist）在原理上是两条不同的路——后者是在 `.class` 生成之后再改，前者是在 `.class` 生成之前就已经改好。
 
-真正干活的地方在第 4 步。Lombok 走的不是标准 `javax.lang.model` API（那套 API 只能“读” AST、官方只允许“生成新文件”），而是**直接拿到 `javac` 内部的 `JavacProcessingEnvironment`，强转拿到该类的 AST——`com.sun.tools.javac.tree.JCTree`**，直接往里面插新节点。伪代码大致长这样：
+真正执行修改的位置在第 4 步。Lombok 走的不是标准 `javax.lang.model` API（那套 API 只能“读” AST、官方只允许“生成新文件”），而是**直接拿到 `javac` 内部的 `JavacProcessingEnvironment`，强转拿到该类的 AST——`com.sun.tools.javac.tree.JCTree`**，直接往里面插新节点。伪代码大致长这样：
 
 ```java
 // Lombok 处理 @Getter 的简化逻辑（仅伪代码，说明关键步骤）
@@ -401,9 +400,7 @@ public User findUser(String tenantId, String id) { ... }
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔
+## 5. 🗺️ 跨篇章知识关联
 
-本篇留下两个未展开的伏笔，交给后续战役收回：
-
-- **反射性能三大根因**：§3.3 提到 `RUNTIME` 注解在 Spring AOP 链路上会付出反射代价，但到底“反射为什么慢”并未展开。安全检查、无法 JIT 内联、参数装箱这三条硬依据，在 [反射（Reflection）](@java-字节码-反射与MethodHandle) 一篇中以字节码与 JIT 日志逐条验证。
-- **代理类与 JIT / 逃逸分析的碰撞**：本篇看到的 `$Proxy0` 只是开头。当它大量出现在并发高频路径上时，也会直接影响 JIT 的方法内联与逃逸分析贴堆判定；这一点在 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 的可见性与同步化开销讨论中会再碰头。
+- [反射（Reflection）](@java-字节码-反射与MethodHandle) 展开本篇 §2.3 中反射调用的性能根因：安全检查、无法 JIT 内联、参数装箱，以字节码与 JIT 日志逐条验证。
+- [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 展开本篇 §2.3 中 `$Proxy0` 代理类在高并发路径上对 JIT 方法内联与逃逸分析的影响。

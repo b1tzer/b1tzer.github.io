@@ -43,7 +43,7 @@ title: 泛型（Generics）：Signature 属性、checkcast 指令与类型擦除
 
 ### 1.1 经典 `instanceof` 问题：一个类真的能"重载"两次吗？
 
-先看一段几乎每位老手都写过、却几乎每位老手都被 IDE 无情打脸过的代码：
+先看一段经常被 IDE 拒绝编译的代码：
 
 ```java
 public class GenericProbe {
@@ -233,7 +233,7 @@ class ComparableBox<T extends Comparable<T>> {
     | `LocalVariableTypeTable` | Code | **局部变量的擦除前泛型类型** | IDE 调试器 · 极少数框架 |
     | `RuntimeVisibleAnnotations` | 各种 info | 运行时可见注解（详见 [注解篇](@java-字节码-注解)） | 反射 API |
 
-    **命名规律**：**"运行时执行引擎会消费的表" → 挂在 `Code` 下（`Exception Table` / `LineNumberTable` / `StackMapTable`）**；**"仅供编译器 / 反射 / 调试器旁路消费的元数据表" → 平级挂在 `ClassFile` 或 `method_info` 下（`Signature` / `Exceptions` / `LocalVariableTable`）**。老手常混淆——JVM 执行引擎在方法调用时**从不看 `Signature`**，它只按擦除后的方法描述符 `(Ljava/lang/Object;)Ljava/lang/Object;` 派发。
+    **命名规律**：**"运行时执行引擎会消费的表" → 挂在 `Code` 下（`Exception Table` / `LineNumberTable` / `StackMapTable`）**；**"仅供编译器 / 反射 / 调试器旁路消费的元数据表" → 平级挂在 `ClassFile` 或 `method_info` 下（`Signature` / `Exceptions` / `LocalVariableTable`）**。容易混淆——JVM 执行引擎在方法调用时**从不看 `Signature`**，它只按擦除后的方法描述符 `(Ljava/lang/Object;)Ljava/lang/Object;` 派发。
 
     !!! warning "易混点：`Signature` ≠ `descriptor`（方法描述符）"
         `descriptor`（如 `(Ljava/lang/Object;)Ljava/lang/Object;`）是 JVM 执行引擎唯一认可的**擦除后**方法签名，用于方法派发；`Signature`（如 `(Ljava/lang/String;)Ljava/util/List<Ljava/lang/String;>;`）是**擦除前**的完整泛型签名，仅供旁路消费者阅读。方法重载判定依据 `descriptor`，因此 1.1 节两个 `process` 方法擦除后 descriptor 完全相同，直接被判为"重复方法"。
@@ -344,7 +344,7 @@ public void probe();
     **命名规律**：**动词 + 名词 = "对栈顶引用施加的类型语义动作"**——`checkcast` = "check 一下能不能 cast"、`instanceof` = "问一下是不是 instance of"、`athrow` = "a（当前）throw 出去"。三条指令共享同一套底层 `Klass::is_subtype_of` 快速通道，性能开销几乎一致。
 
     !!! warning "易混点：`checkcast` 失败抛 CCE，`instanceof` 失败只返回 false"
-        很多老手把 `checkcast` 当成 `instanceof` 的等价物——不是。`checkcast` 是**类型契约的强制执行者**（不通过就爆炸），`instanceof` 是**类型契约的旁观询问者**（不通过只是压 false）。编译器在**泛型返回值使用点自动插入 `checkcast`**，是为了在类型擦除后依然维持"你写了 `String s = list.get(0)` 就必须真的拿到 String"的契约承诺。
+        `checkcast` 不是 `instanceof` 的等价物。`checkcast` 是**类型契约的强制执行者**（不通过就抛异常），`instanceof` 是**类型契约的旁观询问者**（不通过只是压 false）。编译器在**泛型返回值使用点自动插入 `checkcast`**，是为了在类型擦除后依然维持"你写了 `String s = list.get(0)` 就必须真的拿到 String"的契约承诺。
 
 ### 2.4 桥接方法（Bridge Method）：擦除留下的签名裂缝
 
@@ -456,7 +456,7 @@ int x = ids.get(0);   // Integer → int 隐式拆箱
 
 **装箱风暴的性能代价 = 5 倍内存 + 每一个 Integer 对象都参与 GC 标记与复制**。当 QPS 达到 5 万，每秒新增数百万个 Integer 对象涌入 Eden，Minor GC 频率从毫秒级降到亚秒级——这就是 1.3 节接口 P99 台阶式劣化的底层真相。
 
-> 📖 **对象头字段（Mark Word / Klass Pointer）的完整位分布 + 指针压缩阈值** 详见 [字符串底层原理](@java-字节码-字符串底层原理) §3.1 与后续战役四 [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)，本文不再重复。
+> 📖 **对象头字段（Mark Word / Klass Pointer）的完整位分布 + 指针压缩阈值** 详见 [字符串底层原理](@java-字节码-字符串底层原理) §3.1 与后续第四部分 [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局)，本文不再重复。
 
 ### 3.2 `Integer.valueOf` 的缓存池：一处极易被忽略的隐形黑名单
 
@@ -557,7 +557,7 @@ flowchart TB
     D --> E["ParameterizedType 对象<br>rawType = BaseRepository.class<br>actualTypeArguments = [User.class]"]
 ```
 
-关键顿悟点是：**能被反射拿到泛型的必须是"类 / 字段 / 方法签名"这三个层级的泛型**，因为它们对应的 `Klass` 元数据表里挂了 `Signature` 属性。而**局部变量的泛型信息不保留**——因为局部变量在字节码里只有 `LocalVariableTypeTable` 且默认不开启，绝大多数 JVM 场景根本不生成这张表。这就是为什么 `new BaseRepository<User>(){}` 必须用**匿名子类**才能拿到 `User`——你要通过"构造一个类的方式"让泛型信息挂到 `Klass` 上。
+**能被反射拿到泛型的必须是"类 / 字段 / 方法签名"这三个层级的泛型**，因为它们对应的 `Klass` 元数据表里挂了 `Signature` 属性。而**局部变量的泛型信息不保留**——因为局部变量在字节码里只有 `LocalVariableTypeTable` 且默认不开启，绝大多数 JVM 场景根本不生成这张表。这就是为什么 `new BaseRepository<User>(){}` 必须用**匿名子类**才能拿到 `User`——你要通过"构造一个类的方式"让泛型信息挂到 `Klass` 上。
 
 ### 3.5 Spring `ResolvableType`：泛型反射的工业级封装
 
@@ -654,7 +654,7 @@ public <T> T loadJson(String json, TypeReference<T> typeRef) {
 }
 // 调用方：用 {} 构造匿名子类
 List<User> users = loadJson(json, new TypeReference<List<User>>() {}); 
-// 💡 顿悟点：new TypeReference<List<User>>() {} 里的 {} 让编译器生成了一个匿名子类
+// new TypeReference<List<User>>() {} 里的 {} 让编译器生成了一个匿名子类
 //         这个子类的 Signature 属性里挂着 List<User>
 //         Jackson 通过 getGenericSuperclass() 反查出 List<User>
 ```
@@ -835,14 +835,8 @@ Class 文件 → Signature → Reflection → ParameterizedType → ResolvableTy
 
 ---
 
-## 6. 🗺️ 跨战役知识伏笔
+## 6. 🗺️ 跨篇章知识关联
 
-本章我们深挖了泛型在 Class 文件里留下的两张"签名报表"——`descriptor` 与 `Signature`，以及编译器在使用点自动插入的 **`checkcast`** 类型断言指令。请把这个硬件事实记住："每一次泛型返回值使用都伴随一次 `checkcast`"
-
-因为在接下来的《反射性能底层原理与 MethodHandle》里，我们将看到反射 API 为了处理**擦除后的方法签名 + 使用点必须重新 checkcast**这两条硬约束，是如何被 JIT 编译器判定为"难以内联"——而 JDK 7 引入的 `MethodHandle` 又是如何通过**将 `checkcast` 常量折叠到 CallSite 里**，把反射的性能开销降到与直接调用同一数量级的。
-
-进一步，在下一篇《[Java 8] 函数式编程》里，我们会看到 `invokedynamic` 是如何绕开桥接方法这道障碍，让 Lambda 表达式直接在字节码层面变成"零装箱、零反射、零桥接"的最高效函数指针——**Lambda 的性能红利，本质上就是它一次性避开了本章讲的桥接方法与 checkcast 两大机制**。
-
-最后到战役三的《并发集合与实战陷阱》，你会看到 `ConcurrentHashMap<K, V>` 内部的 `Node<K,V>` 与 `TreeNode<K,V>` 在字节码层面都是裸的 `Object` 引用；而 CAS 操作的每一次 `Node.next` 更新都建立在**擦除后的裸引用比较**之上——正是本章的类型擦除机制，让 CAS 无锁化在泛型集合上成为可能。
-
-到那时，你今天在字节码世界里搞清的每一条 `checkcast` 与每一张 `Signature`，都会变成你打通"泛型—反射—Lambda—CAS"整条战线的关键钥匙。
+- [反射与 MethodHandle](@java-字节码-反射与MethodHandle) 展开本篇的 `checkcast` 类型断言指令的性能影响：反射 API 处理擦除后的方法签名 + 使用点 `checkcast` 这两条硬约束，会被 JIT 判定为难以内联；JDK 7 引入的 `MethodHandle` 通过将 `checkcast` 常量折叠到 `CallSite` 里，把反射开销降到接近直接调用。
+- [Java8 函数式编程](@java-字节码-函数式编程) 展开本篇 `invokedynamic` 与桥接方法的关系：Lambda 通过 `invokedynamic` 绕开桥接方法，在字节码层面实现零装箱、零桥接。
+- [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 展开本篇类型擦除对并发集合的影响：`ConcurrentHashMap<K,V>` 内部的 `Node<K,V>` 与 `TreeNode<K,V>` 在字节码层面都是裸的 `Object` 引用，CAS 操作的每一次 `Node.next` 更新都建立在擦除后的裸引用比较之上。

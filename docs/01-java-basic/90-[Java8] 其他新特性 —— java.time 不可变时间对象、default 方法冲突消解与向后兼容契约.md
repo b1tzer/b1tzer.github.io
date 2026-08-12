@@ -276,7 +276,7 @@ public void hello();
      4: return
 ```
 
-**顿悟点（一句话）**：`X.super.m()` 语法糖会编译成 `invokespecial InterfaceMethod`（**接口级** `invokespecial`，Java 8 前只有类级）——这是"平级冲突必须显式消除"能被 JVM 精确识别的底层基础。
+**关键结论**：`X.super.m()` 语法糖会编译成 `invokespecial InterfaceMethod`（**接口级** `invokespecial`，Java 8 前只有类级）——这是"平级冲突必须显式消除"能被 JVM 精确识别的底层基础。
 
 > 📖 **深度分析**（`invokespecial` / `invokevirtual` / `invokeinterface` / `invokestatic` / `invokedynamic` 五条 `invoke*` 指令族的完整对比）见 [面向对象](@java-字节码-面向对象) §"`invoke*` 五条指令族"。
 
@@ -386,7 +386,7 @@ public interface DataProcessor {
 
 ## 3. 何时来查这份附录
 
-按 `requirements.md §5.5` 契约，番外附录**不承担 Q&A 题目**（顿悟感任务由深度源码型承担）。改用"何时来查这份附录"使用说明表取代传统 Q&A：
+按 `requirements.md §5.5` 契约，番外附录**不承担 Q&A 题目**该任务由深度源码型承担。改用"何时来查这份附录"使用说明表取代传统 Q&A：
 
 | 使用场景 | 应查阅本文哪一节 | 深度机制外链 |
 | :-- | :-- | :-- |
@@ -400,11 +400,11 @@ public interface DataProcessor {
 
 ---
 
-## 4. 🗺️ 跨战役知识伏笔
+## 4. 🗺️ 跨篇章知识关联
 
-番外附录以**"埋伏笔为主 · 回收为零"**为定位，所有深度顿悟感任务下放给深度源码型 8 篇。本文向后续篇章埋下 4 条伏笔：
+番外附录以**"建立知识关联为主 · 回收为零"**为定位，本文指向 4 篇后续篇章：
 
-| 本篇 → 目标篇 | 伏笔内容 | 优先级 |
+| 本篇 → 目标篇 | 关联内容 | 优先级 |
 | :-- | :-- | :-- |
 | `90 Java8 其他新特性` → [函数式编程](@java-字节码-函数式编程) | `Optional` 与 `Stream` 深度机制 —— 本篇只做"何时来查附录"引导 | ★★ |
 | `90 Java8 其他新特性` → [面向对象](@java-字节码-面向对象) | 接口 `default` 方法走 `invokespecial InterfaceMethod` —— `01` 是 `invoke*` 五条指令族的首发承接篇 | ★★★ |

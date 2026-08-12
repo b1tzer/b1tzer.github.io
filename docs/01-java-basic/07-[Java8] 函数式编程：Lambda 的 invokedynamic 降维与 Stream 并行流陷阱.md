@@ -47,13 +47,13 @@ public class InventoryReplenishService {
 }
 ```
 
-上线当天大促定时任务触发，**同时 4 个批次进入 `replenishBatch`**，服务在 30 秒内所有 HTTP 接口 P99 从 200ms 飙到 8 秒，`/actuator/health` 端点被 `readinessProbe` 判定失败，K8s 强制重启 Pod——**问题不是接口本身慢，而是所有和 `parallelStream` 无关的接口也一起崩了**。
+上线后大促定时任务触发，**同时 4 个批次进入 `replenishBatch`**，服务在 30 秒内所有 HTTP 接口 P99 从 200ms 飙到 8 秒，`/actuator/health` 端点被 `readinessProbe` 判定失败，K8s 强制重启 Pod——**问题不是接口本身慢，而是所有和 `parallelStream` 无关的接口也一起崩了**。
 
 事后线程 dump 显示：JVM 里 `ForkJoinPool.commonPool` 的 **7 个 Worker**（8 核机器默认 `parallelism = availableProcessors() - 1 = 7`）**全部**卡在 `supplierClient.placeOrder` 的 `SocketRead0` 上；4 个批次共约 2000 个 SKU 任务在池的任务队列里堆积排队；后续所有依赖 `commonPool` 的 `parallelStream` 与 `CompletableFuture.supplyAsync(无 executor)` 一并饥饿。而这个 `commonPool` 是整个 JVM **所有** `parallelStream()`、无 executor 参数版的 `CompletableFuture.*Async`、以及 `Arrays.parallelSort()`（数组长度 ≥ 8192 且 `parallelism > 1` 时）共享的执行器——**当它被阻塞 I/O 占满，全站并行计算能力归零**。
 
 **这就是"Lambda 让代码变简洁"的最贵版本代价**——`.parallelStream()` 打字只要 6 个键、语义清晰、代码好看，但它在 JVM 里真实调度到的 `ForkJoinPool.commonPool` 是**全局共享的稀缺资源**，且从字节码到线程池的整条链路，Java 语言层面**没有给你任何编译期警告**。
 
-### 1.2 反问引子：老手也未必答得上的 5 个 Lambda 问题
+### 1.2 五个核心底层问题
 
 - **问题 1**：`Comparator<String> c = (a, b) -> a.compareTo(b);` 在 `javap -c` 里是一条 `invokedynamic` 指令。它到底在"动态"什么？和 06 篇里的反射 `invokeExact` 是同一条 JVM 指令吗？
 - **问题 2**：非捕获 Lambda（如 `() -> "hello"`）在 1 亿次循环里究竟创建了多少个 `Runnable` 实例？如果只有 1 个，那么捕获了循环变量 `i` 的 `() -> i` 又是多少个？
@@ -203,7 +203,7 @@ BootstrapMethods:
 
 **逐行破案**：
 
-- **形式 1 静态引用** → `REF_invokeStatic`，`LambdaMetafactory` 直接把 `Integer.parseInt` 的 `MethodHandle` 塞进 `CallSite`，**零装箱、零 `this` 传递**、可直接 JIT 内联。
+- **形式 1 静态引用** → `REF_invokeStatic`，`LambdaMetafactory` 直接把 `Integer.parseInt` 的 `MethodHandle` 写入 `CallSite`，**零装箱、零 `this` 传递**、可直接 JIT 内联。
 - **形式 2 特定对象引用** → `REF_invokeVirtual` + **捕获 `prefix`**（`prefix` 作为 `CallSite` 的运行期参数注入生成类的构造器），生成的匿名类有**一个 `String` 字段**保存 `prefix`。
 - **形式 3 任意对象引用** → `REF_invokeVirtual` + **不捕获**，生成的匿名类**无字段**，调用时把参数作为第一个隐式 `this` 传给 `String.length`。
 - **形式 4 构造器引用** → `REF_newInvokeSpecial`（`invokespecial` + `new` 的复合语义），生成的匿名类的 `get()` 方法内部执行 `new ArrayList<>()`。
@@ -302,7 +302,7 @@ r2.run(); // 输出 [a, b]——Lambda 能看到新元素
 │ [Mark Word 8B] [Klass* 4B]  │               │ [Mark Word 8B] [Klass* 4B]         │
 │ [ padding 4B ]              │               │ [ String prefix 4B ] [ int seq 4B] │
 └─────────────────────────────┘               └─────────────────────────────────────┘
-   16 字节 · OpenJDK 下通常复用                 24 字节 · 每次 new · 高频调用会打爆 Eden
+   16 字节 · OpenJDK 下通常复用                 24 字节 · 每次 new · 高频调用会快速填满 Eden
    实例(ConstantCallSite 缓存) · 无 GC 压力    （实例仍需字节对齐到 8B 边界）
 ```
 
@@ -660,14 +660,11 @@ names.stream()
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔
+## 5. 🗺️ 跨篇章知识关联
 
-本篇我们把 Java 8 的 Lambda / Stream / 方法引用剥到骨头缝里——它们的底层真相是 **`invokedynamic` + `LambdaMetafactory.metafactory` 生成 `ConstantCallSite`**，而 `CallSite` 内部持有的正是 [反射（Reflection）](@java-字节码-反射与MethodHandle) 讲的 `MethodHandle`。请把"**Lambda = `invokedynamic` + `CallSite` + `LambdaMetafactory` 运行期生成匿名类**"这个硬件事实焊死在脑海——这是理解后续所有并发/异步/框架设计的**共同基座**。
-
-因为在紧接着的战役二 [集合框架](@java-数据结构-集合框架) 与 [数据结构精讲](@java-数据结构-数据结构精讲) 里，你会看到 `HashMap.forEach(BiConsumer)`、`ConcurrentHashMap.computeIfAbsent(k, Function)` 这些"接受 Lambda 的 API"——它们在字节码层面全部是本篇讲的 `invokedynamic` 机制的落地形态，`ConcurrentHashMap.computeIfAbsent` 里的 `mappingFunction.apply(k)` 一行调用背后，正是 `LambdaMetafactory` 生成的匿名类 + `MethodHandle` 常量折叠。
-
-进一步，在战役三 [并发基础](@java-并发-JMM与线程同步) → [AQS 设计哲学](@java-并发-AQS设计哲学) → [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 里，你会看到 `ThreadPoolExecutor#execute(Runnable r)`、`CompletableFuture#thenApply(Function fn)` 全都在收本篇的账——Lambda 一旦被扔进线程池，本篇 §4.3 讲的"this 捕获内存泄漏"就会与线程池的 `ThreadLocal` 生命周期发生真正的化学反应；本篇 §4.1 讲的 `commonPool` 全局共享硬性约束，也会与 10c 讲的 `ForkJoinPool` 工作窃取算法首次交汇。
-
-最后到战役五 [Java NIO 与 I/O 模型](@java-OS-NIO与IO模型) 的 `CompletableFuture.thenComposeAsync` 异步编排、以及生态里 Netty 的 `ChannelFuture.addListener(Lambda)`、Reactor 的 `Flux.map(Function)` —— **它们全部建立在本篇讲的 `CallSite` 常量折叠机制上**。到那时，你今天在字节码里挖出的每一条 `invokedynamic` 指令、每一份 `LambdaMetafactory` 生成的匿名类、每一次 `ForkJoinPool.commonPool` 的 Worker 抢占，都会变成你打通"字节码—反射—Lambda—并发—异步—网络"整条战线的关键钥匙。
-
-而当你真正读懂本篇的 §2.3（非捕获 Lambda 通常复用同一实例）与 §3.4（`commonPool` 内存配额），回头再看战役四 [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §7 讲的 Metaspace 布局，会看到 Lambda 只是 Java 语言层现代化的一次公开亮相；`invokedynamic + MethodHandle` 家族在此后被复用到 JDK 9 的字符串拼接（`StringConcatFactory`）、JDK 17 的模式匹配 `switch`（`SwitchBootstraps`）、以及 Records 序列化——这**是 Java 现代化演进中的一条主线**，但并非本质。同一时期还有**至少五条并行主线**共同塑造了今天的 Java：模块系统（JPMS）、G1/ZGC/Shenandoah 三代 GC 演进、虚拟线程（Loom）、值类型（Valhalla，进行中）、密封类/Record/模式匹配（Amber）——`MethodHandle` 家族与这些并列，不是它们的上位概念。
+- [反射（Reflection）](@java-字节码-反射与MethodHandle) 展开本篇 Lambda 底层的 `MethodHandle` 机制：`ConstantCallSite` 内部持有的正是 `MethodHandle`，Reflection 篇 §2.4 / §3.4 提供了 `VarHandle` / `MethodHandle` 的字节码语义对比。
+- [集合框架](@java-数据结构-集合框架) 与 [数据结构精讲](@java-数据结构-数据结构精讲) 展开本篇 Lambda 在集合 API 中的落地：`HashMap.forEach(BiConsumer)`、`ConcurrentHashMap.computeIfAbsent(k, Function)` 在字节码层均通过 `invokedynamic` + `LambdaMetafactory` 生成匿名类 + `MethodHandle` 常量折叠实现。
+- [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 展开本篇 §4.3 Lambda 捕获 `this` 的内存泄漏与线程池 `ThreadLocal` 生命周期的交互。
+- [AQS 设计哲学](@java-并发-AQS设计哲学) → [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 展开本篇 §4.1 `commonPool` 全局共享约束与 `ForkJoinPool` 工作窃取算法的关联。
+- [Java NIO 与 I/O 模型](@java-OS-NIO与IO模型) 展开本篇 Lambda 在异步编排中的应用：`CompletableFuture.thenComposeAsync`、Netty `ChannelFuture.addListener`、Reactor `Flux.map` 全部建立在本篇 `CallSite` 常量折叠机制上。
+- [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 展开本篇 §2.3（非捕获 Lambda 复用同一实例）与 §3.4（`commonPool` 内存配额）与 Metaspace 布局的关系。

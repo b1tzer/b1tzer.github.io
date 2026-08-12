@@ -67,7 +67,7 @@ rwl.writeLock().lock();
 
 **这就是 AQS 设计哲学的第一道题**：Doug Lea 用**一个 32 位 `volatile int`** 承担了整个 JUC 包 20 多个同步器的所有状态。理解不了这一点，就永远读不懂 AQS 的源码。
 
-### 1.2 反问引子：老手也未必答得上的 5 个 AQS 问题
+### 1.2 五个核心底层问题
 
 - **问题 1**：CLH 队列的头节点 `head` 为什么是"哑节点"（`thread = null`）？释放锁时到底应该 `unpark(head)` 还是 `unpark(head.next)`？
 - **问题 2**：`addWaiter` 里为什么要用 `oldTail.setPrevRelaxed(node)` + `compareAndSetTail(oldTail, node)` 两步走？直接一步 CAS 不行吗？
@@ -120,10 +120,10 @@ public abstract class AbstractQueuedSynchronizer
 }
 ```
 
-**顿悟点**：AQS 就这四件事 —— **一个 `state` 字段是心脏 · 一条 CLH 队列是骨架 · 四个 `final` 是模板 · 四个抽象是契约**。子类只写 `tryXxx`，框架管所有排队 / 挂起 / 唤醒 / 中断处理。
+AQS 就这四件事 —— **一个 `state` 字段是心脏 · 一条 CLH 队列是骨架 · 四个 `final` 是模板 · 四个抽象是契约**。子类只写 `tryXxx`，框架管所有排队 / 挂起 / 唤醒 / 中断处理。
 
 !!! note "📖 术语家族：AQS 骨架四要素"
-    **字面义**：AQS = "Abstract Queued Synchronizer" = "抽象的、基于队列的、同步器" —— 名字本身就把四要素塞进了三个词：**Abstract**（模板方法 + 抽象契约）、**Queued**（CLH 队列骨架）、**Synchronizer**（`state` 心脏 + 独占-共享双模式）。
+    **字面义**：AQS = "Abstract Queued Synchronizer" = "抽象的、基于队列的、同步器" —— 名字本身就把四要素包含了三个词：**Abstract**（模板方法 + 抽象契约）、**Queued**（CLH 队列骨架）、**Synchronizer**（`state` 心脏 + 独占-共享双模式）。
 
     **在框架中的含义**：Doug Lea 用这四件事撑起了整个 JUC 包的同步基础设施，`java.util.concurrent.locks` 与 `java.util.concurrent` 下所有"需要挂起线程 + 排队唤醒"的组件（`Lock` / `Semaphore` / `CountDownLatch` / `ReentrantReadWriteLock` / `ThreadPoolExecutor.Worker` / `FutureTask.Sync` / `SynchronousQueue.TransferStack` 等）全部继承或组合 AQS。
 
@@ -152,7 +152,7 @@ public abstract class AbstractQueuedSynchronizer
 | `FutureTask` | 任务运行状态位（NEW / COMPLETING / NORMAL / EXCEPTIONAL / CANCELLED / INTERRUPTING / INTERRUPTED） | 共享 | JDK 7+ 用 `state` 存 7 种任务生命周期状态 |
 | `SynchronousQueue.TransferStack` | 复杂状态位 + 节点组合 | 共享 | 高级用法：`state` 只做辅助 |
 
-**顿悟点**：**一个 `volatile int`** 通过**位分解 / 计数语义 / 标志语义** 承担了 JUC 里所有 20+ 同步器的所有状态 —— 这就是"最少字段撑起最大语义空间"的设计哲学。而 `ReentrantReadWriteLock` 的**高低 16 位分解**是这条哲学的典型表达：
+**一个 `volatile int`** 通过**位分解 / 计数语义 / 标志语义** 承担了 JUC 里所有 20+ 同步器的所有状态 —— 这就是"最少字段撑起最大语义空间"的设计哲学。而 `ReentrantReadWriteLock` 的**高低 16 位分解**是这条哲学的典型表达：
 
 ```java
 // ReentrantReadWriteLock.Sync 源码节选（JDK 17）
@@ -217,11 +217,11 @@ stateDiagram-v2
     | `SIGNAL` | -1 | 后继需要被唤醒 | 前驱执行 `shouldParkAfterFailedAcquire` 时设置自己为 `SIGNAL` |
     | `CONDITION` | -2 | 在 Condition 等待队列 | `Condition.await()` 转入等待条件队列 |
     | `PROPAGATE` | -3 | 共享模式 · 传播释放信号 | `setHeadAndPropagate` 特殊场景标记 |
-    | `0` | 0 | 默认（新入队还未确定命运） | `addWaiter` 首次创建 |
+    | `0` | 0 | 默认（新入队状态） | `addWaiter` 首次创建 |
 
     **命名规律**：**负值 = "需要框架帮忙的活状态"**（SIGNAL / CONDITION / PROPAGATE），**正值 = "已终结不用管"**（CANCELLED），**零 = "刚入队还没打标记"**。这种"符号位承载语义"的设计让 `waitStatus <= 0` 一句代码就能判断"是否还需要处理"（`>0` 直接跳过 CANCELLED 节点）。
 
-    **易混点**：`SIGNAL = -1` 是**最重要的一个状态** —— 但它设置在**前驱节点**上，不是自己身上。"我把前驱设为 SIGNAL" 的语义是"我这个后继需要被前驱在释放时唤醒"。老手初读源码时经常把这里的对象搞反 —— 记住："**SIGNAL 是给别人贴的标签**"。
+    **易混点**：`SIGNAL = -1` 是**最重要的一个状态** —— 但它设置在**前驱节点**上，不是自己身上。"我把前驱设为 SIGNAL" 的语义是"我这个后继需要被前驱在释放时唤醒"。初读源码时容易把这里的对象搞反 —— 记住："**SIGNAL 是给别人贴的标签**"。
 
 ### 2.4 独占模式完整源码链路 —— `acquire()` 三步走
 
@@ -309,7 +309,7 @@ sequenceDiagram
     Note over T2,AQS: T2 持锁<br/>T2 节点变哑头
 ```
 
-### 2.5 `LockSupport.park` / `unpark` 挂起唤醒对（回收 `10a` 伏笔）
+### 2.5 `LockSupport.park` / `unpark` 挂起唤醒对
 
 ```java
 // AQS —— 挂起当前线程
@@ -336,13 +336,13 @@ private void unparkSuccessor(Node node) {
 }
 ```
 
-**顿悟点**：
+
 
 - `park` / `unpark` 是 **JVM 提供的最基础的挂起 / 唤醒对**，比 `wait` / `notify` 更精细 —— 不依赖对象监视器、允许在任意时刻挂起、`unpark` 可以先于 `park` 调用（"许可"语义）。
 - Linux 上底层是 `pthread_cond_wait` / `pthread_cond_signal`（HotSpot 用 `PlatformEvent` 或 `Parker` 封装）。
 - **`unpark` 先于 `park` 可以先发**："许可"会被记录，等下次 `park` 立即返回 —— 这解决了 AQS 里"释放锁时后继还没 park" 的竞争窗口：即使 `unparkSuccessor` 先执行，后继随后 `park` 时也会立刻返回，不会永久沉睡。
 
-**回收 `10a` §"CAS 硬件三层同义族" 埋下的伏笔**：`10a` 讲了 CAS 是硬件级原子操作、`park` 是 OS 级挂起原语，但没展开 AQS 是如何组合使用这两者的。本节完整承接：**`state` 上的 CAS 用于"低竞争快速通过"、`park` / `unpark` 用于"高竞争排队挂起"**，AQS = "CAS 快路径 + `park` 慢路径" 的经典组合。
+[并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 篇介绍了 CAS 是硬件级原子操作、`park` 是 OS 级挂起原语，`10a` 讲了 CAS 是硬件级原子操作、`park` 是 OS 级挂起原语，但没展开 AQS 是如何组合使用这两者的。本节完整承接：**`state` 上的 CAS 用于"低竞争快速通过"、`park` / `unpark` 用于"高竞争排队挂起"**，AQS = "CAS 快路径 + `park` 慢路径" 的经典组合。
 
 ### 2.6 共享模式完整链路 —— `setHeadAndPropagate` 的传播机制
 
@@ -401,7 +401,7 @@ private void setHeadAndPropagate(Node node, int propagate) {
 | `tryXxx` 返回值 | `boolean`（成功 / 失败） | `int`（负数 = 失败；0 = 成功但无剩余；正数 = 成功且有剩余可让下一个抢） |
 | 关键源码分岔点 | `unparkSuccessor(head)` 只 unpark 后一位 | `setHeadAndPropagate` + `doReleaseShared` 递归传播 |
 
-**顿悟点**：**共享模式的"传播"不是并行唤醒，而是链式唤醒** —— 每个共享节点在自己拿到锁后，如果剩余许可还够（`propagate > 0`），就把下一位也 unpark。下一位醒来 `tryAcquireShared` 成功后又调 `setHeadAndPropagate`，就这样一路传下去，直到 `tryAcquireShared` 返回 `< 0` 停下。**这就是 `Semaphore(3).release()` 能同时唤醒 3 个等待线程的底层机制**（严格来说不是"同时"，是"一个接一个链式唤醒"，但从线程调度视角看几乎同时）。
+**共享模式的"传播"不是并行唤醒，而是链式唤醒** —— 每个共享节点在自己拿到锁后，如果剩余许可还够（`propagate > 0`），就把下一位也 unpark。下一位醒来 `tryAcquireShared` 成功后又调 `setHeadAndPropagate`，就这样一路传下去，直到 `tryAcquireShared` 返回 `< 0` 停下。**这就是 `Semaphore(3).release()` 能同时唤醒 3 个等待线程的底层机制**（严格来说不是"同时"，是"一个接一个链式唤醒"，但从线程调度视角看几乎同时）。
 
 ---
 
@@ -516,7 +516,7 @@ sequenceDiagram
     Note over T0,T2: 一次 releaseShared 触发了<br/>"链式唤醒 + 挂起筛选" 的完整传播
 ```
 
-**顿悟点**：**共享模式的"传播"是"叫一声看是否有人接" + "接得动就继续叫" 的链式过程**，不是并行释放许可。这也是为什么 `Semaphore(3)` 有 5 个 `acquire()` 等待时，一次 `release(1)` 只让 1 个线程真正走通，剩下的都被"叫醒又挂起"（这在 CPU 层是有性能开销的 —— 无谓的挂起唤醒是"传播机制"的一个隐性代价）。
+**共享模式的"传播"是"叫一声看是否有人接" + "接得动就继续叫" 的链式过程**，不是并行释放许可。这也是为什么 `Semaphore(3)` 有 5 个 `acquire()` 等待时，一次 `release(1)` 只让 1 个线程真正走通，剩下的都被"叫醒又挂起"（这在 CPU 层是有性能开销的 —— 无谓的挂起唤醒是"传播机制"的一个隐性代价）。
 
 ### 3.4 AQS 与 JVM 锁升级的关系（关键澄清点）
 
@@ -574,7 +574,7 @@ final boolean nonfairTryAcquire(int acquires) {
     return false;                                     // 💡 别人持锁 → 让框架去入队 park
 }
 
-// 🔑 顿悟：这 10 行代码就完整定义了"ReentrantLock 里 state 是重入次数"
+// 这 10 行代码就完整定义了"ReentrantLock 里 state 是重入次数"
 // 然后再回头看 acquire 骨架 —— 就知道 tryAcquire 失败后框架会做什么了
 ```
 
@@ -765,14 +765,14 @@ public boolean tryIncrement(long timeoutMs) throws InterruptedException {
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔
+## 5. 🗺️ 跨篇章知识关联
 
-本篇我们把 Doug Lea 的 AQS 剥到骨头缝里 —— 它的底层机制是 **一个 `volatile int state` 承担所有语义 + 一条 CLH 双向队列 + 一对 `park` / `unpark` + 一套模板方法**。四件事撑起整个 JUC 包 20+ 个同步器 —— 这是**用最少字段撑起最大语义空间**的典型设计哲学，也是 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 讲的 CAS 硬件语义在 Java 层的第一次架构性组合应用。
+本篇分析 Doug Lea 的 AQS 的底层机制 —— 它的底层机制是 **一个 `volatile int state` 承担所有语义 + 一条 CLH 双向队列 + 一对 `park` / `unpark` + 一套模板方法**。四件事撑起整个 JUC 包 20+ 个同步器 —— 这是**用最少字段撑起最大语义空间**的典型设计哲学，也是 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 讲的 CAS 硬件语义在 Java 层的第一次架构性组合应用。
 
-因为在接下来的 [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 里，你会看到 `ReentrantLock` 公平 vs 非公平的**唯一差异**就是 `tryAcquire` 里有没有一行 `hasQueuedPredecessors()` —— 骨架完全没变、只是 `state` 语义的判断多加了一个条件；`Semaphore` 的公平 vs 非公平差异是**同一行代码的镜像**；`ReentrantReadWriteLock` 的读写共享则是**在同一个 `state` 上做高低 16 位分解 + 独占 + 共享双模式的组合**。到那时你就会明白 —— 本篇讲的骨架四要素 + 独占-共享双模式，就是 10c 全部锁工具的"底层生成规则"，10c 只在讲"业务语义规则"。
+因为在接下来的 [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 里，你会看到 `ReentrantLock` 公平 vs 非公平的**唯一差异**就是 `tryAcquire` 里有没有一行 `hasQueuedPredecessors()` —— 骨架完全没变、只是 `state` 语义的判断多加了一个条件；`Semaphore` 的公平 vs 非公平差异是**同一行代码的镜像**；`ReentrantReadWriteLock` 的读写共享则是**在同一个 `state` 上做高低 16 位分解 + 独占 + 共享双模式的组合**。本篇讲的骨架四要素 + 独占-共享双模式，就是 10c 全部锁工具的"底层生成规则"，10c 只在讲"业务语义规则"。
 
 进一步在 [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 里，你会看到 `ConcurrentHashMap` 的 `put` 方法在链表头节点上用**JVM 内建 `synchronized` 而不是 `ReentrantLock`** —— 这是 §3.4 里我们澄清的关键分岔点的正面案例：**当锁粒度已经细到单个哈希桶、且大多数时候零竞争，就应该借 JVM 锁升级的东风**（偏向锁 → 轻量级锁），而不是走 AQS 的"直接 park"重路径。这条选型规则会在 10d 反复回收，且会拓展到 `ThreadPoolExecutor.Worker` —— 后者继承 AQS 但只用最简单的独占模式来实现"任务运行中不响应中断"的语义，是 AQS 在**非锁场景**下最经典的一次借用。
 
-再往后到 [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"对象布局与对齐填充"，你会看到 AQS 的 `Node` 对象平均 32~40 字节的物理内存代价 —— 高竞争锁 = 大量 Node 堆积在 Old Gen —— 这也是 §3.1 埋下的伏笔。到 [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 讲 **Loom 虚拟线程**时你还会遇到 AQS 与 pin 问题的最关键一次汇合 —— 虚拟线程在 `park` 时**不会** pin 载体线程（走 continuation 挂起），但在 `synchronized` 块内 `park` 时**会** pin —— 这就是为什么 Java 团队一直在推进"AQS 优先于 `synchronized`" 的现代化建议，也是本篇 §3.4 讲的两条独立路径在 Loom 时代出现的**性能分岔**。
+再往后到 [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) §"对象布局与对齐填充"，你会看到 AQS 的 `Node` 对象平均 32~40 字节的物理内存代价 —— 高竞争锁 = 大量 Node 堆积在 Old Gen —— 这也是 §3.1 提到的问题。到 [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 讲 **Loom 虚拟线程**时你还会遇到 AQS 与 pin 问题的最关键一次汇合 —— 虚拟线程在 `park` 时**不会** pin 载体线程（走 continuation 挂起），但在 `synchronized` 块内 `park` 时**会** pin —— 这就是为什么 Java 团队一直在推进"AQS 优先于 `synchronized`" 的现代化建议，也是本篇 §3.4 讲的两条独立路径在 Loom 时代出现的**性能分岔**。
 
-而当你真正读懂本篇的 §2.4 独占模式完整链路与 §2.6 共享模式传播机制，回头再看 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 讲的 `volatile` + CAS + `park`，会看到 AQS 只是 Java 并发工具的**中层**建筑 —— 它下面是硬件层的 CAS + MESI（10a 讲清）、上面是应用层的锁 / 同步器 / 线程池（10c / 10d 讲清）。**AQS 是承上启下的关键抽象**：把硬件事实（CAS）和 OS 挂起原语（`pthread_cond_wait`）抽象成一套统一的**排队 + 挂起 + 唤醒**框架，让所有 JUC 组件都能复用。这条从硬件到框架、再到应用的完整链路，就是 Doug Lea 在 2004 年设计 JUC 时留给 Java 生态的最珍贵遗产。
+本篇 §2.4 独占模式完整链路与 §2.6 共享模式传播机制，回头再看 [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 讲的 `volatile` + CAS + `park`，会看到 AQS 只是 Java 并发工具的**中层**建筑 —— 它下面是硬件层的 CAS + MESI（10a 讲清）、上面是应用层的锁 / 同步器 / 线程池（10c / 10d 讲清）。**AQS 是承上启下的关键抽象**：把硬件事实（CAS）和 OS 挂起原语（`pthread_cond_wait`）抽象成一套统一的**排队 + 挂起 + 唤醒**框架，让所有 JUC 组件都能复用。这条从硬件到框架、再到应用的完整链路，就是 Doug Lea 在 2004 年设计 JUC 时留给 Java 生态的最珍贵遗产。

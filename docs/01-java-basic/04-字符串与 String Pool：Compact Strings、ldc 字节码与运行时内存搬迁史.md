@@ -7,14 +7,7 @@ title: 字符串与 String Pool：Compact Strings、ldc 字节码与运行时内
 
 在 Java 的世界里，`java.lang.String` 是使用频率最高的对象类型之一。由于其不可变性（Immutability）与编译期优化特性，几乎所有开发者都能对“字符串常量池”说上几句。但表象上的熟悉，往往伴随着大量过时的认知。
 
-以下三个问题，你能毫不犹豫地给出精确答案吗：
-
-- 同样是存储 `"hello"`，JDK 9+ 的项目比 JDK 8 能省下近一半的字符串内存——省在哪里？
-- 过去教科书里天天批判的 `a + b` 字符串拼接，在现代 JDK 17/21 里为什么不再需要手动改成 `StringBuilder`？循环场景呢？
-- 在高并发场景下盲目调用 `string.intern()`，不仅没能减少内存占用，反而把 GC 停顿时间拉长了数倍——根因是什么？
-
-这三个问题分别指向 `String` 在 JVM 内部的三个底层机制：Compact Strings 的字节数组瘦身、`invokedynamic` 拼接策略的动态绑定、以及 `StringTable` 的 Native 哈希表结构与碰撞退化。本篇按“源码 → 字节码 → 运行时内存”的垂直链路逐层拆解。
-
+以下三个问题指向 `String` 在 JVM 内部的三个底层机制：
 ---
 
 ## 1. 为什么需要 `String` —— 业务中的文本世界
@@ -283,7 +276,7 @@ while ((line = reader.readLine()) != null) {
 
 **现场复盘——三条根因链**：
 
-1. **哈希碰撞导致查找退化**：`StringTable` 默认只有 60013 个桶（见 §3.3）。当数百万不重复的动态 ID 被 `intern()` 塞进去后，每个桶链表平均长度从个位数膨胀到数十甚至上百。
+1. **哈希碰撞导致查找退化**：`StringTable` 默认只有 60013 个桶（见 §3.3）。当数百万不重复的动态 ID 被 `intern()` 加入后，每个桶链表平均长度从个位数膨胀到数十甚至上百。
 2. **`O(1)` 退化为 `O(N)`**：链表越长，每次 `intern()` 调用（以及后续所有 `ldc` 加载）的查找消耗越大。CPU 时间从哈希取模 + 一次指针跳转，变成遍历一条长链表逐次 `equals()`。
 3. **GC 连锁反应**：膨胀后的 `StringTable` 成为 GC 的扫描负担。即使使用 `-XX:+UseStringDeduplication`（G1/ZGC 的后台字节数组去重），也无法绕过 `StringTable` 本身的链表扰动——那个优化针对的是底层 `byte[]` 数组，不是哈希表结构。
 
@@ -652,10 +645,9 @@ Arrays.fill(passwordBuffer, '\0'); // 立即将缓冲区清零
 
 ---
 
-## 8. 🗺️ 跨战役知识伏笔
+## 8. 🗺️ 跨篇章知识关联
 
-本章中我们在研究 `String` 的内存膨胀、Compact Strings 布局与 StringTable 搬迁时，所有的内存操作、引用复制、以及字节数组的流转，都发生在 JVM 的**堆内存（Java Heap）**边界之内。
+本篇中 `String` 的内存膨胀、Compact Strings 布局与 StringTable 搬迁，所有的内存操作、引用复制、以及字节数组的流转，都发生在 JVM 的**堆内存（Java Heap）**边界之内。
 
-到了战役五的 [Java NIO 与 IO 模型](@java-OS-NIO与IO模型)，当需要追求单机十万并发、触及操作系统内核的零拷贝（Zero-Copy）时，就要**跨出 Java 堆、在内核空间上开辟堆外直接内存（`DirectByteBuffer`）**。到那时，本篇里的 `byte[]` 字节排列将直接通过 `mmap` 与 `sendfile` 系统调用，在网卡与磁盘总线上传输。
-
-此外，§6.3 中作为拼接入口出现的 `invokedynamic` 指令，在 [Java8 函数式编程](@java-字节码-函数式编程) §2.1 中有完整的 `CallSite` / `BootstrapMethod` / `LambdaMetafactory` 家族拆解。
+- [Java NIO 与 IO 模型](@java-OS-NIO与IO模型) 展开跨出 Java 堆的场景：当需要单机十万并发、触及操作系统内核的零拷贝（Zero-Copy）时，需要在内核空间上开辟堆外直接内存（`DirectByteBuffer`），本篇的 `byte[]` 字节排列将通过 `mmap` 与 `sendfile` 系统调用在网卡与磁盘总线上传输。
+- [Java8 函数式编程](@java-字节码-函数式编程) §2.1 展开本篇 §6.3 中作为拼接入口出现的 `invokedynamic` 指令，提供完整的 `CallSite` / `BootstrapMethod` / `LambdaMetafactory` 家族拆解。

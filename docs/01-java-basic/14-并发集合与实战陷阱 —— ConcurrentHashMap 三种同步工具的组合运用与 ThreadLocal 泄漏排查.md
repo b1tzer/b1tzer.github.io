@@ -48,7 +48,7 @@ public class OrderRuleEngine {
 
 大促当天订单数飙到 10 万，`activeOrders.add(o)` 每次都要 `Arrays.copyOf` 一份长度 10 万的数组——**单次 add 的时间复杂度是 O(n)，N 次 add 累计就是 O(N²)**。更关键的是每次 `copyOf` 都触发一次新数组分配 + 老数组变垃圾，Eden 区被快速占满，`Young GC` 一秒好几次，GC 时间占比冲到 40%，业务线程时间片全被吃干。
 
-这个事故直接暴露了三个老手的盲区：
+这个事故直接暴露了三个容易忽视的问题：
 
 - **盲区一**：`CopyOnWriteArrayList` 从来不是"通用线程安全 List"——它是"读远多于写 + 元素少 + 可接受弱一致"三个条件同时满足才用的**特化容器**，写次数不能是每毫秒级
 - **盲区二**：`activeOrders.iterator()` 拿到的**不是当前 array 引用**，而是**创建迭代器那一刻的 array 快照**——迭代期间的新 `add` 一律读不到，但快照会长期占堆
@@ -84,7 +84,7 @@ public class TraceInterceptor implements HandlerInterceptor {
 **底层链路条**：
 
 - Tomcat 的 `Worker` 是**线程池复用**的，Thread 对象长期存活
-- `TraceContext.set("A的id")` 会把 `("A的id" 的 value)` 塞进 `Thread.threadLocals`（也就是 `ThreadLocalMap`）
+- `TraceContext.set("A的id")` 会把 `("A的id" 的 value)` 写入 `Thread.threadLocals`（也就是 `ThreadLocalMap`）
 - 请求 A 结束、`Worker` 被回收进池
 - 请求 B 复用了同一个 `Worker`，但由于**没有调用 `remove()`**，`ThreadLocalMap` 里还残留着 `"A的id"` 的 Entry
 - B 的业务代码里恰好有条路径没走 `TraceContext.set()`（比如异步补偿分支），直接读了 `TRACE_ID.get()` —— **读到了 A 的 traceId**
@@ -103,7 +103,7 @@ public class TraceInterceptor implements HandlerInterceptor {
 
 ## 2. 第二层：源码考古 —— CHM / CoW / ThreadLocal 的源码底层链路
 
-> ⭐ **本层特殊说明**：并发容器的"字节码考古"聚焦**源码剖析**主线，不再抓通用 `invokevirtual` 全景（那属于战役一），而是抓"CHM 内部那几段决定底层结构的关键代码"与"`ThreadLocalMap` 的不对称引用设计"。`javap -v -p ConcurrentHashMap.class` 可观察到 `Unsafe.compareAndSetReference` / `getReferenceAcquire` 调用点。
+> ⭐ **本层特殊说明**：并发容器的"字节码考古"聚焦**源码剖析**主线，不再抓通用 `invokevirtual` 全景（详见 [面向对象](@java-字节码-面向对象) 至 [函数式编程](@java-字节码-函数式编程)），而是抓"CHM 内部那几段决定底层结构的关键代码"与"`ThreadLocalMap` 的不对称引用设计"。`javap -v -p ConcurrentHashMap.class` 可观察到 `Unsafe.compareAndSetReference` / `getReferenceAcquire` 调用点。
 
 ### 2.1 `ConcurrentHashMap.put()` 完整源码链路
 
@@ -188,7 +188,7 @@ monitorenter
 monitorexit
 ```
 
-**顿悟三条**：
+**关键结论**：
 
 1. **`put` 是 CAS + `synchronized` + `ForwardingNode` 三种同步工具的组合**——快速路径无锁、冲突路径低粒度锁、扩容期间协作迁移，三条路径的分岔口就在 `tabAt(i) == null` / `f.hash == MOVED` / `else` 三个判断上。
 2. **`synchronized (f)` 锁的是**桶头节点对象本身**，不是整个表**——不同桶的 `put` 完全并行，并发度 = `table.length`（默认 16，扩容后线性增长）。
@@ -318,11 +318,11 @@ static final class CounterCell {
 }
 ```
 
-**顿悟三条**：
+**关键结论**：
 
 1. **`addCount(x, ...)` 先 CAS `baseCount`，冲突再散到 `CounterCell[]`**——这是 [`10c` § LongAdder 分段计数](@java-并发-并发工具Lock与线程池) 讲过的同一个套路，用在 CHM 上是为了让 `size()` 计数不成为写热点。
 2. **`@Contended` 让每个 `CounterCell` 独占 128 字节缓存行**——避免多个 `Cell` 落在同一缓存行导致 MESI 一致性风暴（[`10a` § MESI](@java-并发-JMM与线程同步) 已讲）。
-3. **`size()` 返回值是最终一致快照**——`sumCount` 遍历过程中其他线程仍在写 `Cell`，读到的是"扫过时的快照总和"，不是某个原子瞬间的精确值。老手不能拿 `size()` 当 `while` 循环上限用，第 4 层红线 2 有工程范式。
+3. **`size()` 返回值是最终一致快照**——`sumCount` 遍历过程中其他线程仍在写 `Cell`，读到的是"扫过时的快照总和"，不是某个原子瞬间的精确值。`size()` 不能当 `while` 循环上限用，第 4 层红线 2 有工程范式。
 
 ### 2.5 `CopyOnWriteArrayList.add()` 完整源码
 
@@ -359,7 +359,7 @@ static final class COWIterator<E> implements ListIterator<E> {
 }
 ```
 
-**顿悟三条**：
+**关键结论**：
 
 1. **每次 `add` 都 O(n) 拷贝**——N 次 add 累计 O(N²)，元素上万时性能坍缩（回顾 §1.1 的生产事故）。
 2. **迭代器基于快照 `Object[]` 引用**——`iterator()` 拿到的是当时的 `array`，`add()` 通过 `setArray(newEs)` 切换的是 `this.array`，**两者是不同的引用**，快照不会被写方"追赶到"，所以永远不抛 `ConcurrentModificationException`。
@@ -579,7 +579,7 @@ t4:  迭代器结束
   → 内存翻倍 + 大量 minor GC
 ```
 
-**顿悟点**：CoW 的"弱一致性"不是"实现漏洞"，是**用空间换时间 + 用一致性换无锁**的显式设计——迭代器**永远不会**抛 `CME`，代价是**迭代期间的写永远读不到**。
+CoW 的"弱一致性"不是"实现漏洞"，是**用空间换时间 + 用一致性换无锁**的显式设计——迭代器**永远不会**抛 `CME`，代价是**迭代期间的写永远读不到**。
 
 ### 3.4 `ThreadLocalMap` 内存布局图
 
@@ -622,7 +622,7 @@ Thread 对象（线程池 Worker 长期存活）
 
 **这个不对称是刻意为之的**——JDK 设计者选择"key 可回收、value 靠用户显式 `remove()` 清理"，就是把清理责任转嫁给用户，换取更强的 value 可用性。**代价就是用户必须写 `try/finally + remove()`**。
 
-### 3.5 `ConcurrentSkipListMap` 无锁跳表（回收 `09` 伏笔）
+### 3.5 `ConcurrentSkipListMap` 无锁跳表
 
 CHM 之外，`ConcurrentSkipListMap`（CSLM）是 JUC 里唯一一个**纯 CAS 无锁**的并发容器——它选用**跳表**而不是红黑树，根本原因就是**跳表的修改只影响相邻 2 个节点，CAS 冲突范围极小**：
 
@@ -663,7 +663,7 @@ static final class Node<K,V> {
 }
 ```
 
-**顿悟点**：
+
 
 - **红黑树的修改可能连带旋转多个节点** —— CHM 的 `TreeBin` 只能靠 `synchronized` 锁头节点保护
 - **跳表的修改只涉及相邻 2 个 `next` 指针** —— CSLM 用 CAS 就能保证正确性，完全无锁
@@ -796,7 +796,7 @@ executor = TtlExecutors.getTtlExecutorService(executor);   // ⭐ 装饰器
 executor.submit(() -> System.out.println(CTX.get()));      // ✅ 始终读到 "A"
 ```
 
-**原理简述**：TTL 通过任务包装器（Decorator）在 `submit` 时刻拷贝 `TTL.copy()`，在 Worker 真正 `run` 时把值临时塞进 `Worker.threadLocals`，`run` 结束再恢复。**这才是"跨线程池传上下文"的正确姿势**。
+**原理简述**：TTL 通过任务包装器（Decorator）在 `submit` 时刻拷贝 `TTL.copy()`，在 Worker 真正 `run` 时把值临时写入 `Worker.threadLocals`，`run` 结束再恢复。**这才是"跨线程池传上下文"的正确姿势**。
 
 ### 红线 6 · 死锁排查用 `jstack -l`，防御用"统一加锁顺序 + tryLock 超时"
 
@@ -879,15 +879,15 @@ Map<String, Integer> scores = Map.of("A", 90, "B", 85);
 
 ---
 
-**战役三核心总结**：
+**第三部分核心总结**：
 
-> *"战役三的所有并发问题都收敛到三条根源：**可见性**（10a JMM 缓存一致性）· **原子性**（10a CAS `LOCK CMPXCHG`）· **有序性**（10a 内存屏障）。理解了 10a 的三条硬件事实、10b 的 AQS 骨架（一个 `volatile int` + CLH 队列 + `park`/`unpark`）、10c 的锁与线程池（`state` 语义定义 + `ctl` 位编码）、以及本文的三种同步工具组合运用（CAS + `synchronized` + 转发协议），20 年 Java 并发的所有 bug 都能追溯到这套底层机制。"*
+> 第三部分的所有并发问题都收敛到三条根源：**可见性**（10a JMM 缓存一致性）· **原子性**（10a CAS `LOCK CMPXCHG`）· **有序性**（10a 内存屏障）。理解了 10a 的三条硬件事实、10b 的 AQS 骨架（一个 `volatile int` + CLH 队列 + `park`/`unpark`）、10c 的锁与线程池（`state` 语义定义 + `ctl` 位编码）、以及本文的三种同步工具组合运用（CAS + `synchronized` + 转发协议），20 年 Java 并发的所有 bug 都能追溯到这套底层机制。"*
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔（战役三收官 · 全部闭环）
+## 5. 🗺️ 跨篇章知识关联
 
-### 5.1 本文回收的伏笔（战役三之内 + 战役二反向承接）
+### 5.1 本文承接的知识点
 
 | 上游篇 → 本篇 | 承接内容 | 落地章节 | 状态 |
 | :-- | :-- | :-- | :-- |
@@ -896,9 +896,9 @@ Map<String, Integer> scores = Map.of("A", 90, "B", 85);
 | [`10a` JMM 与线程同步](@java-并发-JMM与线程同步) → 本文 | `synchronized` 锁升级让 CHM 单槽位锁近乎零开销 · `@Contended` 避免伪共享 | §2.1 + §2.4 | ✅ 已闭环（★★★★） |
 | [`10c` Lock 与线程池](@java-并发-并发工具Lock与线程池) → 本文 | `ctl` 位编码 → `sizeCtl` 位编码同构 · `LongAdder` 分段 → `CounterCell` 分段 | §2.2 + §2.4 | ✅ 已闭环（★★★★） |
 
-### 5.2 本文埋下的伏笔（面向战役四 · JVM Runtime）
+### 5.2 本文关联的知识点（面向第四部分 · JVM Runtime）
 
-| 本篇 → 目标篇 | 伏笔内容 | 优先级 |
+| 本篇 → 目标篇 | 关联内容 | 优先级 |
 | :-- | :-- | :-- |
 | 本文 → [`12a` 内存分区与对象布局](@java-JVM-内存分区与对象布局) | `ForwardingNode.hash == MOVED == -1` 的"哨兵节点"设计模式 · 与对象头 Mark Word 特殊位对照 | ★★ |
 | 本文 → [`12b` GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) | `CopyOnWriteArrayList` 旧快照数组阻止 GC · Young GC 压力线性上升 · 引用族与 GC Root | ★★★ |
@@ -942,7 +942,7 @@ Map<String, Integer> scores = Map.of("A", 90, "B", 85);
 
     **命名规律**：`CopyOnWrite*` = "写时复制 · 读免锁 · 迭代快照"
 
-    **易混点**：老手最容易把 `CopyOnWriteArrayList` 当"通用线程安全 List"用 —— 一旦写次数达到每秒千次级别，O(N²) 直接把 CPU 打爆（见 §1.1 事故）。
+    **易混点**：容易把 `CopyOnWriteArrayList` 当"通用线程安全 List"用 —— 一旦写次数达到每秒千次级别，O(N²) 直接把 CPU 打满（见 §1.1 事故）。
 
 !!! note "📖 术语家族三：`ConcurrentHashMap.Node*` 节点家族"
     **字面义**：CHM 桶内元素以 `Node` 继承体系表达 —— 通过 `hash` 字段的特殊取值区分节点类型
@@ -959,7 +959,7 @@ Map<String, Integer> scores = Map.of("A", 90, "B", 85);
     | `ForwardingNode<K,V>` | `MOVED = -1` | 扩容时的占位节点，转发查询到 `nextTable` | `CHM.ForwardingNode` |
     | `ReservationNode<K,V>` | `RESERVED = -3` | `computeIfAbsent` 的计算占位，防重入 | `CHM.ReservationNode` |
 
-    **命名规律**：`Node` 家族的 `hash` 负值都是"特殊标记"—— `-1` 转发、`-2` 树代理、`-3` 计算占位。老手看到 `f.hash < 0` 立刻知道"这不是普通节点，要走特殊分支"。
+    **命名规律**：`Node` 家族的 `hash` 负值都是"特殊标记"—— `-1` 转发、`-2` 树代理、`-3` 计算占位。看到 `f.hash < 0` 可确认"这不是普通节点，要走特殊分支"。
 
     **易混点**：`TreeNode` 与 `TreeBin` —— 前者是树里的具体节点，后者是**桶头代理**（桶头存的是 `TreeBin`，`TreeBin` 内部再指向 `TreeNode` 树的根）。
 
@@ -1004,4 +1004,4 @@ Map<String, Integer> scores = Map.of("A", 90, "B", 85);
 
 > 📖 **AQS 骨架 · CAS 硬件语义 · `ReentrantLock` 用法 · 线程池 7 参数** 已分别在 [`10b` AQS 设计哲学](@java-并发-AQS设计哲学) / [`10a` JMM 与线程同步](@java-并发-JMM与线程同步) / [`10c` Lock 与线程池](@java-并发-并发工具Lock与线程池) 给出答案，本文专注"并发容器组合运用与实战陷阱"题。
 >
-> 🎉 **战役三 · 并发全景至此收官**：从 [`10a` 硬件地基](@java-并发-JMM与线程同步) → [`10b` 设计哲学](@java-并发-AQS设计哲学) → [`10c` 框架应用](@java-并发-并发工具Lock与线程池) → 本文的组合运用，**20+ JUC 同步器的所有源码都能追溯到"三条硬件事实 + 一条 AQS 骨架 + 一套组合运用"这三条主线**。战役四即将进入 JVM Runtime 视角，届时你会发现 `Worker` 长期存活的"GC Root 身份"、`CopyOnWriteArrayList` 快照的"引用可达性"、`ThreadLocalMap` 的"堆内定位"，都能在 [`12a` 内存分区与对象布局](@java-JVM-内存分区与对象布局) 之后一一破解。
+> 第三部分 · 并发全景至此收官：从 [`10a` 硬件地基](@java-并发-JMM与线程同步) → [`10b` 设计哲学](@java-并发-AQS设计哲学) → [`10c` 框架应用](@java-并发-并发工具Lock与线程池) → 本文的组合运用，**20+ JUC 同步器的所有源码都能追溯到"三条硬件事实 + 一条 AQS 骨架 + 一套组合运用"这三条主线**。第四部分即将进入 JVM Runtime 视角，届时你会发现 `Worker` 长期存活的"GC Root 身份"、`CopyOnWriteArrayList` 快照的"引用可达性"、`ThreadLocalMap` 的"堆内定位"，都能在 [`12a` 内存分区与对象布局](@java-JVM-内存分区与对象布局) 之后一一破解。

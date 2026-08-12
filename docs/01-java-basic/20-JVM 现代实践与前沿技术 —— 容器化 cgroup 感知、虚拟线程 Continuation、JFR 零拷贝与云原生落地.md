@@ -7,7 +7,7 @@ title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟�
 
 ## 1. 第一层：业务痛点 —— 从"容器 OOMKilled"到"虚拟线程 pin 载体线程"
 
-### 1.1 生产事故现场：老手也翻车的"现代 JVM 三连击"
+### 1.1 生产事故现场：现代 JVM 三连击
 
 **引子 1：容器里 `-Xmx4g` 硬编码 · 被 OOM Killer 无声干掉**
 
@@ -33,7 +33,7 @@ title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟�
 - **短期**：`try/finally + ThreadLocal.remove()` 严格清理
 - **长期**：关注 `ScopedValue`（JEP 487 · JDK 24 Fourth Preview）—— 不可变、无副作用、天然适配虚拟线程作用域
 
-### 1.2 反问引子：老手也未必答得上的 5 个现代 JVM 难题
+### 1.2 五个核心底层问题
 
 - **难题 1**：`Executors.newVirtualThreadPerTaskExecutor()` 返回的 Executor 内部到底"调度"到哪个线程池？和 `parallelStream` 用的 `ForkJoinPool.commonPool` 是同一个吗？（提示：**不是**，见 §2.1）
 - **难题 2**：JFR 声称"持续开启开销 < 1%" —— **为什么**？和 async-profiler / JVMTI Agent 的采样机制有什么本质差异？（提示：**JFR 是 JVM 内部事件源、直接写 in-process ring buffer**，见 §2.3）
@@ -47,7 +47,7 @@ title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟�
 
 ## 2. 第二层：字节码考古 —— 容器化字节 + `Continuation` 源码 + JFR 事件模型
 
-> ⭐ **本层特殊说明**：JVM 现代实践的"字节码考古"聚焦**容器化 cgroup 感知源码路径**、**虚拟线程 `Continuation` 源码（HotSpot 层）**、**JFR 事件模型三大 API** 三条主线 —— 而非常规 `javap -v` 字节码考古（那属于战役一）。
+> ⭐ **本层特殊说明**：JVM 现代实践的"字节码考古"聚焦**容器化 cgroup 感知源码路径**、**虚拟线程 `Continuation` 源码（HotSpot 层）**、**JFR 事件模型三大 API** 三条主线 —— 而非常规 `javap -v` 字节码考古（详见 [面向对象](@java-字节码-面向对象) 至 [函数式编程](@java-字节码-函数式编程)）。
 
 ### 2.1 虚拟线程 `Continuation` 源码考古：`Thread.startVirtualThread` 背后的底层链路
 
@@ -93,7 +93,7 @@ private static ForkJoinPool createDefaultScheduler() {
 }
 ```
 
-**顿悟点**（难题 1 的答案）：
+**关键结论**（难题 1 的答案）：
 
 - 虚拟线程的调度器 `DEFAULT_SCHEDULER` 是**虚拟线程专属的 ForkJoinPool** ——**不是** `parallelStream` 用的 `ForkJoinPool.commonPool()`，两者**内存隔离**，`parallelStream` 阻塞 I/O 不会污染虚拟线程调度器
 - `Continuation` 是 JDK 内部 API（`jdk.internal.vm.Continuation`），底层由 HotSpot 的 `runtime/continuation.cpp` 实现，通过 `freeze` / `thaw` 两条 native 方法完成栈帧的堆化与恢复
@@ -159,7 +159,7 @@ Thread.ofVirtual().start(() -> {
 ⑥ ✅ synchronized 代码零改动 · 直接享受虚拟线程收益
 ```
 
-**顿悟点**：
+**关键结论**：
 
 - **JDK 21~23 阶段的临时方案**：`synchronized` → `ReentrantLock`（AQS 底层用 CAS + `LockSupport.park`，不绑定载体线程）
 - **JDK 24+ 长期方案**：无需改动，JVM 底层重构 monitor 语义
@@ -214,7 +214,7 @@ r.start();
                                                               Disk / Ring
 ```
 
-**顿悟点**：
+**关键结论**：
 
 - **业务线程零锁** —— 事件写入 per-thread 缓冲，无锁竞争
 - **无 Java 反射、无字符串拼接** —— JFR 事件是 native 化的紧凑二进制格式
@@ -238,7 +238,7 @@ JVM 启动时判断内存上限的底层链路：
 
 **关键参数速查表**：
 
-| 参数 | 默认值 | 作用 | 老手推荐值 |
+| 参数 | 默认值 | 作用 | 推荐值 |
 | :-- | :-- | :-- | :-- |
 | `-XX:+UseContainerSupport` | JDK 10+ 默认开 | 读 cgroup 而非 /proc/meminfo | **显式写明** |
 | `-XX:MaxRAMPercentage` | 25.0（默认过保守） | 堆占容器内存的最大比例 | **75.0** |
@@ -257,7 +257,7 @@ JVM 启动时判断内存上限的底层链路：
                                         └─ CodeCache 240m 默认
 ```
 
-**顿悟点**：**"75% 留堆 · 25% 留堆外"是经验值** —— NIO/Netty 密集场景可能需要降到 60%，类加载少的微服务可能拉到 80%，但**绝不能设 90%+**，否则被 OOM Killer 干掉不留日志。
+**关键结论**：**"75% 留堆 · 25% 留堆外"是经验值** —— NIO/Netty 密集场景可能需要降到 60%，类加载少的微服务可能拉到 80%，但**绝不能设 90%+**，否则被 OOM Killer 干掉不留日志。
 
 !!! note "📖 术语家族：容器化 JVM 参数族"
     **字面义**：`-XX:+UseContainerSupport` = "开启容器支持"，让 JVM 感知 cgroup 而非 /proc/meminfo。
@@ -266,7 +266,7 @@ JVM 启动时判断内存上限的底层链路：
 
     **同家族成员**：
 
-    | 参数 | 默认值（JDK 17） | 作用 | 老手推荐值 |
+    | 参数 | 默认值（JDK 17） | 作用 | 推荐值 |
     | :-- | :-- | :-- | :-- |
     | `-XX:+UseContainerSupport` | true（JDK 10+） | 读 cgroup 而非宿主机 /proc/meminfo | 显式写明 |
     | `-XX:MaxRAMPercentage` | 25.0 | 堆占容器内存最大比例 | **75.0** |
@@ -467,7 +467,7 @@ flowchart LR
 
 ## 4. 第四层：工程红线与前沿实践
 
-### 4.1 分代 ZGC（JEP 439 / JEP 474 / JEP 490）· 老手必背的时间线
+### 4.1 分代 ZGC（JEP 439 / JEP 474 / JEP 490）· 关键时间线
 
 | JDK 版本 | JEP | 状态 | 启用方式 |
 | :-- | :-- | :-- | :-- |
@@ -480,7 +480,7 @@ flowchart LR
 
 - **原 ZGC 的痛点**：全堆统一扫描，每次标记都要扫全堆，**吞吐量偏低**（相比 G1 约 10~15% 差距）——"低延迟"用"高 CPU 占用 + 低吞吐"换来
 - **分代 ZGC 的应对**：套用弱分代假说，新生代复制算法快速回收短命对象，老年代保留 ZGC 染色指针并发转移，**减少标记成本、吞吐量追平 G1、延迟仍亚毫秒**
-- **顿悟点**：**"分代 ZGC = G1 的吞吐 + ZGC 的延迟"** —— JDK 21+ 大堆场景（> 16GB）可以放心用，无需在 G1 / ZGC 之间纠结
+- **关键结论**：**"分代 ZGC = G1 的吞吐 + ZGC 的延迟"** —— JDK 21+ 大堆场景（> 16GB）可以放心用，无需在 G1 / ZGC 之间纠结
 
 📖 ZGC 染色指针 4 位编码、读屏障字节码、Self-Healing 机制 → [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) §"ZGC 染色指针"。
 
@@ -492,7 +492,7 @@ flowchart LR
 | **GraalVM Native Image** | **毫秒级** | 80~85%（AOT · 无 JIT 运行时优化） | **低 10 倍**（无 JIT / Metaspace） | Serverless / FaaS / CLI |
 | **CRaC（Checkpoint/Restore）** | 秒级 → **毫秒级恢复** | 100%（保留 JIT 状态） | 中（快照文件 + 运行时） | K8s 快速伸缩 |
 
-**顿悟点**（难题 5 的答案）：
+**关键结论**（难题 5 的答案）：
 
 - Serverless / FaaS 场景，单次请求生命周期 < 100ms，**冷启动占比 > 90%** —— 传统 JVM 3 秒 JIT 预热 = 30 次请求全在等 JIT，**峰值性能没法体现**
 - GraalVM Native Image **提前编译（AOT）+ 关闭反射默认支持**，用"放弃 15% 峰值性能"换"启动时间从秒级降到毫秒级"—— **在 Serverless 场景总耗时反而更短**
@@ -672,7 +672,7 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 !!! note "📖 术语家族：JEP 版本演进族"
     **字面义**：JEP = **JDK Enhancement Proposal** · JDK 特性增强提案，每个 JEP 有独立编号，从 Preview → Second/Third Preview → GA 逐步稳定。
 
-    **在 JVM 中的含义**：老手追踪现代 JVM 演进的唯一权威索引。
+    **在 JVM 中的含义**：追踪现代 JVM 演进的唯一权威索引。
 
     **同家族成员**（虚拟线程 / 分代 ZGC / `ScopedValue` 三条主线）：
 
@@ -694,9 +694,9 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
     | **442** | 外部函数 FFM API | **JDK 22** | **GA** |
     | **387** | 弹性元空间 | JDK 16 | GA |
 
-    **命名规律**：**同一特性多个 JEP 是版本演进** —— 老手记"主 JEP 编号 + GA 版本"即可：虚拟线程 = JEP 444 / JDK 21；分代 ZGC = JEP 474 / JDK 23；`synchronized` 修复 = JEP 491 / JDK 24。
+    **命名规律**：**同一特性多个 JEP 是版本演进** —— 记住"主 JEP 编号 + GA 版本"即可：虚拟线程 = JEP 444 / JDK 21；分代 ZGC = JEP 474 / JDK 23；`synchronized` 修复 = JEP 491 / JDK 24。
 
-    **一句话总结**：**JEP 是"预览版专利号"、GA 是"生产版发布号"** —— 老手看 JEP 号立即定位到 JDK 版本与特性成熟度。
+    **一句话总结**：**JEP 是"预览版专利号"、GA 是"生产版发布号"** —— 通过 JEP 号立即定位到 JDK 版本与特性成熟度。
 
 **技术选型建议**：
 
@@ -712,19 +712,19 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔
+## 5. 🗺️ 跨篇章知识关联
 
-### 5.1 本文回收的伏笔
+### 5.1 本文承接的知识点
 
-| 来源 | 伏笔内容 | 落地位置 |
+| 来源 | 关联内容 | 落地位置 |
 | :-- | :-- | :-- |
 | **[GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区)** ★★★★★ | 容器化 JVM（`MaxRAMPercentage` · `UseContainerSupport`）· 虚拟线程 GC 视角 · JFR 深度使用 · 分代 ZGC 参数调优 | §1.1 引子三连击 · §2.3 JFR 事件模型 · §2.4 cgroup 感知源码 · §3.1 容器化架构图 · §4.1 分代 ZGC JEP 时间线 |
-| **[JVM 综览](@java-JVM-内存结构与GC) / [内存分区](@java-JVM-内存分区与对象布局)** ★★★★★ | JVM 现代实践 —— 战役收网 · 承接容器化 + 前沿技术 | §3 三张现代机制图（容器化 / M:N 线程 / 云原生）· §4.6 前沿技术速览 |
+| **[JVM 综览](@java-JVM-内存结构与GC) / [内存分区](@java-JVM-内存分区与对象布局)** ★★★★★ | JVM 现代实践 —— 收束篇 · 承接容器化 + 前沿技术 | §3 三张现代机制图（容器化 / M:N 线程 / 云原生）· §4.6 前沿技术速览 |
 | **[OOP](@java-字节码-面向对象)** ★★★ | 对象头 · Klass Pointer · 32GB 压缩指针边界 —— 容器场景下的堆大小选型 | §2.4 "为什么留 25% 给堆外" + §4.6 技术选型（堆 > 32GB 推荐分代 ZGC，隐含突破压缩指针边界） |
 
-### 5.2 本文埋下的伏笔
+### 5.2 本文关联的知识点
 
-| 本篇 → 目标篇 | 伏笔内容 | 优先级 |
+| 本篇 → 目标篇 | 关联内容 | 优先级 |
 | :-- | :-- | :-- |
 | **`12d` → [Java NIO 与 I/O 模型](@java-OS-NIO与IO模型)** | 直接内存 GC 回收路径 · `DirectByteBuffer.Cleaner` · Netty `PooledByteBufAllocator` 管理堆外内存 · Panama FFM API（JEP 442）替代 JNI —— `13` 需承接堆外内存工程视角完整链路 | ★★★★★ |
 | **`12d` → 后续「并发编程」HotSpot 专题（拆分中）** | `Continuation` `freeze` / `thaw` 汇编级实现 · `VirtualThread` 与 `ForkJoinPool` 调度器协作 · `ScopedValue` 完整 API —— 后续并发专题需承接 M:N 线程模型完整源码 | ★★★★★ |

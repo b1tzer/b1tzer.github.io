@@ -115,7 +115,7 @@ flowchart TB
 
 ### 2.1 分支一 · JDK 17 及以前的反射调用链（HotSpot 实现，历史模型）
 
-先看 JDK 17 及以前的**经典模型**——这是绝大多数博客、面经、老手记忆里"反射内部是怎么回事"的默认版本。
+先看 JDK 17 及以前的**经典模型**——这是反射内部实现的最常见版本。
 
 写一段最普通的反射调用：
 
@@ -442,7 +442,7 @@ public final class com.sun.proxy.$Proxy0
 
 ⚠️ **CGLIB 的现代地位**：CGLIB 上游多年停止维护，Spring 从 5.x 起把 CGLIB 复刻到 `spring-core` 内部维护，Mockito / Hibernate 6+ 已改用 **ByteBuddy**（现代等价物，字节码 API 更清晰、模块系统兼容更好）；但 ByteBuddy 与 CGLIB 都基于"生成子类"，`final` 类/`final` 方法/静态方法的短板依然存在。
 
-> 📖 03 注解篇 §4.3 埋下了"`$Proxy0` 加载时的双亲委派链"伏笔，这里正式回收：**`$Proxy0` 由 `ProxyGenerator` 在运行时 `defineClass` 到 App ClassLoader（或指定 loader），而不是 Bootstrap ClassLoader**——这是它能被反射修改、能被 JVM Instrumentation 增强的硬性前提。
+> 📖 03 注解篇 §4.3 介绍了 `$Proxy0` 加载时的双亲委派链，这里展开其技术含义：**`$Proxy0` 由 `ProxyGenerator` 在运行时 `defineClass` 到 App ClassLoader（或指定 loader），而不是 Bootstrap ClassLoader**——这是它能被反射修改、能被 JVM Instrumentation 增强的硬性前提。
 
 至此四条主线索都完成字节码考古。要真正把这套字节码机制落地为工程决策，我们还需要看清它们在物理内存、Metaspace、CPU 指令流上留下的每一处实证。
 
@@ -519,7 +519,7 @@ for (...) {
 }
 ```
 
-调用点就不会每次分配 `Object[]`。这是老手都可能忽略的细节。
+调用点就不会每次分配 `Object[]`。这是一个容易被忽略的细节。
 
 **堆分配示意**（假设调用点是 `m.invoke(target, "World", 42, 3.14)`）：
 
@@ -996,42 +996,12 @@ private OrderService orderService;       // ✅ JDK 动态代理
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔
+## 5. 🗺️ 跨篇章知识关联
 
-本章我们从**四条独立技术线索**（HotSpot ≤17 反射、JEP 416 后反射、`MethodHandle` 家族、`invokedynamic` 指令）打通了反射生态的全貌，并按 **JLS / JVMS / HotSpot 实现** 三层规范体系锁定了每个技术断言的归属。以下三条伏笔请一起焊在思维版图中。
+本篇从四条独立技术线索（HotSpot ≤17 反射、JEP 416 后反射、`MethodHandle` 家族、`invokedynamic` 指令）打通了反射生态的全貌，并按 **JLS / JVMS / HotSpot 实现** 三层规范体系锁定了每个技术断言的归属。
 
-### 5.1 伏笔一 · `invokedynamic` + `MethodHandle` → 通向 Lambda 与 Stream
-
-本章 §2.4 反复强调 `invokedynamic` 是 JVMS 定义的第五条方法调用指令，其 `BootstrapMethod` 负责首次调用时决定目标并返回 `CallSite`。这条机制不是为反射设计的，而是**运行时动态链接**的通用地基。
-
-紧接着的 [Java 8 函数式编程](@java-字节码-函数式编程)（战役一收官篇）会揭示：**每一个 Lambda 表达式在字节码层都被编译为一条 `invokedynamic`，`BootstrapMethod` 是 `LambdaMetafactory.metafactory`**——Bootstrap 方法在首次调用时通过 `MethodHandle` 生成实现目标函数式接口（`Function` / `Consumer` / `Predicate`）的对象并封装到 `ConstantCallSite`；此后每次调用都直接沿 `CallSite` 分派，性能接近直接方法调用，摆脱了泛型篇的桥接方法与 `checkcast` 开销。
-
-**读到那里，你会顿悟**：Lambda 不是"编译期语法糖"，而是**运行期通过 `invokedynamic` + `MethodHandle` 生成的匿名类**——本章 §4.2 提到的 `LambdaMetafactory` 熔炼术，就是把反射 `Method` 转成"和 Lambda 完全一样的底层形态"的性能优化手段。
-
-### 5.2 伏笔二 · `VarHandle` + `Unsafe` → 通向 J.U.C 并发原语
-
-本章 §2.3 / §3.4 已经拆解 `VarHandle` 的字节码语义与它跟 `sun.misc.Unsafe` / `jdk.internal.misc.Unsafe` 的边界。请把这三个事实先锁死：
-
-- `VarHandle.compareAndSet` 属于 signature-polymorphic 家族（**JLS / JVMS 规范**）
-- 底层在典型 HotSpot 实现与 x86 平台上会编译为 `lock cmpxchg` 硬件指令（**HotSpot 实现**；具体机器码因 CPU 架构、访问模式、数据类型及 JIT 编译结果而异，例如 ARM/AArch64 上会选用 LL/SC 或 `casal` 家族指令）
-- `AtomicInteger` / `ConcurrentHashMap` 内部依然使用 `jdk.internal.misc.Unsafe`（**JDK 内部选型**）
-
-进入战役三高并发全景专题：
-
-- [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 揭示 `volatile` 的读写语义与 `VarHandle` 各访问模式的对应关系
-- [AQS 设计哲学](@java-并发-AQS设计哲学) 揭示 `AQS.state` / `CountDownLatch` / `Semaphore` 全部通过 `VarHandle`（或早期 JDK 的 `Unsafe`）实现无锁 CAS，构成整个 J.U.C 的硬件地基
-- [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 揭示 `ConcurrentHashMap` 的 `sizeCtl` 状态机、`transferIndex` 协作扩容、`baseCount` 分段计数——都是 `Unsafe.compareAndSwap*` 的经典应用场景
-
-**读到那里，你会顿悟**：并发编程的本质，就是把"CPU 硬件的 `lock cmpxchg` 指令 + JVM 内存屏障"包装成"程序员能理解的 API"——`VarHandle` 是这条包装链的最上层入口，`Unsafe` 是它的历史前身。
-
-### 5.3 伏笔三 · Record 的 `invokedynamic` → 通向语言演进的 Bootstrap 生态
-
-本章 §2.4 展示了 Record 的 `equals` / `hashCode` / `toString` 通过 `invokedynamic` 调用 `java.lang.runtime.ObjectMethods.bootstrap` 生成。这是 Java 语言演进的**新范式**：编译器只写一行 `invokedynamic` + 一个 `BootstrapMethod`，具体实现在运行时首次调用由 Bootstrap 生成——**字节码长度不随字段数增长**。
-
-这套范式在现代 Java 中被大量复用：**字符串拼接**（Java 9+）用 `StringConcatFactory.makeConcatWithConstants`、**Record 三方法**（Java 14+）用 `ObjectMethods.bootstrap`、**Switch 模式匹配**（Java 21+）用 `SwitchBootstraps`。
-
-**读到那里，你会顿悟**：`invokedynamic` + `BootstrapMethod` 不是"给动态语言用的一条冷门指令"，而是**现代 Java 语法糖的通用地基**——每一次 Java 引入新语法糖，几乎都是"在字节码层多埋一条 `invokedynamic`，把复杂度推到运行时 Bootstrap 里"。
-
----
-
-至此，四条独立技术线索都拆开了，三层规范体系也贯穿了每一处技术断言。你今天在字节码里挖出的每一条 `invokedynamic` 指令、每一次 `LambdaForm` 常量折叠、每一次 `VarHandle.compareAndSet`，都会变成你打通 **"反射 → Lambda → 并发 → 原子"** 整条战线的关键钥匙。
+- [Java 8 函数式编程](@java-字节码-函数式编程) 展开本篇 §2.4 的 `invokedynamic` 机制：每个 Lambda 表达式在字节码层编译为一条 `invokedynamic`，`BootstrapMethod` 为 `LambdaMetafactory.metafactory`，首次调用时通过 `MethodHandle` 生成实现目标函数式接口的对象并封装到 `ConstantCallSite`，后续调用直接沿 `CallSite` 分派，性能接近直接方法调用。
+- [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 展开本篇 §2.3 / §3.4 的 `VarHandle` 语义：`VarHandle.compareAndSet` 在典型 HotSpot 实现与 x86 平台上编译为 `lock cmpxchg` 硬件指令。`volatile` 的读写语义与 `VarHandle` 各访问模式有对应关系，`VarHandle` 是字段级并发操作的 API 入口，`Unsafe` 是其历史前身。
+- [AQS 设计哲学](@java-并发-AQS设计哲学) 展开本篇 §3.4 的 `VarHandle` / `Unsafe` 在 J.U.C 中的应用：`AQS.state` / `CountDownLatch` / `Semaphore` 全部通过 `VarHandle`（或早期 JDK 的 `Unsafe`）实现无锁 CAS。
+- [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 展开 `ConcurrentHashMap` 的 `sizeCtl` 状态机、`transferIndex` 协作扩容、`baseCount` 分段计数——都是 `Unsafe.compareAndSwap*` 的经典应用场景。
+- [Java 9~17 关键新特性](@java-番外-Java9-17关键新特性) 展开 Record 的 `equals` / `hashCode` / `toString` 通过 `invokedynamic` 调用 `ObjectMethods.bootstrap` 生成的范式：`invokedynamic` + `BootstrapMethod` 是现代 Java 语法糖的通用地基，字符串拼接（Java 9+）、Record 三方法（Java 14+）、Switch 模式匹配（Java 21+）均以此方式实现。

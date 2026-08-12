@@ -11,7 +11,7 @@ title: 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃
     - **CAS 不是软件技巧，是 CPU `LOCK CMPXCHG` + MESI 缓存一致性协议的组合**：`LOCK` 前缀让缓存行独占（首选缓存锁 · 跨行降级为总线锁），MESI 协议保证其他核对应缓存行置为 Invalid——**硬件保证的原子性**，比软件锁（重量级 `synchronized` 陷入内核 `pthread_mutex`）快 10~100 倍。Java 层的 `AtomicInteger.compareAndSet` / JDK 内部的 `Unsafe.compareAndSwapInt` / CPU 指令 `LOCK CMPXCHG` 是**同一件事在三个层级上的投影**（术语家族卡片一）。
     - **`volatile` 只保证可见性 + 有序性，**不**保证原子性**：可见性靠 volatile 读/写强制刷新主内存；有序性靠内存屏障禁止部分重排序；原子性需要另外用 `AtomicInteger.incrementAndGet` 或 `synchronized` 兜底。`i++` 编译成 `getfield → iconst_1 → iadd → putfield` 四步字节码，中间任何时刻都可能被抢占——**volatile 修饰 i 依然会丢失更新**，这是并发编程最经典的死角。
 
-**你能立刻答上来吗？**（老手引子 · 5 连击）
+
 
 - DCL 单例的 `instance = new Singleton()` 编译成哪三条字节码？为什么去掉 `volatile` 就能读到"引用不为 null 但字段未初始化"的半成品？CPU 到底允许把哪两条指令重排序？
 - `synchronized` 锁升级四阶段的 Mark Word 最低 3 位标志分别是什么？JDK 15 为什么把偏向锁默认关掉？关闭之后 HotSpot 的 `ObjectMonitor` 有没有跟着变简单？
@@ -50,7 +50,7 @@ public class RouteStrategyRegistry {
         if (instance == null) {
             synchronized (RouteStrategyRegistry.class) {
                 if (instance == null) {
-                    instance = new RouteStrategyRegistry();   // 💥 老手也不会一眼看出的暗雷
+                    instance = new RouteStrategyRegistry();   // 💥 指令重排序导致的 DCL 失效
                 }
             }
         }
@@ -61,7 +61,7 @@ public class RouteStrategyRegistry {
 
 上线一周后偶发核心告警：`NullPointerException: strategies is null` 从 `RouteStrategyRegistry.getInstance().strategies.get(...)` 抛出。诡异之处在于——**`instance` 明明已经被 `new` 了**（否则第一次 `if (instance == null)` 就会拦下、走 `synchronized` 块），但拿到手的 `instance.strategies` 却是 `null`。
 
-事后拉线程 dump 看到的底层机制是：某个线程 A 在 `synchronized` 块里执行 `instance = new RouteStrategyRegistry()`，CPU 把这条语句编译成的**三条字节码**（`new` 分配堆内存 → `<init>` 执行构造器 → `putstatic` 把引用赋给 `instance`）**允许把第 2 步和第 3 步重排序**——先把"引用"塞进 `instance` 字段（让 `instance != null`），再回头慢悠悠调用构造器初始化 `strategies` / `loader` / `breaker`。这中间，恰巧线程 B 走到第一层 `if (instance == null)` 判断，看到 `instance` 非 null 直接返回——**它拿到的是一个"引用有效但字段全部未初始化"的半成品对象**。
+事后拉线程 dump 看到的底层机制是：某个线程 A 在 `synchronized` 块里执行 `instance = new RouteStrategyRegistry()`，CPU 把这条语句编译成的**三条字节码**（`new` 分配堆内存 → `<init>` 执行构造器 → `putstatic` 把引用赋给 `instance`）**允许把第 2 步和第 3 步重排序**——先把"引用"写入 `instance` 字段（让 `instance != null`），再回头调用构造器初始化 `strategies` / `loader` / `breaker`。这中间，恰巧线程 B 走到第一层 `if (instance == null)` 判断，看到 `instance` 非 null 直接返回——**它拿到的是一个"引用有效但字段全部未初始化"的半成品对象**。
 
 修复只需要一个字：给 `instance` 加 `volatile`。**`putstatic` 前后的 volatile 内存屏障禁止了 `<init>` 与 `putstatic` 的重排序**，让"引用可见"和"字段可见"两件事在执行时序上强制对齐。
 
@@ -85,7 +85,7 @@ public class CallCounter {
 }
 ```
 
-老手看代码第一反应是"`volatile` 已经加了、可见性没问题"——但真实的硬件事实是 `totalCalls++` 会被 `javac` 编译成**四条字节码**（对 `long` 字段读写是 `getfield_wide → lconst_1 → ladd → putfield_wide`，对 `int` 是 `getfield → iconst_1 → iadd → putfield`）。这四条字节码**中间任何时刻都可能被抢占**——线程 T1 刚 `getfield` 完读到 100、还没写回；线程 T2 也 `getfield` 读到 100、加 1 后 `putfield` 写回 101；T1 抢回来把手里的 100+1 也写成 101——**两次 `onCall` 只累加了一次**。
+直觉反应是"`volatile` 已经加了、可见性没问题"——但真实的硬件事实是 `totalCalls++` 会被 `javac` 编译成**四条字节码**（对 `long` 字段读写是 `getfield_wide → lconst_1 → ladd → putfield_wide`，对 `int` 是 `getfield → iconst_1 → iadd → putfield`）。这四条字节码**中间任何时刻都可能被抢占**——线程 T1 刚 `getfield` 完读到 100、还没写回；线程 T2 也 `getfield` 读到 100、加 1 后 `putfield` 写回 101；T1 抢回来把手里的 100+1 也写成 101——**两次 `onCall` 只累加了一次**。
 
 `volatile` 只在**单次读、单次写**上保证"其他核能看到我这次的写"，**它对"读—改—写这种复合操作"完全无能**。修复必须换成 `AtomicLong.incrementAndGet`（§2.4 的 `LOCK XADD` 单指令原子）或 `LongAdder`（§4 红线 4 的分段 CAS）。
 
@@ -274,7 +274,7 @@ CAS 硬件机制：
 
 ### 2.5 `VarHandle` 六种访问模式 —— JMM 屏障的类型安全表达
 
-JDK 9 引入 `VarHandle` 作为字段级并发操作的**类型安全公开 API**，取代 `Unsafe.putObjectVolatile` 这种"把内存屏障塞进方法名"的老范式。
+JDK 9 引入 `VarHandle` 作为字段级并发操作的**类型安全公开 API**，取代 `Unsafe.putObjectVolatile` 这种"把内存屏障嵌入方法名"的旧范式。
 
 ```java
 public class SafeCounter {
@@ -732,11 +732,11 @@ public Response handle(@RequestHeader("X-User-Id") long userId) {
 private static final TransmittableThreadLocal<UserContext> CONTEXT = new TransmittableThreadLocal<>();
 ```
 
-**核心结论**：*"并发编程的所有'为什么'都收敛到三条硬件事实：**`LOCK CMPXCHG` 让 CPU 保证原子性**、**MESI 协议让多核缓存一致**、**内存屏障让重排序可控**。JMM 是这三条硬件事实的 Java 侧语义封装，`synchronized` / `volatile` / CAS 都是它们的语法糖。老手工作十年，最终会在心底把三个词焊死：**LOCK · MESI · Barrier**——所有并发正确性都是这三张牌的组合。"*
+**核心结论**：*"并发编程的所有'为什么'都收敛到三条硬件事实：**`LOCK CMPXCHG` 让 CPU 保证原子性**、**MESI 协议让多核缓存一致**、**内存屏障让重排序可控**。JMM 是这三条硬件事实的 Java 侧语义封装，`synchronized` / `volatile` / CAS 都是它们的语法糖。所有并发正确性最终可以归结为三组硬件原语：**LOCK · MESI · Barrier**——JMM 的牌的组合。"*
 
 ---
 
-## 5. 🗺️ 跨战役知识伏笔
+## 5. 🗺️ 跨篇章知识关联
 
 JMM 的底层机制是 **CPU 内存屏障 + MESI 缓存一致性协议 + `LOCK` 前缀原子指令**的组合，这是后续所有并发/异步/框架设计的硬件基础。
 

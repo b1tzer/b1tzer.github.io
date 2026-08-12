@@ -7,7 +7,7 @@ title: GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排�
 
 ## 1. 调优方法论：目标 → 测量 → 分析 → 验证
 
-### 1.1 生产事故引子：老手也翻车的"参数盲目配置"三连击
+### 1.1 生产事故引子：参数盲目配置三连击
 
 **引子 1 · `MaxGCPauseMillis` 越调越卡**
 
@@ -21,7 +21,7 @@ title: GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排�
 
 容器里 `-Xmx4g` 硬编码，某天 SRE 把 K8s Pod 内存 limit 从 6G 调到 4G —— **JVM 直接被 OOMKilled，且没有留下任何 Java 层 OOM 日志**。因为 Java 堆 4G + 元空间 512M + 直接内存 1G + 线程栈 + JIT Code Cache 早就超过 4G 容器 limit，被 Linux OOM Killer 干掉。
 
-### 1.2 反问引子：老手也未必答得上的 5 个调优难题
+### 1.2 五个核心底层问题
 
 - **难题 1**：GC 日志里 `Total time for which application threads were stopped: 5.2s` 但 `[Times: real=0.02 secs]` —— 剩下的 5 秒去哪了？（提示：**TTSP 空洞** · 见 [GC 核心机制](@java-JVM-GC核心机制与收集器演进) §"Safepoint"）
 - **难题 2**：`-Xmx` 和 `-Xms` 为什么要设成一样？"堆自动扩容不是很省内存吗？"
@@ -48,12 +48,12 @@ title: GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排�
 | **低延迟** | P99 / P999 GC 停顿 | ZGC / Shenandoah / G1 | 交易系统、实时推荐 |
 | **低内存** | Footprint（常驻内存） | Serial / 小堆 | 嵌入式、资源受限容器 |
 
-!!! warning "三者互斥 · 顿悟点"
+!!! warning "三者互斥"
     追吞吐就得容忍长停顿、追低延迟就得牺牲吞吐和堆利用率、追低内存就得接受 GC 频繁。**一套参数不可能三个指标全占**，先确认业务真正要什么再动手。
 
 ---
 
-## 2. GC 日志分析（老手视角）
+## 2. GC 日志分析
 
 ### 2.1 开启统一 GC 日志
 
@@ -134,7 +134,7 @@ title: GC 调优实战与常见误区 —— 方法论、参数矩阵、OOM 排�
                                                               └─ 总耗时 26ms · 但 STW 合计 < 1.1ms
 ```
 
-**顿悟点**：ZGC 的**总耗时**和 **STW 时间**是两个截然不同的概念 —— G1 时代混为一谈，ZGC 时代必须**只看 `Pause` 开头的三行**判断业务感受。染色指针 + 读屏障的底层机制细节 → [GC 核心机制](@java-JVM-GC核心机制与收集器演进) §"ZGC 染色指针"。
+ZGC 的**总耗时**和 **STW 时间**是两个截然不同的概念 —— G1 时代混为一谈，ZGC 时代必须**只看 `Pause` 开头的三行**判断业务感受。染色指针 + 读屏障的底层机制细节 → [GC 核心机制](@java-JVM-GC核心机制与收集器演进) §"ZGC 染色指针"。
 
 ### 2.4 GC 日志关键词速查
 
@@ -238,7 +238,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 | **直接内存** | `java.lang.OutOfMemoryError: Direct buffer memory` | Netty / NIO ByteBuffer 未释放 | `jcmd VM.native_memory` |
 | **GC 开销超限** | `java.lang.OutOfMemoryError: GC overhead limit exceeded` | 堆严重不足 / 内存泄漏（GC > 98% CPU · 回收 < 2%） | MAT + GC 日志 |
 
-**顿悟点**：五种 OOM **各有专属报错关键词** —— 拿到栈顶第一行就能定位到具体类型。**永远先看 `OutOfMemoryError` 后面的冒号 · 别先看栈**。
+五种 OOM **各有专属报错关键词** —— 拿到栈顶第一行就能定位到具体类型。**永远先看 `OutOfMemoryError` 后面的冒号 · 别先看栈**。
 
 !!! note "📖 术语家族：`OutOfMemoryError` OOM 类型族"
     **字面义**：`OutOfMemoryError` = "内存耗尽错误" · JLS §11.1.1 中最著名的 `Error` 子类。
@@ -303,7 +303,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
     **命名规律**：
 
-    1. **`-Xms/Xmx/Xmn/Xss` 前缀 `-X`** 是"最稳定 · 跨所有 JVM 版本"参数 —— 老手第一批背下的四个
+    1. **`-Xms/Xmx/Xmn/Xss` 前缀 `-X`** 是"最稳定 · 跨所有 JVM 版本"参数 —— 最基础需要掌握的四个
     2. **`-XX:+/-` 是布尔开关** · **`-XX:Key=Value` 是数值**
     3. **JDK 9+ 统一走 `-Xlog:<tag>`** · JDK 8 各种独立 `-XX:+Print*` 参数（`+PrintGCDetails`、`+PrintGCDateStamps`、`+PrintSafepointStatistics`）在 JDK 9+ 都被整合到 `-Xlog`
 
@@ -324,11 +324,11 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
     -Xlog:gc*:file=/var/log/app/gc.log:time,uptime,level,tags:filecount=10,filesize=100m
     ```
 
-**顿悟点**：**"三必开 + 一固定 + 一自适应"** —— 三必开（GC 日志 / OOM 转储 / 禁 `System.gc()`）+ 一固定（`-Xms = -Xmx`）+ 一自适应（`MaxRAMPercentage` 容器场景）。这五条覆盖 90% 生产 JVM 参数需求。
+**"三必开 + 一固定 + 一自适应"** —— 三必开（GC 日志 / OOM 转储 / 禁 `System.gc()`）+ 一固定（`-Xms = -Xmx`）+ 一自适应（`MaxRAMPercentage` 容器场景）。这五条覆盖 90% 生产 JVM 参数需求。
 
 ---
 
-## 6. 常见误区与边界（老手最容易踩的 4 个坑）
+## 6. 常见误区与边界
 
 ### ❌ 误区 1：堆内存设置越大越好
 
@@ -369,7 +369,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 5. Minor GC 晋升失败（老年代无足够连续空间 · `HandlePromotionFailure`）
 6. G1 大对象（Humongous）分配失败
 
-### 边界：永久代 vs 元空间（JDK 8 分水岭）
+### 边界：永久代 vs 元空间（JDK 8 重要变更）
 
 | 维度 | 永久代（JDK 7-） | 元空间（JDK 8+） |
 | :-- | :-- | :-- |
@@ -380,7 +380,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
 ---
 
-## 7. 设计原因：为什么这样设计？（老手视角的顿悟收网）
+## 7. 设计原因：为什么这样设计？
 
 ### 7.1 为什么要分代收集？
 
@@ -440,7 +440,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
 ---
 
-## 9. 生产上线 Checklist（收网清单 · 老手可打印贴显示器）
+## 9. 生产上线 Checklist
 
 - [ ] **堆大小**：`-Xms` 与 `-Xmx` 相等（避免动态扩容 Full GC）
 - [ ] **元空间**：**必设** `-XX:MaxMetaspaceSize` · 生产推荐 512m~1g
@@ -456,18 +456,18 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
 ---
 
-## 10. 🗺️ 跨战役知识伏笔
+## 10. 🗺️ 跨篇章知识关联
 
-### 10.1 本文回收的伏笔
+### 10.1 本文承接的知识点
 
-- ✅ 回收 [GC 核心机制](@java-JVM-GC核心机制与收集器演进) 埋下的伏笔："**写屏障代价 5%~10%、CMS 三大缺陷、G1 RSet 内存开销、ZGC 读屏障额外开销** —— `12c` 需承接完整 GC 参数调优链路 + Full GC 排查 checklist + G1 vs ZGC 生产选型"（★★★★★）
+- ✅ 回收 [GC 核心机制](@java-JVM-GC核心机制与收集器演进) 关联的知识点："**写屏障代价 5%~10%、CMS 三大缺陷、G1 RSet 内存开销、ZGC 读屏障额外开销** —— `12c` 需承接完整 GC 参数调优链路 + Full GC 排查 checklist + G1 vs ZGC 生产选型"（★★★★★）
     - **落地位置**：§2 GC 日志分析（G1 Young/Mixed/Full + ZGC 亚毫秒 STW 完整日志样本）· §3 决策树 · §4 OOM 五字诀 · §5 参数矩阵 · §6 误区 3 & 4 · §8 Q4 收集器选型
-- ✅ 回收 [JVM 内存结构与 GC 综览](@java-JVM-内存结构与GC) / [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 埋下的伏笔："GC 调优 checklist + 生产黄金参数组合 —— `12c` 需完整承接"（★★★★）
+- ✅ 回收 [JVM 内存结构与 GC 综览](@java-JVM-内存结构与GC) / [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 关联的知识点："GC 调优 checklist + 生产黄金参数组合 —— `12c` 需完整承接"（★★★★）
     - **落地位置**：§5.2 生产黄金参数组合 + §9 上线 Checklist 11 条
 
-### 10.2 本文埋下的伏笔
+### 10.2 本文关联的知识点
 
-| 本篇 → 目标篇 | 伏笔内容 | 优先级 |
+| 本篇 → 目标篇 | 关联内容 | 优先级 |
 | :-- | :-- | :-- |
 | `12c` → [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) | 容器化 JVM（`MaxRAMPercentage` · `UseContainerSupport`）· 虚拟线程 GC 视角 · JFR 深度使用 · 分代 ZGC（JEP 439 / JEP 474）参数调优 —— `12d` 需承接容器 & 前沿场景 | ★★★★★ |
 | `12c` → [NIO 与 IO 模型深度解析](@java-OS-NIO与IO模型) | 直接内存 GC 回收路径 · `DirectByteBuffer.Cleaner` · `-XX:+ExplicitGCInvokesConcurrent` · Netty `PooledByteBufAllocator` —— `13` 需承接堆外内存工程视角 | ★★★★ |
