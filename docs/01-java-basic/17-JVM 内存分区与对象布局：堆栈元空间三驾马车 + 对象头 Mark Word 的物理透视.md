@@ -1,11 +1,11 @@
 ---
 doc_id: java-JVM-内存分区与对象布局
-title: JVM 内存分区与对象布局 —— 堆栈元空间三驾马车 + 对象头 Mark Word 的底层透视
+title: JVM 内存分区与对象布局：堆栈元空间三大分区 + 对象头 Mark Word 的底层透视
 ---
 
-# JVM 内存分区与对象布局：堆栈元空间三驾马车 + 对象头 Mark Word 的底层透视
+# JVM 内存分区与对象布局：堆栈元空间三大分区 + 对象头 Mark Word 的底层透视
 
-!!! info "**JVM 内存分区与对象布局 一句话口诀**"
+!!! info "**JVM 内存分区与对象布局 一句话总结**"
     - **七大分区两条主线记忆法**：`三共享（堆 / 元空间 / Code Cache）+ 三私有（虚拟机栈 / 本地方法栈 / PC 寄存器）+ 一堆外补充（直接内存）`。**唯一不 OOM** 的是 PC 寄存器 —— 它只存一个固定大小的字节码偏移，随线程生随线程死。
     - **`-Xmx` 管不到的四大盲区**：元空间、Code Cache、直接内存、线程栈全在堆外，容器 `memory.limit` 必须算上这四块 —— 否则一个 `-Xmx=2g` 的 JVM RSS 常常 3~4g，被 K8s OOM Killer 直接干掉。
     - **TLAB 的 "1%" 不是固定大小，是空间浪费目标**：`-XX:TLABWasteTargetPercent=1` 指的是**每次 refill 时可容忍的空间浪费比例**；TLAB 实际大小由 `TLABWasteTargetPercent × Eden / (期望 refill 次数 × 活跃线程数)` 动态计算，"每线程 1% Eden" 是流传最广的误读。
@@ -51,7 +51,7 @@ env:
 - **难题 5**：Mark Word 才 8 字节 = 64 bit —— 怎么同时装下 hashCode、GC 年龄、锁状态、偏向线程 ID 这么多信息？"多态复用"的底层机制是什么？
 - **难题 6**：栈帧里的"返回地址"存的是"下一条指令的 PC"还是"调用点 PC"？HotSpot 为什么这么选？异常栈打印的行号是怎么算出来的？
 
-任何一个问题让你迟疑超过 3 秒 —— 继续读。这六个难题的答案全部藏在 `jmap` / `jcmd VM.native_memory` / `jol-cli` / `hotspot/share/oops/markWord.hpp` 里。
+这六个难题的答案全部藏在 `jmap` / `jcmd VM.native_memory` / `jol-cli` / `hotspot/share/oops/markWord.hpp` 里。
 
 ### 1.3 痛点清单（3 条 · 与后三层强绑定）
 
@@ -231,8 +231,6 @@ flowchart TB
 | **本地方法栈** | 私有 | 堆内 | Native 方法调用栈 | ❌ | 同虚拟机栈 | 同 `-Xss` |
 | **PC 寄存器** | 私有 | 堆内 | 字节码偏移 | ❌ | **不 OOM** | 无 |
 | **直接内存** | 共享 | 堆外 | NIO / Netty 缓冲 | ❌（Cleaner） | `OOM: Direct buffer memory` | `-XX:MaxDirectMemorySize` |
-
-
 
 - **PC 寄存器是唯一不会 OOM 的分区** —— 它只存一个固定大小的字节码偏移，随线程生随线程死
 - **元空间用完抛的是 `OOM: Metaspace`**，与堆的 `Java heap space` 是**两种不同类型**的 OOM —— 生产排查看错方向会浪费半天
@@ -423,8 +421,6 @@ Thread-1 (私有)
 | **轻量级锁** | `指向栈中锁记录的指针(62) + 锁标志(2)=00` | `xx0` (低 2 bit=00) |
 | **重量级锁** | `指向 Monitor 对象(ObjectMonitor)的指针(62) + 锁标志(2)=10` | `xx0` (低 2 bit=10) |
 | **GC 标记** | 由 GC 使用，配合 forwarding pointer（复制算法转发指针） | `xx1` (低 2 bit=11) |
-
-
 
 - **8 字节槽位 + 低 2 bit 分派入口 + 五种状态共享同一内存空间** —— Mark Word 是 JVM 内存布局里最紧凑的多态设计
 - **同一个字段在五种状态下"存不同的东西"**，判断当前是哪种状态只需读低 2 bit + 第 3 bit（偏向标志）

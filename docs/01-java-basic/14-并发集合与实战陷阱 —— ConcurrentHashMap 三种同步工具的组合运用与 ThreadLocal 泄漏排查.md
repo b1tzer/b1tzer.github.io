@@ -5,7 +5,7 @@ title: 并发集合与实战陷阱 —— ConcurrentHashMap 三种同步工具�
 
 # 并发集合与实战陷阱 —— ConcurrentHashMap 三种同步工具的组合运用与 ThreadLocal 泄漏排查
 
-**你能立刻答上来吗？**
+以下问题指向并发集合与实战陷阱的核心：
 
 - `ConcurrentHashMap.put()` 究竟什么时候走 CAS、什么时候走 `synchronized`、什么时候走 `helpTransfer`？完整决策链能一次画出来吗？
 - `sizeCtl` 的 5 种语义分别对应什么运行阶段？扩容中的高 16 位"扩容 stamp"到底校验什么？
@@ -13,8 +13,6 @@ title: 并发集合与实战陷阱 —— ConcurrentHashMap 三种同步工具�
 - `CopyOnWriteArrayList` 迭代到一半有别的线程 `add`，会抛 `ConcurrentModificationException` 吗？为什么？
 - 线程池的 `Worker` 复用后，`ThreadLocal` 传递的 `traceId` 为什么会串？`ThreadLocalMap.Entry` 里到底哪个引用强、哪个引用弱？
 - `InheritableThreadLocal` 在线程池里为什么"看似能用其实失效"？跨线程池传递上下文的正确姿势是什么？
-
-任何一个问题让你迟疑超过 3 秒——继续读。
 
 ---
 
@@ -107,7 +105,7 @@ public class TraceInterceptor implements HandlerInterceptor {
 
 ### 2.1 `ConcurrentHashMap.put()` 完整源码链路
 
-`put()` 是理解 CHM 全部并发控制的钥匙——**六个分支覆盖了 CAS、`synchronized`、协作扩容三种同步工具**：
+`put()` 是理解 CHM 全部并发控制的关键——**六个分支覆盖了 CAS、`synchronized`、协作扩容三种同步工具**：
 
 ```java
 public V put(K key, V value) {

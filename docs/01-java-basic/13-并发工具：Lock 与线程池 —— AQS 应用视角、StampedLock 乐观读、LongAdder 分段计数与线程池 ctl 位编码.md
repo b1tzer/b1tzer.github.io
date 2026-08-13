@@ -5,13 +5,13 @@ title: 并发工具：Lock 与线程池 —— AQS 应用视角、StampedLock �
 
 # 并发工具：Lock 与线程池 —— AQS 应用视角、StampedLock 乐观读、LongAdder 分段计数与线程池 ctl 位编码
 
-!!! info "**并发工具 一句话口诀**"
+!!! info "**并发工具 一句话总结**"
     - **JUC 所有锁与同步器都是"AQS `state` 上定义不同语义"的产物**：`ReentrantLock` 用 `state` 存重入次数；`ReentrantReadWriteLock` 用高 16 位存读锁计数、低 16 位存写锁计数；`Semaphore` 用 `state` 存剩余许可；`CountDownLatch` 用 `state` 存倒计数。**一个 `volatile int` 撑起半个 JUC 包**——这是设计哲学的复用力：AQS 提供 CLH 排队 + `park`/`unpark` 骨架，子类只需在 `tryAcquire` / `tryRelease` / `tryAcquireShared` / `tryReleaseShared` 四个钩子里定义"`state` 是什么"和"什么时候能获取"。
     - **`StampedLock` 三种模式（写锁 / 悲观读 / 乐观读）不是简单的"读写锁升级"，是"用无锁乐观读把读操作降到零同步开销"**：乐观读拿到一个 8 字节的 `stamp`（`long` 版本号），读完数据后用 `validate(stamp)` 校验 stamp 是否变化，未变化就直接返回，变化则退化到 `readLock()` 悲观读。在读远多于写的场景比 `ReentrantReadWriteLock` 快 4~10 倍。**代价是不可重入、不支持 `Condition`、不能用 `try-with-resources` 自动释放**——使用前需要明确三条限制。
     - **`LongAdder` = "分段 Cell 数组 + CAS 竞争分流"的底层实现**：低竞争走 `base` 字段的单 CAS；高竞争时把一个 `AtomicLong` 的 CAS 分散到 `cells[]` 上，每个线程通过 `getProbe() & (n-1)` 路由到自己的 `Cell`，`sum()` 时遍历求和。`Striped64.Cell` 用 `@Contended` 注解让每个 `Cell` 独占一条 128 字节的填充区，规避 CPU 缓存行伪共享——这也是"`AtomicLong` 是精确读、`LongAdder` 是最终一致"的根本原因：`sum()` 遍历过程中其他线程仍在写 `Cell`，读到的是**扫过时的快照总和**而非某个原子瞬间的值。
     - **线程池 7 参数 = "核心 → 队列 → 最大 → 拒绝"四段式漏斗**，参数背后是一个 `AtomicInteger ctl` 编码 32 位状态：**高 3 位 = 5 种运行状态（`RUNNING` / `SHUTDOWN` / `STOP` / `TIDYING` / `TERMINATED`）、低 29 位 = 工作线程数**。用一个 `int` 同时读写状态 + 线程数是"避免多字段同步"的经典设计——`RUNNING = -1 << 29` 让 `RUNNING < SHUTDOWN < STOP < TIDYING < TERMINATED` 单调递增，状态迁移用简单的整数比较即可判断，这条位编码技巧后面还会在 `ConcurrentHashMap.sizeCtl` 上重现。
 
-**你能立刻答上来吗？**
+以下问题指向 Lock 与线程池的底层机制：
 
 - `ReentrantLock` 公平锁的 `tryAcquire` 比非公平锁多一步 `hasQueuedPredecessors()`——这一步遍历 CLH 队列的开销有多大？为什么阿里 P3C 手册默认推荐非公平锁？
 - `ReentrantReadWriteLock.readLock()` 一次能给 `state` 加多少？为什么读锁允许多线程同时持有，但重入次数会污染读锁计数？
@@ -19,8 +19,6 @@ title: 并发工具：Lock 与线程池 —— AQS 应用视角、StampedLock �
 - 高并发计数从 `AtomicLong` 换成 `LongAdder` 后为什么 QPS 能提升 5~10 倍？`@Contended` 注解在 JDK 9 之前和之后有什么行为差异？
 - 线程池 `ctl = ctlOf(RUNNING, 0)` 初始值的二进制是什么？`SHUTDOWN` 和 `STOP` 状态迁移时用 `ctl.compareAndSet` 会不会误改工作线程数？
 - 为什么阿里 P3C 手册禁止 `Executors.newFixedThreadPool` 和 `newCachedThreadPool`？分别会导致什么类型的 OOM？
-
-任何一个问题让你迟疑超过 3 秒——继续读。
 
 ---
 
@@ -487,7 +485,7 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
 | 是否可打断 | ✅ `acquireInterruptibly` | ✅ `await` 响应中断 | ⚠️ 打断会导致 barrier 破损（`BrokenBarrierException`） |
 | 典型场景 | 限流、连接池、资源信号 | 主线程等待子任务全部完成 | N 个线程互相等待、分阶段并行计算 |
 
-**核心区分口诀**：
+**核心区分要点**：
 
 - `Semaphore` = **停车场管理员**（发牌/收牌，可无限循环）
 - `CountDownLatch` = **倒计时发射按钮**（一次性，按下就无法回滚）

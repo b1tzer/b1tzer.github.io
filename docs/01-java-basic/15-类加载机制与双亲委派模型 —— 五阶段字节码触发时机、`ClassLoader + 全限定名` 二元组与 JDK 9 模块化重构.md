@@ -5,7 +5,7 @@ title: 类加载机制与双亲委派模型 —— 五阶段字节码触发时�
 
 # 类加载机制与双亲委派模型 —— 五阶段字节码触发时机、`ClassLoader + 全限定名` 二元组与 JDK 9 模块化重构
 
-**你能立刻答上来吗？**
+以下问题指向类加载机制与双亲委派模型的核心：
 
 - `ClassNotFoundException` 与 `NoClassDefFoundError` 分别在类加载五阶段的**哪一阶段**抛出？实际触发点差异是什么？
 - `String s = Foo.class.getName();` 会不会执行 `Foo` 的 `<clinit>()`？为什么 `Class.forName("Foo")` 会，而 `Foo.class` 语法糖不会？
@@ -13,8 +13,6 @@ title: 类加载机制与双亲委派模型 —— 五阶段字节码触发时�
 - 自定义类加载器要重写 `findClass()` 还是 `loadClass()`？为什么 Tomcat 的 `WebAppClassLoader` **必须**重写 `loadClass()`？
 - 同一个 `Foo.class` 字节流被两个 `URLClassLoader` 各加载一次，`Class<Foo> a = ...; Class<Foo> b = ...;` —— `a == b` 返回什么？`a.isAssignableFrom(b)` 返回什么？`a.getSuperclass() == b.getSuperclass()` 呢？
 - JDK 8 升级到 JDK 11，`getSystemClassLoader() instanceof URLClassLoader` 从 `true` 变 `false`——为什么？`ext/` 目录扩展 JAR 为什么被静默忽略？
-
-任何一个问题让你迟疑超过 3 秒——继续读。
 
 ---
 

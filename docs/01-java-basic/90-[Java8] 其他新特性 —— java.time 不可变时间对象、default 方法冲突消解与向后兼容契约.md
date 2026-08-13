@@ -5,15 +5,13 @@ title: [Java8] 其他新特性 —— java.time 不可变时间对象、default 
 
 # [Java8] 其他新特性 —— java.time 不可变时间对象、default 方法冲突消解与向后兼容契约
 
-**你能立刻答上来吗？**
+以下问题指向 Java 8 其他新特性的核心：
 
 - `LocalDate` / `LocalDateTime` / `ZonedDateTime` / `Instant` 四个类的适用场景各是什么？为什么数据库存时间戳一律用 `Instant` 或 `TIMESTAMP` 而不是 `LocalDateTime`？
 - 为什么 `SimpleDateFormat` 是全 JDK 最著名的"多线程共享陷阱"？`DateTimeFormatter` 为什么可以放心共享？
 - 一个类同时实现了 `interface A` 和 `interface B`，两个接口里都有 `default void hello()`，编译器会怎么处理？
 - Java 8 接口能有几种方法？Java 9 又加了什么？为什么 Java 9 要加"接口私有方法"？
 - 服务器时区北京、数据库时区 UTC，你用 `LocalDateTime.now()` 存进数据库会发生什么？
-
-任何一个问题让你迟疑超过 3 秒——继续读。
 
 ---
 

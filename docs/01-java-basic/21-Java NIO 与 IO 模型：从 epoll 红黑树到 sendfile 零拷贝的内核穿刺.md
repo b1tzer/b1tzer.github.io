@@ -5,7 +5,7 @@ title: Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内
 
 # Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内核透视
 
-**你能立刻答上来吗？**
+以下问题指向 NIO 与 IO 模型的底层机制：
 
 - `Selector.select()` 到底是 select、poll 还是 epoll？JVM 是怎么根据 OS 选实现的？
 - epoll 的 `epoll_wait` 号称 O(1)——但注册的 fd 越多，红黑树越大，为什么查询还是 O(1)？
@@ -13,8 +13,6 @@ title: Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内
 - `ByteBuffer.allocateDirect(1024)` 分配的直接缓冲区，`-Xmx` 管得着吗？OOM 时抛的是 `Java heap space` 还是 `Direct buffer memory`？
 - JDK 空轮询 Bug 到底是 Linux epoll 的锅还是 JDK 的锅？Netty 的"重建 Selector"为什么能解决？
 - Netty 为什么不用 Java AIO（`AsynchronousChannel`）？Linux 的 AIO 到底缺什么？
-
-任何一个问题让你迟疑超过 3 秒——继续读。
 
 ---
 
@@ -55,7 +53,7 @@ BIO 线程模型：一连接一线程
 单线程栈内存：-Xss=1m（默认 512KB~1MB）
 10000 连接    = 10000 线程 = 5~10GB 栈内存
              → 直接吃光 JVM 堆外空间 + 内核线程调度队列爆炸
-             → 大部分 CPU 在做上下文切换而非干活
+             → 大部分 CPU 在做上下文切换而非执行实际任务
 ```
 
 **关键结论**：C10K 问题（单机 1 万并发连接）**本质上不是"CPU / 内存不够"**，是**"线程 : 连接 = 1 : 1"这个映射关系的性能天花板**。NIO 的所有设计都围绕一件事：**让线程数 << 连接数，用"事件通知"取代"阻塞等待"**。

@@ -7,7 +7,7 @@ title: 反射（Reflection）：调用链、字节码指令与 JIT 内联的三�
 
 在 Java 生态里，**反射（Reflection）** 是所有主流框架的隐形地基——Spring IoC 的 Bean 实例化、MyBatis 的结果集映射、Jackson 的字段序列化、JUnit 的测试方法调度、Dubbo 的远程服务调用，都在其动态发现与调用链路上大量使用 `Class.forName` + `Method.invoke` + `Field.get/set` 这套 API（现代框架通常还会叠加 `MethodHandle` / `VarHandle` / 字节码生成 / 代理 / 缓存等组合机制）。它赋予了 Java "编译期未知、运行期动态发现"的超能力，让"配置驱动"和"插件化架构"成为可能。
 
-然而这份"超能力"从来都不是免费的。每一次 `Method.invoke` 的背后，都藏着一场跨越三层规范的博弈：**Java 语言规范（JLS）** 规定了调用语义、**JVM 规范（JVMS）** 决定了字节码指令与分派规则、**HotSpot 实现（且随 JDK 版本演化）** 决定了具体调用链的底层形态。三层交织，让"反射慢"不是一句静态的口诀，而是一条会随着 JDK 版本重塑的动态曲线。
+然而这份"超能力"从来都不是免费的。每一次 `Method.invoke` 的背后，都藏着一场跨越三层规范的博弈：**Java 语言规范（JLS）** 规定了调用语义、**JVM 规范（JVMS）** 决定了字节码指令与分派规则、**HotSpot 实现（且随 JDK 版本演化）** 决定了具体调用链的底层形态。三层交织，让"反射慢"不是一个静态结论，而是一条会随着 JDK 版本重塑的动态曲线。
 
 你是否真正直面过这些问题：
 
@@ -16,7 +16,7 @@ title: 反射（Reflection）：调用链、字节码指令与 JIT 内联的三�
 - 为什么 `AtomicInteger` 到 JDK 21 都还在用 `jdk.internal.misc.Unsafe`？`VarHandle` 只是"官方替代"却没能替代 JDK 内部原子类？
 - 为什么 JDK 动态代理只能代理接口、CGLIB 遇到 `final` 类会直接罢工？两者在字节码层的差异到底是什么？
 
-真正优秀的架构师，不会满足于"反射慢 = 用 `MethodHandle`" 这一层浅薄的选型口诀。本篇我们将按 **"业务痛点 → 字节码考古 → 内存布局 → 工程红线"** 四层垂直透视展开，并**在每个技术点显式标注归属哪一层规范**——JLS / JVMS / HotSpot 实现——让你既看清 Java 反射的"本质契约"，又能识别哪些是"HotSpot 特定版本的实现细节"。
+真正优秀的架构师，不会满足于"反射慢 = 用 `MethodHandle`" 这一层浅薄的选型结论。本篇我们将按 **"业务痛点 → 字节码考古 → 内存布局 → 工程红线"** 四层垂直透视展开，并**在每个技术点显式标注归属哪一层规范**——JLS / JVMS / HotSpot 实现——让你既看清 Java 反射的"本质契约"，又能识别哪些是"HotSpot 特定版本的实现细节"。
 
 !!! note "📖 阅读约定：三层规范体系（含衍生层）"
     本文正文所有技术断言都会标注归属层次，请留意以下惯例：
@@ -25,7 +25,7 @@ title: 反射（Reflection）：调用链、字节码指令与 JIT 内联的三�
     - **JVMS**（Java Virtual Machine Specification）：字节码指令与分派规则，跨实现稳定。示例：`invokedynamic` 指令通过 `BootstrapMethod` 绑定 `CallSite`；JVMS 也定义了 signature-polymorphic 方法的字节码表示。
     - **HotSpot 实现**（且标注 JDK 版本）：随 OpenJDK 版本演化的实现细节。示例：`MethodAccessor` inflation 阈值（HotSpot ≤ JDK 17）、`LambdaForm` 常量折叠（HotSpot 全版本）、C2 内联启发式。
 
-    ⚠️ 遇到"HotSpot 实现"标签的内容时，请把它当作**"当前主流 JDK 的一种实现方式"**，而不是"Java 语言规律"——同一段代码在 GraalVM / OpenJ9 上完全可能走不同的底层路径。
+    ⚠️ 遇到"HotSpot 实现"标签的内容时，把它当作**"当前主流 JDK 的一种实现方式"**，而不是"Java 语言规律"——同一段代码在 GraalVM / OpenJ9 上完全可能走不同的底层路径。
 
     **📌 三层之外的衍生层**：本文还会出现三个不属于上述三层但同样重要的归属标签，请一并注意：
 
@@ -79,7 +79,7 @@ public class OrderController {
 1. **`Method.invoke` 内部的调用链开销**——这一块随 JDK 版本变化很大（详见 §2）
 2. **调用方 varargs 装箱产生的 `Object[]` + 基本类型的自动装箱**——这一块由**调用者字节码**决定，与反射内部实现无关
 
-到底是哪一块在字节码层面阻挡了 JIT 的内联？为什么 `MethodHandle` 能绕开这道墙？答案要到字节码考古现场才能揭晓。
+到底是哪一块在字节码层面阻挡了 JIT 的内联？为什么 `MethodHandle` 能绕开这道墙？答案在字节码考古中给出。
 
 ---
 
@@ -998,7 +998,7 @@ private OrderService orderService;       // ✅ JDK 动态代理
 
 ## 5. 🗺️ 跨篇章知识关联
 
-本篇从四条独立技术线索（HotSpot ≤17 反射、JEP 416 后反射、`MethodHandle` 家族、`invokedynamic` 指令）打通了反射生态的全貌，并按 **JLS / JVMS / HotSpot 实现** 三层规范体系锁定了每个技术断言的归属。
+本篇从四条独立技术线索（HotSpot ≤17 反射、JEP 416 后反射、`MethodHandle` 家族、`invokedynamic` 指令）贯通了反射生态的全貌，并按 **JLS / JVMS / HotSpot 实现** 三层规范体系锁定了每个技术断言的归属。
 
 - [Java 8 函数式编程](@java-字节码-函数式编程) 展开本篇 §2.4 的 `invokedynamic` 机制：每个 Lambda 表达式在字节码层编译为一条 `invokedynamic`，`BootstrapMethod` 为 `LambdaMetafactory.metafactory`，首次调用时通过 `MethodHandle` 生成实现目标函数式接口的对象并封装到 `ConstantCallSite`，后续调用直接沿 `CallSite` 分派，性能接近直接方法调用。
 - [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 展开本篇 §2.3 / §3.4 的 `VarHandle` 语义：`VarHandle.compareAndSet` 在典型 HotSpot 实现与 x86 平台上编译为 `lock cmpxchg` 硬件指令。`volatile` 的读写语义与 `VarHandle` 各访问模式有对应关系，`VarHandle` 是字段级并发操作的 API 入口，`Unsafe` 是其历史前身。

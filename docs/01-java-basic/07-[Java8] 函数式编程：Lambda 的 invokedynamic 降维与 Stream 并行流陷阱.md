@@ -15,7 +15,7 @@ title: [Java8] 函数式编程：Lambda 的 invokedynamic 优化与 Stream 并�
 - 捕获本质：`effectively final` 限制下，Lambda 捕获局部变量到底捕的是值还是引用？为什么 `int` 与 `List<String>` 的“捕获后能否观察到外部修改”答案完全相反？
 - 流水线伪象：为什么 Java 8 Stream 里 `filter(...).map(...).collect(toList())` 三行代码，字节码里却只有一次遍历？中间的 `Stream<T>` 对象到底在哪里？
 
-如果任何一个场景让你迟疑超过 3 秒，或者你至今仍以为 Lambda 只是匿名内部类的“语法糖”——那么这篇文章将带你斩断对 Java 函数式编程的表面认知，从语言层、字节码层、运行期完成三层硬核闭环。
+本篇从语言层、字节码层、运行期三层展开，完整说明 Lambda 不是匿名内部类的语法糖。
 
 ---
 
@@ -397,7 +397,7 @@ public static long countLongNames(List<String> names) {
 | JIT 内联 | 存在虚方法调用，多态点可能抑制内联 | 单态调用点常量绑定后 JIT 可完全内联 |
 | Metaspace 占用 | 编译期确定，随 ClassLoader 卸载可回收 | 运行期生成（JDK 8~14 属于 `Unsafe` 匿名类，JDK 15+ 为 Hidden Class，后者可随 GC 回收） |
 
-这张表回答了本篇开篇导读第 1 条口诀——**Lambda 不是匿名内部类的语法糖**。它在字节码 / 类加载 / 堆布局 / JIT 优化四个层面**处处不同**。
+这张表回答了本篇开篇导读的第 1 条结论——**Lambda 不是匿名内部类的语法糖**。它在字节码 / 类加载 / 堆布局 / JIT 优化四个层面**处处不同**。
 
 ### 3.3 Stream 流水线：`Sink` 链的底层结构
 

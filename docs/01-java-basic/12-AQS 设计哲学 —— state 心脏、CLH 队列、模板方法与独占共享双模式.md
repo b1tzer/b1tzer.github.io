@@ -1,26 +1,24 @@
 ---
 doc_id: java-并发-AQS设计哲学
-title: AQS 设计哲学 —— state 心脏、CLH 队列、模板方法与独占共享双模式
+title: AQS 设计哲学 —— state 核心、CLH 队列、模板方法与独占共享双模式
 ---
 
-# AQS 设计哲学 —— state 心脏、CLH 队列、模板方法与独占共享双模式
+# AQS 设计哲学 —— state 核心、CLH 队列、模板方法与独占共享双模式
 
-!!! info "**AQS 设计哲学一句话口诀**"
+!!! info "**AQS 设计哲学一句话总结**"
     - **AQS = `state`（volatile int）+ CLH 双向队列 + 模板方法 + 独占/共享双模式** —— 四件事撑起 20+ 个 JUC 同步器。所有 `Lock` / `Semaphore` / `CountDownLatch` / `ReadWriteLock` / `ThreadPoolExecutor.Worker` 都是"在 `state` 上定义不同语义 + 复用模板方法"的产物。
-    - **`state` 是 AQS 的心脏 —— 一个 `volatile int` 承载所有语义**：`ReentrantLock` 里 `state` = 重入次数、`Semaphore` 里 = 剩余许可数、`CountDownLatch` 里 = 倒计数、`ReentrantReadWriteLock` 里 = 高 16 位读锁 + 低 16 位写锁计数。**用最少的字段撑起最大语义空间**，是 Doug Lea 设计哲学的典型体现。
+    - **`state` 是 AQS 的核心 —— 一个 `volatile int` 承载所有语义**：`ReentrantLock` 里 `state` = 重入次数、`Semaphore` 里 = 剩余许可数、`CountDownLatch` 里 = 倒计数、`ReentrantReadWriteLock` 里 = 高 16 位读锁 + 低 16 位写锁计数。**用最少的字段撑起最大语义空间**，是 Doug Lea 设计哲学的典型体现。
     - **CLH 双向队列是严格 FIFO 公平性的硬件保证**：每个等待线程封装成 `Node`（`prev` / `next` 双向指针 + 状态位 `waitStatus`），头节点持有锁的哑节点、尾节点是新入队、`park()` / `unpark()` 是挂起唤醒对。CLH 名字来自三位作者（Craig / Landin / Hagersten），原始 CLH 是**单向自旋队列**，AQS 变体升级为**双向 + `park` 阻塞**，`prev` 支持"取消节点"直接跳过。
     - **模板方法模式是 AQS 复用的秘诀**：AQS 提供 `acquire` / `release` / `acquireShared` / `releaseShared` 四个 `final` 骨架方法，子类只重写 `tryAcquire` / `tryRelease` / `tryAcquireShared` / `tryReleaseShared` 四个抽象方法定义"什么条件下能拿到 state" —— **框架封装公共排队/挂起/唤醒逻辑，子类只声明业务语义**。
     - **AQS 不参与 `synchronized` 锁升级** —— AQS 完全在 Java 层实现，`park` 底层是 `pthread_cond_wait`；`synchronized` 是 JVM 内建同步机制，走偏向锁 → 轻量级锁 → 重量级锁升级。二者是**两条完全独立的技术路径**，选型时不要混淆。
 
-**你能立刻答上来吗？**
+以下五个问题指向 AQS 的四个核心机制：
 
 - 一个 `volatile int state` 是怎么同时承担"重入次数 / 剩余许可数 / 倒计数 / 高低 16 位读写锁计数"四种完全不同的语义的？
 - 为什么 CLH 队列的头节点在 AQS 里是"哑节点"（`thread = null`）？释放锁时到底 unpark head 还是 head.next？
 - `LockSupport.park` 和 `Object.wait` 底层都能挂起线程，为什么 AQS 一律用前者？
 - 独占模式与共享模式的唯一分岔点是什么？为什么 `Semaphore(3).release()` 能"传播唤醒"多个等待线程，而 `ReentrantLock.unlock()` 只唤醒一个？
 - `ReentrantLock` 走 AQS、`synchronized` 走 JVM 锁升级 —— 两条路径的选型分界到底在哪里？
-
-如果任何一个问题让你迟疑超过 3 秒——继续读。
 
 ---
 
@@ -98,7 +96,7 @@ rwl.writeLock().lock();
 public abstract class AbstractQueuedSynchronizer
         extends AbstractOwnableSynchronizer {
 
-    // 1️⃣ state —— 心脏（承载所有语义）
+    // 1️⃣ state —— 核心（承载所有语义）
     private volatile int state;
 
     // 2️⃣ CLH 队列头尾指针（双向链表）
@@ -120,10 +118,10 @@ public abstract class AbstractQueuedSynchronizer
 }
 ```
 
-AQS 就这四件事 —— **一个 `state` 字段是心脏 · 一条 CLH 队列是骨架 · 四个 `final` 是模板 · 四个抽象是契约**。子类只写 `tryXxx`，框架管所有排队 / 挂起 / 唤醒 / 中断处理。
+AQS 就这四件事 —— **一个 `state` 字段是核心 · 一条 CLH 队列是骨架 · 四个 `final` 是模板 · 四个抽象是契约**。子类只写 `tryXxx`，框架管所有排队 / 挂起 / 唤醒 / 中断处理。
 
 !!! note "📖 术语家族：AQS 骨架四要素"
-    **字面义**：AQS = "Abstract Queued Synchronizer" = "抽象的、基于队列的、同步器" —— 名字本身就把四要素包含了三个词：**Abstract**（模板方法 + 抽象契约）、**Queued**（CLH 队列骨架）、**Synchronizer**（`state` 心脏 + 独占-共享双模式）。
+    **字面义**：AQS = "Abstract Queued Synchronizer" = "抽象的、基于队列的、同步器" —— 名字本身就把四要素包含了三个词：**Abstract**（模板方法 + 抽象契约）、**Queued**（CLH 队列骨架）、**Synchronizer**（`state` 核心 + 独占-共享双模式）。
 
     **在框架中的含义**：Doug Lea 用这四件事撑起了整个 JUC 包的同步基础设施，`java.util.concurrent.locks` 与 `java.util.concurrent` 下所有"需要挂起线程 + 排队唤醒"的组件（`Lock` / `Semaphore` / `CountDownLatch` / `ReentrantReadWriteLock` / `ThreadPoolExecutor.Worker` / `FutureTask.Sync` / `SynchronousQueue.TransferStack` 等）全部继承或组合 AQS。
 
@@ -131,7 +129,7 @@ AQS 就这四件事 —— **一个 `state` 字段是心脏 · 一条 CLH 队列
 
     | 要素 | 名称 | 职责 |
     | :-- | :-- | :-- |
-    | 心脏 | `volatile int state` | 承载所有语义（重入次数 / 许可数 / 倒计数 / 分位读写等） |
+    | 核心 | `volatile int state` | 承载所有语义（重入次数 / 许可数 / 倒计数 / 分位读写等） |
     | 队列 | `Node head` / `Node tail`（CLH 双向链表） | 严格 FIFO 排队 |
     | 4 个 `final` 骨架 | `acquire` / `release` / `acquireShared` / `releaseShared` | 框架公共排队 / 挂起 / 唤醒逻辑 |
     | 4 个抽象契约 | `tryAcquire` / `tryRelease` / `tryAcquireShared` / `tryReleaseShared` | 子类业务语义定义 |
@@ -414,7 +412,7 @@ private void setHeadAndPropagate(Node node, int propagate) {
 │ AbstractQueuedSynchronizer 对象（64 位 JVM 压缩指针）           │
 │  offset 0    Mark Word                        (8B)             │
 │  offset 8    Klass Pointer                    (4B, 压缩)       │
-│  offset 12   int state                        (4B, volatile)   │← 心脏
+│  offset 12   int state                        (4B, volatile)   │← 核心
 │  offset 16   Node* head                       (4B, volatile)   │← CLH 头
 │  offset 20   Node* tail                       (4B, volatile)   │← CLH 尾
 │  offset 24   Thread* exclusiveOwnerThread     (4B, 继承自父类) │← 独占持有者

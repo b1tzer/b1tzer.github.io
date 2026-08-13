@@ -5,7 +5,7 @@ title: 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃
 
 # 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃迁与 LOCK CMPXCHG 的物理实现
 
-!!! info "**并发基础 · 一句话口诀**"
+!!! info "**并发基础 · 一句话总结**"
     - **JMM 不是"内存模型"，是"重排序契约 + 内存屏障使用手册"**：JLS §17.4.5 的 8 条 happens-before 规则决定"哪些代码不能重排、哪些必须建立可见性"，编译器 / JIT 依据这份契约插入四种 JMM 屏障（`LoadLoad` / `StoreStore` / `LoadStore` / `StoreLoad`），最终在 x86 上落成 `sfence` / `lfence` / `mfence` 或 `LOCK` 前缀指令。**四种 JMM 屏障在 x86 上有三种是空指令（TSO 天然有序），只有 `StoreLoad` 需要真实 `mfence`**——这就是"x86 上 volatile 读几乎零成本、volatile 写才是唯一显著开销"的根本原因。
     - **`synchronized` 锁升级四阶段 = Mark Word 前 8 字节最低 3 位的位跃迁**：无锁（`001`）→ 偏向锁（`101` + 线程 ID）→ 轻量级锁（`00` + 栈锁记录指针）→ 重量级锁（`10` + `ObjectMonitor` 指针）。**JDK 15 起（[JEP 374](https://openjdk.org/jeps/374)）默认关闭偏向锁**——现代应用几乎全是多线程竞争场景，偏向锁的撤销开销大于收益，实际链路已退化为"无锁 → 轻量级锁 → 重量级锁"。Mark Word 完整位分布与锁态跃迁细节见 §2.3。
     - **CAS 不是软件技巧，是 CPU `LOCK CMPXCHG` + MESI 缓存一致性协议的组合**：`LOCK` 前缀让缓存行独占（首选缓存锁 · 跨行降级为总线锁），MESI 协议保证其他核对应缓存行置为 Invalid——**硬件保证的原子性**，比软件锁（重量级 `synchronized` 陷入内核 `pthread_mutex`）快 10~100 倍。Java 层的 `AtomicInteger.compareAndSet` / JDK 内部的 `Unsafe.compareAndSwapInt` / CPU 指令 `LOCK CMPXCHG` 是**同一件事在三个层级上的投影**（术语家族卡片一）。
@@ -18,8 +18,6 @@ title: 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃
 - CAS 的原子性从哪里来？`LOCK CMPXCHG` 与 MESI 协议是怎么配合的？x86 上一条 `volatile int` 的写会被 JIT 编译成哪一条汇编指令？
 - JMM 四种内存屏障对应 x86 上的哪些 CPU 指令？为什么 x86 只需要一条 `mfence`（TSO 强内存模型的硬件事实），而 ARM 需要四种 `dmb` 变种？
 - `AtomicInteger.incrementAndGet` 高竞争下为什么改用 `LongAdder` 会快 10 倍？`Cell[]` 分段是怎么把"单点 CAS 争抢"变成"多点 CAS 无争抢"的？
-
-任何一个问题让你迟疑超过 3 秒——继续读。
 
 ---
 

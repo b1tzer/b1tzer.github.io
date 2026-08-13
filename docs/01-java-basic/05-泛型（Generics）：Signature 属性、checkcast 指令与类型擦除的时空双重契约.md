@@ -74,7 +74,7 @@ System.out.println(stringList.getClass() == intList.getClass()); // true
 if (stringList instanceof List<String>) { }
 ```
 
-这背后的诡异感在于：**类型信息似乎存在，又似乎不存在**。它像量子叠加态一样，只有到具体地"观测"时才会坍缩。谁在观测？观测点在哪？答案要到字节码考古现场才能揭晓。
+这背后的诡异感在于：**类型信息似乎存在，又似乎不存在**。它像量子叠加态一样，只有到具体地"观测"时才会坍缩。这些问题的答案在字节码考古中给出。
 
 在动身之前，必须先引入 JLS 规范里的一对硬术语，它们是解释一切后续现象的**根词根**——**Reifiable Type（可具体化类型）** 与 **Non-reifiable Type（不可具体化类型）**：
 
@@ -109,9 +109,9 @@ public class GenericAnomaly {
 }
 ```
 
-**Bug 现场痛点**：这段代码最麻烦的地方在于，堆内存被污染的那个瞬间（`rawList.add(1024)` 时），程序没有任何报错或异常。它像一颗被埋下的定时炸弹，静静地躺在堆内存里，直到下游不知道多少层、不相干的业务方法执行 `secureList.get(1)` 试图取出数据时，才突然抛出异常。排查人员看着报错行，百思不得其解：为什么声明为 `List<String>` 的容器里会蹦出一个 `Integer`？
+**Bug 现场痛点**：这段代码最麻烦的地方在于，堆内存被污染的那个瞬间（`rawList.add(1024)` 时），程序没有任何报错或异常。它在被污染时不报错，直到下游不相干的业务方法执行 `secureList.get(1)` 取出数据时才抛出异常。排查人员看着报错行，百思不得其解：为什么声明为 `List<String>` 的容器里会蹦出一个 `Integer`？
 
-这背后的根因，同样要等到第二层字节码考古现场才能揭晓：由于类型擦除把 `List<String>` 拉平成 `Object`，遗留库往里塞 `Integer` 时 JVM 一路放行；直到下游执行 `get(1)` 时，字节码里的 `checkcast #class java/lang/String` 发现内存里真实对象是 `Integer`，无法通过类型检查，才立即抛出 `ClassCastException`。
+这背后的根因在第二层字节码考古中给出：由于类型擦除把 `List<String>` 拉平成 `Object`，遗留库往里塞 `Integer` 时 JVM 一路放行；直到下游执行 `get(1)` 时，字节码里的 `checkcast #class java/lang/String` 发现内存里真实对象是 `Integer`，无法通过类型检查，才立即抛出 `ClassCastException`。
 
 ⭐ 但这里必须澄清一个更根本的 JVM 层真相——**并不是 JVM 明知道"这是 `List<String>`"却故意选择放行**，而是**在 JVM 的运行时类型系统里，这个 List 对象本身根本没有一个可以强制验证"所有元素必须是 String"的运行时参数化类型约束**。换句话说，JVM 从始至终看到的都只是一个裸的 `ArrayList`，"每个元素必须是 String" 这件事**从未以任何运行时可执行的形式存在过**——它只作为编译期的静态类型契约存在于 `javac` 的类型推导过程中。这也正是 4.2 节"必须用匿名子类钉住泛型"红线之外，另一种极端反模式——**裸用 Raw Type 绕过了编译器的类型安全检查，给堆污染提供了入口**。
 
@@ -722,7 +722,7 @@ public static <T> void copy(
 }
 ```
 
-**判定口诀**：`extends` 像漏斗**出口**（数据只能流出）、`super` 像漏斗**入口**（数据只能流入）。写库、写基础工具方法时**首选带通配符**，写具体业务方法可以退回到 `List<T>`。
+**判定规则**：`extends` 像漏斗**出口**（数据只能流出）、`super` 像漏斗**入口**（数据只能流入）。写库、写基础工具方法时**首选带通配符**，写具体业务方法可以退回到 `List<T>`。
 
 ### 4.5 🚨 工程红线 5：`Class<T>` vs `TypeReference<T>` vs `KClass<T>` 的三级选型契约
 
@@ -829,7 +829,7 @@ Class 文件 → Signature → Reflection → ParameterizedType → ResolvableTy
 - **空间维度**：Class 文件在**元空间**里通过 `Signature` 属性保存擦除前的泛型结构，供反射与框架旁路消费
 - **执行维度**：JVM 在**运行时**按擦除后的 descriptor 派发方法，通过 `checkcast` 与桥接方法在类型边界处兜底
 
-而理解"类型信息在不同时间、不同空间中的存在形式"，才是真正打通 Java 泛型、JVM 字节码与 Spring 类型解析机制的入口。所以，当我们再次看到 `List<String>` 时，正确的心智模型不应该是"JVM 里有一个只能放 String 的 List"，也不应该退化为"泛型全被擦除、运行时啥都没有"，而是：
+而理解"类型信息在不同时间、不同空间中的存在形式"，才是真正贯通 Java 泛型、JVM 字节码与 Spring 类型解析机制的入口。所以，当我们再次看到 `List<String>` 时，正确的心智模型不应该是"JVM 里有一个只能放 String 的 List"，也不应该退化为"泛型全被擦除、运行时啥都没有"，而是：
 
 > **`List<String>` 是 Java 编译器理解的一种参数化类型。它的类型参数通常不会成为 JVM 独立的运行时类型，也不会进入普通方法 descriptor；但泛型结构可能通过 Class 文件的 Signature 属性保留下来，并被 Reflection 与框架重新解析。同时，在从擦除类型回到源代码静态类型的边界上，编译器会通过 `checkcast` 执行必要的运行时类型检查，并通过 Bridge Method 维持泛型多态。**
 
