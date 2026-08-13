@@ -518,21 +518,116 @@ export default defineConfig({
       ],
       '/elasticsearch/': [
         {
-          text: 'Elasticsearch',
+          text: '基础入门',
           items: [
-            { text: '概览', link: '/elasticsearch/00-elasticsearch概览' },
-            { text: '引入与背景', link: '/elasticsearch/01-引入与背景' },
-            { text: '核心概念', link: '/elasticsearch/02-核心概念' },
-            { text: '倒排索引', link: '/elasticsearch/03-倒排索引' },
-            { text: 'Mapping 设计', link: '/elasticsearch/04-Mapping映射设计' },
-            { text: '查询 DSL', link: '/elasticsearch/05-查询语法DSL' },
-            { text: '集群与分片', link: '/elasticsearch/06-集群架构与分片机制' },
-            { text: '性能优化', link: '/elasticsearch/07-性能优化' },
-            { text: '数据一致性', link: '/elasticsearch/08-数据一致性' },
-            { text: '聚合查询', link: '/elasticsearch/09-聚合查询' },
-            { text: '分词器', link: '/elasticsearch/10-分词器与中文分词' },
+            { text: 'ES 概览', link: '/elasticsearch/01-basics/chapter-01-overview' },
+            { text: '安装部署', link: '/elasticsearch/01-basics/chapter-02-install-config' },
+            { text: '核心概念', link: '/elasticsearch/01-basics/chapter-03-core-concepts' },
+            { text: 'REST API', link: '/elasticsearch/01-basics/chapter-04-rest-api' },
+          ]
+        },
+        {
+          text: '索引与映射',
+          items: [
+            { text: '文档 CRUD', link: '/elasticsearch/02-indexing/chapter-01-document-crud' },
+            { text: '映射', link: '/elasticsearch/02-indexing/chapter-02-mapping' },
+            { text: '分析器', link: '/elasticsearch/02-indexing/chapter-03-analysis' },
+            { text: '中文分词', link: '/elasticsearch/02-indexing/chapter-04-chinese-analysis' },
+            { text: '索引管理', link: '/elasticsearch/02-indexing/chapter-05-index-management' },
+            { text: '倒排索引', link: '/elasticsearch/02-indexing/chapter-06-inverted-index' },
+          ]
+        },
+        {
+          text: '搜索',
+          items: [
+            { text: 'Query DSL', link: '/elasticsearch/03-search/chapter-01-query-dsl' },
+            { text: '全文搜索', link: '/elasticsearch/03-search/chapter-02-full-text-search' },
+            { text: '精确查询', link: '/elasticsearch/03-search/chapter-03-term-query' },
+            { text: '布尔查询', link: '/elasticsearch/03-search/chapter-04-bool-query' },
+            { text: '嵌套查询', link: '/elasticsearch/03-search/chapter-05-joining' },
+            { text: '高亮', link: '/elasticsearch/03-search/chapter-06-highlight' },
+            { text: '分页', link: '/elasticsearch/03-search/chapter-07-pagination' },
+          ]
+        },
+        {
+          text: '聚合',
+          items: [
+            { text: '指标聚合', link: '/elasticsearch/04-aggregation/chapter-01-metrics-agg' },
+            { text: '桶聚合', link: '/elasticsearch/04-aggregation/chapter-02-bucket-agg' },
+            { text: '管道聚合', link: '/elasticsearch/04-aggregation/chapter-03-pipeline-agg' },
+            { text: '聚合优化', link: '/elasticsearch/04-aggregation/chapter-04-agg-optimization' },
+          ]
+        },
+        {
+          text: '分布式原理',
+          items: [
+            { text: '分布式架构', link: '/elasticsearch/05-distributed-internals/chapter-01-architecture' },
+            { text: '分片机制', link: '/elasticsearch/05-distributed-internals/chapter-02-sharding' },
+            { text: '副本机制', link: '/elasticsearch/05-distributed-internals/chapter-03-replication' },
+            { text: '写入流程', link: '/elasticsearch/05-distributed-internals/chapter-04-write-path' },
+            { text: '读取流程', link: '/elasticsearch/05-distributed-internals/chapter-05-read-path' },
+            { text: '近实时搜索', link: '/elasticsearch/05-distributed-internals/chapter-06-near-real-time' },
+            { text: '数据一致性', link: '/elasticsearch/05-distributed-internals/chapter-07-data-consistency' },
+          ]
+        },
+        {
+          text: '数据建模',
+          items: [
+            { text: '建模原则', link: '/elasticsearch/06-data-modeling/chapter-01-modeling-principles' },
+            { text: 'Nested vs Join', link: '/elasticsearch/06-data-modeling/chapter-02-nested-vs-join' },
+            { text: '反规范化', link: '/elasticsearch/06-data-modeling/chapter-03-denormalization' },
+            { text: '时序数据', link: '/elasticsearch/06-data-modeling/chapter-04-time-series' },
+          ]
+        },
+        {
+          text: '运维管理',
+          items: [
+            { text: '集群管理', link: '/elasticsearch/07-operations/chapter-01-cluster-management' },
+            { text: '监控', link: '/elasticsearch/07-operations/chapter-02-monitoring' },
+            { text: '备份恢复', link: '/elasticsearch/07-operations/chapter-03-backup-restore' },
+            { text: '安全', link: '/elasticsearch/07-operations/chapter-04-security' },
+            { text: '版本升级', link: '/elasticsearch/07-operations/chapter-05-upgrade' },
+            { text: '常见问题', link: '/elasticsearch/07-operations/chapter-06-troubleshooting' },
+          ]
+        },
+        {
+          text: '性能优化',
+          items: [
+            { text: '索引优化', link: '/elasticsearch/08-performance/chapter-01-index-optimization' },
+            { text: '查询优化', link: '/elasticsearch/08-performance/chapter-02-query-optimization' },
+            { text: 'JVM 调优', link: '/elasticsearch/08-performance/chapter-03-jvm-tuning' },
+            { text: '硬件选型', link: '/elasticsearch/08-performance/chapter-04-hardware' },
+          ]
+        },
+        {
+          text: '生态工具',
+          items: [
+            { text: 'ELK Stack', link: '/elasticsearch/09-ecosystem/chapter-01-elk' },
+            { text: 'Beats', link: '/elasticsearch/09-ecosystem/chapter-02-beats' },
+            { text: 'APM', link: '/elasticsearch/09-ecosystem/chapter-03-apm' },
+            { text: '向量搜索', link: '/elasticsearch/09-ecosystem/chapter-04-vector-search' },
+          ]
+        },
+        {
+          text: '实战场景',
+          items: [
+            { text: 'Spring 集成', link: '/elasticsearch/10-practice/chapter-01-spring-integration' },
+            { text: '日志分析', link: '/elasticsearch/10-practice/chapter-02-log-analysis' },
+            { text: '搜索引擎', link: '/elasticsearch/10-practice/chapter-03-search-engine' },
+            { text: '数据同步', link: '/elasticsearch/10-practice/chapter-04-data-sync' },
           ]
         }
+            { text: '概览', link: '/elasticsearch/01-basics/chapter-01-overview' },
+            { text: '引入与背景', link: '/elasticsearch/01-basics/chapter-02-intro' },
+            { text: '核心概念', link: '/elasticsearch/01-basics/chapter-03-core-concepts' },
+            { text: '倒排索引', link: '/elasticsearch/02-indexing/chapter-06-inverted-index' },
+            { text: 'Mapping 设计', link: '/elasticsearch/02-indexing/chapter-02-mapping' },
+            { text: '查询 DSL', link: '/elasticsearch/03-search/chapter-01-query-dsl' },
+            { text: '集群与分片', link: '/elasticsearch/05-distributed-internals/chapter-02-sharding' },
+            { text: '性能优化', link: '/elasticsearch/08-performance/chapter-01-index-optimization' },
+            { text: '数据一致性', link: '/elasticsearch/05-distributed-internals/chapter-07-data-consistency' },
+            { text: '聚合查询', link: '/elasticsearch/04-aggregation/chapter-01-metrics-agg' },
+            { text: '分词器', link: '/elasticsearch/02-indexing/chapter-04-chinese-analysis' },
       ],
       '/design-pattern/': [
         {

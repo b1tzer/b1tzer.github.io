@@ -1,108 +1,75 @@
----
-doc_id: es-elasticsearch概览
-title: Elasticsearch 搜索引擎核心
----
+# Elasticsearch 技术体系
 
-# Elasticsearch 搜索引擎核心
+系统化的 Elasticsearch 知识体系，从基础概念到分布式原理，从查询优化到 ELK 实战。
 
-> **学习目标**：从"会用 ES 查询"升级到"理解原理 → 能设计索引方案 → 能排查性能问题"
->
-> **检验标准**：学完每个模块后，能口述"这个技术解决了什么问题？不用它会怎样？工作中有哪些坑？"
+## 目录结构
 
----
+### 01-basics
+- [ES 概览](01-basics/chapter-01-overview) — 发展历史、与 Solr/ClickHouse 对比
+- [安装部署](01-basics/chapter-02-install-config) — 安装方式、核心配置
+- [核心概念](01-basics/chapter-03-core-concepts) — 文档/索引/分片/副本/节点
+- [REST API](01-basics/chapter-04-rest-api) — Kibana Dev Tools
 
-## 版本发展
+### 02-indexing
+- [文档 CRUD](02-indexing/chapter-01-document-crud) — 索引/获取/更新/Bulk API
+- [映射](02-indexing/chapter-02-mapping) — 动态/显式映射、数据类型
+- [分析器](02-indexing/chapter-03-analysis) — 分词器、Token Filter
+- [中文分词](02-indexing/chapter-04-chinese-analysis) — IK/jieba
+- [索引管理](02-indexing/chapter-05-index-management) — 别名/模板/ILM
+- [倒排索引](02-indexing/chapter-06-inverted-index) — Lucene 核心
 
-```mermaid
-timeline
-    title Elasticsearch 版本发展
-    2010 : v0.x : Shay Banon 创建、基于 Lucene
-    2014 : v1.x : Aggregation 聚合框架
-    2015 : v2.x : Pipeline 聚合、完善 DSL
-    2016 : v5.x : 性能大幅提升、Ingest Node
-    2017 : v6.x : 移除 Mapping Type、SQL 支持
-    2019 : v7.x : 默认 1 Shard、ESQL 预览
-    2022 : v8.x : 安全默认开启、ESQL GA、kNN 向量搜索
-```
+### 03-search
+- [Query DSL](03-search/chapter-01-query-dsl) — 查询语法概览
+- [全文搜索](03-search/chapter-02-full-text-search) — match/match_phrase/multi_match
+- [精确查询](03-search/chapter-03-term-query) — term/range/exists
+- [布尔查询](03-search/chapter-04-bool-query) — must/should/must_not/filter
+- [嵌套查询](03-search/chapter-05-joining) — Nested/Parent-Child
+- [高亮](03-search/chapter-06-highlight) — 高亮显示
+- [分页](03-search/chapter-07-pagination) — from+size/search_after/scroll
 
-> 📌 本站聚焦 **v7.x / v8.x** 版本，覆盖倒排索引、Mapping 设计、查询 DSL、聚合查询等核心特性。
+### 04-aggregation
+- [指标聚合](04-aggregation/chapter-01-metrics-agg) — avg/sum/min/max/stats
+- [桶聚合](04-aggregation/chapter-02-bucket-agg) — terms/date_histogram/range
+- [管道聚合](04-aggregation/chapter-03-pipeline-agg) — derivative/cumulative_sum
+- [聚合优化](04-aggregation/chapter-04-agg-optimization) — 性能优化
 
----
+### 05-distributed-internals
+- [分布式架构](05-distributed-internals/chapter-01-architecture) — 节点角色/Master 选举
+- [分片机制](05-distributed-internals/chapter-02-sharding) — 路由、分片分配
+- [副本机制](05-distributed-internals/chapter-03-replication) — 同步、故障恢复
+- [写入流程](05-distributed-internals/chapter-04-write-path) — Refresh/Flush/Translog
+- [读取流程](05-distributed-internals/chapter-05-read-path) — Query/Fetch/DFS
+- [近实时搜索](05-distributed-internals/chapter-06-near-real-time)
+- [数据一致性](05-distributed-internals/chapter-07-data-consistency)
 
-## 整体知识地图
+### 06-data-modeling
+- [建模原则](06-data-modeling/chapter-01-modeling-principles) — 字段类型选择
+- [Nested vs Join](06-data-modeling/chapter-02-nested-vs-join) — 关系建模
+- [反规范化](06-data-modeling/chapter-03-denormalization) — 宽表
+- [时序数据](06-data-modeling/chapter-04-time-series) — ILM、冷热架构
 
-```mermaid
-mindmap
-    root((Elasticsearch 知识体系))
-        基础概念
-            Index / Document / Field
-            Mapping / Shard / Replica
-            与关系型数据库的对应关系
-        核心原理
-            倒排索引
-                正排 vs 倒排
-                构建过程
-                FST 与压缩算法
-            分词器
-                Analyzer 组成
-                IK 中文分词
-        查询与聚合
-            查询 DSL
-                query / filter context
-                bool 查询
-            聚合查询
-                Bucket / Metric / Pipeline
-        Mapping 设计
-            字段类型
-            text vs keyword
-            动态 Mapping 的坑
-        集群与架构
-            集群架构
-            分片机制
-            集群健康状态
-        性能与运维
-            写入优化
-            查询优化
-            深度分页与 search_after
-            数据一致性
-```
+### 07-operations
+- [集群管理](07-operations/chapter-01-cluster-management) — 节点管理、分片分配
+- [监控](07-operations/chapter-02-monitoring) — Prometheus/Grafana
+- [备份恢复](07-operations/chapter-03-backup-restore) — Snapshot/Restore
+- [安全](07-operations/chapter-04-security) — 认证/授权/SSL
+- [版本升级](07-operations/chapter-05-upgrade) — 滚动重启
+- [常见问题](07-operations/chapter-06-troubleshooting) — 排查手册
 
----
+### 08-performance
+- [索引优化](08-performance/chapter-01-index-optimization) — 分片数/副本数/刷新间隔
+- [查询优化](08-performance/chapter-02-query-optimization) — filter/context/缓存
+- [JVM 调优](08-performance/chapter-03-jvm-tuning) — 内存管理
+- [硬件选型](08-performance/chapter-04-hardware) — 存储优化
 
-## 知识点导航
+### 09-ecosystem
+- [ELK Stack](09-ecosystem/chapter-01-elk) — Elasticsearch+Logstash+Kibana
+- [Beats](09-ecosystem/chapter-02-beats) — 数据采集
+- [APM](09-ecosystem/chapter-03-apm) — 应用性能监控
+- [向量搜索](09-ecosystem/chapter-04-vector-search) — 语义搜索
 
-| # | 知识点 | 核心一句话 | 详细文档 |
-|---|--------|-----------|---------|
-| 01 | **引入与背景** | ES 解决全文搜索和复杂聚合问题，MySQL LIKE 全表扫描无法胜任 | [引入与背景](01-引入与背景.md) |
-| 02 | **核心概念** | Index≈数据库，Document≈行，Field≈列，Shard 实现水平扩展 | [核心概念](02-核心概念.md) |
-| 03 | **倒排索引** | 正排按文档找词，倒排按词找文档，比 LIKE 快几个数量级 | [倒排索引](03-倒排索引.md) |
-| 04 | **Mapping 设计** | text 分词可搜索，keyword 精确匹配可聚合，动态 Mapping 需谨慎 | [Mapping映射设计](04-Mapping映射设计.md) |
-| 05 | **查询 DSL** | query 计算相关性得分，filter 只过滤不评分且可缓存，性能更优 | [查询语法DSL](05-查询语法DSL.md) |
-| 06 | **集群架构与分片** | 主分片数创建后不可修改，副本分片提供高可用和读扩展 | [集群架构与分片机制](06-集群架构与分片机制.md) |
-| 07 | **性能优化** | 写入用 bulk 批量，查询用 filter 缓存，深分页用 search_after | [性能优化](07-性能优化.md) |
-| 08 | **数据一致性** | MySQL 与 ES 同步方案：Canal 监听 binlog 最可靠，双写有一致性风险 | [数据一致性](08-数据一致性.md) |
-| 09 | **聚合查询** | Bucket 分桶 + Metric 计算 + Pipeline 二次分析，类似 SQL GROUP BY 但更强大 | [聚合查询](09-聚合查询.md) |
-| 10 | **分词器与中文分词** | Analyzer = Char Filter + Tokenizer + Token Filter，中文用 IK 分词器 | [分词器与中文分词](10-分词器与中文分词.md) |
-
----
-
-## 高频问题索引
-
-| 问题 | 详见 |
-|------|------|
-| 倒排索引和 B+ 树索引的区别？ | [倒排索引](03-倒排索引.md) |
-| text 和 keyword 有什么区别？ | [Mapping映射设计](04-Mapping映射设计.md) |
-| query 和 filter 有什么区别？ | [查询DSL](05-查询语法DSL.md) |
-| 写入数据后为什么不能立即查到？ | [性能优化](07-性能优化.md) |
-| 如何保证 MySQL 和 ES 的数据一致性？ | [数据一致性](08-数据一致性.md) |
-| 为什么主分片数创建后不可修改？ | [集群架构与分片机制](06-集群架构与分片机制.md) |
-| 深度分页怎么优化？ | [性能优化](07-性能优化.md) |
-| ES 聚合和 SQL GROUP BY 有什么区别？ | [聚合查询](09-聚合查询.md) |
-| 为什么 standard 分词器对中文效果差？ | [分词器与中文分词](10-分词器与中文分词.md) |
-| ik_max_word 和 ik_smart 怎么选？ | [分词器与中文分词](10-分词器与中文分词.md) |
-
----
-
-## 一句话口诀
-
-> ES 靠**倒排索引**做全文检索，靠 **Mapping** 定义字段类型，靠 **bool 查询**组合条件，靠 **filter** 提升性能，靠**分片**水平扩展，靠 **search_after** 解决深度分页。
+### 10-practice
+- [Spring 集成](10-practice/chapter-01-spring-integration) — Spring Data ES
+- [日志分析](10-practice/chapter-02-log-analysis) — ELK 实战
+- [搜索引擎](10-practice/chapter-03-search-engine) — 电商搜索
+- [数据同步](10-practice/chapter-04-data-sync) — Canal/Debezium
