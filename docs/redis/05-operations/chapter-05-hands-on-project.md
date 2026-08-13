@@ -16,7 +16,7 @@
 
 整体架构：
 
-![实战项目整体架构](/diagrams/05-operations-chapter-05-hands-on-project.svg)
+![实战项目整体架构](/public/05-operations-chapter-05-hands-on-project.svg)
 
 > 这三个场景分别对应第一卷的 String、第四卷的分布式锁，以及第三卷反复强调的「用 Redis 扛住流量」——是把全书知识落地的三个最小闭环。
 

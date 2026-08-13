@@ -4,6 +4,8 @@ export default defineConfig({
   title: 'The Stack',
   description: '系统化的 Java 后端技术分析',
   lang: 'zh-CN',
+  srcDir: './docs',
+  outDir: './site',
   
   themeConfig: {
     logo: '/assets/logo.svg',

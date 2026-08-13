@@ -4,8 +4,8 @@
 
 ## 章节
 
-- [第1章 Redis 概览与定位](/01-data-model/chapter-01-overview) — 定位、版本演进、知识地图、与 Memcached 对比
-- [第2章 五种基础数据类型](/01-data-model/chapter-02-basic-types) — String/Hash/List/Set/ZSet
-- [第3章 高级数据类型](/01-data-model/chapter-03-advanced-types) — BitMap/HyperLogLog/Geo/Stream
-- [第4章 底层数据结构](/01-data-model/chapter-04-data-structures) — SDS/链表/字典/跳表/intset/listpack
-- [第5章 对象系统与编码](/01-data-model/chapter-05-object-encoding) — RedisObject、编码切换、对象共享
+- [第1章 Redis 概览与定位](chapter-01-overview) — 定位、版本演进、知识地图、与 Memcached 对比
+- [第2章 五种基础数据类型](chapter-02-basic-types) — String/Hash/List/Set/ZSet
+- [第3章 高级数据类型](chapter-03-advanced-types) — BitMap/HyperLogLog/Geo/Stream
+- [第4章 底层数据结构](chapter-04-data-structures) — SDS/链表/字典/跳表/intset/listpack
+- [第5章 对象系统与编码](chapter-05-object-encoding) — RedisObject、编码切换、对象共享

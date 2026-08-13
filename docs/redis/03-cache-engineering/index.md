@@ -4,8 +4,8 @@
 
 ## 章节
 
-- [第1章 缓存穿透](/03-cache-engineering/chapter-01-penetration) — 布隆过滤器、缓存空值
-- [第2章 缓存击穿](/03-cache-engineering/chapter-02-breakdown) — 互斥锁、逻辑过期
-- [第3章 缓存雪崩](/03-cache-engineering/chapter-03-avalanche) — TTL 随机化、多级缓存、熔断降级
-- [第4章 缓存一致性](/03-cache-engineering/chapter-04-consistency) — Cache Aside、延迟双删、Canal
-- [第5章 大 Key 与热 Key](/03-cache-engineering/chapter-05-big-hot-key) — 定义、危害、发现、处理
+- [第1章 缓存穿透](chapter-01-penetration) — 布隆过滤器、缓存空值
+- [第2章 缓存击穿](chapter-02-breakdown) — 互斥锁、逻辑过期
+- [第3章 缓存雪崩](chapter-03-avalanche) — TTL 随机化、多级缓存、熔断降级
+- [第4章 缓存一致性](chapter-04-consistency) — Cache Aside、延迟双删、Canal
+- [第5章 大 Key 与热 Key](chapter-05-big-hot-key) — 定义、危害、发现、处理

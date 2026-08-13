@@ -4,8 +4,8 @@
 
 ## 章节
 
-- [第1章 性能优化](/05-operations/chapter-01-performance) — 指标体系、慢查询、内存、网络、持久化
-- [第2章 阻塞与故障排查](/05-operations/chapter-02-troubleshooting) — 排查工具、延迟/内存/CPU/连接异常、方法论
-- [第3章 监控告警](/05-operations/chapter-03-monitoring) — 监控维度、关键指标、告警阈值、可视化方案
-- [第4章 开发运维陷阱](/05-operations/chapter-04-pitfalls) — 开发陷阱、运维陷阱、集群陷阱、检查清单
-- [第5章 实战项目：从 0 到 1 构建缓存系统](/05-operations/chapter-05-hands-on-project) — 缓存接口、分布式锁、限流器
+- [第1章 性能优化](chapter-01-performance) — 指标体系、慢查询、内存、网络、持久化
+- [第2章 阻塞与故障排查](chapter-02-troubleshooting) — 排查工具、延迟/内存/CPU/连接异常、方法论
+- [第3章 监控告警](chapter-03-monitoring) — 监控维度、关键指标、告警阈值、可视化方案
+- [第4章 开发运维陷阱](chapter-04-pitfalls) — 开发陷阱、运维陷阱、集群陷阱、检查清单
+- [第5章 实战项目：从 0 到 1 构建缓存系统](chapter-05-hands-on-project) — 缓存接口、分布式锁、限流器

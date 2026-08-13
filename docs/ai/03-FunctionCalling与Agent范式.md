@@ -5,7 +5,7 @@ title: Function Calling 与 Agent 范式 —— 让大模型从"聊天"升级为
 
 # Function Calling 与 Agent 范式
 
-> 📖 **本篇定位**：专题 `10-ai-engineering` 的第 3 篇，承接 [LLM 接口与提示词工程](@ai-engineering-LLM接口与提示词工程) 的"LLM 无状态 + 只会文字续写"的限制，和 [RAG 架构与工程落地](@ai-engineering-RAG架构与工程落地) 里"意图不是知识问答就走旁路"的伏笔。本篇讲清一件事：**当 LLM 需要"查实时数据、调 API、操作系统"时，Function Calling 协议长什么样，以及如何在它之上搭出真正生产可用的 Agent**——而不是把一堆 Prompt 缝缝补补就叫"智能体"。
+> 📖 **本篇定位**：专题 `10-ai-engineering` 的第 3 篇，承接 [LLM 接口与提示词工程](01-LLM接口与提示词工程.md) 的"LLM 无状态 + 只会文字续写"的限制，和 [RAG 架构与工程落地](02-RAG架构与工程落地.md) 里"意图不是知识问答就走旁路"的伏笔。本篇讲清一件事：**当 LLM 需要"查实时数据、调 API、操作系统"时，Function Calling 协议长什么样，以及如何在它之上搭出真正生产可用的 Agent**——而不是把一堆 Prompt 缝缝补补就叫"智能体"。
 
 ---
 

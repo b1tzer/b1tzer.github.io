@@ -16,7 +16,7 @@
 
 主从复制引入「一主多从」结构：主节点负责写，从节点复制数据并分担读请求。
 
-![主从复制一主多从架构](/diagrams/04-high-availability-chapter-01-replication-1.svg)
+![主从复制一主多从架构](/public/04-high-availability-chapter-01-replication-1.svg)
 
 ---
 
@@ -28,7 +28,7 @@
 
 首次连接时，从节点复制主节点的全部数据：
 
-![主从全量同步流程](/diagrams/04-high-availability-chapter-01-replication-2.svg)
+![主从全量同步流程](/public/04-high-availability-chapter-01-replication-2.svg)
 
 全量同步步骤：
 

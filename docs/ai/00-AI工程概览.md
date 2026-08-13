@@ -213,11 +213,11 @@ mindmap
 
 | # | 知识点 | 核心一句话 | 详细文档 |
 | :-- | :-- | :-- | :-- |
-| **01** | **LLM 接口与 Prompt 工程** | 调 API 的协议契约 + Prompt 设计套路 + Token 计费治理 | [LLM接口与提示词工程](@ai-engineering-LLM接口与提示词工程) |
-| **02** | **RAG 架构与工程落地** ⭐ | 从数据同步到引用溯源的完整链路，含生产系统实战 | [RAG架构与工程落地](@ai-engineering-RAG架构与工程落地) |
-| **03** | **Function Calling 与 Agent 范式** | 从 LLM"会说话"到"会做事"的跃迁路径 | [FunctionCalling与Agent范式](@ai-engineering-FunctionCalling与Agent范式) |
-| **04** | **Spring AI 入门与 MCP 集成** | Java 工程师 5 分钟接入 AI 的最短路径 | [SpringAI入门与MCP集成](@ai-engineering-SpringAI入门与MCP集成) |
-| **05** | **MCP 协议与 OpenClaw Skill 实战** | 基于 OpenClaw 写一个网易云歌单 Skill 的全流程 | [MCP协议与OpenClawSkill实战](@ai-engineering-MCP协议与OpenClawSkill实战) |
+| **01** | **LLM 接口与 Prompt 工程** | 调 API 的协议契约 + Prompt 设计套路 + Token 计费治理 | [LLM接口与提示词工程](01-LLM接口与提示词工程.md) |
+| **02** | **RAG 架构与工程落地** ⭐ | 从数据同步到引用溯源的完整链路，含生产系统实战 | [RAG架构与工程落地](02-RAG架构与工程落地.md) |
+| **03** | **Function Calling 与 Agent 范式** | 从 LLM"会说话"到"会做事"的跃迁路径 | [FunctionCalling与Agent范式](03-FunctionCalling与Agent范式.md) |
+| **04** | **Spring AI 入门与 MCP 集成** | Java 工程师 5 分钟接入 AI 的最短路径 | [SpringAI入门与MCP集成](04-SpringAI入门与MCP集成.md) |
+| **05** | **MCP 协议与 OpenClaw Skill 实战** | 基于 OpenClaw 写一个网易云歌单 Skill 的全流程 | [MCP协议与OpenClawSkill实战](05-MCP协议与OpenClawSkill实战.md) |
 
 > 📌 `@doc_id` 均为预登记。5 篇详细文档逐篇落地时，`tools/gen_nav.py` 会自动扫描并把它们登记到 `tools/doc_id_registry.json`。
 

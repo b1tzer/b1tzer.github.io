@@ -63,7 +63,7 @@ Redis 使用 `epoll`（Linux）/ `kqueue`（macOS）/ `evport`（Solaris）等�
 
 Redis 的事件处理采用 Reactor 模式——一个事件分发器 + 多个事件处理器。
 
-![Redis Reactor 事件循环模型](/diagrams/02-standalone-core-chapter-01-thread-model.svg)
+![Redis Reactor 事件循环模型](/public/02-standalone-core-chapter-01-thread-model.svg)
 
 事件循环的工作流程：
 

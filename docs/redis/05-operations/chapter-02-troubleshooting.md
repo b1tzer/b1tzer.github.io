@@ -26,7 +26,7 @@ CLIENT LIST            # 连接数、每个客户端状态
 
 延迟突增是最常见的故障，按顺序排查：
 
-![延迟排查顺序](/diagrams/05-operations-chapter-02-troubleshooting-1.svg)
+![延迟排查顺序](/public/05-operations-chapter-02-troubleshooting-1.svg)
 
 | 排查点 | 说明 | 判断方法 |
 | :-- | :-- | :-- |
@@ -84,7 +84,7 @@ CLIENT LIST | wc -l        # 统计当前连接数
 
 一套可复用的排查流程：
 
-![排查方法论循环](/diagrams/05-operations-chapter-02-troubleshooting-2.svg)
+![排查方法论循环](/public/05-operations-chapter-02-troubleshooting-2.svg)
 
 要点：
 

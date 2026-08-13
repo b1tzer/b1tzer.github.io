@@ -4,9 +4,9 @@
 
 ## 章节
 
-- [第1章 线程模型](/02-standalone-core/chapter-01-thread-model) — 单线程、IO 多路复用、Reactor、6.0 多线程
-- [第2章 命令执行与 RESP](/02-standalone-core/chapter-02-command-resp) — RESP 协议、命令解析、命令表查找、执行钩子
-- [第3章 RDB 持久化](/02-standalone-core/chapter-03-rdb) — 快照原理、fork 与 COW、配置与优缺点
-- [第4章 AOF 与混合持久化](/02-standalone-core/chapter-04-aof) — AOF 原理、重写、混合持久化、选型
-- [第5章 过期删除](/02-standalone-core/chapter-05-expiration) — 过期键存储、惰性删除、定期删除
-- [第6章 内存淘汰](/02-standalone-core/chapter-06-eviction) — maxmemory、8 种策略、LRU/LFU、内存碎片
+- [第1章 线程模型](chapter-01-thread-model) — 单线程、IO 多路复用、Reactor、6.0 多线程
+- [第2章 命令执行与 RESP](chapter-02-command-resp) — RESP 协议、命令解析、命令表查找、执行钩子
+- [第3章 RDB 持久化](chapter-03-rdb) — 快照原理、fork 与 COW、配置与优缺点
+- [第4章 AOF 与混合持久化](chapter-04-aof) — AOF 原理、重写、混合持久化、选型
+- [第5章 过期删除](chapter-05-expiration) — 过期键存储、惰性删除、定期删除
+- [第6章 内存淘汰](chapter-06-eviction) — maxmemory、8 种策略、LRU/LFU、内存碎片

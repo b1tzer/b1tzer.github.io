@@ -18,10 +18,10 @@ title: MCP 协议与 OpenClaw Skill 实战 —— 从协议规范到"网易云�
 
 > 📖 **边界声明**：本文聚焦"**如何按 MCP 协议规范写一个可跨平台复用的生产级 Skill**"，以下主题请见对应专题：
 >
-> - LLM 调用协议与 Token 计费 → [LLM接口与提示词工程](@ai-engineering-LLM接口与提示词工程)
-> - RAG 数据同步、Chunking、召回融合 → [RAG架构与工程落地](@ai-engineering-RAG架构与工程落地)
-> - Function Calling 协议本体与 Agent 范式 → [FunctionCalling与Agent范式](@ai-engineering-FunctionCalling与Agent范式)
-> - Spring AI 的 `ChatClient` / `Advisor` / `VectorStore` → [SpringAI入门与MCP集成](@ai-engineering-SpringAI入门与MCP集成)
+> - LLM 调用协议与 Token 计费 → [LLM接口与提示词工程](01-LLM接口与提示词工程.md)
+> - RAG 数据同步、Chunking、召回融合 → [RAG架构与工程落地](02-RAG架构与工程落地.md)
+> - Function Calling 协议本体与 Agent 范式 → [FunctionCalling与Agent范式](03-FunctionCalling与Agent范式.md)
+> - Spring AI 的 `ChatClient` / `Advisor` / `VectorStore` → [SpringAI入门与MCP集成](04-SpringAI入门与MCP集成.md)
 > - MCP 协议底层 JSON-RPC 帧格式的逐字段解析 → 留给未来的《MCP 源码深度解析》篇（暂未写）
 
 ---
@@ -805,4 +805,4 @@ resilience4j:
 
 ---
 
-> 🎉 至此，整个 **10-ai-engineering/** 专题的 5 篇文档全部完成：从 LLM 接口、RAG 架构、Function Calling/Agent、Spring AI 集成，到 MCP 协议与 Skill 实战，构成一条完整的"**Java 工程师 AI 应用工程**"学习路径。欢迎回到 [AI 工程概览](@ai-engineering-AI工程概览) 选择你的下一步。
+> 🎉 至此，整个 **10-ai-engineering/** 专题的 5 篇文档全部完成：从 LLM 接口、RAG 架构、Function Calling/Agent、Spring AI 集成，到 MCP 协议与 Skill 实战，构成一条完整的"**Java 工程师 AI 应用工程**"学习路径。欢迎回到 [AI 工程概览](index.md) 选择你的下一步。

@@ -5,7 +5,7 @@ title: Spring AI 入门与 MCP 集成 —— 让 LLM 变成 @Bean 的 Java 最�
 
 # Spring AI 入门与 MCP 集成
 
-> 📖 **本篇定位**：专题 `10-ai-engineering` 的第 4 篇，把前三篇的"手工业"整合为"工业化"：[01 篇](@ai-engineering-LLM接口与提示词工程) 的裸调 `/chat/completions`、[02 篇](@ai-engineering-RAG架构与工程落地) 的手工 Embedding + 向量库、[03 篇](@ai-engineering-FunctionCalling与Agent范式) 的 `while(tool_calls)` 循环，全部可以被 Spring AI 的 `ChatClient` + `Advisor` + `@Tool` 三件套接管。本篇讲清：**Spring AI 到底是什么、它和 LangChain4j 的哲学差异、怎么用 5 分钟接 DeepSeek、怎么把 03 篇结尾提到的 MCP 生态一行配置接进来**——而不是又教你写一遍 OkHttp。
+> 📖 **本篇定位**：专题 `10-ai-engineering` 的第 4 篇，把前三篇的"手工业"整合为"工业化"：[01 篇](01-LLM接口与提示词工程.md) 的裸调 `/chat/completions`、[02 篇](02-RAG架构与工程落地.md) 的手工 Embedding + 向量库、[03 篇](03-FunctionCalling与Agent范式.md) 的 `while(tool_calls)` 循环，全部可以被 Spring AI 的 `ChatClient` + `Advisor` + `@Tool` 三件套接管。本篇讲清：**Spring AI 到底是什么、它和 LangChain4j 的哲学差异、怎么用 5 分钟接 DeepSeek、怎么把 03 篇结尾提到的 MCP 生态一行配置接进来**——而不是又教你写一遍 OkHttp。
 
 !!! warning "版本锚点"
     本篇所有代码与坐标以 **Spring AI `1.0.0-M6`**（2025 年主流里程碑版本）为基准。M6 的 API 已基本稳定，但**不是 GA**——坐标从 M6 到 1.0.0 GA 存在少量 artifactId 重命名（如 `spring-ai-mcp-client-spring-boot-starter` → `spring-ai-starter-mcp-client`），升级时需要按官方迁移指南替换。`@Tool` 注解、`ChatClient` / `Advisor` API 本身跨版本稳定。
@@ -418,7 +418,7 @@ flowchart LR
 
 03 篇结尾的伏笔：**Function Calling 解决了"LLM 会做事"，但工具生态每家各搞一套**——A 公司写的"天气 Tool"不能直接被 B 公司的 Agent 用。**MCP（Model Context Protocol）就是解决这个互操作问题的开放协议**（Anthropic 2024.11 发布），被 Claude Desktop / OpenClaw / Cursor 等广泛支持。
 
-> 📖 MCP 协议本身（Tool / Resource / Prompt 三件套、传输层、消息格式）将在 [05 篇 MCP协议与OpenClawSkill实战](@ai-engineering-MCP协议与OpenClawSkill实战) 展开。**本节只讲"如何在 Spring AI 里作为 Client 接入现成的 MCP Server"**。
+> 📖 MCP 协议本身（Tool / Resource / Prompt 三件套、传输层、消息格式）将在 [05 篇 MCP协议与OpenClawSkill实战](05-MCP协议与OpenClawSkill实战.md) 展开。**本节只讲"如何在 Spring AI 里作为 Client 接入现成的 MCP Server"**。
 
 ### 7.1 加 starter
 
@@ -559,12 +559,12 @@ M6 不是 GA，升级到 1.0.0 时会有少量 API 重命名（`BaseAdvisor` →
 
 | 本篇用到的前置知识 | 来源 |
 | :-- | :-- |
-| `messages` 协议、`role` 家族、流式 SSE | [01 篇 §3](@ai-engineering-LLM接口与提示词工程) |
-| Embedding、VectorStore、Chunking、Hybrid Search | [02 篇 §3~§6](@ai-engineering-RAG架构与工程落地) |
-| Function Calling 三元闭环、工具设计 6 规约、Agent Runtime | [03 篇 §2~§4](@ai-engineering-FunctionCalling与Agent范式) |
+| `messages` 协议、`role` 家族、流式 SSE | [01 篇 §3](01-LLM接口与提示词工程.md) |
+| Embedding、VectorStore、Chunking、Hybrid Search | [02 篇 §3~§6](02-RAG架构与工程落地.md) |
+| Function Calling 三元闭环、工具设计 6 规约、Agent Runtime | [03 篇 §2~§4](03-FunctionCalling与Agent范式.md) |
 
 | 本篇未展开、延伸阅读 | 去处 |
 | :-- | :-- |
-| MCP 协议本身（Tool / Resource / Prompt 三件套） | [05 篇](@ai-engineering-MCP协议与OpenClawSkill实战) |
-| 写一个 MCP Server（网易云歌单 Skill 实战） | [05 篇](@ai-engineering-MCP协议与OpenClawSkill实战) |
-| Spring AOP 原生机制（对比理解 Advisor） | [AOP面向切面编程](@spring-核心基础-AOP面向切面编程) |
+| MCP 协议本身（Tool / Resource / Prompt 三件套） | [05 篇](05-MCP协议与OpenClawSkill实战.md) |
+| 写一个 MCP Server（网易云歌单 Skill 实战） | [05 篇](05-MCP协议与OpenClawSkill实战.md) |
+| Spring AOP 原生机制（对比理解 Advisor） | [AOP面向切面编程](../spring/chapter-02-container-aop.md) |

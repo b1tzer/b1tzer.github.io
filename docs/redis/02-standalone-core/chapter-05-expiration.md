@@ -33,7 +33,7 @@ PERSIST key             # 移除过期时间，永久保留
 
 惰性删除指「访问时才发现过期、才删除」——键过期后不主动清理，等客户端访问这个键时检查并删除。
 
-![惰性删除流程](/diagrams/02-standalone-core-chapter-05-expiration-1.svg)
+![惰性删除流程](/public/02-standalone-core-chapter-05-expiration-1.svg)
 
 特点：
 
@@ -83,7 +83,7 @@ Redis 默认每 100 毫秒执行一次定期删除：
 
 惰性删除与定期删除是互补的：
 
-![惰性删除与定期删除配合](/diagrams/02-standalone-core-chapter-05-expiration-2.svg)
+![惰性删除与定期删除配合](/public/02-standalone-core-chapter-05-expiration-2.svg)
 
 - **定期删除**负责「主动」清理大部分过期键，控制内存
 - **惰性删除**负责「被动」清理被访问到的过期键，保证返回正确

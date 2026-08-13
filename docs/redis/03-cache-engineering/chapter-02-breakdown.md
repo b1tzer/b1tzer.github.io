@@ -8,7 +8,7 @@
 
 热点 key 平时一直命中缓存，但过期后缓存里没有它了，瞬间涌入的大量并发请求全部打到数据库。
 
-![缓存击穿问题流程](/diagrams/03-cache-engineering-chapter-02-breakdown-1.svg)
+![缓存击穿问题流程](/public/03-cache-engineering-chapter-02-breakdown-1.svg)
 
 典型场景：
 
@@ -26,7 +26,7 @@
 
 互斥锁的思路：缓存未命中时，只允许一个请求去查数据库并重建缓存，其他请求等待或重试。
 
-![互斥锁方案流程](/diagrams/03-cache-engineering-chapter-02-breakdown-2.svg)
+![互斥锁方案流程](/public/03-cache-engineering-chapter-02-breakdown-2.svg)
 
 ### 实现要点
 
@@ -68,7 +68,7 @@ public String get(String key) {
 
 逻辑过期指「不设置物理 TTL，而是在 value 里存一个逻辑过期时间」。缓存永不物理过期，靠后台异步刷新。
 
-![逻辑过期方案流程](/diagrams/03-cache-engineering-chapter-02-breakdown-3.svg)
+![逻辑过期方案流程](/public/03-cache-engineering-chapter-02-breakdown-3.svg)
 
 ### 数据结构
 
