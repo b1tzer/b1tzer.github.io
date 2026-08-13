@@ -97,81 +97,81 @@ export default defineConfig({
         {
           text: '核心原理',
           items: [
-            { text: 'Spring 概览', link: '/spring/01-核心原理/chapter-01-spring-overview' },
-            { text: 'IoC 容器', link: '/spring/01-核心原理/chapter-02-ioc-container' },
-            { text: '依赖注入', link: '/spring/01-核心原理/chapter-03-dependency-injection' },
-            { text: 'Bean 生命周期', link: '/spring/01-核心原理/chapter-04-bean-lifecycle' },
-            { text: 'AOP', link: '/spring/01-核心原理/chapter-05-aop' },
-            { text: '条件装配与 Profile', link: '/spring/01-核心原理/chapter-06-conditional-profile' },
+            { text: 'Spring 概览', link: '/spring/01-core/chapter-01-spring-overview' },
+            { text: 'IoC 容器', link: '/spring/01-core/chapter-02-ioc-container' },
+            { text: '依赖注入', link: '/spring/01-core/chapter-03-dependency-injection' },
+            { text: 'Bean 生命周期', link: '/spring/01-core/chapter-04-bean-lifecycle' },
+            { text: 'AOP', link: '/spring/01-core/chapter-05-aop' },
+            { text: '条件装配与 Profile', link: '/spring/01-core/chapter-06-conditional-profile' },
           ]
         },
         {
           text: 'Web 开发',
           items: [
-            { text: 'Spring MVC', link: '/spring/02-Web开发/chapter-01-spring-mvc' },
-            { text: 'RESTful API', link: '/spring/02-Web开发/chapter-02-rest-api' },
-            { text: '参数校验', link: '/spring/02-Web开发/chapter-03-validation-binding' },
-            { text: '拦截器与过滤器', link: '/spring/02-Web开发/chapter-04-interceptor-filter' },
-            { text: 'WebFlux', link: '/spring/02-Web开发/chapter-05-webflux' },
+            { text: 'Spring MVC', link: '/spring/02-web/chapter-01-spring-mvc' },
+            { text: 'RESTful API', link: '/spring/02-web/chapter-02-rest-api' },
+            { text: '参数校验', link: '/spring/02-web/chapter-03-validation-binding' },
+            { text: '拦截器与过滤器', link: '/spring/02-web/chapter-04-interceptor-filter' },
+            { text: 'WebFlux', link: '/spring/02-web/chapter-05-webflux' },
           ]
         },
         {
           text: '数据访问',
           items: [
-            { text: 'JdbcTemplate', link: '/spring/03-数据访问/chapter-01-jdbc-template' },
-            { text: 'MyBatis', link: '/spring/03-数据访问/chapter-02-mybatis-integration' },
-            { text: 'JPA', link: '/spring/03-数据访问/chapter-03-jpa' },
-            { text: '事务管理', link: '/spring/03-数据访问/chapter-04-transaction' },
-            { text: '多数据源', link: '/spring/03-数据访问/chapter-05-multi-datasource' },
+            { text: 'JdbcTemplate', link: '/spring/03-data-access/chapter-01-jdbc-template' },
+            { text: 'MyBatis', link: '/spring/03-data-access/chapter-02-mybatis-integration' },
+            { text: 'JPA', link: '/spring/03-data-access/chapter-03-jpa' },
+            { text: '事务管理', link: '/spring/03-data-access/chapter-04-transaction' },
+            { text: '多数据源', link: '/spring/03-data-access/chapter-05-multi-datasource' },
           ]
         },
         {
           text: 'Spring Boot',
           items: [
-            { text: '自动配置', link: '/spring/04-SpringBoot/chapter-01-autoconfiguration' },
-            { text: 'Starter', link: '/spring/04-SpringBoot/chapter-02-starter' },
-            { text: '外部化配置', link: '/spring/04-SpringBoot/chapter-03-configuration' },
-            { text: 'Actuator', link: '/spring/04-SpringBoot/chapter-04-actuator' },
-            { text: 'DevTools', link: '/spring/04-SpringBoot/chapter-05-devtools' },
+            { text: '自动配置', link: '/spring/04-spring-boot/chapter-01-autoconfiguration' },
+            { text: 'Starter', link: '/spring/04-spring-boot/chapter-02-starter' },
+            { text: '外部化配置', link: '/spring/04-spring-boot/chapter-03-configuration' },
+            { text: 'Actuator', link: '/spring/04-spring-boot/chapter-04-actuator' },
+            { text: 'DevTools', link: '/spring/04-spring-boot/chapter-05-devtools' },
           ]
         },
         {
           text: '安全',
           items: [
-            { text: '安全架构', link: '/spring/05-安全/chapter-01-security-architecture' },
-            { text: '认证机制', link: '/spring/05-安全/chapter-02-authentication' },
-            { text: '授权模型', link: '/spring/05-安全/chapter-03-authorization' },
-            { text: '安全实践', link: '/spring/05-安全/chapter-04-security-practice' },
+            { text: '安全架构', link: '/spring/05-security/chapter-01-security-architecture' },
+            { text: '认证机制', link: '/spring/05-security/chapter-02-authentication' },
+            { text: '授权模型', link: '/spring/05-security/chapter-03-authorization' },
+            { text: '安全实践', link: '/spring/05-security/chapter-04-security-practice' },
           ]
         },
         {
           text: '高级特性',
           items: [
-            { text: '事件机制', link: '/spring/06-高级特性/chapter-01-event' },
-            { text: '异步处理', link: '/spring/06-高级特性/chapter-02-async' },
-            { text: '定时任务', link: '/spring/06-高级特性/chapter-03-scheduling' },
-            { text: '缓存', link: '/spring/06-高级特性/chapter-04-caching' },
-            { text: '消息集成', link: '/spring/06-高级特性/chapter-05-messaging' },
-            { text: '国际化', link: '/spring/06-高级特性/chapter-06-internationalization' },
+            { text: '事件机制', link: '/spring/06-advanced/chapter-01-event' },
+            { text: '异步处理', link: '/spring/06-advanced/chapter-02-async' },
+            { text: '定时任务', link: '/spring/06-advanced/chapter-03-scheduling' },
+            { text: '缓存', link: '/spring/06-advanced/chapter-04-caching' },
+            { text: '消息集成', link: '/spring/06-advanced/chapter-05-messaging' },
+            { text: '国际化', link: '/spring/06-advanced/chapter-06-internationalization' },
           ]
         },
         {
           text: '微服务',
           items: [
-            { text: '架构模式', link: '/spring/07-微服务/chapter-01-microservice-pattern' },
-            { text: '服务发现', link: '/spring/07-微服务/chapter-02-service-discovery' },
-            { text: 'API 网关', link: '/spring/07-微服务/chapter-03-api-gateway' },
-            { text: '负载均衡', link: '/spring/07-微服务/chapter-04-load-balancing' },
-            { text: '熔断降级', link: '/spring/07-微服务/chapter-05-circuit-breaker' },
-            { text: '配置中心', link: '/spring/07-微服务/chapter-06-config-center' },
+            { text: '架构模式', link: '/spring/07-microservices/chapter-01-microservice-pattern' },
+            { text: '服务发现', link: '/spring/07-microservices/chapter-02-service-discovery' },
+            { text: 'API 网关', link: '/spring/07-microservices/chapter-03-api-gateway' },
+            { text: '负载均衡', link: '/spring/07-microservices/chapter-04-load-balancing' },
+            { text: '熔断降级', link: '/spring/07-microservices/chapter-05-circuit-breaker' },
+            { text: '配置中心', link: '/spring/07-microservices/chapter-06-config-center' },
           ]
         },
         {
           text: '测试',
           items: [
-            { text: '单元测试', link: '/spring/08-测试/chapter-01-unit-test' },
-            { text: '集成测试', link: '/spring/08-测试/chapter-02-integration-test' },
-            { text: 'Testcontainers', link: '/spring/08-测试/chapter-03-testcontainers' },
+            { text: '单元测试', link: '/spring/08-testing/chapter-01-unit-test' },
+            { text: '集成测试', link: '/spring/08-testing/chapter-02-integration-test' },
+            { text: 'Testcontainers', link: '/spring/08-testing/chapter-03-testcontainers' },
           ]
         }
       ],
@@ -233,92 +233,92 @@ export default defineConfig({
         {
           text: '基础入门',
           items: [
-            { text: 'PG 概览', link: '/postgresql/01-基础入门/chapter-01-overview' },
-            { text: '安装部署', link: '/postgresql/01-基础入门/chapter-02-install-config' },
-            { text: 'SQL 基础', link: '/postgresql/01-基础入门/chapter-03-sql-basics' },
-            { text: '数据类型', link: '/postgresql/01-基础入门/chapter-04-data-types' },
-            { text: 'PG vs MySQL', link: '/postgresql/01-基础入门/chapter-05-pg-vs-mysql' },
+            { text: 'PG 概览', link: '/postgresql/01-basics/chapter-01-overview' },
+            { text: '安装部署', link: '/postgresql/01-basics/chapter-02-install-config' },
+            { text: 'SQL 基础', link: '/postgresql/01-basics/chapter-03-sql-basics' },
+            { text: '数据类型', link: '/postgresql/01-basics/chapter-04-data-types' },
+            { text: 'PG vs MySQL', link: '/postgresql/01-basics/chapter-05-pg-vs-mysql' },
           ]
         },
         {
           text: 'SQL 进阶',
           items: [
-            { text: '窗口函数', link: '/postgresql/02-SQL进阶/chapter-01-window-function' },
-            { text: 'CTE 与递归', link: '/postgresql/02-SQL进阶/chapter-02-cte-recursive' },
-            { text: '子查询与 LATERAL', link: '/postgresql/02-SQL进阶/chapter-03-subquery-lateral' },
-            { text: 'JSONB', link: '/postgresql/02-SQL进阶/chapter-04-jsonb' },
-            { text: '全文搜索', link: '/postgresql/02-SQL进阶/chapter-05-full-text-search' },
+            { text: '窗口函数', link: '/postgresql/02-sql-advanced/chapter-01-window-function' },
+            { text: 'CTE 与递归', link: '/postgresql/02-sql-advanced/chapter-02-cte-recursive' },
+            { text: '子查询与 LATERAL', link: '/postgresql/02-sql-advanced/chapter-03-subquery-lateral' },
+            { text: 'JSONB', link: '/postgresql/02-sql-advanced/chapter-04-jsonb' },
+            { text: '全文搜索', link: '/postgresql/02-sql-advanced/chapter-05-full-text-search' },
           ]
         },
         {
           text: '内核原理',
           items: [
-            { text: '进程架构', link: '/postgresql/03-内核原理/chapter-01-architecture' },
-            { text: '内存架构', link: '/postgresql/03-内核原理/chapter-02-memory' },
-            { text: '存储架构', link: '/postgresql/03-内核原理/chapter-03-storage' },
-            { text: 'MVCC', link: '/postgresql/03-内核原理/chapter-04-mvcc' },
-            { text: 'VACUUM', link: '/postgresql/03-内核原理/chapter-05-vacuum' },
-            { text: 'WAL', link: '/postgresql/03-内核原理/chapter-06-wal' },
-            { text: '查询处理', link: '/postgresql/03-内核原理/chapter-07-query-processing' },
+            { text: '进程架构', link: '/postgresql/03-internals/chapter-01-architecture' },
+            { text: '内存架构', link: '/postgresql/03-internals/chapter-02-memory' },
+            { text: '存储架构', link: '/postgresql/03-internals/chapter-03-storage' },
+            { text: 'MVCC', link: '/postgresql/03-internals/chapter-04-mvcc' },
+            { text: 'VACUUM', link: '/postgresql/03-internals/chapter-05-vacuum' },
+            { text: 'WAL', link: '/postgresql/03-internals/chapter-06-wal' },
+            { text: '查询处理', link: '/postgresql/03-internals/chapter-07-query-processing' },
           ]
         },
         {
           text: '索引与查询优化',
           items: [
-            { text: '索引类型', link: '/postgresql/04-索引与查询优化/chapter-01-index-types' },
-            { text: '索引设计', link: '/postgresql/04-索引与查询优化/chapter-02-index-design' },
-            { text: 'EXPLAIN', link: '/postgresql/04-索引与查询优化/chapter-03-explain-analyze' },
-            { text: '查询优化', link: '/postgresql/04-索引与查询优化/chapter-04-query-optimization' },
-            { text: '表分区', link: '/postgresql/04-索引与查询优化/chapter-05-partitioning' },
+            { text: '索引类型', link: '/postgresql/04-index-optimization/chapter-01-index-types' },
+            { text: '索引设计', link: '/postgresql/04-index-optimization/chapter-02-index-design' },
+            { text: 'EXPLAIN', link: '/postgresql/04-index-optimization/chapter-03-explain-analyze' },
+            { text: '查询优化', link: '/postgresql/04-index-optimization/chapter-04-query-optimization' },
+            { text: '表分区', link: '/postgresql/04-index-optimization/chapter-05-partitioning' },
           ]
         },
         {
           text: '事务与并发',
           items: [
-            { text: '事务', link: '/postgresql/05-事务与并发/chapter-01-transaction' },
-            { text: '锁机制', link: '/postgresql/05-事务与并发/chapter-02-lock' },
-            { text: '咨询锁', link: '/postgresql/05-事务与并发/chapter-03-advisory-lock' },
-            { text: '并发实践', link: '/postgresql/05-事务与并发/chapter-04-concurrency' },
+            { text: '事务', link: '/postgresql/05-transaction-concurrency/chapter-01-transaction' },
+            { text: '锁机制', link: '/postgresql/05-transaction-concurrency/chapter-02-lock' },
+            { text: '咨询锁', link: '/postgresql/05-transaction-concurrency/chapter-03-advisory-lock' },
+            { text: '并发实践', link: '/postgresql/05-transaction-concurrency/chapter-04-concurrency' },
           ]
         },
         {
           text: '高级特性',
           items: [
-            { text: '扩展机制', link: '/postgresql/06-高级特性/chapter-01-extensions' },
-            { text: 'PL/pgSQL', link: '/postgresql/06-高级特性/chapter-02-plpgsql' },
-            { text: 'FDW', link: '/postgresql/06-高级特性/chapter-03-foreign-data-wrapper' },
-            { text: '逻辑复制', link: '/postgresql/06-高级特性/chapter-04-logical-replication' },
-            { text: 'PostGIS', link: '/postgresql/06-高级特性/chapter-05-postgis' },
-            { text: 'LISTEN/NOTIFY', link: '/postgresql/06-高级特性/chapter-06-notify' },
-            { text: '物化视图', link: '/postgresql/06-高级特性/chapter-07-materialized-view' },
+            { text: '扩展机制', link: '/postgresql/06-advanced-features/chapter-01-extensions' },
+            { text: 'PL/pgSQL', link: '/postgresql/06-advanced-features/chapter-02-plpgsql' },
+            { text: 'FDW', link: '/postgresql/06-advanced-features/chapter-03-foreign-data-wrapper' },
+            { text: '逻辑复制', link: '/postgresql/06-advanced-features/chapter-04-logical-replication' },
+            { text: 'PostGIS', link: '/postgresql/06-advanced-features/chapter-05-postgis' },
+            { text: 'LISTEN/NOTIFY', link: '/postgresql/06-advanced-features/chapter-06-notify' },
+            { text: '物化视图', link: '/postgresql/06-advanced-features/chapter-07-materialized-view' },
           ]
         },
         {
           text: '运维管理',
           items: [
-            { text: '备份恢复', link: '/postgresql/07-运维管理/chapter-01-backup-restore' },
-            { text: '监控', link: '/postgresql/07-运维管理/chapter-02-monitoring' },
-            { text: '安全', link: '/postgresql/07-运维管理/chapter-03-security' },
-            { text: '用户管理', link: '/postgresql/07-运维管理/chapter-04-user-management' },
-            { text: '日常维护', link: '/postgresql/07-运维管理/chapter-05-maintenance' },
+            { text: '备份恢复', link: '/postgresql/07-operations/chapter-01-backup-restore' },
+            { text: '监控', link: '/postgresql/07-operations/chapter-02-monitoring' },
+            { text: '安全', link: '/postgresql/07-operations/chapter-03-security' },
+            { text: '用户管理', link: '/postgresql/07-operations/chapter-04-user-management' },
+            { text: '日常维护', link: '/postgresql/07-operations/chapter-05-maintenance' },
           ]
         },
         {
           text: '高可用与架构',
           items: [
-            { text: '流复制', link: '/postgresql/08-高可用与架构/chapter-01-streaming-replication' },
-            { text: '高可用方案', link: '/postgresql/08-高可用与架构/chapter-02-ha-solutions' },
-            { text: '连接池', link: '/postgresql/08-高可用与架构/chapter-03-connection-pooling' },
-            { text: '分片', link: '/postgresql/08-高可用与架构/chapter-04-sharding' },
-            { text: '迁移', link: '/postgresql/08-高可用与架构/chapter-05-migration' },
+            { text: '流复制', link: '/postgresql/08-ha-architecture/chapter-01-streaming-replication' },
+            { text: '高可用方案', link: '/postgresql/08-ha-architecture/chapter-02-ha-solutions' },
+            { text: '连接池', link: '/postgresql/08-ha-architecture/chapter-03-connection-pooling' },
+            { text: '分片', link: '/postgresql/08-ha-architecture/chapter-04-sharding' },
+            { text: '迁移', link: '/postgresql/08-ha-architecture/chapter-05-migration' },
           ]
         },
         {
           text: '实战场景',
           items: [
-            { text: 'Spring 集成', link: '/postgresql/09-实战场景/chapter-01-spring-integration' },
-            { text: '性能调优', link: '/postgresql/09-实战场景/chapter-02-performance-tuning' },
-            { text: '常见模式', link: '/postgresql/09-实战场景/chapter-03-common-patterns' },
+            { text: 'Spring 集成', link: '/postgresql/09-practice/chapter-01-spring-integration' },
+            { text: '性能调优', link: '/postgresql/09-practice/chapter-02-performance-tuning' },
+            { text: '常见模式', link: '/postgresql/09-practice/chapter-03-common-patterns' },
           ]
         }
       ],
