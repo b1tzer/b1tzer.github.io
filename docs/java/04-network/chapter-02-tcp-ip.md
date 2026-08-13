@@ -62,7 +62,7 @@ HTTP 是万维网的基础协议，它要求：请求必须到达、响应不能
 
 TCP 连接的建立需要三次数据交互，这就是著名的"三次握手"：
 
-<SvgDiagram src="/diagrams/tcp-handshake.svg" />
+<SvgDiagram src="/public/java/tcp-handshake.svg" />
 
 > **这跟你的代码有什么关系？** 每次建一个新的 TCP 连接，在你的第一个字节数据发出去之前，客户端和服务器已经来回飞了三趟（SYN→SYN-ACK→ACK）。如果 RTT 是 40ms，这 40ms 是纯等待——你的代码还没开始跑。这就是连接池（HTTP Keep-Alive、数据库连接池、Dubbo 长连接）存在的根本原因：复用已有连接，省掉这个 1-RTT 的握手代价。TLS 握手还要再花 1-RTT——所以首次访问 HTTPS 总比 HTTP 慢一拍，不是网络问题，是协议设计决定的。
 
@@ -141,7 +141,7 @@ net.ipv4.tcp_fin_timeout = 30   # 缩短 FIN 超时时间
 
 TCP 连接的生命周期可以用一个状态机来描述：
 
-<SvgDiagram src="/diagrams/tcp-segment.svg" />
+<SvgDiagram src="/public/java/tcp-segment.svg" />
 
 **对 Java 开发者的意义：** 当你在代码中调用 `socket.close()` 时，操作系统并不一定立即关闭连接——它可能进入 FIN_WAIT_1、FIN_WAIT_2、TIME_WAIT 等状态。理解这些状态，能帮你解释为什么 `close()` 后端口还被占用、为什么连接池中的连接"看起来还活着"。
 
@@ -205,7 +205,7 @@ RTO = SRTT + 4 × RTTVAR
 
 如果每发一个包就等一个 ACK，效率太低（尤其是高延迟网络）。滑动窗口允许发送方在等待 ACK 的同时继续发送后续数据：
 
-<SvgDiagram src="/diagrams/tcp-window.svg" />
+<SvgDiagram src="/public/java/tcp-window.svg" />
 
 **窗口大小由接收方通告（Window Advertisement）：** 接收方在 ACK 中告诉发送方"我的接收缓冲区还有多少空间"，发送方据此控制发送速率。这就是**流量控制（Flow Control）**。
 
@@ -223,7 +223,7 @@ RTO = SRTT + 4 × RTTVAR
 
 TCP 的拥塞控制包含四个阶段：
 
-<SvgDiagram src="/diagrams/tcp-congestion.svg" />
+<SvgDiagram src="/public/java/tcp-congestion.svg" />
 
 | 阶段 | 策略 | 说明 |
 |------|------|------|
@@ -244,7 +244,7 @@ TCP 的拥塞控制包含四个阶段：
 
 **根因很简单：TCP 是字节流协议，不保证消息边界。**
 
-<SvgDiagram src="/diagrams/tcp-sticky-packet.svg" />
+<SvgDiagram src="/public/java/tcp-sticky-packet.svg" />
 
 **为什么 UDP 没有这个问题？** 因为 UDP 是数据报协议——每次 `sendto()` 对应一次 `recvfrom()`，操作系统保留了消息边界。
 

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 272" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif">
+  <!-- Title -->
+  <text x="306" y="26" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-text-1)">TCP 滑动窗口示意图</text>
+  <text x="306" y="42" text-anchor="middle" font-size="11" fill="var(--diagram-text-2)">发送窗口大小 = 4000 字节</text>
+
+  <!-- Window before slide -->
+  <text x="306" y="68" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-arrow)">当前窗口状态</text>
+
+  <!-- Full bar -->
+  <rect x="51" y="81" width="510" height="42" rx="3" fill="var(--diagram-surface-2)" stroke="var(--diagram-stroke-1)" stroke-width="1.3"/>
+
+  <!-- 已确认 (green) -->
+  <rect x="51" y="81" width="128" height="42" rx="3" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.3"/>
+  <text x="115" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="var(--diagram-accent-text-2)">已确认</text>
+  <text x="115" y="113" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-2)">已收到 ACK</text>
+
+  <!-- 可发送(未确认) (blue) -->
+  <rect x="178" y="81" width="212" height="42" rx="0" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.3"/>
+  <text x="285" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="var(--diagram-accent-text-1)">可发送 (未确认)</text>
+  <text x="285" y="113" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-1)">已发送等待 ACK</text>
+
+  <!-- 不可发送 (gray) -->
+  <rect x="391" y="81" width="170" height="42" rx="0" fill="var(--diagram-surface-3)" stroke="var(--diagram-ghost)" stroke-width="1.3"/>
+  <text x="476" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="var(--diagram-arrow)">不可发送</text>
+  <text x="476" y="113" text-anchor="middle" font-size="9" fill="var(--diagram-ghost)">窗口之外</text>
+
+  <!-- Window size bracket -->
+  <line x1="178" y1="136" x2="391" y2="136" stroke="var(--diagram-accent-4)" stroke-width="1.3"/>
+  <line x1="178" y1="132" x2="178" y2="140" stroke="var(--diagram-accent-4)" stroke-width="1.3"/>
+  <line x1="391" y1="132" x2="391" y2="140" stroke="var(--diagram-accent-4)" stroke-width="1.3"/>
+  <text x="285" y="151" text-anchor="middle" font-size="10" fill="var(--diagram-accent-4)" font-weight="bold">◀───── 窗口大小 ─────▶</text>
+
+  <!-- Arrow down -->
+  <text x="306" y="178" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-3)">每收到一个 ACK，窗口向右滑动 →</text>
+
+  <!-- Window after slide -->
+  <text x="306" y="204" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-arrow)">滑动后</text>
+
+  <rect x="51" y="212" width="510" height="42" rx="3" fill="var(--diagram-surface-2)" stroke="var(--diagram-stroke-1)" stroke-width="1.3"/>
+
+  <!-- 已确认 (larger green) -->
+  <rect x="51" y="212" width="212" height="42" rx="3" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.3"/>
+  <text x="157" y="230" text-anchor="middle" font-size="10" font-weight="bold" fill="var(--diagram-accent-text-2)">已确认</text>
+  <text x="157" y="245" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-2)">更多数据已确认</text>
+
+  <!-- 可发送 (blue) -->
+  <rect x="264" y="212" width="212" height="42" rx="0" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.3"/>
+  <text x="370" y="230" text-anchor="middle" font-size="10" font-weight="bold" fill="var(--diagram-accent-text-1)">可发送 (未确认)</text>
+  <text x="370" y="245" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-1)">窗口右移</text>
+
+  <!-- 不可发送 (smaller gray) -->
+  <rect x="476" y="212" width="85" height="42" rx="0" fill="var(--diagram-surface-3)" stroke="var(--diagram-ghost)" stroke-width="1.3"/>
+  <text x="518" y="238" text-anchor="middle" font-size="9" fill="var(--diagram-ghost)">不可发送</text>
+</svg>

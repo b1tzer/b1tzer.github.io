@@ -95,7 +95,7 @@ public void syncBlock() {
 
 用 `javap -c` 反编译得到（简化）：
 
-<SvgDiagram src="/diagrams/sync-monitor-flow.svg" />
+<SvgDiagram src="/public/java/sync-monitor-flow.svg" />
 
 两点值得注意：
 

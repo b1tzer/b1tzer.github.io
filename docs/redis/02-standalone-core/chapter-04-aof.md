@@ -8,7 +8,7 @@
 
 AOF 记录服务器收到的每一条写命令，重启时按顺序重新执行这些命令来重建数据。
 
-![AOF 追加流程](/public/02-standalone-core-chapter-04-aof-1.svg)
+![AOF 追加流程](/public/redis/02-standalone-core-chapter-04-aof-1.svg)
 
 ### 三种刷盘策略
 
@@ -50,7 +50,7 @@ AOF 文件会随着写命令累积越来越大，需要定期「重写」压缩�
 
 重写不是分析旧 AOF 文件，而是**读取当前内存数据**，生成一个只包含最终状态的最小命令集。
 
-![AOF 重写流程](/public/02-standalone-core-chapter-04-aof-2.svg)
+![AOF 重写流程](/public/redis/02-standalone-core-chapter-04-aof-2.svg)
 
 关键点：
 

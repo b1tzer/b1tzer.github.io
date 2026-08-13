@@ -50,7 +50,7 @@
        └───────┴───────┘
 ```
 
-<SvgDiagram src="/diagrams/bio-thread-timeline.svg" />
+<SvgDiagram src="/public/java/bio-thread-timeline.svg" />
 
 每个 Java 线程需要独立的栈空间（~1MB）。10000 个连接 = 10000 个线程 = ~10GB 内存。你花 10GB 内存雇了一万个「等待工」，让他们 70% 的时间在工位上睡觉。
 
@@ -85,7 +85,7 @@ NIO:  线程 → 注册关心 READ 事件 → 做其他事 → Selector 通知�
 
 NIO 依赖三个核心组件——Channel、Buffer、Selector。
 
-<SvgDiagram src="/diagrams/nio-components.svg" />
+<SvgDiagram src="/public/java/nio-components.svg" />
 
 这三个组件的设计是一环扣一环的：Channel 是双向数据通道，Buffer 是 Channel 读写的容器，Selector 在一个线程里同时监听多个 Channel 的事件。下面从你线上遇到的问题挨个往回拆。
 
@@ -284,7 +284,7 @@ java.lang.OutOfMemoryError: Direct buffer memory
 
 每个 Buffer 维护三个属性：
 
-<SvgDiagram src="/diagrams/buffer-ops.svg" />
+<SvgDiagram src="/public/java/buffer-ops.svg" />
 
 | 属性 | 含义 | 取值范围 |
 | :--- | :--- | :--- |
@@ -430,7 +430,7 @@ public class NioEchoServer {
 
 这正是 Tomcat NioEndpoint 的三线程设计要解决的问题：
 
-<SvgDiagram src="/diagrams/reactor-master-slave.svg" />
+<SvgDiagram src="/public/java/reactor-master-slave.svg" />
 
 | 角色 | 对应 Tomcat | 职责 | 线程数 |
 | :--- | :--- | :--- | :--- |

@@ -48,7 +48,7 @@ Spring 并没有"消灭"事务管理，而是把它搬到了方法的外面—�
 
 整个过程可以用以下流程来描述：
 
-<SvgDiagram src="/diagrams/tx-propagation.svg" />
+<SvgDiagram src="/public/java/tx-propagation.svg" />
 
 **关键点：** `@Transactional` 生效的前提是方法调用必须经过代理对象。理解这一点，后面 6.3 节的"失效场景"就全部有迹可循了。
 

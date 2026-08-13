@@ -39,7 +39,7 @@ Redis Cluster 把整个键空间划分为 **16384 个哈希槽（slot）**，每
 
 集群由多个「主节点 + 从节点」组成，每个主节点负责一部分槽，从节点作为主节点的副本。
 
-![Redis Cluster 分片架构](/public/04-high-availability-chapter-03-cluster.svg)
+![Redis Cluster 分片架构](/public/redis/04-high-availability-chapter-03-cluster.svg)
 
 节点之间通过 **Gossip 协议**互相通信，交换集群状态、槽分配、节点健康信息。
 

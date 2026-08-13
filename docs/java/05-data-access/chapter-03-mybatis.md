@@ -97,7 +97,7 @@ sequenceDiagram
 
 整个执行链路涉及六个核心组件，各司其职：
 
-<SvgDiagram src="/diagrams/mybatis-flow.svg" />
+<SvgDiagram src="/public/java/mybatis-flow.svg" />
 
 | 组件 | 职责 | 类比 |
 | :-- | :-- | :-- |
@@ -294,7 +294,7 @@ public abstract class BaseExecutor implements Executor {
 
 **二级缓存的工作机制：**
 
-<SvgDiagram src="/diagrams/mybatis-cache-flow.svg" />
+<SvgDiagram src="/public/java/mybatis-cache-flow.svg" />
 
 **关键注意事项：**
 
@@ -391,7 +391,7 @@ public class SlowSqlPlugin implements Interceptor {
 
 ### 3.5.2 四个拦截点
 
-<SvgDiagram src="/diagrams/mybatis-interceptor-chain.svg" />
+<SvgDiagram src="/public/java/mybatis-interceptor-chain.svg" />
 
 | 拦截对象 | 典型场景 | 示例 |
 |---------|---------|------|
@@ -545,7 +545,7 @@ MyBatis 的动态 SQL 通过 XML 标签，根据运行时参数动态拼装 SQL 
 
 MyBatis 的动态 SQL 并非简单的字符串拼接。它使用 **OGNL 表达式引擎** 解析 `test` 条件，通过 `SqlNode` 树形结构组织 SQL 片段，最终由 `DynamicSqlSource` 在运行时生成最终的 `BoundSql`。
 
-<SvgDiagram src="/diagrams/mybatis-xml-to-runtime.svg" />
+<SvgDiagram src="/public/java/mybatis-xml-to-runtime.svg" />
 
 每个 XML 标签被解析为对应的 `SqlNode` 实现（`IfSqlNode`、`ForEachSqlNode`、`WhereSqlNode` 等），运行时根据参数值决定是否输出该节点的内容。
 

@@ -221,7 +221,7 @@ try (SqlSession session = sqlSessionFactory.openSession(ExecutorType.BATCH, fals
 
 一次数据访问请求的完整链路：
 
-<SvgDiagram src="/diagrams/db-performance-overview.svg" />
+<SvgDiagram src="/public/java/db-performance-overview.svg" />
 ```
 
 **每一层都可能是瓶颈**。很多开发者一遇到慢查询就盯着 SQL 优化，但实际上：

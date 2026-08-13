@@ -8,7 +8,7 @@
 
 正常查询会先查缓存，命中直接返回；未命中则查数据库，再把结果写入缓存。
 
-![缓存穿透问题流程](/public/03-cache-engineering-chapter-01-penetration-1.svg)
+![缓存穿透问题流程](/public/redis/03-cache-engineering-chapter-01-penetration-1.svg)
 
 穿透的根源在于「缓存和数据库都没有数据」：既然数据库查不到，就不会写缓存，于是下一次相同请求还是查不到缓存、还是直达数据库。
 
@@ -54,7 +54,7 @@
 
 在查缓存前先过布隆过滤器：
 
-![布隆过滤器拦截流程](/public/03-cache-engineering-chapter-01-penetration-2.svg)
+![布隆过滤器拦截流程](/public/redis/03-cache-engineering-chapter-01-penetration-2.svg)
 
 布隆过滤器拦截了大部分「不存在」的请求，只有少数「可能存在的误判」会继续查缓存和数据库。
 

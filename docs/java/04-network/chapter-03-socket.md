@@ -10,7 +10,7 @@
 
 当一台机器的网线收到一个 TCP 包，数据要经过层层处理才能到达应用程序：
 
-<SvgDiagram src="/diagrams/data-journey.svg" />
+<SvgDiagram src="/public/java/data-journey.svg" />
 
 关键一步在**传输层**：内核根据报文的**目标 IP + 目标端口**（以及源 IP + 源端口）找到对应的 Socket，把数据塞进它的**接收缓冲区**。应用程序调用 `read()` 时，读的就是这个缓冲区——它不需要知道网卡型号、TCP 校验和、路由表，内核把这些全部处理好了。
 
@@ -20,7 +20,7 @@ Socket 的价值就在这里：**它把复杂的网络协议栈封装成了一�
 
 在 Unix/Linux 中，Socket 本质上是一个**文件描述符（File Descriptor, fd）**。操作系统把一切 I/O 资源都抽象为 fd——普通文件、管道、设备、网络连接，对应用来说都是一个 `int` 数字。
 
-<SvgDiagram src="/diagrams/fd-table.svg" />
+<SvgDiagram src="/public/java/fd-table.svg" />
 
 创建一个 Socket 时，内核做的事情：
 
@@ -271,7 +271,7 @@ close(connFd)  ◄── 四次挥手 ──── close(fd)
 
 `listen()` 之后，内核为这个监听 Socket 维护两个队列：
 
-<SvgDiagram src="/diagrams/kernel-queues.svg" />
+<SvgDiagram src="/public/java/kernel-queues.svg" />
 
 **全连接队列满（accept queue full）时：**
 

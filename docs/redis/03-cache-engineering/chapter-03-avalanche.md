@@ -13,7 +13,7 @@
 | 大量 key 同时过期 | 同一时间设置了相同 TTL 的 key 集体失效 |
 | 缓存服务宕机 | Redis 整体不可用，所有请求直达数据库 |
 
-![缓存雪崩成因](/public/03-cache-engineering-chapter-03-avalanche-1.svg)
+![缓存雪崩成因](/public/redis/03-cache-engineering-chapter-03-avalanche-1.svg)
 
 危害：数据库瞬时并发激增，连接耗尽，整个系统不可用。
 
@@ -43,7 +43,7 @@ redis.set(key, value, ttl);
 
 在 Redis 之上再加一层「本地缓存」（如 Caffeine、Guava Cache），形成多级缓存：
 
-![多级缓存流程](/public/03-cache-engineering-chapter-03-avalanche-2.svg)
+![多级缓存流程](/public/redis/03-cache-engineering-chapter-03-avalanche-2.svg)
 
 | 层级 | 说明 | 特点 |
 | :-- | :-- | :-- |
@@ -65,7 +65,7 @@ redis.set(key, value, ttl);
 | 降级 | 返回兜底数据（默认值、静态页）而非查库 |
 | 限流 | 限制打到数据库的请求速率 |
 
-![熔断降级流程](/public/03-cache-engineering-chapter-03-avalanche-3.svg)
+![熔断降级流程](/public/redis/03-cache-engineering-chapter-03-avalanche-3.svg)
 
 ---
 

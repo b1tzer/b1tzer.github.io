@@ -262,7 +262,7 @@ Native Method Stack
 User user = new User("Tom");
 ```
 
-<SvgDiagram src="/diagrams/jvm-object-creation.svg" />
+<SvgDiagram src="/public/java/jvm-object-creation.svg" />
 
 **TLAB 是关键优化**。没有 TLAB，多线程同时在 Eden 分配对象需要加锁（CAS），TLAB 让每个线程有自己的"私人领地"，分配只需要移动指针。`-XX:+UseTLAB` 默认开启。
 

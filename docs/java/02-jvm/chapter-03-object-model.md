@@ -12,7 +12,7 @@ User user = new User();
 
 JVM 执行的操作：
 
-<SvgDiagram src="/diagrams/jvm-object-layout.svg" />
+<SvgDiagram src="/public/java/jvm-object-layout.svg" />
 
 步骤 3 保证了 Java 的安全特性——字段在使用前一定有确定的值，不会读到脏数据。
 

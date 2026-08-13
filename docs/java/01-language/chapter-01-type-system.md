@@ -79,7 +79,7 @@ public class Hello {
 
 这段代码从源码到 CPU 执行，经历了这些步骤：
 
-<SvgDiagram src="/diagrams/java-compile-pipeline.svg" />
+<SvgDiagram src="/public/java/java-compile-pipeline.svg" />
 
 后面的每一章，都是在解释这条链路中的某一个环节。现在只需要建立这个整体认知，知道"Java 代码不是直接在 CPU 上跑的"就够了。
 
@@ -105,7 +105,7 @@ Java 的类型世界分为两大阵营：基本类型（Primitive）和引用类
 
 ### 类型体系总览
 
-<SvgDiagram src="/diagrams/type-hierarchy.svg" />
+<SvgDiagram src="/public/java/type-hierarchy.svg" />
 
 ### Enum：编译器魔法加持的引用类型
 
@@ -232,7 +232,7 @@ User user = new User();
 
 很多人认为"变量 `user` 就是对象"。实际上：
 
-<SvgDiagram src="/diagrams/stack-heap.svg" />
+<SvgDiagram src="/public/java/stack-heap.svg" />
 
 - **变量 `user`** 存在栈上，保存的是一个**引用**（本质上是一个内存地址）
 - **对象本身** 存在堆上，包含对象头和实例数据
@@ -335,7 +335,7 @@ NPE 是 Java 中最常见的运行时异常之一。后面的 Lambda 章节会�
 
 当你写 `new User()` 时，JVM 做了什么？
 
-<SvgDiagram src="/diagrams/jvm-object-creation.svg" />
+<SvgDiagram src="/public/java/jvm-object-creation.svg" />
 
 现在只需要知道：对象创建不是一瞬间的事，JVM 做了很多幕后工作。第二卷"对象模型"一章会详细展开。
 
@@ -343,7 +343,7 @@ NPE 是 Java 中最常见的运行时异常之一。后面的 Lambda 章节会�
 
 HotSpot JVM 中，一个 Java 对象在堆中的结构：
 
-<SvgDiagram src="/diagrams/jvm-object-layout.svg" />
+<SvgDiagram src="/public/java/jvm-object-layout.svg" />
 
 对象头中的 **Mark Word** 非常重要——它不仅存储 hashCode 和 GC 年龄，还存储锁状态信息。当对象被 `synchronized` 锁住时，Mark Word 的内容会发生变化（偏向锁 → 轻量级锁 → 重量级锁）。这是第三卷 `synchronized` 的关键前置知识。
 

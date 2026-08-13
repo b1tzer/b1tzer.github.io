@@ -82,7 +82,7 @@ ht[0] 数组
 
 当哈希表的装载因子过高或过低时，需要扩容或缩容。一次性 rehash 会阻塞服务，Redis 采用**渐进式 rehash**：维护两个哈希表 `ht[0]` 和 `ht[1]`，把迁移分摊到多次操作中。
 
-![渐进式 rehash 过程](/public/01-data-model-chapter-04-data-structures-1.svg)
+![渐进式 rehash 过程](/public/redis/01-data-model-chapter-04-data-structures-1.svg)
 
 执行步骤：
 
@@ -103,7 +103,7 @@ ht[0] 数组
 
 跳表在有序链表之上建立多层索引，查找时从高层开始，逐层向下定位目标。
 
-![跳表多层索引结构](/public/01-data-model-chapter-04-data-structures-2.svg)
+![跳表多层索引结构](/public/redis/01-data-model-chapter-04-data-structures-2.svg)
 
 查找从最高层开始，在当前层向右移动直到找到第一个大于等于目标值的节点，然后向下一层继续，重复直到找到目标或到达最底层。平均时间复杂度 O(log n)。
 

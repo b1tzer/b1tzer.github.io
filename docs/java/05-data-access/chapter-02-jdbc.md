@@ -51,7 +51,7 @@ ResultSet rs = ps.executeQuery();
 
 在后续章节中我们会学习 MyBatis、Hibernate/JPA 等 ORM 框架。但请记住一个关键事实：**所有 Java ORM 框架，无论上层多么花哨，底层都是通过 JDBC 与数据库通信的。**
 
-<SvgDiagram src="/diagrams/jdbc-architecture.svg" />
+<SvgDiagram src="/public/java/jdbc-architecture.svg" />
 
 理解 JDBC，就是理解 Java 数据访问的"基岩层"。它不是最优雅的 API，但它是所有上层建筑的地基。
 

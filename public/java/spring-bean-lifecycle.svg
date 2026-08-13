@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 663" width="612" height="663" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="11">
+<style>
+  text { text-anchor: middle; dominant-baseline: central; }
+  .title { font-size: 15px; font-weight: bold; fill: var(--diagram-text-1); }
+  .label { font-size: 12px; fill: var(--diagram-text-1); }
+  .note { font-size: 11px; fill: var(--diagram-text-2); }
+  .arrow { stroke: var(--diagram-accent-3); stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+  .box { rx: 8; ry: 8; }
+  .phase { fill: var(--diagram-surface-3); stroke: var(--diagram-text-2); stroke-width: 1.5; }
+  .highlight { fill: var(--diagram-accent-bg-4); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
+  .action { fill: var(--diagram-accent-bg-2); stroke: var(--diagram-accent-2); stroke-width: 1.5; }
+  .important { fill: var(--diagram-accent-bg-5); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
+  .step { fill: var(--diagram-accent-bg-3b); stroke: var(--diagram-accent-3); stroke-width: 1.5; }
+  .note-box { fill: var(--diagram-surface-2); stroke: var(--diagram-stroke-1); stroke-width: 1; }
+  .cache { fill: var(--diagram-accent-4); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-3)"/>
+  </marker>
+  <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-2)"/>
+  </marker>
+  <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-4)"/>
+  </marker>
+</defs>
+<text x="306" y="26" class="title">Bean 生命周期全流程</text>
+<rect x="180.0" y="47" width="306" height="41" class="box phase"/>
+<text x="360.0" y="79.0" class="label">BeanDefinition 加载</text>
+<text x="555.0" y="79.0" text-anchor="start" class="note">← 构造器调用</text>
+<line x1="306" y1="88" x2="306" y2="113" class="arrow"/><rect x="180.0" y="113" width="306" height="41" class="box phase"/>
+<text x="360.0" y="157.0" class="label">实例化（Instantiation）</text>
+<text x="555.0" y="157.0" text-anchor="start" class="note">← @Autowired / @Value 注入</text>
+<line x1="306" y1="154" x2="306" y2="179" class="arrow"/><rect x="180.0" y="179" width="306" height="41" class="box action"/>
+<text x="360.0" y="235.0" class="label">属性赋值（Populate）</text>
+<text x="555.0" y="235.0" text-anchor="start" class="note">← BeanNameAware / BeanFactoryAware / ApplicationContextAware</text>
+<line x1="306" y1="220" x2="306" y2="246" class="arrow"/><rect x="180.0" y="246" width="306" height="41" class="box phase"/>
+<text x="360.0" y="313.0" class="label">Aware 接口回调</text>
+<line x1="306" y1="286" x2="306" y2="312" class="arrow"/><rect x="180.0" y="312" width="306" height="41" class="box step"/>
+<text x="360.0" y="391.0" class="label">BeanPostProcessor
+postProcessBeforeInitialization</text>
+<line x1="306" y1="353" x2="306" y2="378" class="arrow"/><rect x="180.0" y="378" width="306" height="41" class="box highlight"/>
+<text x="360.0" y="469.0" class="label">@PostConstruct / InitializingBean
+afterPropertiesSet / init-method</text>
+<text x="555.0" y="469.0" text-anchor="start" class="note">← AOP 代理在此创建</text>
+<line x1="306" y1="419" x2="306" y2="445" class="arrow"/><rect x="180.0" y="445" width="306" height="41" class="box step"/>
+<text x="360.0" y="547.0" class="label">BeanPostProcessor
+postProcessAfterInitialization</text>
+<line x1="306" y1="485" x2="306" y2="511" class="arrow"/><rect x="180.0" y="511" width="306" height="41" class="box important"/>
+<text x="360.0" y="625.0" class="label">Bean 就绪，可被使用</text>
+<line x1="306" y1="552" x2="306" y2="577" class="arrow"/><rect x="180.0" y="577" width="306" height="41" class="box phase"/>
+<text x="360.0" y="703.0" class="label">@PreDestroy / DisposableBean
+destroy / destroy-method</text>
+
+</svg>
