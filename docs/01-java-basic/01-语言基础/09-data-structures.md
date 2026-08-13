@@ -298,33 +298,33 @@ pread64(fd=42, buf=0x7f8c00408000, count=16384, offset=0x3c000000) = 16384   # �
 
 ```mermaid
 flowchart TB
-    subgraph 内存["🧠 数据在内存 · 追求 CPU 缓存命中 & 并发友好"]
+    subgraph 内存["数据在内存 · 追求 CPU 缓存命中 & 并发友好"]
         A1["Java · TreeMap / TreeSet<br/>红黑树 · 确定性平衡"]
         A2["Java · ConcurrentSkipListMap<br/>跳表 · CAS 无锁"]
         A3["Redis · ZSet<br/>跳表 + 哈希双结构"]
         A4["Java · HashMap / ConcurrentHashMap<br/>哈希表 + 红黑树桶兜底"]
     end
 
-    subgraph 磁盘["💾 数据在磁盘 · 追求树高极低 & 页对齐"]
+    subgraph 磁盘["数据在磁盘 · 追求树高极低 & 页对齐"]
         B1["MySQL InnoDB · B+ 树<br/>阶数 ≈ 1170 · 三层撑起 6800 万行"]
         B2["PostgreSQL · B+ 树 (+ Hash / GiST / GIN)"]
         B3["MongoDB · B 树<br/>内部节点也存数据"]
     end
 
-    subgraph 网络["🌐 数据在网络 · 追求 O(1) 添加与触发"]
+    subgraph 网络["数据在网络 · 追求 O(1) 添加与触发"]
         C1["Netty · HashedWheelTimer<br/>单层时间轮 · 高精度短周期"]
         C2["Kafka · 分层时间轮 + DelayQueue<br/>低精度长周期"]
         C3["Java · ScheduledThreadPoolExecutor<br/>最小堆 · 通用但 O(log n)"]
     end
 
-    subgraph 大数据["📊 数据在大规模 · 追求内存节省 & 概率式"]
+    subgraph 大数据["数据在大规模 · 追求内存节省 & 概率式"]
         D1["Redis · RedisBloom 模块<br/>布隆过滤器 · 假阳性 1%"]
         D2["Guava · BloomFilter<br/>Java 内嵌"]
         D3["爬虫 · URL 去重"]
         D4["Kafka · 消息幂等"]
     end
 
-    subgraph 文本["🔤 数据在文本 · 追求前缀匹配 O(m)"]
+    subgraph 文本["数据在文本 · 追求前缀匹配 O(m)"]
         E1["Spring MVC · AntPathMatcher<br/>路由匹配 (类 Trie)"]
         E2["敏感词过滤<br/>DFA · Trie 树"]
         E3["搜索自动补全<br/>Trie · Elasticsearch Completion Suggester"]
@@ -574,7 +574,7 @@ public class UserExistenceChecker {
 
     @PostConstruct
     void load() {
-        userDao.streamAllIds().forEach(filter::put);   // 💡 只加载 ID · 12 MB
+        userDao.streamAllIds().forEach(filter::put);   // 只加载 ID · 12 MB
     }
 
     boolean mayExist(String id) {
@@ -604,7 +604,7 @@ Map<String, Long> counts = Collections.synchronizedSortedMap(new TreeMap<>());
 ```java
 // ✅ 标准范式：多线程有序场景直接用 ConcurrentSkipListMap
 ConcurrentSkipListMap<String, Long> counts = new ConcurrentSkipListMap<>();
-// 💡 CAS 无锁 · 局部修改 · 并发度接近 CPU 核数
+// CAS 无锁 · 局部修改 · 并发度接近 CPU 核数
 ```
 
 ### 4.3 红线 3：MySQL 索引选型永远从"B+ 树三层能装多少行"倒推
@@ -679,7 +679,7 @@ BloomFilter<String> filter = BloomFilter.create(
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 展开本篇 §3.3 跳表 CAS 无锁的硬件基础：`VarHandle.compareAndSet` 的 `lock cmpxchg` 汇编指令与 x86 内存屏障。
 - [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 承接本篇 §3.5 的 `ScheduledThreadPoolExecutor.DelayedWorkQueue` 最小堆完整源码。

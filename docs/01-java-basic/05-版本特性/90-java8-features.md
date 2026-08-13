@@ -190,7 +190,7 @@ ZonedDateTime next = dt.plusHours(1);   // ✅ 跳过夏令时被吞掉的一小
 | `DATETIME` | `LocalDateTime` | 单时区业务表 | ✅ Spring Boot 2.x 默认支持 |
 | `DATE` | `LocalDate` | 生日、账单日 | ✅ |
 | `TIMESTAMP` | `Instant` / `ZonedDateTime` | 跨时区业务 · 全球化系统 | ✅ 存储 UTC，读取时按 `session.timezone` 转换 |
-| `BIGINT` | `Instant.toEpochMilli()` | 高性能日志系统 | ⚠️ 可读性差、SQL 端难以直接调试 |
+| `BIGINT` | `Instant.toEpochMilli()` | 高性能日志系统 | 可读性差、SQL 端难以直接调试 |
 | `VARCHAR("2024-01-15 14:00:00")` | `String` | — | ❌ **禁止**：无法利用数据库时间函数与索引 |
 
 ---

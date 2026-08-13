@@ -377,7 +377,7 @@ class Animal {
     public String getName() { return name; } 
 }
 class Dog extends Animal { 
-    String name = "Dog";// ⚠️ 字段隐藏（Field Hiding），不是重写！
+    String name = "Dog";// 字段隐藏（Field Hiding），不是重写！
     @Override 
     public String getName() { return name; } 
 }
@@ -433,14 +433,14 @@ new Dog().callSecret();  // ❌ 输出：Animal（并没有触发多态调用到
 
 - **原因**：正如 2.3 节所讲，`private` 方法因为子类不可见，JVM 直接使用 `invokespecial` 指令进行静态绑定。子类写一个同名同参的 `private` 方法，只是碰巧名字一样的新方法而已，不进入虚方法表。
 
-#### ④ 构造方法中调用可重写方法：多态的“严重反噬” ⚠️
+#### ④ 构造方法中调用可重写方法：多态的“严重反噬” 
 
 这是 Java 核心架构中容易忽视的隐患：
 
 ```java
 class Animal {
     Animal() {
-        init();  // ⚠️ 危险：此时 Dog 对象还未完全初始化
+        init();  // 危险：此时 Dog 对象还未完全初始化
     }
     void init() { System.out.println("Animal init"); }
 }
@@ -462,7 +462,7 @@ class Dog extends Animal {
 !!! recommend "工程红线"
     **绝不要在任何类的构造方法（以及 private、final 之外的方法）中调用可以被子类重写的方法**。 如果需要初始化，应提供显式的初始化接口或使用工厂模式。
 
-💡**本章核心指令与多态行为全景总结**
+**本章核心指令与多态行为全景总结**
 
 拉通全书，JVM 所有的底层操作和多态性的关系可以终极提炼为下表：
 

@@ -25,7 +25,7 @@ title: 反射（Reflection） —— Method.invoke 与 MethodHandle
     - **JVMS**（Java Virtual Machine Specification）：字节码指令与分派规则，跨实现稳定。示例：`invokedynamic` 指令通过 `BootstrapMethod` 绑定 `CallSite`；JVMS 也定义了 signature-polymorphic 方法的字节码表示。
     - **HotSpot 实现**（且标注 JDK 版本）：随 OpenJDK 版本演化的实现细节。示例：`MethodAccessor` inflation 阈值（HotSpot ≤ JDK 17）、`LambdaForm` 常量折叠（HotSpot 全版本）、C2 内联启发式。
 
-    ⚠️ 遇到"HotSpot 实现"标签的内容时，把它当作**"当前主流 JDK 的一种实现方式"**，而不是"Java 语言规律"——同一段代码在 GraalVM / OpenJ9 上完全可能走不同的底层路径。
+    遇到"HotSpot 实现"标签的内容时，把它当作**"当前主流 JDK 的一种实现方式"**，而不是"Java 语言规律"——同一段代码在 GraalVM / OpenJ9 上完全可能走不同的底层路径。
 
     **📌 三层之外的衍生层**：本文还会出现三个不属于上述三层但同样重要的归属标签，请一并注意：
 
@@ -74,7 +74,7 @@ public class OrderController {
 
 单元测试跑起来毫无异样。一旦压测把 QPS 冲到万级以上，Young GC 频率可能从"分钟级"劣化到"秒级"，接口 P99 延迟呈台阶式跳升。
 
-⚠️ **但注意**：现代 Jackson 在**首次反序列化目标类时**会缓存字段访问器（`AnnotatedMethod` + 内部 `MemberKey` 缓存），并不是"每一次调用都新建一个反射查找"。真正落到反射调用层的底层成本主要有两块：
+**但注意**：现代 Jackson 在**首次反序列化目标类时**会缓存字段访问器（`AnnotatedMethod` + 内部 `MemberKey` 缓存），并不是"每一次调用都新建一个反射查找"。真正落到反射调用层的底层成本主要有两块：
 
 1. **`Method.invoke` 内部的调用链开销**——这一块随 JDK 版本变化很大（详见 §2）
 2. **调用方 varargs 装箱产生的 `Object[]` + 基本类型的自动装箱**——这一块由**调用者字节码**决定，与反射内部实现无关
@@ -92,17 +92,17 @@ public class OrderController {
 ```mermaid
 flowchart TB
     Reflection["反射调用<br>java.lang.reflect.Method#invoke"]
-    Reflection --> R17["🕰️ JDK 17 及以前<br>MethodAccessor 双路径<br>NativeMethodAccessorImpl / GeneratedMethodAccessor"]
-    Reflection --> R18["🚀 JDK 18+ · JEP 416<br>DirectMethodHandleAccessor<br>反射底层已重构为 MethodHandle"]
+    Reflection --> R17["JDK 17 及以前<br>MethodAccessor 双路径<br>NativeMethodAccessorImpl / GeneratedMethodAccessor"]
+    Reflection --> R18["JDK 18+ · JEP 416<br>DirectMethodHandleAccessor<br>反射底层已重构为 MethodHandle"]
 
     MH["MethodHandle 家族<br>java.lang.invoke.MethodHandle"]
-    MH --> MHSig["📜 JLS §15.12.3<br>signature-polymorphic 方法"]
-    MH --> MHForm["⚙️ HotSpot 实现<br>LambdaForm 字节码模板"]
+    MH --> MHSig["JLS §15.12.3<br>signature-polymorphic 方法"]
+    MH --> MHForm["HotSpot 实现<br>LambdaForm 字节码模板"]
     MH --> MHJIT["🔥 HotSpot JIT<br>常量折叠 + 内联展开"]
 
     Indy["invokedynamic 指令<br>JVMS §6.5"]
-    Indy --> IndyBoot["📜 JVMS 规范<br>BootstrapMethod + CallSite"]
-    Indy --> IndyMH["🔗 与 MethodHandle 的连接<br>BootstrapMethod 返回 CallSite → 绑定 MethodHandle"]
+    Indy --> IndyBoot["JVMS 规范<br>BootstrapMethod + CallSite"]
+    Indy --> IndyMH["与 MethodHandle 的连接<br>BootstrapMethod 返回 CallSite → 绑定 MethodHandle"]
 
     classDef spec fill:#e3f2fd,stroke:#1976d2
     classDef impl fill:#fff3e0,stroke:#f57c00
@@ -175,7 +175,7 @@ public Object invoke(Object obj, Object[] args);
 
 **关键破案点**：`NativeMethodAccessorImpl.invoke` 内部维护一个 `numInvocations` 计数器，每次调用 `++`；累计超过 `inflationThreshold`（默认 15）时，触发 `MethodAccessorGenerator` **实时拼装一份字节码**并 `defineClass` 加载到 JVM，然后通过 `parent.setDelegate` 把委派指针从"JNI 慢路径"切换到"Java 字节码快路径"。
 
-⚠️ **归属层次**：**HotSpot 实现（JDK ≤17）**。这条委派链**不是** JVMS 规定的行为，纯粹是 HotSpot 团队在 `jdk.internal.reflect` 包里的实现选择。GraalVM / OpenJ9 / Android ART 完全可能有不同的反射调用链。
+**归属层次**：**HotSpot 实现（JDK ≤17）**。这条委派链**不是** JVMS 规定的行为，纯粹是 HotSpot 团队在 `jdk.internal.reflect` 包里的实现选择。GraalVM / OpenJ9 / Android ART 完全可能有不同的反射调用链。
 
 !!! note "📖 术语家族：`MethodAccessor` 与反射委派体系（HotSpot ≤17）"
     **字面义**：`MethodAccessor` = "方法访问器"——夹在 `Method.invoke` 和真实方法之间的**可替换代理**，负责决定"这次调用走 JNI 还是走生成字节码"。
@@ -194,7 +194,7 @@ public Object invoke(Object obj, Object[] args);
 
     **命名规律**：**动作名 + `Accessor` = "对反射 API 的底层访问器"**——每个都遵循"Delegating（薄壳） → Native（慢路径） → Generated（快路径）"的三段式委派结构。
 
-    ⚠️ **关键警告：这个家族在 JDK 18 起被淘汰**。见 §2.2。
+    **关键警告：这个家族在 JDK 18 起被淘汰**。见 §2.2。
 
 ### 2.2 分支二 · JDK 18+ 的反射调用链（HotSpot 实现，JEP 416 后）
 
@@ -224,7 +224,7 @@ CSM.returnCallerClass()
   <调用者>
 ```
 
-⚠️ **归属层次**：**HotSpot 实现（JDK ≥18）**。JEP 416 官方释疑给了三条重要事实：
+**归属层次**：**HotSpot 实现（JDK ≥18）**。JEP 416 官方释疑给了三条重要事实：
 
 1. **API 层零变化**：`Method.invoke` 的 Javadoc、行为语义、抛出异常保持不变——这是 Java 平台的向后兼容承诺
 2. **性能有得有失**：`Method` / `Field` / `Constructor` 存到 `static final` 字段时，JIT 常量折叠能让新实现比旧实现**快 43~57%**；反之若存在 `Map` / 数组等非常量位置里，`Field` 访问可能**慢 51~77%**
@@ -232,7 +232,7 @@ CSM.returnCallerClass()
 
 **这就是 §1.1 问题的现代真相**：Spring 5.x + JDK 8/11/17 冷启动路径中，`MethodAccessor` inflation 是**反射相关成本的一个可观贡献者**——注意冷启动整体耗时还涉及类加载、Classpath 扫描、BeanDefinition 注册、条件装配、依赖注入、代理创建等大量非反射成本，反射只是其中一环；JDK 18+ 基于 `MethodHandle` 重构反射后，HotSpot 对位于稳定常量位置（`static final` 等）的反射元数据可以进行更积极的优化，因此某些反射场景的性能**明显改善**。
 
-⚠️ **但注意**：这并不意味着 `Method.invoke` 与 `MethodHandle.invokeExact` 或直接调用**等价**——`Method.invoke` 仍然有自己的 API 语义层（参数检查、参数适配、访问检查、异常包装等），这些开销无法被 JEP 416 消除。若你的项目还没升级到 JDK 21，或反射目标存到了非稳定位置，性能特征则更接近 §2.1 的经典模型。
+**但注意**：这并不意味着 `Method.invoke` 与 `MethodHandle.invokeExact` 或直接调用**等价**——`Method.invoke` 仍然有自己的 API 语义层（参数检查、参数适配、访问检查、异常包装等），这些开销无法被 JEP 416 消除。若你的项目还没升级到 JDK 21，或反射目标存到了非稳定位置，性能特征则更接近 §2.1 的经典模型。
 
 ### 2.3 分支三 · `MethodHandle` 家族的字节码真相
 
@@ -246,7 +246,7 @@ CSM.returnCallerClass()
     3. 声明在 `java.lang.invoke.MethodHandle` 或 `java.lang.invoke.VarHandle` 类中
 - 对 signature-polymorphic 方法的字节码调用，**编译器发射的 `invokevirtual` 指令保留调用点的实参签名**（不做类型擦除），JVM 在链接时特殊处理
 
-⚠️ **归属层次**：**JLS + JVMS**（跨实现稳定）。所有兼容 Java 7+ 的 JVM 都必须遵守这条契约。
+**归属层次**：**JLS + JVMS**（跨实现稳定）。所有兼容 Java 7+ 的 JVM 都必须遵守这条契约。
 
 写同样的方法调用：
 
@@ -295,7 +295,7 @@ public static void main(java.lang.String[]) throws java.lang.Throwable;
 **签名多态的两条重要边界**：
 
 - ✅ `invokeExact(target, "World")` 要求调用点签名与目标方法**精确匹配**。若把 `String` 参数换成 `Object`，会抛 `WrongMethodTypeException`——**无自动装箱、无隐式转换**
-- ⚠️ `invoke(target, "World")` 会做 `asType` 适配（**可能装箱**），比 `invokeExact` 慢
+- `invoke(target, "World")` 会做 `asType` 适配（**可能装箱**），比 `invokeExact` 慢
 
 **HotSpot 实现层的三个加分项**：
 
@@ -303,20 +303,20 @@ public static void main(java.lang.String[]) throws java.lang.Throwable;
 - `MethodHandle` 内部持有一个 `LambdaForm` 对象 → 一段可解释、可 JIT 编译的字节码模板
 - JIT 编译 `main` 方法时，可以**沿着 `LambdaForm` 展开到目标方法 `hello`**，最终生成的机器码接近直接调用
 
-⚠️ **归属层次划分**：
+**归属层次划分**：
 
 | 事实 | 归属 |
 | :-- | :-- |
 | `invokeExact` 是 signature-polymorphic 方法 | **JLS / JVMS** ✅ 永恒契约 |
 | `MethodHandle.invokeExact` 编译为 `invokevirtual` 字节码 | **JVMS** ✅ 永恒契约 |
-| `static final MethodHandle` 会被 JIT 常量折叠 | **HotSpot 实现** ⚠️ 依赖 C2 的 trusted final 优化 |
-| `LambdaForm` 展开链 | **HotSpot 实现** ⚠️ OpenJ9 / GraalVM 有各自不同的实现 |
+| `static final MethodHandle` 会被 JIT 常量折叠 | **HotSpot 实现** 依赖 C2 的 trusted final 优化 |
+| `LambdaForm` 展开链 | **HotSpot 实现** OpenJ9 / GraalVM 有各自不同的实现 |
 
 ### 2.4 分支四 · `invokedynamic` 指令的字节码地基
 
 `invokedynamic` 是 **JVMS §6.5 定义的 5 条方法调用字节码之一**，与前面的 `MethodHandle`、反射并列，是**又一条独立技术线索**。
 
-⚠️ **归属层次**：**JVMS 规范**（跨实现稳定）。所有 Java 7+ JVM 必须实现这条指令。
+**归属层次**：**JVMS 规范**（跨实现稳定）。所有 Java 7+ JVM 必须实现这条指令。
 
 !!! note "📖 术语家族：JVM 的 5 条方法调用指令"
     **字面义**：JVMS §6.5 定义的方法调用指令族。
@@ -333,7 +333,7 @@ public static void main(java.lang.String[]) throws java.lang.Throwable;
 
     **命名规律**：**`invoke` + 分派策略 = "如何找到真实方法"**。前 4 条是 Java 1.0 就有的"传统四剑客"，`invokedynamic` 是 JDK 7（JSR 292）引入的"第五武器"。
 
-    ⚠️ **关键辨析（易混点）**：
+    **关键辨析（易混点）**：
 
     - **不是**"`invokedynamic` 是唯一在运行期决定目标的指令"——`invokevirtual` / `invokeinterface` 本身就是**运行期虚分派**
     - **准确说法**：`invokedynamic` 独特之处在于**"调用目标"本身（不只是接收者的具体类）在首次调用时才通过 `BootstrapMethod` 决定**；且首次决定后，通过 `CallSite` 缓存，之后每次调用都直接分派
@@ -380,7 +380,7 @@ BootstrapMethods:
 
 **准确说法**：**Record 的 `equals` / `hashCode` / `toString` 三个方法通过 `invokedynamic` 调用 `java.lang.runtime.ObjectMethods.bootstrap`，由 Bootstrap 方法在首次调用时根据 Record 的字段列表 + Getter `MethodHandle` 列表，生成对应的 `equals` / `hashCode` / `toString` 实现。**
 
-⚠️ **归属层次辨析**：
+**归属层次辨析**：
 
 - **JVMS 契约**：Record 三方法使用 `invokedynamic` + `ObjectMethods.bootstrap` ——这由 `javac` 发射的字节码与 `java.lang.runtime.ObjectMethods` 的 API 契约确定
 - **JDK 实现选型**：Bootstrap 方法返回的 `CallSite` 具体类型（当前 OpenJDK 主流实现中为 `ConstantCallSite`）——属于 `ObjectMethods.bootstrap` 的实现细节，不属于 Record 语义或 `invokedynamic` 指令本身的硬性保证。依赖"一定是 `ConstantCallSite`"写代码时需注意版本兼容性
@@ -412,7 +412,7 @@ public final class com.sun.proxy.$Proxy0
     extends java.lang.reflect.Proxy
     implements OrderService
 {
-  private static final Method m3;   // 💡 static 字段，指向 OrderService.create 的 Method 对象
+  private static final Method m3;   // static 字段，指向 OrderService.create 的 Method 对象
 
   public final void create(Order);
     Code:
@@ -435,12 +435,12 @@ public final class com.sun.proxy.$Proxy0
 **关键破案点（澄清一个常见误解）**：
 
 - ✅ **代理框架层**：`$Proxy0.create` 只做"参数打包成 `Object[]` → 转发到 `InvocationHandler.invoke`"。这里的 `m3` 是**在类初始化时缓存的 `Method` 引用**，不是每次调用都反射查找。**这个环节没有反射调用开销**
-- ⚠️ **用户 handler 层**：`InvocationHandler` 内部通常会写 `method.invoke(target, args)` 来把调用转发给真实目标——**这里才是反射调用**（`Method.invoke` 的开销由 §2.1 / §2.2 决定）
+- **用户 handler 层**：`InvocationHandler` 内部通常会写 `method.invoke(target, args)` 来把调用转发给真实目标——**这里才是反射调用**（`Method.invoke` 的开销由 §2.1 / §2.2 决定）
 - ❌ **错误说法**："JDK 动态代理 = 每次调用都反射"——不严谨。**是否使用反射取决于 `InvocationHandler` 的实现方式**：若 handler 直接调用目标（`target.foo(args)`）或用 `MethodHandle` 转发，则**全程无反射**；只有当 handler 内部写 `method.invoke(target, args)` 时才引入一次 `Method.invoke` 开销。Spring AOP、MyBatis Mapper 等主流框架的 `InvocationHandler` 实现两种写法都有出现
 
 **CGLIB 代理**：字节码结构截然不同——CGLIB 通过 ASM 生成**目标类的子类**，重写目标方法，并借助 `FastClass` 为每个方法生成一个数字索引，通过 `switch` 直接分派到目标方法字节码。**代理调用不经过 `Method.invoke`**，因此性能比 JDK 动态代理的"含反射"路径明显更好。
 
-⚠️ **CGLIB 的现代地位**：CGLIB 上游多年停止维护，Spring 从 5.x 起把 CGLIB 复刻到 `spring-core` 内部维护，Mockito / Hibernate 6+ 已改用 **ByteBuddy**（现代等价物，字节码 API 更清晰、模块系统兼容更好）；但 ByteBuddy 与 CGLIB 都基于"生成子类"，`final` 类/`final` 方法/静态方法的短板依然存在。
+**CGLIB 的现代地位**：CGLIB 上游多年停止维护，Spring 从 5.x 起把 CGLIB 复刻到 `spring-core` 内部维护，Mockito / Hibernate 6+ 已改用 **ByteBuddy**（现代等价物，字节码 API 更清晰、模块系统兼容更好）；但 ByteBuddy 与 CGLIB 都基于"生成子类"，`final` 类/`final` 方法/静态方法的短板依然存在。
 
 > 📖 03 注解篇 §4.3 介绍了 `$Proxy0` 加载时的双亲委派链，这里展开其技术含义：**`$Proxy0` 由 `ProxyGenerator` 在运行时 `defineClass` 到 App ClassLoader（或指定 loader），而不是 Bootstrap ClassLoader**——这是它能被反射修改、能被 JVM Instrumentation 增强的硬性前提。
 
@@ -452,7 +452,7 @@ public final class com.sun.proxy.$Proxy0
 
 前一层里，我们看清了反射委派链在字节码上的路径。当这套字节码真正跑到 CPU 上时，它会向 **Metaspace（元空间）**、**Eden 区（新生代）**、**CPU L1/L2 缓存**索取真实的性能代价。
 
-⚠️ **本章数据口径说明**：以下所有字节数、耗时数、Metaspace 增量都是**数量级示意**，实际值随 JDK 版本、压缩指针（`-XX:+UseCompressedOops`）、对象对齐、`Integer` 缓存池、JIT 状态等因素浮动。若要在生产项目中做决策，请**自行用 JMH 在你的目标 JDK 上跑基准测试**。
+**本章数据口径说明**：以下所有字节数、耗时数、Metaspace 增量都是**数量级示意**，实际值随 JDK 版本、压缩指针（`-XX:+UseCompressedOops`）、对象对齐、`Integer` 缓存池、JIT 状态等因素浮动。若要在生产项目中做决策，请**自行用 JMH 在你的目标 JDK 上跑基准测试**。
 
 ### 3.1 `MethodAccessor` inflation 的 Metaspace 账单（HotSpot ≤17）
 
@@ -483,14 +483,14 @@ public final class com.sun.proxy.$Proxy0
 
 **这就是 §1.1 Spring 启动问题在 HotSpot ≤17 上的底层证据**：Spring 冷启动里大量反射调用**次数达不到 inflation 阈值**，全部困在 JNI 慢路径里，每次调用都要跨 Java/Native 边界。
 
-⚠️ **反面案例：不要盲目调 `-Dsun.reflect.inflationThreshold=0`**
+**反面案例：不要盲目调 `-Dsun.reflect.inflationThreshold=0`**
 
 - 有人建议把这个参数设为 0，让第一次调用就触发膨胀，跳过 JNI 慢路径
 - 副作用：对"仅反射几次就丢弃"的启动期扫描场景，会造成 **Metaspace 无谓膨胀 + 首次调用延迟尖刺 + 类初始化爆发**
 - ❌ **JDK 18 起该参数不再生效**（除非启用 `-Djdk.reflect.useDirectMethodHandle=false` 回退开关；未来版本会彻底移除）
 - ✅ **正解**：升级到 JDK 18+ 后享受 JEP 416 的统一实现，或把反射对象缓存到 `static final` 让 JIT 常量折叠生效
 
-⚠️ **归属层次**：**HotSpot 实现（JDK ≤17）**，且 JDK 18+ 已淘汰。
+**归属层次**：**HotSpot 实现（JDK ≤17）**，且 JDK 18+ 已淘汰。
 
 ### 3.2 反射调用一次的 Eden 区内存账单
 
@@ -536,7 +536,7 @@ for (...) {
    以上为示意结构，不代表 Method.invoke 的固定分配成本。
 ```
 
-⚠️ **归属层次**：**JLS**（varargs 与自动装箱是 Java 语言规范定义的行为）+ **HotSpot 实现**（具体对象头字节数、缓存池行为）。这一层的开销**与反射内部实现无关**——就算 JEP 416 之后反射底层变成 `MethodHandle`，只要你用的还是 `Method.invoke` API，varargs 装箱开销依然存在。
+**归属层次**：**JLS**（varargs 与自动装箱是 Java 语言规范定义的行为）+ **HotSpot 实现**（具体对象头字节数、缓存池行为）。这一层的开销**与反射内部实现无关**——就算 JEP 416 之后反射底层变成 `MethodHandle`，只要你用的还是 `Method.invoke` API，varargs 装箱开销依然存在。
 
 **规避手段**：换用 `MethodHandle.invokeExact` 的 signature-polymorphic 调用——签名精确匹配，直接传原生 `int` / `double`，**无装箱、无数组**。见 §3.3。
 
@@ -566,13 +566,13 @@ flowchart LR
 1. **`static final` 字段的 trusted final 处理**：C2 把 `HELLO_MH` 当作运行时常量，进而把它引用的整条 `LambdaForm` 链视为常量子表达式
 2. **`LambdaForm` 展开内联**：JIT 编译 `main` 方法时，沿 `LambdaForm` 一路展开到 `hello` 方法体，最终机器码接近直接调用
 
-⚠️ **归属层次**：
+**归属层次**：
 
 | 事实 | 归属 |
 | :-- | :-- |
 | `static final` 字段的语义 | **JLS** ✅ 永恒契约 |
-| C2 把 `static final` 字段当 trusted final 优化 | **HotSpot 实现** ⚠️ 依赖 C2 |
-| `LambdaForm` 结构存在 | **HotSpot 实现** ⚠️ OpenJ9 / GraalVM 有各自不同实现 |
+| C2 把 `static final` 字段当 trusted final 优化 | **HotSpot 实现** 依赖 C2 |
+| `LambdaForm` 结构存在 | **HotSpot 实现** OpenJ9 / GraalVM 有各自不同实现 |
 
 **⭐ 关键工程结论（本节最重要的一句）**：**稳定的 `MethodHandle` 引用有利于 JIT 优化，但 `static final` 并不是内联的硬性前提**。当 `MethodHandle` 以 `static final` 等稳定方式持有、调用点类型明确、目标方法稳定时，HotSpot 更容易沿 `MethodHandle` / `LambdaForm` 调用链进行常量传播与内联展开。
 
@@ -596,8 +596,8 @@ static final 字段  ≠  Java 编译期常量  ≠  JIT 一定能内联
 | :-- | :-- | :-- |
 | 直接方法调用 | ✅ 完全内联 | 基准 |
 | `MethodHandle.invokeExact`（`static final`） | ✅ `LambdaForm` 展开后接近完全内联 | 接近基准 |
-| `MethodHandle.invoke`（非 `static final`，从 `Map` 查表） | ⚠️ 常量传播机会降低，可能仍能 speculative 优化 | 通常慢于稳定持有场景，具体取决于 profile |
-| `Method.invoke`（JDK 18+，`static final` 缓存） | ⚠️ 底层是 `MethodHandle`，但仍有 API 语义层 | 慢于 `MethodHandle.invokeExact`，但明显优于 HotSpot ≤17 |
+| `MethodHandle.invoke`（非 `static final`，从 `Map` 查表） | 常量传播机会降低，可能仍能 speculative 优化 | 通常慢于稳定持有场景，具体取决于 profile |
+| `Method.invoke`（JDK 18+，`static final` 缓存） | 底层是 `MethodHandle`，但仍有 API 语义层 | 慢于 `MethodHandle.invokeExact`，但明显优于 HotSpot ≤17 |
 | `Method.invoke`（HotSpot ≤17，未膨胀 + varargs 装箱） | ❌ 无法内联 + JNI 跨界 | 明显最慢 |
 
 📌 **数量级说明**：以上量级参考 JEP 416 官方 benchmark 与 OpenJDK 邮件列表社区数据，具体差异因签名复杂度、JDK 版本、CPU 微架构而异。请勿把数量级排序当作绝对精确的 ns 值。
@@ -646,14 +646,14 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 - ✅ 用户代码要写字段原子操作，**首选 `VarHandle`**（官方 API + 模块系统友好）
 - ❌ 用户代码严禁再引 `sun.misc.Unsafe`——现代 JDK 已经用 `--illegal-access=deny` / 模块封装等手段逐步锁死这条路
 
-⚠️ **归属层次**：
+**归属层次**：
 
 | 事实 | 归属 |
 | :-- | :-- |
 | `VarHandle` 是 signature-polymorphic 类 | **JLS / JVMS** ✅ |
 | `VarHandle` 的访问模式（access modes） | **Java API 契约** ✅ |
-| `VarHandle` 最终编译为 `lock cmpxchg` | **HotSpot 实现** ⚠️ |
-| `AtomicInteger` / CHM 用 `Unsafe` 而非 `VarHandle` | **JDK 内部实现选型** ⚠️ 与规范无关 |
+| `VarHandle` 最终编译为 `lock cmpxchg` | **HotSpot 实现** |
+| `AtomicInteger` / CHM 用 `Unsafe` 而非 `VarHandle` | **JDK 内部实现选型** 与规范无关 |
 
 ### 3.5 动态代理的性能开销全景
 
@@ -684,10 +684,10 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 ）  ✅ 子类继承分派，典型场景下无 Method.invoke、无 varargs 装箱
 ```
 
-⚠️ **CGLIB / ByteBuddy 的边界**：基于"子类继承"的典型代理模式确实在核心调用路径上不需 `Method.invoke`。但 ByteBuddy 本身是通用字节码生成框架，它的 `MethodDelegation` + `@Origin Method` / `@AllArguments Object[]` 等拦截配置下依然会引入 `Method.invoke` 转发（例如把所有拦截都转发到一个通用 `MethodInterceptor`）——不能绝对化为"CGLIB/ByteBuddy 任何用法都无反射"。
+**CGLIB / ByteBuddy 的边界**：基于"子类继承"的典型代理模式确实在核心调用路径上不需 `Method.invoke`。但 ByteBuddy 本身是通用字节码生成框架，它的 `MethodDelegation` + `@Origin Method` / `@AllArguments Object[]` 等拦截配置下依然会引入 `Method.invoke` 转发（例如把所有拦截都转发到一个通用 `MethodInterceptor`）——不能绝对化为"CGLIB/ByteBuddy 任何用法都无反射"。
 **关键对比（澄清一个流传甚广的误区）**：
 
-- **JDK 动态代理**只能代理接口。代理类 `$Proxy0.method()` 的实现会把调用统一转发到 `InvocationHandler.invoke(proxy, method, args)`；⚠️ **但 JDK Proxy 本身并不要求必须使用反射调用目标方法**——`InvocationHandler` 内部完全可以：
+- **JDK 动态代理**只能代理接口。代理类 `$Proxy0.method()` 的实现会把调用统一转发到 `InvocationHandler.invoke(proxy, method, args)`；**但 JDK Proxy 本身并不要求必须使用反射调用目标方法**——`InvocationHandler` 内部完全可以：
 
     ```java
     // 写法 A（不含反射）：InvocationHandler 直接调用目标
@@ -706,7 +706,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 
 **这就是 §1.2 里"CGLIB 遇到 `final` 罢工"、"`@Transactional` 修饰 `final` 方法失效"的字节码根源**。
 
-⚠️ **归属层次**：**JLS**（Java 继承规则决定 `final` 无法覆盖）+ **框架实现契约**（Spring AOP / Mockito / MapStruct 等）。
+**归属层次**：**JLS**（Java 继承规则决定 `final` 无法覆盖）+ **框架实现契约**（Spring AOP / Mockito / MapStruct 等）。
 
 认清了这一层性能代价与 JIT 优化边界，我们就能把这些底层规律转化为高并发场景下的工程红线。
 
@@ -714,7 +714,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
 
 ## 4. 第四层：工程红线与高并发优化契约
 
-⚠️ **本章的口径**：以下 4 条是**工程实践中能带来可观性能改善或封装完整性提升**的规范。**注意区分**：
+**本章的口径**：以下 4 条是**工程实践中能带来可观性能改善或封装完整性提升**的规范。**注意区分**：
 
 - **原则**（§4.1、§4.2）：属于"决策指引"，需要根据场景 profiling / 频次判断是否套用
 - **红线**（§4.3、§4.4）：属于"硬性技术约束"，一旦踩中会引发 API 报错或功能失效（`InaccessibleObjectException` / AOP 失效）
@@ -877,7 +877,7 @@ public static Function<Object, Object> asFunction(Method method) throws Throwabl
 }
 ```
 
-⚠️ **归属层次**：**JLS / JVMS**（`invokeExact` 签名多态）+ **HotSpot 实现**（常量折叠效果依赖 C2）。
+**归属层次**：**JLS / JVMS**（`invokeExact` 签名多态）+ **HotSpot 实现**（常量折叠效果依赖 C2）。
 
 ### 4.3 🚨 工程红线 3：跨模块访问优先 `privateLookupIn`，慎用 `setAccessible`
 
@@ -898,7 +898,7 @@ f.setAccessible(true);   // 💥 java.base 未 open java.lang 给未命名模块
 byte[] value = (byte[]) f.get(someString);
 ```
 
-**⚠️ 命令行绕过**（仅供研究/临时用，不推荐业务代码）：`java --add-opens java.base/java.lang=ALL-UNNAMED MyApp`
+**命令行绕过**（仅供研究/临时用，不推荐业务代码）：`java --add-opens java.base/java.lang=ALL-UNNAMED MyApp`
 
 **✅ 标准范式（跨模块）**：**避开 `String.value` 这类 JDK 内部字段**，用公共 API；如果确有跨模块反射需求，用 `privateLookupIn`（要求目标模块已 `opens`）：
 
@@ -936,7 +936,7 @@ public class MyOwnUtil {
 }
 ```
 
-⚠️ **归属层次**：**JLS / JVMS**（模块系统访问规则）。跨实现稳定。
+**归属层次**：**JLS / JVMS**（模块系统访问规则）。跨实现稳定。
 
 ### 4.4 🚨 工程红线 4：动态代理避开 `final` 与静态方法
 
@@ -984,7 +984,7 @@ public interface OrderService {
 public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
-    public void charge() { ... }         // 非 final 实例方法 ✓
+    public void charge() { ... }         // 非 final 实例方法 
 }
 
 // 注入用接口类型
@@ -992,11 +992,11 @@ public class OrderServiceImpl implements OrderService {
 private OrderService orderService;       // ✅ JDK 动态代理
 ```
 
-⚠️ **归属层次**：**JLS**（继承规则）+ **框架实现契约**（Spring AOP / Mockito / MapStruct 等）。
+**归属层次**：**JLS**（继承规则）+ **框架实现契约**（Spring AOP / Mockito / MapStruct 等）。
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 本篇从四条独立技术线索（HotSpot ≤17 反射、JEP 416 后反射、`MethodHandle` 家族、`invokedynamic` 指令）贯通了反射生态的全貌，并按 **JLS / JVMS / HotSpot 实现** 三层规范体系锁定了每个技术断言的归属。
 

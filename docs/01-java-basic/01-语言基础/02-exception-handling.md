@@ -93,7 +93,7 @@ try {
     | :-- | :-- | :-- | :-- |
     | `Throwable` | 顶层根 | — | `java.lang.Throwable` |
     | `Error` | 系统级不可恢复错误（OOM、栈溢出） | ❌ Unchecked | `java.lang.Error` |
-| `Exception` | 应用级可捕获异常的起点 | ⚠️ 视子类 | `java.lang.Exception` |
+| `Exception` | 应用级可捕获异常的起点 | 视子类 | `java.lang.Exception` |
     | `RuntimeException` | 运行期错误（NPE、ClassCast、算术） | ❌ Unchecked | `java.lang.RuntimeException` |
     | `VirtualMachineError` | JVM 自身崩溃（OOM、StackOverflow） | ❌ Unchecked | `java.lang.VirtualMachineError` |
     | `LinkageError` | 类链接/校验失败（NoSuchMethod、AbstractMethod） | ❌ Unchecked | `java.lang.LinkageError` |
@@ -126,7 +126,7 @@ public void simpleTryCatch();
    9: invokevirtual #3                  // Method handleError:()V
   12: return
   
-  // 💡 核心考古发现：隐匿于方法末尾的被动元数据
+  // 核心考古发现：隐匿于方法末尾的被动元数据
   Exception table:
    from    to  target   type
       0     4       7   Class java/lang/IllegalArgumentException
@@ -231,7 +231,7 @@ public int probePrimitive();
 public class Throwable implements Serializable {
     // ...
     public Throwable() {
-        fillInStackTrace(); // 💡 隐藏在异常出生证明里的核心方法
+        fillInStackTrace(); // 隐藏在异常出生证明里的核心方法
     }
 
     // 这是一个底层的本地方法（Native Method），由 JVM 内部的 C++ 源码实现
@@ -448,7 +448,7 @@ try {
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 展开本篇 §3.3 的 `fillInStackTrace()` Native 栈回溯：在虚拟线程（Virtual Thread）场景下，高频率的栈回溯可能触发载体线程（Carrier Thread）的 `synchronized` 固定（Pin）问题。
 - [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 承接本篇 §4.1 的异常控制流讨论，展开线程池中 `execute` vs `submit` 的异常传播差异。

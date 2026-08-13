@@ -49,20 +49,20 @@ timeline
 
 ```mermaid
 flowchart TB
-    subgraph HW["🔧 硬件层 · 第三部分"]
+    subgraph HW["硬件层 · 第三部分"]
         H1["CPU · LOCK CMPXCHG<br/>(x86 原子比较交换指令)"]
         H2["MESI 缓存一致性协议<br/>(Modified/Exclusive/Shared/Invalid)"]
         H3["内存屏障 · sfence / lfence / mfence<br/>(x86 硬件屏障指令)"]
     end
 
-    subgraph JVM["💠 JVM 层 · 第三部分"]
+    subgraph JVM["JVM 层 · 第三部分"]
         J1["JMM · happens-before 8 条规则<br/>(JLS §17.4)"]
         J2["synchronized 锁升级<br/>无锁 → 偏向 → 轻量级 → 重量级"]
         J3["AQS · state + CLH 队列<br/>(Doug Lea 的模板方法)"]
         J4["volatile 语义<br/>LoadLoad / StoreStore / LoadStore / StoreLoad 四种 JMM 屏障"]
     end
 
-    subgraph APP["🎯 应用层 · 第三部分"]
+    subgraph APP["应用层 · 第三部分"]
         A1["ReentrantLock / ReadWriteLock<br/>(AQS 独占 vs 共享)"]
         A2["ThreadPoolExecutor 7 参数<br/>(核心/最大/存活/单位/队列/工厂/拒绝)"]
         A3["ConcurrentHashMap<br/>(CAS + synchronized 单槽位锁)"]
@@ -86,11 +86,11 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    A["<b>并发地基</b><br/>JMM + CAS + synchronized 锁升级<br/>⏱️ 6~8 小时"] -->|"硬件与 JVM 语义 →<br/>建立三条硬件事实的直觉"| B["<b>AQS 设计哲学</b><br/>state + CLH + 模板方法<br/>⏱️ 4~6 小时"]
+    A["<b>并发地基</b><br/>JMM + CAS + synchronized 锁升级<br/>6~8 小时"] -->|"硬件与 JVM 语义 →<br/>建立三条硬件事实的直觉"| B["<b>AQS 设计哲学</b><br/>state + CLH + 模板方法<br/>4~6 小时"]
 
-    B -->|"用哲学构建工具 →<br/>理解一份模板派生四种同步器"| C["<b>并发工具</b><br/>ReentrantLock / 线程池 / StampedLock / LongAdder<br/>⏱️ 6~8 小时"]
+    B -->|"用哲学构建工具 →<br/>理解一份模板派生四种同步器"| C["<b>并发工具</b><br/>ReentrantLock / 线程池 / StampedLock / LongAdder<br/>6~8 小时"]
 
-    C -->|"工具组合成数据结构 →<br/>把 CAS + synchronized + AQS 织进数据结构"| D["<b>并发集合与陷阱</b><br/>ConcurrentHashMap / CoW / 实战陷阱<br/>⏱️ 6~8 小时"]
+    C -->|"工具组合成数据结构 →<br/>把 CAS + synchronized + AQS 织进数据结构"| D["<b>并发集合与陷阱</b><br/>ConcurrentHashMap / CoW / 实战陷阱<br/>6~8 小时"]
 
     style A fill:#ffe1e1
     style B fill:#fff4e1

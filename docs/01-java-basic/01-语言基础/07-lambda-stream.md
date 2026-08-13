@@ -456,7 +456,7 @@ public static long countLongNames(List<String> names) {
 │  - CompletableFuture.supplyAsync(Supplier)  // 无 executor 版本 │
 │  - CompletableFuture.thenApplyAsync(Function) // 无 executor 版本 │
 │  - Files.walk(...).parallel()                                 │
-│  - Arrays.parallelSort()  // ⚠️ 有条件，见下方脚注             │
+│  - Arrays.parallelSort()  // 有条件，见下方脚注             │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -504,7 +504,7 @@ public List<Result> reMigrate(List<String> ids) {
     List<CompletableFuture<Result>> futures = ids.stream()
         .map(id -> CompletableFuture.supplyAsync(
             () -> httpClient.get("/api/data/" + id),
-            IO_POOL   // 💡 显式传入 executor，绕开 commonPool
+            IO_POOL   // 显式传入 executor，绕开 commonPool
         ))
         .collect(Collectors.toList());
     return futures.stream()
@@ -588,7 +588,7 @@ public class OrderNotifyService {
 
     @PreDestroy
     public void unregister() {
-        if (subscription != null) subscription.cancel();   // 💡 显式断链
+        if (subscription != null) subscription.cancel();   // 显式断链
     }
 
     private void onEvent(Event event) {
@@ -634,7 +634,7 @@ list.addAll(filtered);
 // ✅ 标准范式 3：确需边遍历边写，用 Iterator.remove()
 Iterator<String> it = list.iterator();
 while (it.hasNext()) {
-    if ("b".equals(it.next())) it.remove();   // 💡 Iterator.remove 会同步更新 modCount
+    if ("b".equals(it.next())) it.remove();   // Iterator.remove 会同步更新 modCount
 }
 ```
 
@@ -660,7 +660,7 @@ names.stream()
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [反射（Reflection）](@java-字节码-反射与MethodHandle) 展开本篇 Lambda 底层的 `MethodHandle` 机制：`ConstantCallSite` 内部持有的正是 `MethodHandle`，Reflection 篇 §2.4 / §3.4 提供了 `VarHandle` / `MethodHandle` 的字节码语义对比。
 - [集合框架](@java-数据结构-集合框架) 与 [数据结构精讲](@java-数据结构-数据结构精讲) 展开本篇 Lambda 在集合 API 中的落地：`HashMap.forEach(BiConsumer)`、`ConcurrentHashMap.computeIfAbsent(k, Function)` 在字节码层均通过 `invokedynamic` + `LambdaMetafactory` 生成匿名类 + `MethodHandle` 常量折叠实现。

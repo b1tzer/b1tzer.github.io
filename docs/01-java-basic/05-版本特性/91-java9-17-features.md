@@ -327,7 +327,7 @@ String dayName;
 switch (day) {
     case 1: dayName = "Monday";    break;
     case 2: dayName = "Tuesday";   break;
-    // ⚠️ 忘了 break 就 fall-through 到下一个 case
+    // 忘了 break 就 fall-through 到下一个 case
     default: dayName = "Unknown";
 }
 
@@ -439,7 +439,7 @@ if (obj instanceof String s) {   // s 是自动绑定的变量
         return s.toUpperCase();
     }
 
-    // ⚠️ 反例：走反向流控时容易误以为 s 不可见 —— 实际上仍在作用域内
+    // 反例：走反向流控时容易误以为 s 不可见 —— 实际上仍在作用域内
     ```
 
     **关键规则**：反其道而行之（`if (!(obj instanceof X x)) return;` 后继续用 `x`）确实合法，但要读者一眼看懂需要熟悉这条作用域规则；团队里如果新人多，建议用正向写法 `if (obj instanceof X x) { ... }`。

@@ -107,20 +107,20 @@ public class Singleton {
 
   public static Singleton getInstance();
     Code:
-       0: getstatic     #2       // Field instance:LSingleton;    ← 💡 volatile 读
+       0: getstatic     #2       // Field instance:LSingleton;    ← volatile 读
        3: ifnonnull    37
        6: ldc           #3       // class Singleton
        8: dup
        9: astore_0
       10: monitorenter            // synchronized 入口
-      11: getstatic     #2       // Field instance:LSingleton;    ← 💡 volatile 读
+      11: getstatic     #2       // Field instance:LSingleton;    ← volatile 读
       14: ifnonnull    27
 
       // ⭐ 核心 3 步 —— instance = new Singleton()
       17: new           #3       // 步骤 ①：堆上分配内存（引用入栈，字段全为默认值 null/0）
       20: dup
       21: invokespecial #4       // 步骤 ②：调用 <init>，逐字段初始化 strategies/loader/breaker
-      24: putstatic     #2       // 步骤 ③：把引用写入静态字段 instance   ← 💡 volatile 写
+      24: putstatic     #2       // 步骤 ③：把引用写入静态字段 instance   ← volatile 写
 
       27: aload_0
       28: monitorexit             // synchronized 出口
@@ -401,12 +401,12 @@ sequenceDiagram
         T->>Permit: park() 检查 permit
         Permit-->>T: permit == 0
         T->>OS: pthread_cond_wait 陷入内核
-        Note over T: 🛌 WAITING
+        Note over T: WAITING
         Caller->>Permit: unpark(t) permit = 1
         Caller->>OS: pthread_cond_signal
         OS-->>T: 唤醒
         T->>Permit: 消费 permit = 0
-        Note over T: 🏃 park() 返回
+        Note over T: park() 返回
     end
 
     rect rgba(220, 255, 220, 0.4)
@@ -426,16 +426,16 @@ sequenceDiagram
         T->>Permit: park() 消费 = 0
         T->>Permit: 再次 park() 检查
         Permit-->>T: permit == 0
-        T->>OS: ⚠️ 前面 2 次 unpark 丢了，仍阻塞
+        T->>OS: 前面 2 次 unpark 丢了，仍阻塞
     end
 
     rect rgba(255, 220, 220, 0.4)
         Note over Caller,OS: 场景 ④：虚假唤醒 —— park 无理由返回
         T->>OS: park() 陷入内核
-        Note over OS: ⚡ 底层信号 / 实现导致
+        Note over OS: 底层信号 / 实现导致
         OS-->>T: 唤醒
         T->>Permit: permit == 0（没人 unpark 过）
-        Note over T: ⚠️ park() 竟然返回！<br/>必须 while + 业务条件重试
+        Note over T: park() 竟然返回！<br/>必须 while + 业务条件重试
     end
 
     rect rgba(255, 200, 255, 0.4)
@@ -444,7 +444,7 @@ sequenceDiagram
         Caller->>T: t.interrupt() 中断标志 = true
         Caller->>OS: 唤醒 T
         OS-->>T: 唤醒
-        Note over T: ⚠️ park() 返回但**不抛异常**<br/>需手动 Thread.interrupted() 检查
+        Note over T: park() 返回但**不抛异常**<br/>需手动 Thread.interrupted() 检查
     end
 
     rect rgba(200, 220, 255, 0.4)
@@ -455,7 +455,7 @@ sequenceDiagram
             OS-->>T: 提前返回
         else 超时
             OS-->>T: 内核超时返回
-            Note over T: ⏰ permit 仍为 0
+            Note over T: permit 仍为 0
         end
     end
 ```
@@ -554,7 +554,7 @@ public class BestCounter {
     }
 
     public long get() {
-        return total.sum();  // ⚠️ 弱一致：多核累加时并非某一时刻的精确快照
+        return total.sum();  // 弱一致：多核累加时并非某一时刻的精确快照
     }
 }
 ```
@@ -679,7 +679,7 @@ public void handle() {
 }
 
 public long report() {
-    return requests.sum();  // ⚠️ 弱一致：与所有并发 increment 之间无 happens-before 保证
+    return requests.sum();  // 弱一致：与所有并发 increment 之间无 happens-before 保证
 }
 ```
 
@@ -734,7 +734,7 @@ private static final TransmittableThreadLocal<UserContext> CONTEXT = new Transmi
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [AQS 设计哲学](@java-并发-AQS设计哲学) 承接本篇 §3.3 的 `park` / `unpark` 二元信号量语义。AQS 的 CLH 队列在节点入队后调用 `LockSupport.park(this)` 挂起，前驱节点释放锁时调用 `LockSupport.unpark(next)` 精确唤醒后继——**`unpark(Thread)` 的精确唤醒能力（而非 `notify` 的公共队列语义）是 AQS 高性能队列锁的基础**。同时本篇 §2.4 的 `LOCK CMPXCHG` 是 AQS `compareAndSetState` 的底层 x86 指令，AQS 在其上叠加了 CLH 队列调度。
 - [Lock 与线程池](@java-并发-并发工具Lock与线程池) 展开本篇 §4.4 的 `LongAdder` → `Striped64` 类（`Cell` 数组初始化时机、`@Contended` 缓存行填充、`probe` 线程哈希 rehash）；`ReentrantLock` 公平/非公平锁对比 §2.3 中 `synchronized` 的隐式锁升级；线程池 `Worker` 类用 AQS `state` 编码"执行中 + shutdown"双状态。本篇 §3.5 的 `ThreadLocal` 引用强度族陷阱，是 Alibaba TransmittableThreadLocal 存在的根本动机。

@@ -456,7 +456,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
 ---
 
-## 10. 🗺️ 跨篇章知识关联
+## 10. 跨篇章知识关联
 
 - [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 承接本篇的容器化 JVM 参数与分代 ZGC 调优，展开虚拟线程 GC 视角与 JFR 深度使用。
 - [Java NIO 与 I/O 模型](@java-OS-NIO与IO模型) 承接本篇直接内存的 GC 回收路径，展开 `DirectByteBuffer.Cleaner` 与 Netty `PooledByteBufAllocator` 的堆外内存工程视角。

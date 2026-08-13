@@ -247,7 +247,7 @@ protected final int tryAcquireShared(int unused) {
 只持有读锁 (state = 65536 = 0x10000)
     ↓ 读锁降级完成，后续读操作可自由进入
 
-⚠️ 升级不允许（会死锁）：
+升级不允许（会死锁）：
 读锁持有 (state = 65536)
     ↓ 尝试 acquire 写锁
 写锁 tryAcquire 里检查 sharedCount(c) != 0 → 立即返回 false
@@ -482,7 +482,7 @@ private static int ctlOf(int rs, int wc) { return rs | wc; }           // 位或
 | `state` 语义 | 剩余许可数 | 倒计数 | 无 state；用 `count` + `parties` 字段 |
 | 生命周期 | 可反复 acquire/release | **一次性**（归零后不可重置） | **可循环使用**（`reset()` 复位） |
 | 阻塞语义 | 许可为 0 时 `acquire` 阻塞 | 计数非 0 时 `await` 阻塞 | 未达到 `parties` 时 `await` 阻塞 |
-| 是否可打断 | ✅ `acquireInterruptibly` | ✅ `await` 响应中断 | ⚠️ 打断会导致 barrier 破损（`BrokenBarrierException`） |
+| 是否可打断 | ✅ `acquireInterruptibly` | ✅ `await` 响应中断 | 打断会导致 barrier 破损（`BrokenBarrierException`） |
 | 典型场景 | 限流、连接池、资源信号 | 主线程等待子任务全部完成 | N 个线程互相等待、分阶段并行计算 |
 
 **核心区分要点**：
@@ -648,7 +648,7 @@ public class Counter {
     private long count = 0;
 
     public synchronized void increment() {
-        count++;                     // 💡 JVM 自动获取和释放 monitor
+        count++;                     // JVM 自动获取和释放 monitor
     }
 }
 
@@ -657,7 +657,7 @@ public class InterruptibleTask {
     private final ReentrantLock lock = new ReentrantLock();
 
     public void doWork() throws InterruptedException {
-        lock.lockInterruptibly();   // 💡 可中断锁（synchronized 做不到）
+        lock.lockInterruptibly();   // 可中断锁（synchronized 做不到）
         try {
             // 长时间任务，允许外部中断
         } finally {
@@ -666,7 +666,7 @@ public class InterruptibleTask {
     }
 
     public boolean tryDoWork(long timeout) throws InterruptedException {
-        if (lock.tryLock(timeout, TimeUnit.SECONDS)) {  // 💡 超时获取
+        if (lock.tryLock(timeout, TimeUnit.SECONDS)) {  // 超时获取
             try {
                 return true;
             } finally {
@@ -727,9 +727,9 @@ private RiskRule getWithDowngrade(String id) {
             rule = loadFromDB(id);
             cache.put(id, rule);
         }
-        rwLock.readLock().lock();       // 💡 先获取读锁
+        rwLock.readLock().lock();       // 先获取读锁
     } finally {
-        rwLock.writeLock().unlock();    // 💡 再释放写锁，降级完成
+        rwLock.writeLock().unlock();    // 再释放写锁，降级完成
     }
     try {
         // 读密集操作，允许并发
@@ -772,7 +772,7 @@ public class OptimisticPoint {
     public double distanceFromOrigin() {
         long stamp = lock.tryOptimisticRead();
         double currentX = x, currentY = y;
-        if (!lock.validate(stamp)) {                 // 💡 校验失败退化到悲观读
+        if (!lock.validate(stamp)) {                 // 校验失败退化到悲观读
             stamp = lock.readLock();
             try {
                 currentX = x;
@@ -808,7 +808,7 @@ public class IdGenerator {
     private final AtomicLong counter = new AtomicLong();
 
     public long nextId() {
-        return counter.incrementAndGet();   // 💡 原子读改，永远唯一
+        return counter.incrementAndGet();   // 原子读改，永远唯一
     }
 }
 
@@ -817,11 +817,11 @@ public class QpsCounter {
     private final LongAdder qps = new LongAdder();
 
     public void hit() {
-        qps.increment();            // 💡 高竞争下分段 CAS，比 AtomicLong 快 5~10 倍
+        qps.increment();            // 高竞争下分段 CAS，比 AtomicLong 快 5~10 倍
     }
 
     public long getQps() {
-        return qps.sum();           // 💡 最终一致即可，不要求精确瞬间值
+        return qps.sum();           // 最终一致即可，不要求精确瞬间值
     }
 }
 ```
@@ -844,12 +844,12 @@ private static final ExecutorService BIZ_POOL = new ThreadPoolExecutor(
     10,                                              // corePoolSize
     20,                                              // maximumPoolSize
     60L, TimeUnit.SECONDS,                           // keepAliveTime
-    new ArrayBlockingQueue<>(1000),                  // 💡 有界队列，防 OOM
+    new ArrayBlockingQueue<>(1000),                  // 有界队列，防 OOM
     new ThreadFactoryBuilder()
-        .setNameFormat("biz-pool-%d")                // 💡 命名，方便 jstack 排查
+        .setNameFormat("biz-pool-%d")                // 命名，方便 jstack 排查
         .setUncaughtExceptionHandler((t, e) -> log.error("uncaught", e))
         .build(),
-    new ThreadPoolExecutor.CallerRunsPolicy()        // 💡 拒绝策略：调用者执行（自适应限流）
+    new ThreadPoolExecutor.CallerRunsPolicy()        // 拒绝策略：调用者执行（自适应限流）
 );
 ```
 
@@ -892,7 +892,7 @@ public class HybridService {
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [并发集合与实战陷阱](@java-并发-并发集合与实战陷阱) 复用本篇 §2.6 的位编码技巧：`ConcurrentHashMap.sizeCtl` 用一个 `volatile int` 存"是否初始化 + 扩容线程数"；本篇 §3.5 的 `execute` 三阶段决策对应 CHM 的 `transfer` 迁移逻辑。
 - [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 展开本篇 §3.3 的 `Cell` 128 字节底层构成：`@Contended` 注解如何影响 `InstanceKlass` 字段偏移量计算、如何让 GC 扫描跳过填充位。

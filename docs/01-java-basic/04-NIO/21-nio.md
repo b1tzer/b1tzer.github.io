@@ -350,7 +350,7 @@ epoll_wait 的 O(1) 秘密：
 
 ────────────────────────────────────────────────────────────
 
-⚠️ sendfile 零拷贝（Linux 2.2+，3 次拷贝 + 2 次上下文切换）：
+sendfile 零拷贝（Linux 2.2+，3 次拷贝 + 2 次上下文切换）：
 
   磁盘 ──DMA拷贝──→ 内核缓冲区 ──CPU拷贝──→ Socket缓冲区
                                                     │
@@ -567,7 +567,7 @@ server.register(selector, SelectionKey.OP_ACCEPT);
 while (true) {
     selector.select();
     // ... 100 行 accept/read/write/flip/clear/iterator.remove()
-    // ⚠️ 空轮询 Bug、粘包、无心跳、无编解码，一个都跑不了
+    // 空轮询 Bug、粘包、无心跳、无编解码，一个都跑不了
 }
 ```
 
@@ -596,6 +596,6 @@ b.bind(8080).sync();
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 承接本篇的 `io_uring` 真异步 I/O，展开 JDK 21+ Loom 虚拟线程对 I/O 模型的影响。

@@ -144,7 +144,7 @@ public List<Integer> pickTopOrders(List<Order> orders) {
 
 这段代码在单元测试时看起来毫无异样。然而一旦部署到高并发生产，QPS 一冲上 5 万，YoungGen 里就会快速堆满**海量的 `Integer` 装箱对象**——每一个 `int → Integer` 的隐式装箱都在 Eden 区分配一个 16 字节的对象（对象头 12B + int 字段 4B）。CPU 缓存命中率骤降，Minor GC 频率飙升，接口 P99 延迟呈台阶式劣化。
 
-⚠️ **这里必须锁死一个极易被误传的因果关系**：这个成本**不是**"类型擦除直接导致的"。真正的因果链是两条**独立**的机制，只是恰好在同一段代码里同时出现：
+**这里必须锁死一个极易被误传的因果关系**：这个成本**不是**"类型擦除直接导致的"。真正的因果链是两条**独立**的机制，只是恰好在同一段代码里同时出现：
 
 ```txt
 链 A（类型擦除机制）：
@@ -254,14 +254,14 @@ public class SignatureProbe {
 
 ```volt
 public <T extends java.lang.Comparable<T>> java.util.List<T> pick(java.util.Map<java.lang.String, T>);
-  descriptor: (Ljava/util/Map;)Ljava/util/List;                              // ← ⚠️ 执行引擎认这一行
+  descriptor: (Ljava/util/Map;)Ljava/util/List;                              // ← 执行引擎认这一行
   flags: (0x0001) ACC_PUBLIC
   Code:
     stack=1, locals=2, args_size=2
        0: aconst_null
        1: areturn
   
-  // 💡 核心考古发现：擦除前的原始签名，仅供旁路消费
+  // 核心考古发现：擦除前的原始签名，仅供旁路消费
   Signature: #16                                                              // ← ⭐ 反射与框架认这一行
     // <T::Ljava/lang/Comparable<TT;>;>(Ljava/util/Map<Ljava/lang/String;TT;>;)Ljava/util/List<TT;>;
 ```
@@ -404,7 +404,7 @@ public void set(java.lang.Object);
 
 在前两层里，我们看清了泛型在字节码指令流里的两副面孔：**执行引擎眼里是裸 Object + `checkcast` 兜底，反射框架眼里是完整 `Signature` 字符串**。当这一套字节码真正跑到 CPU 上时，它会向堆内存和 CPU 缓存索取真实的性能代价。
 
-⚠️ **本章需要读者时刻清楚一件事**：以下讨论的性能代价来自**两条完全独立**的机制——
+**本章需要读者时刻清楚一件事**：以下讨论的性能代价来自**两条完全独立**的机制——
 
 - **链 A · 类型擦除的底层产物**：`Signature` 表在元空间常驻的字节账单（§3.3）、反射链路重建 `ParameterizedType` 的底层路径（§3.4）、Spring `ResolvableType` 对反射的工业级封装（§3.5）
 - **链 B · 泛型不接受 primitive 的独立后果**：`List<Integer>` 装箱风暴的堆布局（§3.1）、`IntegerCache` 未命中的隐形黑名单（§3.2）
@@ -642,7 +642,7 @@ public <T> T loadFromJson(String json) {
     // ...
 }
 
-// ⚠️ 错误示范：Jackson 直接接受 Class<T> 无法处理嵌套泛型
+// 错误示范：Jackson 直接接受 Class<T> 无法处理嵌套泛型
 public <T> T loadJson(String json, Class<T> clazz) {
     return objectMapper.readValue(json, clazz);
 }
@@ -835,7 +835,7 @@ Class 文件 → Signature → Reflection → ParameterizedType → ResolvableTy
 
 ---
 
-## 6. 🗺️ 跨篇章知识关联
+## 6. 跨篇章知识关联
 
 - [反射与 MethodHandle](@java-字节码-反射与MethodHandle) 展开本篇的 `checkcast` 类型断言指令的性能影响：反射 API 处理擦除后的方法签名 + 使用点 `checkcast` 这两条硬约束，会被 JIT 判定为难以内联；JDK 7 引入的 `MethodHandle` 通过将 `checkcast` 常量折叠到 `CallSite` 里，把反射开销降到接近直接调用。
 - [Java8 函数式编程](@java-字节码-函数式编程) 展开本篇 `invokedynamic` 与桥接方法的关系：Lambda 通过 `invokedynamic` 绕开桥接方法，在字节码层面实现零装箱、零桥接。

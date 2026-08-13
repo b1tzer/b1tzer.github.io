@@ -236,9 +236,9 @@ private Node addWaiter(Node mode) {
     Node node = new Node(mode);
     Node oldTail = tail;
     if (oldTail != null) {
-        node.setPrevRelaxed(oldTail);                    // 💡 relaxed 先设 prev（此时新节点尚未可达）
+        node.setPrevRelaxed(oldTail);                    // relaxed 先设 prev（此时新节点尚未可达）
         if (compareAndSetTail(oldTail, node)) {          // 💥 CAS 更新 tail —— 唯一竞争点
-            oldTail.next = node;                         // 💡 CAS 成功后再补 next 链
+            oldTail.next = node;                         // CAS 成功后再补 next 链
             return node;
         }
     }
@@ -252,7 +252,7 @@ final boolean acquireQueued(final Node node, int arg) {
     try {
         for (;;) {
             final Node p = node.predecessor();
-            if (p == head && tryAcquire(arg)) {          // 💡 只有前驱是 head 才有资格试锁
+            if (p == head && tryAcquire(arg)) {          // 只有前驱是 head 才有资格试锁
                 setHead(node);                           // 成功 → 自己变哑节点
                 p.next = null;                           // 帮 GC 回收前一个 head
                 return interrupted;
@@ -327,7 +327,7 @@ private void unparkSuccessor(Node node) {
         s = null;
         for (Node t = tail; t != null && t != node; t = t.prev)
             if (t.waitStatus <= 0)
-                s = t;                          // 💡 用 prev 从 tail 反向找到最近的有效后继
+                s = t;                          // 用 prev 从 tail 反向找到最近的有效后继
     }
     if (s != null)
         LockSupport.unpark(s.thread);
@@ -558,18 +558,18 @@ sequenceDiagram
 final boolean nonfairTryAcquire(int acquires) {
     final Thread current = Thread.currentThread();
     int c = getState();
-    if (c == 0) {                                    // 💡 state = 0 表示空闲
-        if (compareAndSetState(0, acquires)) {       // 💡 CAS state 从 0 变 1（首次抢锁）
+    if (c == 0) {                                    // state = 0 表示空闲
+        if (compareAndSetState(0, acquires)) {       // CAS state 从 0 变 1（首次抢锁）
             setExclusiveOwnerThread(current);
             return true;
         }
-    } else if (current == getExclusiveOwnerThread()) { // 💡 state != 0 且是当前线程 → 重入
+    } else if (current == getExclusiveOwnerThread()) { // state != 0 且是当前线程 → 重入
         int nextc = c + acquires;
         if (nextc < 0) throw new Error("Maximum lock count exceeded");
-        setState(nextc);                              // 💡 state 增加重入次数（无 CAS，独占安全）
+        setState(nextc);                              // state 增加重入次数（无 CAS，独占安全）
         return true;
     }
-    return false;                                     // 💡 别人持锁 → 让框架去入队 park
+    return false;                                     // 别人持锁 → 让框架去入队 park
 }
 
 // 这 10 行代码就完整定义了"ReentrantLock 里 state 是重入次数"
@@ -599,7 +599,7 @@ public class MyLock extends AbstractQueuedSynchronizer implements Lock {
 // ✅ 标准范式：外层业务类 + 内部 Sync 组合
 public class MyLock implements Lock {
 
-    // 💡 内部 Sync 只实现 AQS 契约
+    // 内部 Sync 只实现 AQS 契约
     private static class Sync extends AbstractQueuedSynchronizer {
         @Override
         protected boolean tryAcquire(int acquires) {
@@ -662,7 +662,7 @@ protected boolean tryAcquire(int acquires) {
         setExclusiveOwnerThread(Thread.currentThread());
         return true;
     }
-    return false;              // 💡 失败 —— 让框架去入队 park
+    return false;              // 失败 —— 让框架去入队 park
 }
 ```
 
@@ -699,10 +699,10 @@ class BadSync extends AbstractQueuedSynchronizer {
 // ✅ 标准范式：全走 AQS 自己的 park / unpark 骨架
 class GoodSync extends AbstractQueuedSynchronizer {
     protected boolean tryAcquire(int arg) {
-        return compareAndSetState(0, 1)              // 💡 只做 CAS 判断
+        return compareAndSetState(0, 1)              // 只做 CAS 判断
             && setExclusiveOwnerThreadIfAbsent();
     }
-    // 💡 阻塞 / 唤醒完全交给 AQS 的 acquire / release 骨架
+    // 阻塞 / 唤醒完全交给 AQS 的 acquire / release 骨架
 }
 ```
 
@@ -755,7 +755,7 @@ public boolean tryIncrement(long timeoutMs) throws InterruptedException {
             lock.unlock();
         }
     }
-    return false;  // 💡 超时 → 明确失败返回，不无限阻塞
+    return false;  // 超时 → 明确失败返回，不无限阻塞
 }
 ```
 
@@ -763,7 +763,7 @@ public boolean tryIncrement(long timeoutMs) throws InterruptedException {
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 承接本篇 §2.4 的 CAS 硬件语义与 §3.3 的 `park` / `unpark` 原语。
 - [并发工具 Lock 与线程池](@java-并发-并发工具Lock与线程池) 展开本篇的骨架四要素与独占/共享双模式：`ReentrantLock` / `Semaphore` / `ReentrantReadWriteLock` 都是 `state` 语义的不同定义。

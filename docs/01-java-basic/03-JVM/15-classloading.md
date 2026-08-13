@@ -101,7 +101,7 @@ getstatic #<Foo.field>        → 触发 Foo 的加载 + 初始化    ← 读静
 putstatic #<Foo.field>        → 触发 Foo 的加载 + 初始化    ← 写静态字段
 invokestatic #<Foo.method>    → 触发 Foo 的加载 + 初始化    ← 调用静态方法
 invokedynamic #<BSM>          → 触发 CallSite 目标类加载 + 初始化  ← Lambda / StringConcat
-ldc #<Class Foo>              → 只触发 Foo 的加载，不初始化 ⚠️ JDK 5+ 修订
+ldc #<Class Foo>              → 只触发 Foo 的加载，不初始化 JDK 5+ 修订
 ```
 
 **关键结论**：
@@ -737,7 +737,7 @@ if (commonInterface.isInstance(obj)) {
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 展开本篇 §3.1 的 `Klass` 骨架在 Metaspace 中的字段级位分布（`ConstantPool` / `Method` / `vtable` / `itable`）。
 - [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 展开本篇 §3.1 的 `ClassLoaderData` 类卸载最小单元，以及 `Klass` 与 `ClassLoader` 相互强引用的 GC 可达性分析。

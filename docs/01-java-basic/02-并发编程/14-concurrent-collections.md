@@ -31,13 +31,13 @@ public class OrderRuleEngine {
 
     // 每毫秒都有新订单进来（写密集）
     public void onOrderCreated(Order o) {
-        activeOrders.add(o);           // ⚠️ 每次都 O(n) 复制整个数组
+        activeOrders.add(o);           // 每次都 O(n) 复制整个数组
     }
 
     // 每秒一次全量扫描（读）
     @Scheduled(fixedRate = 1000)
     public void scanTimeout() {
-        for (Order o : activeOrders) { // ⚠️ 迭代持有旧快照
+        for (Order o : activeOrders) { // 迭代持有旧快照
             if (o.isTimeout()) reject(o);
         }
     }
@@ -113,7 +113,7 @@ public V put(K key, V value) {
 }
 
 final V putVal(K key, V value, boolean onlyIfAbsent) {
-    if (key == null || value == null) throw new NullPointerException();  // ⚠️ 与 HashMap 不同：并发下 null 无法区分"不存在"和"值为 null"
+    if (key == null || value == null) throw new NullPointerException();  // 与 HashMap 不同：并发下 null 无法区分"不存在"和"值为 null"
     int hash = spread(key.hashCode());  // 高低 16 位异或 + 强制正数（负数 hash 有特殊语义）
     int binCount = 0;
     for (Node<K,V>[] tab = table;;) {
@@ -595,7 +595,7 @@ Thread 对象（线程池 Worker 长期存活）
 │  │          │          │ key: null│ key ⇢⇢⇢⇢▶ TL_C     │
 │  │          │          │ value:   │ value ━━▶ V_C (强)  │
 │  │          │          │ V_B (强)│                    │ │
-│  │          │          │ ⚠️ stale│                    │ │
+│  │          │          │ stale│                    │ │
 │  └──────────┴──────────┴──────────┴──────────┴─────────┘ │
 │                              ▲                           │
 │                              └─ TL_B 已被 GC             │
@@ -605,7 +605,7 @@ Thread 对象（线程池 Worker 长期存活）
 
 清理时机：
   ✅ 主动 threadLocal.remove()      → 立即清理 slot
-  ⚠️ 下次 set/get 顺手扫到 stale    → 探测式清理
+  下次 set/get 顺手扫到 stale    → 探测式清理
   ❌ 若 Worker 生命周期内不再触发    → 永久泄漏
 
 图例：
@@ -697,7 +697,7 @@ private final Map<String, Object> cache = new ConcurrentHashMap<>();
 ```java
 // ❌ 反模式：拿 size() 当循环上限
 ConcurrentHashMap<Long, Order> orders = ...;
-for (int i = 0; i < orders.size(); i++) {   // ⚠️ size 期间还在写 → 可能越界或漏
+for (int i = 0; i < orders.size(); i++) {   // size 期间还在写 → 可能越界或漏
     // ...
 }
 
@@ -744,7 +744,7 @@ public void onOrderCreated(Order o) { orders.put(o.id, o); }
 public void handle(Request req) {
     TRACE_ID.set(req.traceId);
     // ... 业务逻辑
-    // ⚠️ 方法结束，Worker 归池，Entry 还在
+    // 方法结束，Worker 归池，Entry 还在
 }
 
 // ✅ 标准范式：try / finally 强制清理
@@ -780,7 +780,7 @@ public class TraceInterceptor implements HandlerInterceptor {
 // ❌ 反模式：以为 InheritableThreadLocal 能跨线程池传值
 private static final InheritableThreadLocal<String> CTX = new InheritableThreadLocal<>();
 CTX.set("A");
-executor.submit(() -> System.out.println(CTX.get()));   // ⚠️ 可能读到旧值或 null
+executor.submit(() -> System.out.println(CTX.get()));   // 可能读到旧值或 null
 
 // ✅ 标准范式：用阿里 TransmittableThreadLocal（TTL）
 // pom.xml
@@ -848,7 +848,7 @@ thread -b
 public class UserProfile {
     private String name;
     private int age;
-    public void setName(String n) { this.name = n; }   // ⚠️ 并发下必须加锁
+    public void setName(String n) { this.name = n; }   // 并发下必须加锁
     public void setAge(int a) { this.age = a; }
 }
 
@@ -883,7 +883,7 @@ Map<String, Integer> scores = Map.of("A", 90, "B", 85);
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [JVM 内存分区与对象布局](@java-JVM-内存分区与对象布局) 展开本篇 `ForwardingNode.hash == MOVED == -1` 的哨兵节点设计模式，对照对象头 Mark Word 特殊位。
 - [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 展开本篇 `CopyOnWriteArrayList` 旧快照数组对 Young GC 压力的影响。

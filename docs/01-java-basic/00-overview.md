@@ -51,27 +51,27 @@ timeline
 
 ```mermaid
 flowchart TB
-    subgraph Z1["⚙️ 第一部分 · 字节码考古（语言基石）"]
+    subgraph Z1["第一部分 · 字节码考古（语言基石）"]
         direction LR
         Z11["01 面向对象 · 02 异常 · 03 注解<br/>04 字符串 · 05 泛型 · 06 反射 · 07 Java8 函数式"]
     end
-    subgraph Z2["📊 第二部分 · 数据结构映照（Java 集合的底层映射）"]
+    subgraph Z2["第二部分 · 数据结构映照（Java 集合的底层映射）"]
         direction LR
         Z21["08 集合框架 · 09 数据结构精讲"]
     end
-    subgraph Z3["🧵 第三部分 · 并发全景（硬件 → 哲学 → 应用 → 组合）"]
+    subgraph Z3["第三部分 · 并发全景（硬件 → 哲学 → 应用 → 组合）"]
         direction LR
         Z31["10 综览 · 11 JMM 与线程同步 · 12 AQS 设计哲学<br/>13 Lock 与线程池 · 14 并发集合与实战陷阱"]
     end
-    subgraph Z4["🏛️ 第四部分 · JVM Runtime（类加载 → 内存 → GC → 现代实践）"]
+    subgraph Z4["第四部分 · JVM Runtime（类加载 → 内存 → GC → 现代实践）"]
         direction LR
         Z41["15 类加载 · 16 综览<br/>17 内存分区 · 18 GC 机制 · 19 GC 调优 · 20 现代实践"]
     end
-    subgraph Z5["🎯 第五部分 · 深入 OS 内核"]
+    subgraph Z5["第五部分 · 深入 OS 内核"]
         direction LR
         Z51["21 NIO 与 IO 模型（epoll / sendfile / 零拷贝）"]
     end
-    subgraph ZX["📎 番外附录 · 语法参考（与主线正交）"]
+    subgraph ZX["番外附录 · 语法参考（与主线正交）"]
         direction LR
         ZX1["90 Java8 其他新特性 · 91 Java9-17 关键新特性"]
     end
@@ -93,19 +93,19 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph L1["🎯 业务层（工程红线）"]
+    subgraph L1["业务层（工程红线）"]
         direction LR
         B1["Spring 冷启动为什么慢<br/>ThreadLocal 为什么泄漏<br/>parallelStream 为什么占满线程池"]
     end
-    subgraph L2["📜 语言契约层 · JLS"]
+    subgraph L2["语言契约层 · JLS"]
         direction LR
         L21["面向对象 · 泛型 · 注解<br/>effectively final · 异常契约"]
     end
-    subgraph L3["⚙️ 字节码指令层 · JVMS"]
+    subgraph L3["字节码指令层 · JVMS"]
         direction LR
         L31["invokevirtual / invokeinterface<br/>invokedynamic / invokespecial<br/>checkcast / instanceof / ldc"]
     end
-    subgraph L4["🔬 底层实现层 · HotSpot"]
+    subgraph L4["底层实现层 · HotSpot"]
         direction LR
         L41["对象头 · Klass Pointer · TLAB<br/>JIT 内联 · Escape Analysis · CPU Cache"]
     end
@@ -200,7 +200,7 @@ flowchart TB
 
 ## 知识点导航
 
-### ⚙️ 第一部分 · 字节码考古（语言基石）
+### 第一部分 · 字节码考古（语言基石）
 
 | # | 知识点 | 核心一句话 |
 | :--: | :-- | :-- |
@@ -214,7 +214,7 @@ flowchart TB
 
 ---
 
-### 📊 第二部分 · 数据结构映照（Java 集合的底层映射）
+### 第二部分 · 数据结构映照（Java 集合的底层映射）
 
 | # | 知识点 | 核心一句话 |
 | :--: | :-- | :-- |
@@ -223,7 +223,7 @@ flowchart TB
 
 ---
 
-### 🧵 第三部分 · 并发全景（切片家族 · 强耦合下沉）
+### 第三部分 · 并发全景（切片家族 · 强耦合下沉）
 
 | # | 知识点 | 核心一句话 |
 | :--: | :-- | :-- |
@@ -235,7 +235,7 @@ flowchart TB
 
 ---
 
-### 🏛️ 第四部分 · JVM Runtime（序章：类加载）
+### 第四部分 · JVM Runtime（序章：类加载）
 
 | # | 知识点 | 核心一句话 |
 | :--: | :-- | :-- |
@@ -243,7 +243,7 @@ flowchart TB
 
 ---
 
-### 🏛️ 第四部分 · JVM Runtime（切片家族：内存 / GC / 调优 / 现代实践）
+### 第四部分 · JVM Runtime（切片家族：内存 / GC / 调优 / 现代实践）
 
 | # | 知识点 | 核心一句话 |
 | :--: | :-- | :-- |
@@ -255,7 +255,7 @@ flowchart TB
 
 ---
 
-### 🎯 第五部分 · 深入 OS 内核
+### 第五部分 · 深入 OS 内核
 
 | # | 知识点 | 核心一句话 |
 | :--: | :-- | :-- |
@@ -263,7 +263,7 @@ flowchart TB
 
 ---
 
-### 📎 番外附录 · Java 版本新特性（与主线正交 · 语法参考页）
+### 番外附录 · Java 版本新特性（与主线正交 · 语法参考页）
 
 > 定位：**打开时机是"迁移 / 查语法 / 抄坑清单"**，不是"深入字节码机制"；对应机制拆到主线相应篇（`Lambda` 见 07、`Record` 见 01、`Sealed` 见 20）。
 
@@ -276,9 +276,9 @@ flowchart TB
 
 ## 高频问题索引
 
-> 按四层垂直透视分类：**🎯 L1 业务层**（Bug 现场 / 排查 / 选型）、**📜 L2 语言契约**（JLS）、**⚙️ L3 字节码**（JVMS）、**🔬 L4 底层实现**（HotSpot / 内存 / 硬件）。
+> 按四层垂直透视分类：**L1 业务层**（Bug 现场 / 排查 / 选型）、**L2 语言契约**（JLS）、**L3 字节码**（JVMS）、**L4 底层实现**（HotSpot / 内存 / 硬件）。
 
-### 🎯 L1 业务层：Bug 现场与工程选型
+### L1 业务层：Bug 现场与工程选型
 
 | 问题 | 详见 |
 | :-- | :-- |
@@ -287,7 +287,7 @@ flowchart TB
 | OOM 问题如何排查？ | [JVM内存结构与GC](@java-JVM-内存结构与GC) |
 | Tomcat / SPI / 线程上下文类加载器为什么要破坏双亲委派？ | [类加载机制与双亲委派模型](@java-JVM-类加载机制与双亲委派模型) |
 
-### 📜 L2 语言契约层 · JLS：语义与约定
+### L2 语言契约层 · JLS：语义与约定
 
 | 问题 | 详见 |
 | :-- | :-- |
@@ -295,7 +295,7 @@ flowchart TB
 | Checked vs Unchecked 异常的设计哲学？ | [异常处理](@java-字节码-异常处理) |
 | AQS 等待队列原理？ReentrantLock vs synchronized？ | [AQS与CAS](@java-并发-AQS设计哲学) |
 
-### ⚙️ L3 字节码指令层 · JVMS：`javap` 挖真相
+### L3 字节码指令层 · JVMS：`javap` 挖真相
 
 | 问题 | 详见 |
 | :-- | :-- |
@@ -304,7 +304,7 @@ flowchart TB
 | 泛型擦除下的桥接方法是干什么的？泛型数组为什么不能 `new T[]`？ | [泛型底层原理与类型擦除](@java-字节码-泛型底层原理) |
 | 反射为什么慢？MethodHandle / LambdaMetafactory 快在哪里？ | [反射与MethodHandle](@java-字节码-反射与MethodHandle) |
 
-### 🔬 L4 底层实现层 · HotSpot：内存 / 硬件 / GC
+### L4 底层实现层 · HotSpot：内存 / 硬件 / GC
 
 | 问题 | 详见 |
 | :-- | :-- |

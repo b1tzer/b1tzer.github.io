@@ -688,7 +688,7 @@ public class GoodCalculator {
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [GC 调优实战与常见误区](@java-JVM-GC调优实战与常见误区) 承接本篇的写屏障代价、CMS 三大缺陷、G1 RSet 内存开销、ZGC 读屏障，展开 GC 参数调优链路与 Full GC 排查 checklist。
 - [JVM 现代实践与前沿技术](@java-JVM-现代实践与前沿技术) 承接本篇的收集器机制，展开分代 ZGC（JEP 439 / 474）与 Loom 虚拟线程栈扫描。

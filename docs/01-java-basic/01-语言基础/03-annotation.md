@@ -400,7 +400,7 @@ public User findUser(String tenantId, String id) { ... }
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [反射（Reflection）](@java-字节码-反射与MethodHandle) 展开本篇 §2.3 中反射调用的性能根因：安全检查、无法 JIT 内联、参数装箱，以字节码与 JIT 日志逐条验证。
 - [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 展开本篇 §2.3 中 `$Proxy0` 代理类在高并发路径上对 JIT 方法内联与逃逸分析的影响。

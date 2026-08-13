@@ -265,7 +265,7 @@ JDK 7 到现代 JDK 21+ 时代:
 下面这段代码是小规模测试时看起来没问题、上线后却能把系统拖垮的典型：
 
 ```java
-// ⚠️ 危险做法：对完全不可控的动态数据调用 intern()
+// 危险做法：对完全不可控的动态数据调用 intern()
 while ((line = reader.readLine()) != null) {
     String untrustedId = parseId(line).intern(); // 线上雪崩的导火索
     process(untrustedId);
@@ -635,17 +635,17 @@ Arrays.fill(passwordBuffer, '\0'); // 立即将缓冲区清零
 
 | 检查项 | 说明 | 优先级 |
 | :-- | :-- | :-- |
-| 循环内无 `+=` | 替换为 `StringBuilder` | 🔴 强制 |
-| `StringBuilder` 有容量预估 | `new StringBuilder(n)` 参数为非默认值 | 🟡 建议 |
-| 无对外部动态数据调用 `intern()` | 若需去重，用 `Interners.newWeakInterner()` | 🔴 强制 |
-| 密码/密钥使用 `char[]` 而非 `String` | 涉及 `javax.crypto` / `javax.security` 时必须 | 🔴 强制 |
-| 升级到 JDK 9+ | 获取 Compact Strings + `invokedynamic` 拼接 | 🟢 推荐 |
-| 高频去重场景开启 `UseStringDeduplication` | G1/ZGC 下有效，不影响 `StringTable` | 🟡 条件开启 |
-| 预计算 `StringBuilder` 容量使用实际数据验证 | 避免过度分配或频繁扩容 | 🟡 建议 |
+| 循环内无 `+=` | 替换为 `StringBuilder` | 强制 |
+| `StringBuilder` 有容量预估 | `new StringBuilder(n)` 参数为非默认值 | 建议 |
+| 无对外部动态数据调用 `intern()` | 若需去重，用 `Interners.newWeakInterner()` | 强制 |
+| 密码/密钥使用 `char[]` 而非 `String` | 涉及 `javax.crypto` / `javax.security` 时必须 | 强制 |
+| 升级到 JDK 9+ | 获取 Compact Strings + `invokedynamic` 拼接 | 推荐 |
+| 高频去重场景开启 `UseStringDeduplication` | G1/ZGC 下有效，不影响 `StringTable` | 条件开启 |
+| 预计算 `StringBuilder` 容量使用实际数据验证 | 避免过度分配或频繁扩容 | 建议 |
 
 ---
 
-## 8. 🗺️ 跨篇章知识关联
+## 8. 跨篇章知识关联
 
 - [Java NIO 与 IO 模型](@java-OS-NIO与IO模型) 展开本篇的字节数组跨出 Java 堆的场景：零拷贝（Zero-Copy）与堆外直接内存（`DirectByteBuffer`）。
 - [Java8 函数式编程](@java-字节码-函数式编程) §2.1 展开本篇 §6.3 中作为拼接入口出现的 `invokedynamic` 指令，提供完整的 `CallSite` / `BootstrapMethod` / `LambdaMetafactory` 家族拆解。

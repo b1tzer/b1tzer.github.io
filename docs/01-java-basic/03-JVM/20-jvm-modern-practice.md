@@ -560,7 +560,7 @@ jfr summary snapshot.jfr
     public void handle() {
         CTX.set(new BigContext());
         doBusiness();
-        // ⚠️ 无 remove
+        // 无 remove
     }
     ```
 
@@ -700,11 +700,11 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 
 **技术选型建议**：
 
-- 🆕 **新项目（2025+）**：**JDK 21 LTS 或 JDK 25 LTS** + 分代 ZGC + 虚拟线程
-- 🔄 **现有系统平稳过渡**：JDK 17 LTS + G1GC
-- 🚀 **超大堆 / 低延迟**：JDK 23+（分代 ZGC 默认），堆 > 32GB 尤其推荐
-- 🐳 **容器环境**：**必开** `-XX:+UseContainerSupport` + `-XX:MaxRAMPercentage=75.0`
-- ⚡ **Serverless / FaaS**：GraalVM Native Image 或 CRaC
+- **新项目（2025+）**：**JDK 21 LTS 或 JDK 25 LTS** + 分代 ZGC + 虚拟线程
+- **现有系统平稳过渡**：JDK 17 LTS + G1GC
+- **超大堆 / 低延迟**：JDK 23+（分代 ZGC 默认），堆 > 32GB 尤其推荐
+- **容器环境**：**必开** `-XX:+UseContainerSupport` + `-XX:MaxRAMPercentage=75.0`
+- **Serverless / FaaS**：GraalVM Native Image 或 CRaC
 
 **总结要义**：
 
@@ -712,7 +712,7 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [Java NIO 与 I/O 模型](@java-OS-NIO与IO模型) 承接本篇直接内存的 GC 回收路径，展开 `DirectByteBuffer.Cleaner`、Netty `PooledByteBufAllocator` 与 Panama FFM API（JEP 442）。
 - [Lock 与线程池](@java-并发-并发工具Lock与线程池) 承接本篇虚拟线程场景的锁选型：`ReentrantLock` 的 AQS `park` / `unpark` 与 `Continuation.yield` 协作。

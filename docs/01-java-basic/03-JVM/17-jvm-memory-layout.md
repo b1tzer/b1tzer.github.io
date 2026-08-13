@@ -174,7 +174,7 @@ Space losses: 0 bytes internal + 4 bytes external = 4 bytes total
     | :-- | :-- | :-- | :-- | :-- | :-- |
     | `Heap` | 共享 | 堆内 | ✅ | 对象实例 / 数组 | §2.5.3 |
     | `Method Area / Metaspace` | 共享 | 堆外 | ✅（Full GC） | 类元数据 / 字节码 / 类级常量池 | §2.5.4 |
-    | `Code Cache` | 共享 | 堆外 | ⚠️ Sweeper | JIT 机器码 | 非 JVMS 规定，HotSpot 特有 |
+    | `Code Cache` | 共享 | 堆外 | Sweeper | JIT 机器码 | 非 JVMS 规定，HotSpot 特有 |
     | `VM Stack` | 私有 | 堆内 | ❌ | 栈帧 / 局部变量表 | §2.5.2 |
     | `Native Method Stack` | 私有 | 堆内 | ❌ | Native 方法栈 | §2.5.6 |
     | `PC Register` | 私有 | 堆内 | ❌（不 OOM） | 字节码偏移 | §2.5.1 |
@@ -189,17 +189,17 @@ Space losses: 0 bytes internal + 4 bytes external = 4 bytes total
 ```mermaid
 flowchart TB
     subgraph JVM["JVM 进程"]
-        subgraph Shared["🟦 线程共享"]
+        subgraph Shared["线程共享"]
             Heap["<b>Heap 堆</b><br/>对象实例 / 数组<br/>-Xmx 限制"]
             MetaSpace["<b>Metaspace 元空间</b><br/>类元数据 / 字节码<br/>MaxMetaspaceSize 限制"]
             CodeCache["<b>Code Cache</b><br/>JIT 机器码<br/>ReservedCodeCacheSize=240m"]
         end
-        subgraph Private["🟩 线程私有"]
+        subgraph Private["线程私有"]
             VMStack["<b>虚拟机栈</b><br/>栈帧 / 局部变量表<br/>-Xss=1m"]
             NativeStack["<b>本地方法栈</b><br/>Native 方法调用栈"]
-            PC["<b>PC 寄存器</b><br/>字节码偏移<br/>💡 唯一不 OOM"]
+            PC["<b>PC 寄存器</b><br/>字节码偏移<br/>唯一不 OOM"]
         end
-        subgraph OffHeap["🟧 堆外补充"]
+        subgraph OffHeap["堆外补充"]
             Direct["<b>直接内存</b><br/>NIO / Netty ByteBuffer<br/>MaxDirectMemorySize 限制"]
         end
     end
@@ -225,8 +225,8 @@ flowchart TB
 | 分区 | 线程归属 | 位置 | 存什么 | 是否 GC | OOM 表现 | 关键参数 |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | **Heap 堆** | 共享 | 堆内 | 对象实例 / 数组 | ✅ | `OOM: Java heap space` | `-Xmx` / `-Xms` |
-| **Metaspace 元空间** | 共享 | 堆外（本地内存） | 类元数据 / 字节码 / 类级常量池 | ⚠️ Full GC | `OOM: Metaspace` | `-XX:MaxMetaspaceSize` |
-| **Code Cache** | 共享 | 堆外 | JIT 编译后机器码 | ⚠️ Sweeper | `CodeCache is full` 警告 | `-XX:ReservedCodeCacheSize=240m` |
+| **Metaspace 元空间** | 共享 | 堆外（本地内存） | 类元数据 / 字节码 / 类级常量池 | Full GC | `OOM: Metaspace` | `-XX:MaxMetaspaceSize` |
+| **Code Cache** | 共享 | 堆外 | JIT 编译后机器码 | Sweeper | `CodeCache is full` 警告 | `-XX:ReservedCodeCacheSize=240m` |
 | **虚拟机栈** | 私有 | 堆内 | 栈帧 / 局部变量表 | ❌ | `StackOverflowError` / `OOM: unable to create new native thread` | `-Xss=1m` |
 | **本地方法栈** | 私有 | 堆内 | Native 方法调用栈 | ❌ | 同虚拟机栈 | 同 `-Xss` |
 | **PC 寄存器** | 私有 | 堆内 | 字节码偏移 | ❌ | **不 OOM** | 无 |
@@ -302,7 +302,7 @@ flowchart LR
         LVT["① 局部变量表<br/>slot 数组<br/>long/double 占 2 slot"]
         OS["② 操作数栈<br/>字节码执行的工作台"]
         DL["③ 动态链接<br/>指向元空间中<br/>该方法的符号引用"]
-        RA["④ 返回地址<br/>💡 调用点 PC<br/>(HotSpot 实现)"]
+        RA["④ 返回地址<br/>调用点 PC<br/>(HotSpot 实现)"]
         AI["⑤ 附加信息<br/>异常表引用 / debug 信息"]
     end
     LVT --> OS
@@ -545,7 +545,7 @@ java -Xmx4g -XX:MaxMetaspaceSize=512m -jar app.jar
 # 大型 microservice / Spring Cloud 全家桶
 java -Xmx8g -XX:MaxMetaspaceSize=1g -jar app.jar
 
-# ⚠️ 特殊：Groovy / JRuby / 频繁热部署场景
+# 特殊：Groovy / JRuby / 频繁热部署场景
 # 需要 -XX:+ClassUnloadingWithConcurrentMark 配合，且 MaxMetaspaceSize 需 1.5~2 倍冗余
 ```
 
@@ -631,7 +631,7 @@ public String cacheKey(String userInput) {
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 承接本篇 §3.6 的 Mark Word 五态多态复用：偏向 → 轻量 → 重量 → GC 标记的状态位跃迁。
 - [GC 核心机制与收集器演进](@java-JVM-GC核心机制与收集器演进) 承接本篇 §3.6 的 Mark Word GC 标记态与 forwarding pointer。

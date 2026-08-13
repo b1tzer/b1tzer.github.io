@@ -161,7 +161,7 @@ Node<K,V> loHead = null, loTail = null;  // 低位链表（留在原位置）
 Node<K,V> hiHead = null, hiTail = null;  // 高位链表（移到 idx + oldCap）
 do {
     next = e.next;
-    if ((e.hash & oldCap) == 0) {        // 💡 关键一行：只判断一位 bit
+    if ((e.hash & oldCap) == 0) {        // 关键一行：只判断一位 bit
         // 元素留在原位置 j
         if (loTail == null) loHead = e; else loTail.next = e;
         loTail = e;
@@ -602,7 +602,7 @@ class Point {
     }
 
     @Override public int hashCode() {
-        return Objects.hash(x, y);   // 💡 用相同字段集合
+        return Objects.hash(x, y);   // 用相同字段集合
     }
 }
 ```
@@ -624,7 +624,7 @@ for (int i = 0; i < list.size(); i++) sum += list.get(i);
 
 ```java
 // ✅ 标准范式 1：默认用 ArrayList
-List<Integer> list = new ArrayList<>(1_000_000);   // 💡 预估容量避免多次扩容
+List<Integer> list = new ArrayList<>(1_000_000);   // 预估容量避免多次扩容
 for (int i = 0; i < 1_000_000; i++) list.add(i);
 
 // ✅ 标准范式 2：需要队列 / 栈 / 双端队列语义时用 ArrayDeque（不是 LinkedList）
@@ -695,7 +695,7 @@ public class OrderController {
             CTX.set(parseUser(req));
             return orderService.list();
         } finally {
-            CTX.remove();               // 💡 即使线程池自动清理也要显式 remove
+            CTX.remove();               // 即使线程池自动清理也要显式 remove
         }
     }
 }
@@ -705,7 +705,7 @@ public class OrderController {
 
 ---
 
-## 5. 🗺️ 跨篇章知识关联
+## 5. 跨篇章知识关联
 
 - [数据结构精讲](@java-数据结构-数据结构精讲) 展开本篇 §3.2 的红黑树：五条性质如何保证 O(log n)、插入/删除的完整旋转变色算法链、`TreeNode` 的 8 个引用字段。同时展开跳表（Skip List）在 `ConcurrentSkipListMap` 里的实现，以及它与红黑树的选型对比——跳表在并发场景下无需旋转、每层链表独立 CAS。
 - [并发基础：JMM 与线程同步](@java-并发-JMM与线程同步) 展开本篇 §3.3 的 JVM 锁升级机制：`synchronized` 从无锁到偏向锁的 Mark Word 变化、`hashcode()` 撤销偏向锁的原因、锁膨胀到重量级后 `ObjectMonitor` 结构。
