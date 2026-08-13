@@ -8,7 +8,7 @@
 
 RDB 把某个时刻的内存数据整体序列化成一个二进制文件（默认 `dump.rdb`），恢复时直接把这个文件加载回内存。
 
-![RDB 快照与恢复](/redis-world/diagrams/02-standalone-core-chapter-03-rdb-1.svg)
+![RDB 快照与恢复](/diagrams/02-standalone-core-chapter-03-rdb-1.svg)
 
 ### 触发方式
 
@@ -44,7 +44,7 @@ BGSAVE 的核心机制是 `fork` 与写时复制（Copy-On-Write，COW）。
 
 子进程开始写 RDB 文件后，如果主进程继续处理写命令修改了数据，操作系统会为被修改的内存页创建副本，子进程继续读旧数据，主进程改新数据。
 
-![fork 与写时复制](/redis-world/diagrams/02-standalone-core-chapter-03-rdb-2.svg)
+![fork 与写时复制](/diagrams/02-standalone-core-chapter-03-rdb-2.svg)
 
 关键点：
 

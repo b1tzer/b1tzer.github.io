@@ -93,7 +93,7 @@ Redisson 的锁相对手写 `SET NX PX` 的改进：
 
 ### 原理
 
-![Redisson 看门狗续期机制](/redis-world/diagrams/04-high-availability-chapter-04-distributed-lock.svg)
+![Redisson 看门狗续期机制](/diagrams/04-high-availability-chapter-04-distributed-lock.svg)
 
 | 概念 | 说明 |
 | :-- | :-- |

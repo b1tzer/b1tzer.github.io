@@ -28,7 +28,7 @@ Cache Aside 的核心规则：
 写：先更新数据库，再删除缓存
 ```
 
-![Cache Aside 读写流程](/redis-world/diagrams/03-cache-engineering-chapter-04-consistency-1.svg)
+![Cache Aside 读写流程](/diagrams/03-cache-engineering-chapter-04-consistency-1.svg)
 
 ### 为什么删缓存而不是更新缓存
 
@@ -56,7 +56,7 @@ Cache Aside 的核心规则：
 4. 再次删除缓存
 ```
 
-![延迟双删流程](/redis-world/diagrams/03-cache-engineering-chapter-04-consistency-2.svg)
+![延迟双删流程](/diagrams/03-cache-engineering-chapter-04-consistency-2.svg)
 
 要点：
 
@@ -74,7 +74,7 @@ Cache Aside 的核心规则：
 
 对于强一致需求的场景，可以基于数据库 Binlog 实现异步同步。
 
-![Canal 同步方案流程](/redis-world/diagrams/03-cache-engineering-chapter-04-consistency-3.svg)
+![Canal 同步方案流程](/diagrams/03-cache-engineering-chapter-04-consistency-3.svg)
 
 Canal 模拟 MySQL 从库，订阅主库的 Binlog，解析出数据变更事件，再投递到消息队列，由消费端更新或删除缓存。
 

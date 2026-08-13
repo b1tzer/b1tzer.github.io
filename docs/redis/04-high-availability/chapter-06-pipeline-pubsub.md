@@ -20,7 +20,7 @@ Pipeline（管道）把多条命令批量发送给 Redis，一次性接收全部
 
 把 N 条命令打包发送，一次性接收 N 个结果：
 
-![Pipeline 批量收发](/redis-world/diagrams/04-high-availability-chapter-06-pipeline-pubsub-1.svg)
+![Pipeline 批量收发](/diagrams/04-high-availability-chapter-06-pipeline-pubsub-1.svg)
 
 ```java
 // Jedis 伪代码
@@ -53,7 +53,7 @@ PUBLISH channel1 "hello"        # 向频道发消息
 PSUBSCRIBE news.*               # 按模式订阅（匹配多个频道）
 ```
 
-![发布订阅广播架构](/redis-world/diagrams/04-high-availability-chapter-06-pipeline-pubsub-2.svg)
+![发布订阅广播架构](/diagrams/04-high-availability-chapter-06-pipeline-pubsub-2.svg)
 
 ### 关键点
 

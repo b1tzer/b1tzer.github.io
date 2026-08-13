@@ -33,7 +33,7 @@ Redis 官方对它的定位是「内存数据结构服务器」，广泛用作�
 
 ## 1.3 版本演进
 
-![Redis 版本发展时间轴](/redis-world/diagrams/01-data-model-chapter-01-overview.svg)
+![Redis 版本发展时间轴](/diagrams/01-data-model-chapter-01-overview.svg)
 
 本书聚焦 **Redis 6.0 ~ 7.2**。6.0 起支持多线程网络 IO（命令执行仍单线程），7.0 引入 Functions 和 MP-AOF，7.2 彻底用 listpack 替代 ziplist。自 7.4 起 Redis 切换为 RSALv2 + SSPLv1 双协议，社区出现 Valkey 等开源分支。
 

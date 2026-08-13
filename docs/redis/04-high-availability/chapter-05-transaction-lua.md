@@ -18,7 +18,7 @@ EXEC               # 一次性执行所有命令
 
 ### 执行流程
 
-![事务 MULTI/EXEC 执行流程](/redis-world/diagrams/04-high-availability-chapter-05-transaction-lua-1.svg)
+![事务 MULTI/EXEC 执行流程](/diagrams/04-high-availability-chapter-05-transaction-lua-1.svg)
 
 事务执行期间，命令不会被其他客户端插队，保证**命令序列的原子执行**。
 
@@ -48,7 +48,7 @@ DECRBY balance 100     # 扣款
 EXEC                   # 若 balance 被改过，返回 nil（放弃）
 ```
 
-![WATCH 乐观锁流程](/redis-world/diagrams/04-high-availability-chapter-05-transaction-lua-2.svg)
+![WATCH 乐观锁流程](/diagrams/04-high-availability-chapter-05-transaction-lua-2.svg)
 
 适用场景：需要「读-判断-写」一致性的场景，如余额扣减、库存扣减。若并发冲突频繁，WATCH 会大量重试，性能差。
 
