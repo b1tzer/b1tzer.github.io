@@ -1,9 +1,0 @@
-mkdocs-material>=9.0,<10.0
-jieba
-pymdown-extensions
-mkdocs-awesome-pages-plugin
-mkdocs-minify-plugin
-mkdocs-git-revision-date-localized-plugin
-mkdocs-glightbox
-mkdocs-git-committers-plugin-2
-mkdocs-kroki-plugin
