@@ -163,168 +163,160 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Java:
-    - Java 基础专题概览: 01-java-basic/00-overview.md
     - 语言基础:
-      - 面向对象（OOP）: 01-java-basic/01-语言基础/01-oop.md
-      - 异常处理: 01-java-basic/01-语言基础/02-exception-handling.md
-      - 注解（Annotation）: 01-java-basic/01-语言基础/03-annotation.md
-      - 字符串与 String Pool: 01-java-basic/01-语言基础/04-string-pool.md
-      - 泛型（Generics）: 01-java-basic/01-语言基础/05-generics.md
-      - 反射（Reflection）: 01-java-basic/01-语言基础/06-reflection.md
-      - "[Java8] 函数式编程": 01-java-basic/01-语言基础/07-lambda-stream.md
-      - 集合框架: 01-java-basic/01-语言基础/08-collections.md
-      - 数据结构: 01-java-basic/01-语言基础/09-data-structures.md
-    - 并发编程:
-      - 并发编程综览: 01-java-basic/02-并发编程/10-concurrency-overview.md
-      - JMM 与线程同步: 01-java-basic/02-并发编程/11-jmm.md
-      - AQS: 01-java-basic/02-并发编程/12-aqs.md
-      - Lock 与线程池: 01-java-basic/02-并发编程/13-locks-thread-pool.md
-      - 并发集合: 01-java-basic/02-并发编程/14-concurrent-collections.md
+      - 类型系统: java/01-language/chapter-01-type-system.md
+      - 面向对象: java/01-language/chapter-02-oop.md
+      - 泛型: java/01-language/chapter-03-generics.md
+      - 注解与 Lambda: java/01-language/chapter-04-annotation-lambda.md
     - JVM:
-      - 类加载机制与双亲委派模型: 01-java-basic/03-JVM/15-classloading.md
-      - JVM 内存结构与 GC 综览: 01-java-basic/03-JVM/16-jvm-memory-gc-overview.md
-      - JVM 内存分区与对象布局: 01-java-basic/03-JVM/17-jvm-memory-layout.md
-      - GC 核心机制与收集器演进: 01-java-basic/03-JVM/18-gc-mechanisms.md
-      - GC 调优实战与常见误区: 01-java-basic/03-JVM/19-gc-tuning.md
-      - JVM 现代实践与前沿技术: 01-java-basic/03-JVM/20-jvm-modern-practice.md
-    - NIO:
-      - Java NIO 与 I/O 模型: 01-java-basic/04-NIO/21-nio.md
-    - 版本特性:
-      - "[Java8] 其他新特性": 01-java-basic/05-版本特性/90-java8-features.md
-      - "[番外] Java 9~17 关键新特性": 01-java-basic/05-版本特性/91-java9-17-features.md
+      - 字节码与类加载: java/02-jvm/chapter-01-bytecode-classloading.md
+      - 内存模型: java/02-jvm/chapter-02-memory-model.md
+      - 对象模型: java/02-jvm/chapter-03-object-model.md
+      - GC: java/02-jvm/chapter-04-gc.md
+      - JIT: java/02-jvm/chapter-05-jit.md
+      - 诊断实战: java/02-jvm/chapter-06-diagnostics.md
+    - 并发编程:
+      - 为什么需要并发: java/03-concurrency/chapter-01-why-concurrency.md
+      - 线程模型: java/03-concurrency/chapter-02-thread-model.md
+      - ThreadLocal: java/03-concurrency/chapter-03-threadlocal.md
+      - JMM: java/03-concurrency/chapter-04-jmm.md
+      - volatile: java/03-concurrency/chapter-05-volatile.md
+      - synchronized: java/03-concurrency/chapter-06-synchronized.md
+      - CAS 与原子类: java/03-concurrency/chapter-07-cas-atomic.md
+      - LockSupport 与 AQS: java/03-concurrency/chapter-08-locksupport-aqs.md
+      - 并发集合: java/03-concurrency/chapter-09-concurrent-collections.md
+      - 线程池: java/03-concurrency/chapter-10-thread-pool.md
+      - 异步模型: java/03-concurrency/chapter-11-async-model.md
+      - 虚拟线程: java/03-concurrency/chapter-12-virtual-thread.md
+      - 诊断实战: java/03-concurrency/chapter-13-diagnostics.md
+    - 网络编程:
+      - 网络基础: java/04-network/chapter-01-network-basics.md
+      - TCP/IP: java/04-network/chapter-02-tcp-ip.md
+      - Socket: java/04-network/chapter-03-socket.md
+      - NIO: java/04-network/chapter-04-nio.md
+      - Netty: java/04-network/chapter-05-netty.md
+      - HTTP: java/04-network/chapter-06-http.md
+      - Servlet 与 Spring MVC: java/04-network/chapter-07-servlet-springmvc.md
+      - RPC: java/04-network/chapter-08-rpc.md
+      - 长连接: java/04-network/chapter-09-long-connection.md
+      - 网络诊断: java/04-network/chapter-10-network-diagnostics.md
+    - 数据访问:
+      - 持久化思想: java/05-data-access/chapter-01-persistence-thought.md
+      - JDBC: java/05-data-access/chapter-02-jdbc.md
+      - MyBatis: java/05-data-access/chapter-03-mybatis.md
+      - ORM 深入: java/05-data-access/chapter-04-orm-deep.md
+      - 数据库原理: java/05-data-access/chapter-05-db-principles.md
+      - Spring 事务: java/05-data-access/chapter-06-spring-transaction.md
+      - 性能优化: java/05-data-access/chapter-07-performance.md
   - Spring:
-    - Spring / Spring Boot 核心原理: 02-spring/00-spring-core.md
-    - 核心基础:
-      - IoC 与 DI —— 控制反转与依赖注入: 02-spring/01-核心基础/01-IoC与DI.md
-      - Bean 生命周期与循环依赖: 02-spring/01-核心基础/02-Bean生命周期与循环依赖.md
-      - Spring 容器启动流程深度解析: 02-spring/01-核心基础/03-Spring容器启动流程深度解析.md
-      - Spring 扩展点详解: 02-spring/01-核心基础/04-Spring扩展点详解.md
-      - AOP —— 面向切面编程: 02-spring/01-核心基础/05-AOP面向切面编程.md
-      - Spring 事务管理: 02-spring/01-核心基础/06-Spring事务管理.md
-      - Spring Boot 自动配置原理: 02-spring/01-核心基础/07-SpringBoot自动配置原理.md
-      - Spring 常用注解全解: 02-spring/01-核心基础/08-Spring常用注解全解.md
-      - Spring 配置加载与属性绑定: 02-spring/01-核心基础/09-Spring配置加载与属性绑定.md
-    - Web与通信:
-      - Spring MVC 请求处理流程: 02-spring/02-Web与通信/01-SpringMVC请求处理流程.md
-      - Feign 声明式 HTTP 客户端: 02-spring/02-Web与通信/02-Feign声明式HTTP客户端.md
-      - gRPC 详解: 02-spring/02-Web与通信/03-gRPC详解.md
-    - 微服务与安全:
-      - Spring Security 认证与授权（入门导读）: 02-spring/03-微服务与安全/01-Spring-Security认证与授权.md
-      - Spring Cloud 核心组件: 02-spring/03-微服务与安全/02-Spring-Cloud核心组件.md
-      - 微服务架构深度实践: 02-spring/03-微服务与安全/03-微服务架构深度实践.md
-      - Spring 安全架构深度解析: 02-spring/03-微服务与安全/04-Spring安全架构深度解析.md
-    - 数据与消息:
-      - Spring 数据访问高级技巧: 02-spring/04-数据与消息/01-Spring数据访问高级技巧.md
-      - Spring 响应式编程深度解析: 02-spring/04-数据与消息/02-Spring响应式编程深度解析.md
-      - Spring 消息驱动架构深度解析: 02-spring/04-数据与消息/03-Spring消息驱动架构深度解析.md
-      - 配置中心与动态刷新: 02-spring/04-数据与消息/04-配置中心与动态刷新.md
-    - 进阶与调优:
-      - Spring 监控与内存优化: 02-spring/05-进阶与调优/01a-监控与内存优化.md
-      - Spring 启动与并发性能优化: 02-spring/05-进阶与调优/01b-启动与并发优化.md
-      - Spring 数据库与缓存优化: 02-spring/05-进阶与调优/01c-数据库与缓存优化.md
-      - Spring 网络优化与最佳实践: 02-spring/05-进阶与调优/01d-网络优化与最佳实践.md
-      - Spring 6 / Boot 3 新特性深度解析: 02-spring/05-进阶与调优/02-Spring6-Boot3新特性深度解析.md
-      - Spring 源码阅读与调试技巧: 02-spring/05-进阶与调优/03-Spring源码阅读与调试技巧.md
-      - 生产环境 Spring 应用运维: 02-spring/05-进阶与调优/04-生产环境Spring应用运维.md
-    - 测试与实战:
-      - Spring 实战应用题: 02-spring/06-测试与实战/07-Spring实战应用题.md
-      - Spring 测试框架深度使用: 02-spring/06-测试与实战/20-Spring测试框架深度使用.md
-    - 产品经理视角看spring:
-      - Bean 生命周期与循环依赖的设计哲学: 02-spring/99-产品经理视角看spring/01-Bean生命周期与循环依赖的产品视角.md
-      - Spring 容器启动流程的设计哲学: 02-spring/99-产品经理视角看spring/02-Spring容器启动流程的产品视角.md
-  - MySQL:
-    - MySQL 核心知识体系概览: 03-mysql/00-mysql-overview.md
-    - 数据类型与表设计规范: 03-mysql/01-数据类型与表设计规范.md
-    - MySQL 整体架构 —— Server 层 × 存储引擎层的双层模型: 03-mysql/01a-MySQL整体架构.md
-    - 索引详解: 03-mysql/02-索引详解.md
-    - SQL 执行与性能优化: 03-mysql/03-SQL执行与性能优化.md
-    - 事务与并发控制: 03-mysql/04-事务与并发控制.md
-    - 锁机制与死锁: 03-mysql/05-锁机制与死锁.md
-    - InnoDB 存储引擎深度剖析: 03-mysql/06-InnoDB存储引擎深度剖析.md
-    - Binlog 与主从复制: 03-mysql/07-Binlog与主从复制.md
-    - 在线 DDL 与大表变更: 03-mysql/08-在线DDL与大表变更.md
-    - 高可用架构方案: 03-mysql/09-高可用架构方案.md
-    - 分库、分表与分片：分布式数据库架构详解: 03-mysql/10-分库分表与分布式架构.md
-    - MySQL 实战问题与避坑指南: 03-mysql/11-实战问题与避坑指南.md
-    - MySQL 8.0 与 8.4 新特性精讲: 03-mysql/12-MySQL8.0与8.4新特性精讲.md
-  - PostgreSQL:
-    - PostgreSQL 核心特性与选型: 04-postgresql/00-postgresql-overview.md
-    - PostgreSQL vs MySQL 全面对比: 04-postgresql/01-PG与MySQL对比.md
-    - MVCC 与 VACUUM 机制: 04-postgresql/02-MVCC与VACUUM机制.md
-    - 索引类型详解: 04-postgresql/03-索引类型详解.md
-    - 窗口函数: 04-postgresql/04-窗口函数.md
-    - CTE 与递归查询: 04-postgresql/05-CTE与递归查询.md
-    - 物化视图: 04-postgresql/06-物化视图.md
-    - 事务与锁机制: 04-postgresql/07-事务与锁机制.md
-    - 性能优化与调优: 04-postgresql/08-性能优化与调优.md
-    - JSONB 高级用法: 04-postgresql/09-JSONB高级用法.md
+    - 核心原理: spring/chapter-01-spring-core.md
+    - 容器与 AOP: spring/chapter-02-container-aop.md
+    - Spring MVC: spring/chapter-03-spring-mvc.md
+    - Spring Boot: spring/chapter-04-spring-boot.md
+    - 数据集成: spring/chapter-05-data-integration.md
+    - 微服务: spring/chapter-06-microservices.md
+    - 治理: spring/chapter-07-governance.md
+    - 安全与部署: spring/chapter-08-security-deploy.md
+    - 可观测性: spring/chapter-09-observability.md
   - Redis:
-    - Redis 缓存设计与高可用: 05-redis/00-redis-overview.md
-    - Redis 数据结构与底层编码: 05-redis/01-数据结构与底层编码.md
-    - Redis 持久化机制：RDB 与 AOF: 05-redis/02-持久化机制RDB与AOF.md
-    - Redis 指令解析与执行机制: 05-redis/02-指令解析与执行机制.md
-    - Redis 缓存三大问题：穿透、击穿、雪崩: 05-redis/03-缓存三大问题.md
-    - Redis 高可用架构：主从、哨兵、集群: 05-redis/04-高可用架构.md
-    - Redis 分布式锁: 05-redis/05-分布式锁.md
-    - Redis 应用型问题: 05-redis/06-应用型问题.md
-    - Redis 内存管理与淘汰机制: 05-redis/07-内存管理与淘汰机制.md
-    - Redis 事务与 Lua 脚本: 05-redis/08-事务与Lua脚本.md
-    - Redis 单线程模型与网络 IO: 05-redis/09-单线程模型与网络IO.md
+    - 数据模型:
+      - 概览: redis/01-data-model/chapter-01-overview.md
+      - 基础类型: redis/01-data-model/chapter-02-basic-types.md
+      - 高级类型: redis/01-data-model/chapter-03-advanced-types.md
+      - 数据结构: redis/01-data-model/chapter-04-data-structures.md
+      - 对象编码: redis/01-data-model/chapter-05-object-encoding.md
+    - 单机核心:
+      - 线程模型: redis/02-standalone-core/chapter-01-thread-model.md
+      - 命令与 RESP: redis/02-standalone-core/chapter-02-command-resp.md
+      - RDB: redis/02-standalone-core/chapter-03-rdb.md
+      - AOF: redis/02-standalone-core/chapter-04-aof.md
+      - 过期策略: redis/02-standalone-core/chapter-05-expiration.md
+      - 淘汰策略: redis/02-standalone-core/chapter-06-eviction.md
+    - 缓存工程:
+      - 穿透: redis/03-cache-engineering/chapter-01-penetration.md
+      - 击穿: redis/03-cache-engineering/chapter-02-breakdown.md
+      - 雪崩: redis/03-cache-engineering/chapter-03-avalanche.md
+      - 一致性: redis/03-cache-engineering/chapter-04-consistency.md
+      - 大 Key 与热 Key: redis/03-cache-engineering/chapter-05-big-hot-key.md
+    - 高可用:
+      - 主从复制: redis/04-high-availability/chapter-01-replication.md
+      - 哨兵: redis/04-high-availability/chapter-02-sentinel.md
+      - 集群: redis/04-high-availability/chapter-03-cluster.md
+      - 分布式锁: redis/04-high-availability/chapter-04-distributed-lock.md
+      - 事务与 Lua: redis/04-high-availability/chapter-05-transaction-lua.md
+      - Pipeline 与 Pub/Sub: redis/04-high-availability/chapter-06-pipeline-pubsub.md
+    - 运维:
+      - 性能: redis/05-operations/chapter-01-performance.md
+      - 排障: redis/05-operations/chapter-02-troubleshooting.md
+      - 监控: redis/05-operations/chapter-03-monitoring.md
+      - 踩坑: redis/05-operations/chapter-04-pitfalls.md
+      - 实战项目: redis/05-operations/chapter-05-hands-on-project.md
+  - PostgreSQL:
+    - 核心特性与选型: postgresql/00-postgresql-overview.md
+    - PG vs MySQL: postgresql/01-PG与MySQL对比.md
+    - MVCC 与 VACUUM: postgresql/02-MVCC与VACUUM机制.md
+    - 索引类型: postgresql/03-索引类型详解.md
+    - 窗口函数: postgresql/04-窗口函数.md
+    - CTE 与递归查询: postgresql/05-CTE与递归查询.md
+    - 物化视图: postgresql/06-物化视图.md
+    - 事务与锁: postgresql/07-事务与锁机制.md
+    - 性能优化: postgresql/08-性能优化与调优.md
+    - JSONB: postgresql/09-JSONB高级用法.md
   - Kafka:
-    - Kafka 消息队列核心知识体系: 06-kafka/00-kafka-overview.md
-    - Kafka 基础概念: 06-kafka/01-基础概念.md
-    - Kafka 整体架构: 06-kafka/02-整体架构.md
-    - Kafka 消息可靠性：如何保证消息不丢失？: 06-kafka/03-消息可靠性.md
-    - Kafka 消费者组与 Rebalance: 06-kafka/04-消费者组与Rebalance.md
-    - Kafka 高吞吐原理: 06-kafka/05-高吞吐原理.md
-    - 消息队列选型对比: 06-kafka/06-消息队列选型.md
-    - Kafka 工作中常见问题与解决: 06-kafka/07-常见问题与解决.md
-    - Kafka 存储机制与日志设计: 06-kafka/08-存储机制与日志设计.md
-    - Kafka 事务消息与 Exactly Once 语义: 06-kafka/09-事务消息与ExactlyOnce.md
-    - Kafka Controller 与 Leader 选举机制: 06-kafka/10-Controller与Leader选举.md
-    - KRaft 模式与去 ZooKeeper: 06-kafka/11-KRaft模式与去ZooKeeper.md
-    - 消费语义与位移管理: 06-kafka/12-消费语义与位移管理.md
-    - 生产者分区策略与消息顺序: 06-kafka/13-生产者分区策略与消息顺序.md
+    - 概览: kafka/00-kafka-overview.md
+    - 基础概念: kafka/01-基础概念.md
+    - 整体架构: kafka/02-整体架构.md
+    - 消息可靠性: kafka/03-消息可靠性.md
+    - 消费者组与 Rebalance: kafka/04-消费者组与Rebalance.md
+    - 高吞吐原理: kafka/05-高吞吐原理.md
+    - 消息队列选型: kafka/06-消息队列选型.md
+    - 常见问题: kafka/07-常见问题与解决.md
+    - 存储机制: kafka/08-存储机制与日志设计.md
+    - 事务消息: kafka/09-事务消息与ExactlyOnce.md
+    - Controller 与选举: kafka/10-Controller与Leader选举.md
+    - KRaft: kafka/11-KRaft模式与去ZooKeeper.md
+    - 消费语义: kafka/12-消费语义与位移管理.md
+    - 分区策略: kafka/13-生产者分区策略与消息顺序.md
   - Elasticsearch:
-    - Elasticsearch 搜索引擎核心: 07-elasticsearch/00-elasticsearch概览.md
-    - ES 引入：它解决了什么问题？: 07-elasticsearch/01-引入与背景.md
-    - ES 核心概念：与关系型数据库的对应关系: 07-elasticsearch/02-核心概念.md
-    - ES 倒排索引：为何擅长全文检索: 07-elasticsearch/03-倒排索引.md
-    - ES Mapping 设计：字段类型决定查询能力: 07-elasticsearch/04-Mapping映射设计.md
-    - ES 查询 DSL：核心查询类型: 07-elasticsearch/05-查询语法DSL.md
-    - ES 集群架构与分片机制: 07-elasticsearch/06-集群架构与分片机制.md
-    - ES 性能优化: 07-elasticsearch/07-性能优化.md
-    - ES 数据一致性：MySQL 与 ES 同步方案: 07-elasticsearch/08-数据一致性.md
-    - ES 聚合查询：数据分析与统计: 07-elasticsearch/09-聚合查询.md
-    - ES 分词器与中文分词: 07-elasticsearch/10-分词器与中文分词.md
+    - 概览: elasticsearch/00-elasticsearch概览.md
+    - 引入与背景: elasticsearch/01-引入与背景.md
+    - 核心概念: elasticsearch/02-核心概念.md
+    - 倒排索引: elasticsearch/03-倒排索引.md
+    - Mapping 设计: elasticsearch/04-Mapping映射设计.md
+    - 查询 DSL: elasticsearch/05-查询语法DSL.md
+    - 集群与分片: elasticsearch/06-集群架构与分片机制.md
+    - 性能优化: elasticsearch/07-性能优化.md
+    - 数据一致性: elasticsearch/08-数据一致性.md
+    - 聚合查询: elasticsearch/09-聚合查询.md
+    - 分词器: elasticsearch/10-分词器与中文分词.md
   - 设计模式:
-    - 设计模式总览: 08-design-pattern/00-设计模式总览.md
-    - 单例模式（Singleton Pattern）: 08-design-pattern/01-单例模式.md
-    - 工厂方法模式 & 抽象工厂模式: 08-design-pattern/02-工厂方法与抽象工厂模式.md
-    - 建造者模式（Builder Pattern）: 08-design-pattern/03-建造者模式.md
-    - 代理模式（Proxy Pattern）: 08-design-pattern/04-代理模式.md
-    - 装饰器模式（Decorator Pattern）: 08-design-pattern/05-装饰器模式.md
-    - 适配器模式（Adapter Pattern）: 08-design-pattern/06-适配器模式.md
-    - 策略模式（Strategy Pattern）: 08-design-pattern/07-策略模式.md
-    - 观察者模式（Observer Pattern）: 08-design-pattern/08-观察者模式.md
-    - 模板方法模式（Template Method Pattern）: 08-design-pattern/09-模板方法模式.md
-    - 责任链模式（Chain of Responsibility Pattern）: 08-design-pattern/10-责任链模式.md
-    - 原型模式（Prototype Pattern）: 08-design-pattern/11-创建型补充-原型模式.md
-    - 结构型补充 — 外观、桥接、组合、享元模式: 08-design-pattern/12-结构型补充-外观桥接组合享元.md
-    - 行为型补充 — 命令、迭代器、中介者、备忘录、状态、访问者、解释器模式: 08-design-pattern/13-行为型补充-命令迭代器中介者等.md
+    - 总览: design-pattern/00-设计模式总览.md
+    - 单例: design-pattern/01-单例模式.md
+    - 工厂: design-pattern/02-工厂方法与抽象工厂模式.md
+    - 建造者: design-pattern/03-建造者模式.md
+    - 代理: design-pattern/04-代理模式.md
+    - 装饰器: design-pattern/05-装饰器模式.md
+    - 适配器: design-pattern/06-适配器模式.md
+    - 策略: design-pattern/07-策略模式.md
+    - 观察者: design-pattern/08-观察者模式.md
+    - 模板方法: design-pattern/09-模板方法模式.md
+    - 责任链: design-pattern/10-责任链模式.md
+    - 原型: design-pattern/11-创建型补充-原型模式.md
+    - 结构型补充: design-pattern/12-结构型补充-外观桥接组合享元.md
+    - 行为型补充: design-pattern/13-行为型补充-命令迭代器中介者等.md
   - 软件工程:
-    - 软件工程核心知识: 09-software-engineering/00-软件工程概览.md
-    - SOLID 原则: 09-software-engineering/01-SOLID原则.md
-    - 软件架构演进: 09-software-engineering/02-软件架构演进.md
-    - DDD 领域驱动设计: 09-software-engineering/03-DDD领域驱动设计.md
-    - CAP 理论与 BASE 理论: 09-software-engineering/04-CAP理论与BASE理论.md
-    - 代码质量与重构: 09-software-engineering/05-代码质量与重构.md
-    - CI/CD 持续集成与持续交付: 09-software-engineering/06-CICD持续集成与交付.md
-    - 系统设计方法论: 09-software-engineering/07-系统设计方法论.md
-  - Ai Engineering:
-    - AI 工程概览 —— Java 工程师视角下的大模型应用地图: 10-ai-engineering/00-AI工程概览.md
-    - LLM 接口与提示词工程 —— 调 API 的协议契约与 Prompt 设计套路: 10-ai-engineering/01-LLM接口与提示词工程.md
-    - RAG 架构与工程落地 —— 让大模型"有据可依"的检索增强生成系统: 10-ai-engineering/02-RAG架构与工程落地.md
-    - Function Calling 与 Agent 范式 —— 让大模型从"聊天"升级为"干活": 10-ai-engineering/03-FunctionCalling与Agent范式.md
-    - Spring AI 入门与 MCP 集成 —— 让 LLM 变成 @Bean 的 Java 最短路径: 10-ai-engineering/04-SpringAI入门与MCP集成.md
-    - MCP 协议与 OpenClaw Skill 实战 —— 从协议规范到"网易云歌单 Skill"全流程: 10-ai-engineering/05-MCP协议与OpenClawSkill实战.md
+    - 概览: engineering/00-软件工程概览.md
+    - SOLID: engineering/01-SOLID原则.md
+    - 架构演进: engineering/02-软件架构演进.md
+    - DDD: engineering/03-DDD领域驱动设计.md
+    - CAP 与 BASE: engineering/04-CAP理论与BASE理论.md
+    - 代码质量: engineering/05-代码质量与重构.md
+    - CI/CD: engineering/06-CICD持续集成与交付.md
+    - 系统设计: engineering/07-系统设计方法论.md
+  - AI 工程:
+    - 概览: ai/00-AI工程概览.md
+    - LLM 接口与提示词: ai/01-LLM接口与提示词工程.md
+    - RAG: ai/02-RAG架构与工程落地.md
+    - Function Calling 与 Agent: ai/03-FunctionCalling与Agent范式.md
+    - Spring AI 与 MCP: ai/04-SpringAI入门与MCP集成.md
+    - MCP 协议实战: ai/05-MCP协议与OpenClawSkill实战.md
