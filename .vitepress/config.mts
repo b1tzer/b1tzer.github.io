@@ -631,8 +631,59 @@ export default defineConfig({
       ],
       '/design-pattern/': [
         {
-          text: '设计模式',
+          text: '入门',
           items: [
+            { text: '为什么需要设计模式', link: '/design-pattern/00-intro/chapter-01-why-patterns' },
+          ]
+        },
+        {
+          text: '创建型',
+          items: [
+            { text: '工厂模式', link: '/design-pattern/01-creational/chapter-01-factory' },
+            { text: '单例模式', link: '/design-pattern/01-creational/chapter-02-singleton' },
+            { text: '建造者模式', link: '/design-pattern/01-creational/chapter-03-builder' },
+            { text: '原型模式', link: '/design-pattern/01-creational/chapter-04-prototype' },
+            { text: '创建型对比', link: '/design-pattern/01-creational/chapter-05-creational-comparison' },
+          ]
+        },
+        {
+          text: '结构型',
+          items: [
+            { text: '适配器模式', link: '/design-pattern/02-structural/chapter-01-adapter' },
+            { text: '装饰器模式', link: '/design-pattern/02-structural/chapter-02-decorator' },
+            { text: '代理模式', link: '/design-pattern/02-structural/chapter-03-proxy' },
+            { text: '外观模式', link: '/design-pattern/02-structural/chapter-04-facade' },
+            { text: '桥接模式', link: '/design-pattern/02-structural/chapter-05-bridge' },
+            { text: '组合模式', link: '/design-pattern/02-structural/chapter-06-composite' },
+            { text: '享元模式', link: '/design-pattern/02-structural/chapter-07-flyweight' },
+            { text: '结构型对比', link: '/design-pattern/02-structural/chapter-08-structural-comparison' },
+          ]
+        },
+        {
+          text: '行为型',
+          items: [
+            { text: '策略模式', link: '/design-pattern/03-behavioral/chapter-01-strategy' },
+            { text: '观察者模式', link: '/design-pattern/03-behavioral/chapter-02-observer' },
+            { text: '模板方法', link: '/design-pattern/03-behavioral/chapter-03-template-method' },
+            { text: '责任链模式', link: '/design-pattern/03-behavioral/chapter-04-chain-of-responsibility' },
+            { text: '命令模式', link: '/design-pattern/03-behavioral/chapter-05-command' },
+            { text: '状态模式', link: '/design-pattern/03-behavioral/chapter-06-state' },
+            { text: '迭代器模式', link: '/design-pattern/03-behavioral/chapter-07-iterator' },
+            { text: '中介者模式', link: '/design-pattern/03-behavioral/chapter-08-mediator' },
+            { text: '备忘录模式', link: '/design-pattern/03-behavioral/chapter-09-memento' },
+            { text: '访问者模式', link: '/design-pattern/03-behavioral/chapter-10-visitor' },
+            { text: '行为型对比', link: '/design-pattern/03-behavioral/chapter-11-behavioral-comparison' },
+          ]
+        },
+        {
+          text: '实战',
+          items: [
+            { text: 'Spring 中的模式', link: '/design-pattern/04-practice/chapter-01-spring-patterns' },
+            { text: 'JDK 中的模式', link: '/design-pattern/04-practice/chapter-02-jdk-patterns' },
+            { text: '重构到模式', link: '/design-pattern/04-practice/chapter-03-refactoring-to-patterns' },
+            { text: '反模式', link: '/design-pattern/04-practice/chapter-04-anti-patterns' },
+          ]
+        }
             { text: '总览', link: '/design-pattern/00-设计模式总览' },
             { text: '单例', link: '/design-pattern/01-单例模式' },
             { text: '工厂', link: '/design-pattern/02-工厂方法与抽象工厂模式' },
@@ -647,8 +698,6 @@ export default defineConfig({
             { text: '原型', link: '/design-pattern/11-创建型补充-原型模式' },
             { text: '结构型补充', link: '/design-pattern/12-结构型补充-外观桥接组合享元' },
             { text: '行为型补充', link: '/design-pattern/13-行为型补充-命令迭代器中介者等' },
-          ]
-        }
       ],
       '/engineering/': [
         {
