@@ -231,18 +231,94 @@ export default defineConfig({
       ],
       '/postgresql/': [
         {
-          text: 'PostgreSQL',
+          text: '基础入门',
           items: [
-            { text: '核心特性与选型', link: '/postgresql/00-postgresql-overview' },
-            { text: 'PG vs MySQL', link: '/postgresql/01-PG与MySQL对比' },
-            { text: 'MVCC 与 VACUUM', link: '/postgresql/02-MVCC与VACUUM机制' },
-            { text: '索引类型', link: '/postgresql/03-索引类型详解' },
-            { text: '窗口函数', link: '/postgresql/04-窗口函数' },
-            { text: 'CTE 与递归查询', link: '/postgresql/05-CTE与递归查询' },
-            { text: '物化视图', link: '/postgresql/06-物化视图' },
-            { text: '事务与锁', link: '/postgresql/07-事务与锁机制' },
-            { text: '性能优化', link: '/postgresql/08-性能优化与调优' },
-            { text: 'JSONB', link: '/postgresql/09-JSONB高级用法' },
+            { text: 'PG 概览', link: '/postgresql/01-基础入门/chapter-01-overview' },
+            { text: '安装部署', link: '/postgresql/01-基础入门/chapter-02-install-config' },
+            { text: 'SQL 基础', link: '/postgresql/01-基础入门/chapter-03-sql-basics' },
+            { text: '数据类型', link: '/postgresql/01-基础入门/chapter-04-data-types' },
+            { text: 'PG vs MySQL', link: '/postgresql/01-基础入门/chapter-05-pg-vs-mysql' },
+          ]
+        },
+        {
+          text: 'SQL 进阶',
+          items: [
+            { text: '窗口函数', link: '/postgresql/02-SQL进阶/chapter-01-window-function' },
+            { text: 'CTE 与递归', link: '/postgresql/02-SQL进阶/chapter-02-cte-recursive' },
+            { text: '子查询与 LATERAL', link: '/postgresql/02-SQL进阶/chapter-03-subquery-lateral' },
+            { text: 'JSONB', link: '/postgresql/02-SQL进阶/chapter-04-jsonb' },
+            { text: '全文搜索', link: '/postgresql/02-SQL进阶/chapter-05-full-text-search' },
+          ]
+        },
+        {
+          text: '内核原理',
+          items: [
+            { text: '进程架构', link: '/postgresql/03-内核原理/chapter-01-architecture' },
+            { text: '内存架构', link: '/postgresql/03-内核原理/chapter-02-memory' },
+            { text: '存储架构', link: '/postgresql/03-内核原理/chapter-03-storage' },
+            { text: 'MVCC', link: '/postgresql/03-内核原理/chapter-04-mvcc' },
+            { text: 'VACUUM', link: '/postgresql/03-内核原理/chapter-05-vacuum' },
+            { text: 'WAL', link: '/postgresql/03-内核原理/chapter-06-wal' },
+            { text: '查询处理', link: '/postgresql/03-内核原理/chapter-07-query-processing' },
+          ]
+        },
+        {
+          text: '索引与查询优化',
+          items: [
+            { text: '索引类型', link: '/postgresql/04-索引与查询优化/chapter-01-index-types' },
+            { text: '索引设计', link: '/postgresql/04-索引与查询优化/chapter-02-index-design' },
+            { text: 'EXPLAIN', link: '/postgresql/04-索引与查询优化/chapter-03-explain-analyze' },
+            { text: '查询优化', link: '/postgresql/04-索引与查询优化/chapter-04-query-optimization' },
+            { text: '表分区', link: '/postgresql/04-索引与查询优化/chapter-05-partitioning' },
+          ]
+        },
+        {
+          text: '事务与并发',
+          items: [
+            { text: '事务', link: '/postgresql/05-事务与并发/chapter-01-transaction' },
+            { text: '锁机制', link: '/postgresql/05-事务与并发/chapter-02-lock' },
+            { text: '咨询锁', link: '/postgresql/05-事务与并发/chapter-03-advisory-lock' },
+            { text: '并发实践', link: '/postgresql/05-事务与并发/chapter-04-concurrency' },
+          ]
+        },
+        {
+          text: '高级特性',
+          items: [
+            { text: '扩展机制', link: '/postgresql/06-高级特性/chapter-01-extensions' },
+            { text: 'PL/pgSQL', link: '/postgresql/06-高级特性/chapter-02-plpgsql' },
+            { text: 'FDW', link: '/postgresql/06-高级特性/chapter-03-foreign-data-wrapper' },
+            { text: '逻辑复制', link: '/postgresql/06-高级特性/chapter-04-logical-replication' },
+            { text: 'PostGIS', link: '/postgresql/06-高级特性/chapter-05-postgis' },
+            { text: 'LISTEN/NOTIFY', link: '/postgresql/06-高级特性/chapter-06-notify' },
+            { text: '物化视图', link: '/postgresql/06-高级特性/chapter-07-materialized-view' },
+          ]
+        },
+        {
+          text: '运维管理',
+          items: [
+            { text: '备份恢复', link: '/postgresql/07-运维管理/chapter-01-backup-restore' },
+            { text: '监控', link: '/postgresql/07-运维管理/chapter-02-monitoring' },
+            { text: '安全', link: '/postgresql/07-运维管理/chapter-03-security' },
+            { text: '用户管理', link: '/postgresql/07-运维管理/chapter-04-user-management' },
+            { text: '日常维护', link: '/postgresql/07-运维管理/chapter-05-maintenance' },
+          ]
+        },
+        {
+          text: '高可用与架构',
+          items: [
+            { text: '流复制', link: '/postgresql/08-高可用与架构/chapter-01-streaming-replication' },
+            { text: '高可用方案', link: '/postgresql/08-高可用与架构/chapter-02-ha-solutions' },
+            { text: '连接池', link: '/postgresql/08-高可用与架构/chapter-03-connection-pooling' },
+            { text: '分片', link: '/postgresql/08-高可用与架构/chapter-04-sharding' },
+            { text: '迁移', link: '/postgresql/08-高可用与架构/chapter-05-migration' },
+          ]
+        },
+        {
+          text: '实战场景',
+          items: [
+            { text: 'Spring 集成', link: '/postgresql/09-实战场景/chapter-01-spring-integration' },
+            { text: '性能调优', link: '/postgresql/09-实战场景/chapter-02-performance-tuning' },
+            { text: '常见模式', link: '/postgresql/09-实战场景/chapter-03-common-patterns' },
           ]
         }
       ],
