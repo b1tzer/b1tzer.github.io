@@ -1,124 +1,63 @@
----
-doc_id: kafka-kafka-overview
-title: Kafka 消息队列核心知识体系
----
+# Kafka 技术体系
 
-# Kafka 消息队列核心知识体系
+系统化的 Kafka 知识体系，从基础概念到生产者消费者，从存储原理到流处理。
 
-> **学习目标**：从"会用"升级到"理解原理 → 能解决问题 → 能做技术决策"
->
-> **检验标准**：学完每个模块后，能口述"这个技术解决了什么问题？不用它会怎样？工作中有哪些坑？"
+## 目录结构
 
----
+### 01-basics
+- [Kafka 概览](01-basics/chapter-01-overview) — 发展历史、与 RabbitMQ/RocketMQ 对比
+- [核心术语](01-basics/chapter-02-terminology) — Offset/ISR/Leader/Follower
+- [整体架构](01-basics/chapter-03-architecture) — Broker/Topic/Partition/Consumer Group
+- [消息队列选型](01-basics/chapter-04-mq-comparison) — 主流消息队列对比
 
-## 版本发展
+### 02-producer
+- [生产者 API](02-producer/chapter-01-producer-basics) — 发送流程、核心参数
+- [分区策略](02-producer/chapter-02-partition-strategy) — 默认策略、自定义分区器
+- [ACK 与重试](02-producer/chapter-03-acks-retries) — acks=0/1/all、幂等生产者
+- [批量与压缩](02-producer/chapter-04-batch-compression) — 批量发送、压缩算法
+- [事务生产者](02-producer/chapter-05-transaction-producer) — Exactly Once
 
-```mermaid
-timeline
-    title Kafka 版本发展
-    2011 : v0.7 : LinkedIn 开源、基础消息队列
-    2013 : v0.8 : 分布式架构、Producer/Consumer API
-    2015 : v0.10 : Kafka Streams 流处理
-    2017 : v0.11 : Exactly-Once 语义、事务消息
-    2019 : v2.0 : KRaft 模式预览
-    2022 : v3.0 : KRaft GA、彻底去 ZooKeeper
-    2023 : v3.6 : 分层存储（Tiered Storage）
-```
+### 03-consumer
+- [消费者 API](03-consumer/chapter-01-consumer-basics) — 订阅与轮询
+- [消费者组](03-consumer/chapter-02-consumer-group) — Rebalance 机制
+- [Offset 管理](03-consumer/chapter-03-offset-management) — 自动/手动提交
+- [Rebalance 策略](03-consumer/chapter-04-rebalance-strategy) — Range/RoundRobin/Sticky
+- [消费者优化](03-consumer/chapter-05-consumer-optimization) — 多线程消费
 
-> 📌 本站聚焦 **v2.x / v3.x** 版本，覆盖 KRaft 模式、事务消息、Exactly-Once 等核心特性。
+### 04-storage-internals
+- [日志分段](04-storage-internals/chapter-01-log-segment) — 索引文件、日志压缩
+- [Page Cache](04-storage-internals/chapter-02-page-cache) — 零拷贝、高吞吐原因
+- [副本机制](04-storage-internals/chapter-03-replication) — ISR、Leader 选举
+- [Controller](04-storage-internals/chapter-04-controller) — 元数据管理
+- [KRaft](04-storage-internals/chapter-05-kraft) — 去 ZooKeeper
 
----
+### 05-reliability
+- [ACK 机制](05-reliability/chapter-01-acks-机制) — acks=0/1/all
+- [Exactly Once](05-reliability/chapter-02-exactly-once) — 幂等、事务
+- [消息顺序](05-reliability/chapter-03-message-ordering) — 分区内顺序
+- [数据保留](05-reliability/chapter-04-data-retention) — 时间/大小保留、日志压缩
 
-## 整体知识地图
+### 06-streams
+- [Streams 概览](06-streams/chapter-01-streams-basics) — DSL、KStream/KTable
+- [流操作](06-streams/chapter-02-stream-operations) — 过滤/映射/聚合/连接
+- [窗口操作](06-streams/chapter-03-windowing) — 翻转/跳跃/会话窗口
+- [状态存储](06-streams/chapter-04-state-store) — RocksDB、交互式查询
+- [Streams Exactly Once](06-streams/chapter-05-exactly-once-streams)
 
-```mermaid
-mindmap
-    root((Kafka))
-        基础概念
-            Topic / Partition / Offset
-            Producer / Consumer / Broker
-            Consumer Group
-        整体架构
-            Broker 集群
-            ZooKeeper / KRaft
-            副本机制
-        消息可靠性
-            acks 配置
-            ISR 机制
-            幂等生产者
-        消费者机制
-            消费者组与 Rebalance
-            消费语义与位移管理
-            分区分配策略
-        高性能原理
-            顺序写磁盘
-            零拷贝
-            批量压缩
-        存储机制
-            日志分段
-            索引文件
-            日志清理与压缩
-        集群管理
-            Controller 选举
-            Leader 选举
-            KRaft 模式
-        生产者机制
-            分区策略
-            消息顺序保证
-            事务消息
-        运维与选型
-            常见问题与解决
-            消息队列选型对比
-```
+### 07-connect
+- [Connect 概览](07-connect/chapter-01-connect-basics) — Source/Sink Connector
+- [连接器配置](07-connect/chapter-02-connect-config) — 转换器、SMT
+- [常用插件](07-connect/chapter-03-connect-plugins) — JDBC/Debezium/ES
+- [Connect 监控](07-connect/chapter-04-connect-monitoring) — REST API、JMX
 
----
+### 08-operations
+- [集群管理](08-operations/chapter-01-cluster-management) — Topic 管理、分区重分配
+- [监控](08-operations/chapter-02-monitoring) — JMX、Prometheus、Grafana
+- [安全](08-operations/chapter-03-security) — SASL/ACL/SSL
+- [跨集群镜像](08-operations/chapter-04-mirror) — MirrorMaker2
+- [常见问题](08-operations/chapter-05-troubleshooting) — Lag/丢失/重复排查
 
-## 知识点导航
-
-| # | 知识点 | 核心一句话 | 详细文档 |
-|---|--------|-----------|---------|
-| 01 | **基础概念** | Topic 逻辑分类、Partition 并行单位、Offset 消费进度、Consumer Group 分工协作 | [基础概念](01-基础概念.md) |
-| 02 | **整体架构** | Broker 集群 + 分区副本 + Controller 选举，高可用高吞吐的分布式架构 | [整体架构](02-整体架构.md) |
-| 03 | **消息可靠性** | 三端保障：生产者 acks=all + Broker 多副本 ISR + 消费者手动提交 offset | [消息可靠性](03-消息可靠性.md) |
-| 04 | **消费者组与 Rebalance** | 组内分区独占消费，成员变化触发 Rebalance，避免频繁 Rebalance 是关键 | [消费者组与Rebalance](04-消费者组与Rebalance.md) |
-| 05 | **高吞吐原理** | 顺序写磁盘 + 零拷贝 + 批量压缩 + 分区并行，四大机制保障高性能 | [高吞吐原理](05-高吞吐原理.md) |
-| 06 | **消息队列选型** | Kafka 高吞吐适合大数据/日志；RabbitMQ 低延迟适合业务消息；RocketMQ 事务消息强 | [消息队列选型](06-消息队列选型.md) |
-| 07 | **常见问题与解决** | 消息积压、重复消费、顺序消费、消费者阻塞等生产环境高频问题的排查与解决 | [常见问题与解决](07-常见问题与解决.md) |
-| 08 | **存储机制与日志设计** | 日志分段存储 + 稀疏索引 + 日志清理（delete/compact），磁盘友好的存储架构 | [存储机制与日志设计](08-存储机制与日志设计.md) |
-| 09 | **事务消息与 Exactly Once** | 幂等生产者 + 事务 API，实现跨分区的 Exactly Once 语义 | [事务消息与ExactlyOnce](09-事务消息与ExactlyOnce.md) |
-| 10 | **Controller 与 Leader 选举** | Controller 管理集群元数据，分区 Leader 选举从 ISR 中选取，保障高可用 | [Controller与Leader选举](10-Controller与Leader选举.md) |
-| 11 | **KRaft 模式与去 ZooKeeper** | KRaft 用 Raft 协议替代 ZooKeeper，简化部署、提升元数据管理性能 | [KRaft模式与去ZooKeeper](11-KRaft模式与去ZooKeeper.md) |
-| 12 | **消费语义与位移管理** | At Most/Least/Exactly Once 三种语义；offset 存储在 __consumer_offsets；手动提交是生产标配 | [消费语义与位移管理](12-消费语义与位移管理.md) |
-| 13 | **生产者分区策略与消息顺序** | 默认粘性分区、按 Key 哈希保证顺序、自定义分区器满足特殊需求 | [生产者分区策略与消息顺序](13-生产者分区策略与消息顺序.md) |
-
----
-
-## 高频问题索引
-
-| 问题 | 详见 |
-|------|------|
-| Kafka 如何保证消息不丢失？ | [消息可靠性](03-消息可靠性.md) |
-| 消费者 Rebalance 是什么？如何避免频繁 Rebalance？ | [消费者组与Rebalance](04-消费者组与Rebalance.md) |
-| Kafka 为什么这么快？ | [高吞吐原理](05-高吞吐原理.md) |
-| 消息积压了怎么办？ | [常见问题与解决](07-常见问题与解决.md) |
-| 如何保证消息顺序消费？ | [生产者分区策略与消息顺序](13-生产者分区策略与消息顺序.md) |
-| At Least Once / Exactly Once 怎么实现？ | [消费语义与位移管理](12-消费语义与位移管理.md) |
-| Kafka 事务消息怎么用？ | [事务消息与ExactlyOnce](09-事务消息与ExactlyOnce.md) |
-| Kafka vs RabbitMQ vs RocketMQ 怎么选？ | [消息队列选型](06-消息队列选型.md) |
-| KRaft 模式是什么？为什么要去 ZooKeeper？ | [KRaft模式与去ZooKeeper](11-KRaft模式与去ZooKeeper.md) |
-
----
-
-## 学习路径建议
-
-```mermaid
-flowchart TD
-    A[基础概念与整体架构] --> B[消息可靠性]
-    B --> C[消费者组与 Rebalance]
-    C --> D[消费语义与位移管理]
-    D --> E[高吞吐原理与存储机制]
-    E --> F[生产者分区策略与消息顺序]
-    F --> G[事务消息与 Exactly Once]
-    G --> H[Controller / Leader 选举 / KRaft]
-    H --> I[常见问题与消息队列选型]
-```
+### 09-practice
+- [Spring 集成](09-practice/chapter-01-spring-integration) — Spring Kafka
+- [常见场景](09-practice/chapter-02-common-patterns) — 日志收集/事件驱动/数据管道
+- [性能调优](09-practice/chapter-03-performance-tuning) — 生产者/消费者/Broker 调优

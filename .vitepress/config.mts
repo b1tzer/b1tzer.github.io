@@ -18,12 +18,6 @@ export default defineConfig({
       { text: '更多', items: [
         { text: 'PostgreSQL', link: '/postgresql/' },
         { text: 'Kafka', link: '/kafka/' },
-        { text: 'Elasticsearch', link: '/elasticsearch/' },
-        { text: '设计模式', link: '/design-pattern/' },
-        { text: '软件工程', link: '/engineering/' },
-        { text: 'AI 工程', link: '/ai/' },
-        { text: 'MySQL', link: '/mysql/' },
-      ]}
     ],
     
     sidebar: {
@@ -423,24 +417,104 @@ export default defineConfig({
       ],
       '/kafka/': [
         {
-          text: 'Kafka',
+          text: '基础入门',
           items: [
-            { text: '概览', link: '/kafka/00-kafka-overview' },
-            { text: '基础概念', link: '/kafka/01-基础概念' },
-            { text: '整体架构', link: '/kafka/02-整体架构' },
-            { text: '消息可靠性', link: '/kafka/03-消息可靠性' },
-            { text: '消费者组与 Rebalance', link: '/kafka/04-消费者组与Rebalance' },
-            { text: '高吞吐原理', link: '/kafka/05-高吞吐原理' },
-            { text: '消息队列选型', link: '/kafka/06-消息队列选型' },
-            { text: '常见问题', link: '/kafka/07-常见问题与解决' },
-            { text: '存储机制', link: '/kafka/08-存储机制与日志设计' },
-            { text: '事务消息', link: '/kafka/09-事务消息与ExactlyOnce' },
-            { text: 'Controller 与选举', link: '/kafka/10-Controller与Leader选举' },
-            { text: 'KRaft', link: '/kafka/11-KRaft模式与去ZooKeeper' },
-            { text: '消费语义', link: '/kafka/12-消费语义与位移管理' },
-            { text: '分区策略', link: '/kafka/13-生产者分区策略与消息顺序' },
+            { text: 'Kafka 概览', link: '/kafka/01-basics/chapter-01-overview' },
+            { text: '核心术语', link: '/kafka/01-basics/chapter-02-terminology' },
+            { text: '整体架构', link: '/kafka/01-basics/chapter-03-architecture' },
+            { text: '消息队列选型', link: '/kafka/01-basics/chapter-04-mq-comparison' },
+          ]
+        },
+        {
+          text: '生产者',
+          items: [
+            { text: '生产者 API', link: '/kafka/02-producer/chapter-01-producer-basics' },
+            { text: '分区策略', link: '/kafka/02-producer/chapter-02-partition-strategy' },
+            { text: 'ACK 与重试', link: '/kafka/02-producer/chapter-03-acks-retries' },
+            { text: '批量与压缩', link: '/kafka/02-producer/chapter-04-batch-compression' },
+            { text: '事务生产者', link: '/kafka/02-producer/chapter-05-transaction-producer' },
+          ]
+        },
+        {
+          text: '消费者',
+          items: [
+            { text: '消费者 API', link: '/kafka/03-consumer/chapter-01-consumer-basics' },
+            { text: '消费者组', link: '/kafka/03-consumer/chapter-02-consumer-group' },
+            { text: 'Offset 管理', link: '/kafka/03-consumer/chapter-03-offset-management' },
+            { text: 'Rebalance 策略', link: '/kafka/03-consumer/chapter-04-rebalance-strategy' },
+            { text: '消费者优化', link: '/kafka/03-consumer/chapter-05-consumer-optimization' },
+          ]
+        },
+        {
+          text: '存储原理',
+          items: [
+            { text: '日志分段', link: '/kafka/04-storage-internals/chapter-01-log-segment' },
+            { text: 'Page Cache', link: '/kafka/04-storage-internals/chapter-02-page-cache' },
+            { text: '副本机制', link: '/kafka/04-storage-internals/chapter-03-replication' },
+            { text: 'Controller', link: '/kafka/04-storage-internals/chapter-04-controller' },
+            { text: 'KRaft', link: '/kafka/04-storage-internals/chapter-05-kraft' },
+          ]
+        },
+        {
+          text: '可靠性',
+          items: [
+            { text: 'ACK 机制', link: '/kafka/05-reliability/chapter-01-acks-机制' },
+            { text: 'Exactly Once', link: '/kafka/05-reliability/chapter-02-exactly-once' },
+            { text: '消息顺序', link: '/kafka/05-reliability/chapter-03-message-ordering' },
+            { text: '数据保留', link: '/kafka/05-reliability/chapter-04-data-retention' },
+          ]
+        },
+        {
+          text: '流处理',
+          items: [
+            { text: 'Streams 概览', link: '/kafka/06-streams/chapter-01-streams-basics' },
+            { text: '流操作', link: '/kafka/06-streams/chapter-02-stream-operations' },
+            { text: '窗口操作', link: '/kafka/06-streams/chapter-03-windowing' },
+            { text: '状态存储', link: '/kafka/06-streams/chapter-04-state-store' },
+            { text: 'Streams Exactly Once', link: '/kafka/06-streams/chapter-05-exactly-once-streams' },
+          ]
+        },
+        {
+          text: 'Connect',
+          items: [
+            { text: 'Connect 概览', link: '/kafka/07-connect/chapter-01-connect-basics' },
+            { text: '连接器配置', link: '/kafka/07-connect/chapter-02-connect-config' },
+            { text: '常用插件', link: '/kafka/07-connect/chapter-03-connect-plugins' },
+            { text: 'Connect 监控', link: '/kafka/07-connect/chapter-04-connect-monitoring' },
+          ]
+        },
+        {
+          text: '运维管理',
+          items: [
+            { text: '集群管理', link: '/kafka/08-operations/chapter-01-cluster-management' },
+            { text: '监控', link: '/kafka/08-operations/chapter-02-monitoring' },
+            { text: '安全', link: '/kafka/08-operations/chapter-03-security' },
+            { text: '跨集群镜像', link: '/kafka/08-operations/chapter-04-mirror' },
+            { text: '常见问题', link: '/kafka/08-operations/chapter-05-troubleshooting' },
+          ]
+        },
+        {
+          text: '实战场景',
+          items: [
+            { text: 'Spring 集成', link: '/kafka/09-practice/chapter-01-spring-integration' },
+            { text: '常见场景', link: '/kafka/09-practice/chapter-02-common-patterns' },
+            { text: '性能调优', link: '/kafka/09-practice/chapter-03-performance-tuning' },
           ]
         }
+            { text: '概览', link: '/kafka/01-basics/chapter-01-overview' },
+            { text: '基础概念', link: '/kafka/01-basics/chapter-02-terminology' },
+            { text: '整体架构', link: '/kafka/01-basics/chapter-03-architecture' },
+            { text: '消息可靠性', link: '/kafka/05-reliability/chapter-01-acks-机制' },
+            { text: '消费者组与 Rebalance', link: '/kafka/03-consumer/chapter-02-consumer-group' },
+            { text: '高吞吐原理', link: '/kafka/04-storage-internals/chapter-02-page-cache' },
+            { text: '消息队列选型', link: '/kafka/01-basics/chapter-04-mq-comparison' },
+            { text: '常见问题', link: '/kafka/08-operations/chapter-05-troubleshooting' },
+            { text: '存储机制', link: '/kafka/04-storage-internals/chapter-01-log-segment' },
+            { text: '事务消息', link: '/kafka/05-reliability/chapter-02-exactly-once' },
+            { text: 'Controller 与选举', link: '/kafka/04-storage-internals/chapter-04-controller' },
+            { text: 'KRaft', link: '/kafka/04-storage-internals/chapter-05-kraft' },
+            { text: '消费语义', link: '/kafka/03-consumer/chapter-03-offset-management' },
+            { text: '分区策略', link: '/kafka/02-producer/chapter-02-partition-strategy' },
       ],
       '/elasticsearch/': [
         {
