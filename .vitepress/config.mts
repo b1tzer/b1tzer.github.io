@@ -95,17 +95,83 @@ export default defineConfig({
       ],
       '/spring/': [
         {
-          text: 'Spring',
+          text: '核心原理',
           items: [
-            { text: '核心原理', link: '/spring/chapter-01-spring-core' },
-            { text: '容器与 AOP', link: '/spring/chapter-02-container-aop' },
-            { text: 'Spring MVC', link: '/spring/chapter-03-spring-mvc' },
-            { text: 'Spring Boot', link: '/spring/chapter-04-spring-boot' },
-            { text: '数据集成', link: '/spring/chapter-05-data-integration' },
-            { text: '微服务', link: '/spring/chapter-06-microservices' },
-            { text: '治理', link: '/spring/chapter-07-governance' },
-            { text: '安全与部署', link: '/spring/chapter-08-security-deploy' },
-            { text: '可观测性', link: '/spring/chapter-09-observability' },
+            { text: 'Spring 概览', link: '/spring/01-核心原理/chapter-01-spring-overview' },
+            { text: 'IoC 容器', link: '/spring/01-核心原理/chapter-02-ioc-container' },
+            { text: '依赖注入', link: '/spring/01-核心原理/chapter-03-dependency-injection' },
+            { text: 'Bean 生命周期', link: '/spring/01-核心原理/chapter-04-bean-lifecycle' },
+            { text: 'AOP', link: '/spring/01-核心原理/chapter-05-aop' },
+            { text: '条件装配与 Profile', link: '/spring/01-核心原理/chapter-06-conditional-profile' },
+          ]
+        },
+        {
+          text: 'Web 开发',
+          items: [
+            { text: 'Spring MVC', link: '/spring/02-Web开发/chapter-01-spring-mvc' },
+            { text: 'RESTful API', link: '/spring/02-Web开发/chapter-02-rest-api' },
+            { text: '参数校验', link: '/spring/02-Web开发/chapter-03-validation-binding' },
+            { text: '拦截器与过滤器', link: '/spring/02-Web开发/chapter-04-interceptor-filter' },
+            { text: 'WebFlux', link: '/spring/02-Web开发/chapter-05-webflux' },
+          ]
+        },
+        {
+          text: '数据访问',
+          items: [
+            { text: 'JdbcTemplate', link: '/spring/03-数据访问/chapter-01-jdbc-template' },
+            { text: 'MyBatis', link: '/spring/03-数据访问/chapter-02-mybatis-integration' },
+            { text: 'JPA', link: '/spring/03-数据访问/chapter-03-jpa' },
+            { text: '事务管理', link: '/spring/03-数据访问/chapter-04-transaction' },
+            { text: '多数据源', link: '/spring/03-数据访问/chapter-05-multi-datasource' },
+          ]
+        },
+        {
+          text: 'Spring Boot',
+          items: [
+            { text: '自动配置', link: '/spring/04-SpringBoot/chapter-01-autoconfiguration' },
+            { text: 'Starter', link: '/spring/04-SpringBoot/chapter-02-starter' },
+            { text: '外部化配置', link: '/spring/04-SpringBoot/chapter-03-configuration' },
+            { text: 'Actuator', link: '/spring/04-SpringBoot/chapter-04-actuator' },
+            { text: 'DevTools', link: '/spring/04-SpringBoot/chapter-05-devtools' },
+          ]
+        },
+        {
+          text: '安全',
+          items: [
+            { text: '安全架构', link: '/spring/05-安全/chapter-01-security-architecture' },
+            { text: '认证机制', link: '/spring/05-安全/chapter-02-authentication' },
+            { text: '授权模型', link: '/spring/05-安全/chapter-03-authorization' },
+            { text: '安全实践', link: '/spring/05-安全/chapter-04-security-practice' },
+          ]
+        },
+        {
+          text: '高级特性',
+          items: [
+            { text: '事件机制', link: '/spring/06-高级特性/chapter-01-event' },
+            { text: '异步处理', link: '/spring/06-高级特性/chapter-02-async' },
+            { text: '定时任务', link: '/spring/06-高级特性/chapter-03-scheduling' },
+            { text: '缓存', link: '/spring/06-高级特性/chapter-04-caching' },
+            { text: '消息集成', link: '/spring/06-高级特性/chapter-05-messaging' },
+            { text: '国际化', link: '/spring/06-高级特性/chapter-06-internationalization' },
+          ]
+        },
+        {
+          text: '微服务',
+          items: [
+            { text: '架构模式', link: '/spring/07-微服务/chapter-01-microservice-pattern' },
+            { text: '服务发现', link: '/spring/07-微服务/chapter-02-service-discovery' },
+            { text: 'API 网关', link: '/spring/07-微服务/chapter-03-api-gateway' },
+            { text: '负载均衡', link: '/spring/07-微服务/chapter-04-load-balancing' },
+            { text: '熔断降级', link: '/spring/07-微服务/chapter-05-circuit-breaker' },
+            { text: '配置中心', link: '/spring/07-微服务/chapter-06-config-center' },
+          ]
+        },
+        {
+          text: '测试',
+          items: [
+            { text: '单元测试', link: '/spring/08-测试/chapter-01-unit-test' },
+            { text: '集成测试', link: '/spring/08-测试/chapter-02-integration-test' },
+            { text: 'Testcontainers', link: '/spring/08-测试/chapter-03-testcontainers' },
           ]
         }
       ],

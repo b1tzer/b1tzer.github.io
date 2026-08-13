@@ -1,15 +1,61 @@
-# 第六卷 企业架构
+# Spring 技术体系
 
-> 回答"如何把底层能力组合成企业级系统"。以 Spring 为媒介，覆盖 IoC/AOP/MVC/Boot → ORM 整合 → 微服务 → 治理 → 安全 → 部署与可观测性。
+系统化的 Spring / Spring Boot 知识体系，从核心原理到微服务实战。
 
-## 章节
+## 目录结构
 
-- [Spring 核心思想](chapter-01-spring-core) — IoC、Bean 生命周期、依赖注入
-- [容器与 AOP](chapter-02-container-aop) — BeanDefinition、三级缓存、动态代理
-- [Spring MVC](chapter-03-spring-mvc) — DispatcherServlet、参数解析、异常处理
-- [Spring Boot](chapter-04-spring-boot) — 自动配置原理、Starter、配置体系
-- [数据访问整合](chapter-05-data-integration) — @MapperScan、SqlSessionTemplate、一级缓存
-- [微服务架构](chapter-06-microservices) — 注册发现、API Gateway、OpenFeign/Dubbo/gRPC
-- [分布式治理](chapter-07-governance) — 配置中心、熔断、限流、链路追踪
-- [安全与部署](chapter-08-security-deploy) — 认证方案、Spring Security、Docker/K8s
-- [可观测性](chapter-09-observability) — ELK、Prometheus/Grafana、OpenTelemetry
+### 01-核心原理
+- [Spring 概览](01-核心原理/chapter-01-spring-overview) — 生态全景、设计理念、模块划分
+- [IoC 容器](01-核心原理/chapter-02-ioc-container) — BeanFactory vs ApplicationContext
+- [依赖注入](01-核心原理/chapter-03-dependency-injection) — DI 类型、@Autowired 原理
+- [Bean 生命周期](01-核心原理/chapter-04-bean-lifecycle) — 完整流程、三级缓存、循环依赖
+- [AOP 面向切面编程](01-核心原理/chapter-05-aop) — 原理、JDK Proxy vs CGLIB
+- [条件装配与 Profile](01-核心原理/chapter-06-conditional-profile) — @Conditional、多环境
+
+### 02-Web开发
+- [Spring MVC](02-Web开发/chapter-01-spring-mvc) — 请求处理全流程、DispatcherServlet
+- [RESTful API](02-Web开发/chapter-02-rest-api) — 设计规范、内容协商、异常处理
+- [参数校验与数据绑定](02-Web开发/chapter-03-validation-binding) — Bean Validation
+- [拦截器与过滤器](02-Web开发/chapter-04-interceptor-filter) — Filter vs Interceptor
+- [WebFlux 响应式编程](02-Web开发/chapter-05-webflux) — Mono/Flux、RouterFunction
+
+### 03-数据访问
+- [JdbcTemplate](03-数据访问/chapter-01-jdbc-template) — 基本使用
+- [MyBatis 集成](03-数据访问/chapter-02-mybatis-integration) — Mapper、MyBatis-Plus
+- [Spring Data JPA](03-数据访问/chapter-03-jpa) — Repository、Specification
+- [事务管理](03-数据访问/chapter-04-transaction) — 传播行为、隔离级别、失效场景
+- [多数据源](03-数据访问/chapter-05-multi-datasource) — 动态数据源、读写分离
+
+### 04-Spring Boot
+- [自动配置原理](04-SpringBoot/chapter-01-autoconfiguration) — @EnableAutoConfiguration
+- [Starter 机制](04-SpringBoot/chapter-02-starter) — 自定义 Starter
+- [外部化配置](04-SpringBoot/chapter-03-configuration) — 多环境 Profile、配置加密
+- [Actuator 监控](04-SpringBoot/chapter-04-actuator) — 健康检查、指标收集
+- [DevTools 热部署](04-SpringBoot/chapter-05-devtools) — 原理与配置
+
+### 05-安全
+- [安全架构](05-安全/chapter-01-security-architecture) — Filter Chain、AuthenticationManager
+- [认证机制](05-安全/chapter-02-authentication) — Session/JWT/OAuth2
+- [授权模型](05-安全/chapter-03-authorization) — RBAC、方法级安全
+- [安全最佳实践](05-安全/chapter-04-security-practice) — CSRF/CORS、安全头部
+
+### 06-高级特性
+- [事件机制](06-高级特性/chapter-01-event) — ApplicationEvent、@EventListener
+- [异步处理](06-高级特性/chapter-02-async) — @Async、CompletableFuture
+- [定时任务](06-高级特性/chapter-03-scheduling) — @Scheduled、动态调度
+- [缓存抽象](06-高级特性/chapter-04-caching) — @Cacheable、CacheManager
+- [消息集成](06-高级特性/chapter-05-messaging) — Kafka、RabbitMQ
+- [国际化](06-高级特性/chapter-06-internationalization) — i18n
+
+### 07-微服务
+- [微服务架构模式](07-微服务/chapter-01-microservice-pattern) — DDD、设计原则
+- [服务注册与发现](07-微服务/chapter-02-service-discovery) — Nacos、Eureka
+- [API 网关](07-微服务/chapter-03-api-gateway) — Spring Cloud Gateway
+- [负载均衡](07-微服务/chapter-04-load-balancing) — OpenFeign
+- [熔断降级](07-微服务/chapter-05-circuit-breaker) — Resilience4j、Sentinel
+- [配置中心](07-微服务/chapter-06-config-center) — Nacos Config、动态刷新
+
+### 08-测试
+- [单元测试](08-测试/chapter-01-unit-test) — JUnit 5、Mockito
+- [集成测试](08-测试/chapter-02-integration-test) — @SpringBootTest、MockMvc
+- [Testcontainers](08-测试/chapter-03-testcontainers) — 数据库测试
