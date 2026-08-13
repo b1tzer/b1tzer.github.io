@@ -22,6 +22,7 @@ export default defineConfig({
         { text: '设计模式', link: '/design-pattern/' },
         { text: '软件工程', link: '/engineering/' },
         { text: 'AI 工程', link: '/ai/' },
+        { text: 'MySQL', link: '/mysql/' },
       ]}
     ],
     
@@ -319,6 +320,104 @@ export default defineConfig({
             { text: 'Spring 集成', link: '/postgresql/09-practice/chapter-01-spring-integration' },
             { text: '性能调优', link: '/postgresql/09-practice/chapter-02-performance-tuning' },
             { text: '常见模式', link: '/postgresql/09-practice/chapter-03-common-patterns' },
+          ]
+        }
+      ],
+      '/mysql/': [
+        {
+          text: '基础入门',
+          items: [
+            { text: 'MySQL 概览', link: '/mysql/01-basics/chapter-01-overview' },
+            { text: '安装部署', link: '/mysql/01-basics/chapter-02-install-config' },
+            { text: 'SQL 基础', link: '/mysql/01-basics/chapter-03-sql-basics' },
+            { text: '整体架构', link: '/mysql/01-basics/chapter-04-architecture' },
+          ]
+        },
+        {
+          text: 'InnoDB 内核',
+          items: [
+            { text: 'Buffer Pool', link: '/mysql/02-innodb-internals/chapter-01-buffer-pool' },
+            { text: '数据页与行格式', link: '/mysql/02-innodb-internals/chapter-02-data-page' },
+            { text: '表空间', link: '/mysql/02-innodb-internals/chapter-03-tablespace' },
+            { text: 'Redo Log', link: '/mysql/02-innodb-internals/chapter-04-redo-log' },
+            { text: 'Undo Log', link: '/mysql/02-innodb-internals/chapter-05-undo-log' },
+            { text: 'Binlog', link: '/mysql/02-innodb-internals/chapter-06-binlog' },
+          ]
+        },
+        {
+          text: '索引',
+          items: [
+            { text: 'B+ 树索引', link: '/mysql/03-index/chapter-01-btree-index' },
+            { text: '索引设计', link: '/mysql/03-index/chapter-02-index-design' },
+            { text: '索引使用', link: '/mysql/03-index/chapter-03-index-usage' },
+            { text: '索引优化', link: '/mysql/03-index/chapter-04-index-optimization' },
+          ]
+        },
+        {
+          text: '事务与锁',
+          items: [
+            { text: '事务与 MVCC', link: '/mysql/04-transaction-lock/chapter-01-transaction' },
+            { text: '锁机制', link: '/mysql/04-transaction-lock/chapter-02-lock' },
+            { text: '死锁', link: '/mysql/04-transaction-lock/chapter-03-deadlock' },
+            { text: '乐观锁', link: '/mysql/04-transaction-lock/chapter-04-optimistic-lock' },
+          ]
+        },
+        {
+          text: '查询优化',
+          items: [
+            { text: '查询执行流程', link: '/mysql/05-query-optimization/chapter-01-execution-plan' },
+            { text: 'EXPLAIN', link: '/mysql/05-query-optimization/chapter-02-explain' },
+            { text: 'SQL 优化', link: '/mysql/05-query-optimization/chapter-03-sql-optimization' },
+            { text: '连接优化', link: '/mysql/05-query-optimization/chapter-04-join-optimization' },
+            { text: '子查询优化', link: '/mysql/05-query-optimization/chapter-05-subquery-optimization' },
+          ]
+        },
+        {
+          text: '高级特性',
+          items: [
+            { text: '窗口函数', link: '/mysql/06-advanced-features/chapter-01-window-function' },
+            { text: 'CTE', link: '/mysql/06-advanced-features/chapter-02-cte' },
+            { text: '生成列', link: '/mysql/06-advanced-features/chapter-03-generated-column' },
+            { text: 'JSON', link: '/mysql/06-advanced-features/chapter-04-json' },
+            { text: '分区表', link: '/mysql/06-advanced-features/chapter-05-partition' },
+            { text: 'MySQL 8.0', link: '/mysql/06-advanced-features/chapter-06-mysql8-features' },
+          ]
+        },
+        {
+          text: '复制与高可用',
+          items: [
+            { text: '异步复制', link: '/mysql/07-replication-ha/chapter-01-binlog-replication' },
+            { text: 'GTID', link: '/mysql/07-replication-ha/chapter-02-gtid' },
+            { text: '组复制', link: '/mysql/07-replication-ha/chapter-03-group-replication' },
+            { text: '读写分离', link: '/mysql/07-replication-ha/chapter-04-read-write-split' },
+            { text: '高可用方案', link: '/mysql/07-replication-ha/chapter-05-ha-solution' },
+          ]
+        },
+        {
+          text: '运维管理',
+          items: [
+            { text: '备份恢复', link: '/mysql/08-operations/chapter-01-backup-restore' },
+            { text: '监控', link: '/mysql/08-operations/chapter-02-monitoring' },
+            { text: '安全', link: '/mysql/08-operations/chapter-03-security' },
+            { text: '用户管理', link: '/mysql/08-operations/chapter-04-user-management' },
+            { text: '日常维护', link: '/mysql/08-operations/chapter-05-maintenance' },
+          ]
+        },
+        {
+          text: '扩展架构',
+          items: [
+            { text: '分库分表', link: '/mysql/09-scaling/chapter-01-sharding' },
+            { text: '在线 DDL', link: '/mysql/09-scaling/chapter-02-online-ddl' },
+            { text: '数据迁移', link: '/mysql/09-scaling/chapter-03-data-migration' },
+            { text: 'NewSQL', link: '/mysql/09-scaling/chapter-04-newsql' },
+          ]
+        },
+        {
+          text: '实战场景',
+          items: [
+            { text: 'Spring 集成', link: '/mysql/10-practice/chapter-01-spring-integration' },
+            { text: '常见问题', link: '/mysql/10-practice/chapter-02-common-issues' },
+            { text: '性能调优', link: '/mysql/10-practice/chapter-03-performance-tuning' },
           ]
         }
       ],
