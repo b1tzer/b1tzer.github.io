@@ -652,18 +652,103 @@ export default defineConfig({
       ],
       '/engineering/': [
         {
-          text: '软件工程',
+          text: '设计原则',
           items: [
-            { text: '概览', link: '/engineering/00-软件工程概览' },
-            { text: 'SOLID', link: '/engineering/01-SOLID原则' },
-            { text: '架构演进', link: '/engineering/02-软件架构演进' },
-            { text: 'DDD', link: '/engineering/03-DDD领域驱动设计' },
-            { text: 'CAP 与 BASE', link: '/engineering/04-CAP理论与BASE理论' },
-            { text: '代码质量', link: '/engineering/05-代码质量与重构' },
-            { text: 'CI/CD', link: '/engineering/06-CICD持续集成与交付' },
-            { text: '系统设计', link: '/engineering/07-系统设计方法论' },
+            { text: '软件工程概览', link: '/engineering/01-principles/chapter-01-overview' },
+            { text: 'SOLID 原则', link: '/engineering/01-principles/chapter-02-solid' },
+            { text: '其他原则', link: '/engineering/01-principles/chapter-03-other-principles' },
+            { text: '代码坏味道', link: '/engineering/01-principles/chapter-04-code-smells' },
+            { text: '重构', link: '/engineering/01-principles/chapter-05-refactoring' },
+          ]
+        },
+        {
+          text: '设计模式',
+          items: [
+            { text: '创建型', link: '/engineering/02-design-patterns/chapter-01-creational' },
+            { text: '结构型', link: '/engineering/02-design-patterns/chapter-02-structural' },
+            { text: '行为型', link: '/engineering/02-design-patterns/chapter-03-behavioral' },
+            { text: '模式实践', link: '/engineering/02-design-patterns/chapter-04-pattern-practice' },
+          ]
+        },
+        {
+          text: '架构设计',
+          items: [
+            { text: '架构风格', link: '/engineering/03-architecture/chapter-01-architecture-styles' },
+            { text: '整洁架构', link: '/engineering/03-architecture/chapter-02-clean-architecture' },
+            { text: '微服务', link: '/engineering/03-architecture/chapter-03-microservices' },
+            { text: '单体架构', link: '/engineering/03-architecture/chapter-04-monolith' },
+            { text: '事件驱动', link: '/engineering/03-architecture/chapter-05-event-driven' },
+            { text: '架构决策', link: '/engineering/03-architecture/chapter-06-architecture-decision' },
+          ]
+        },
+        {
+          text: 'DDD',
+          items: [
+            { text: 'DDD 概览', link: '/engineering/04-ddd/chapter-01-ddd-overview' },
+            { text: '限界上下文', link: '/engineering/04-ddd/chapter-02-bounded-context' },
+            { text: '战术设计', link: '/engineering/04-ddd/chapter-03-tactical-design' },
+            { text: '领域事件', link: '/engineering/04-ddd/chapter-04-domain-events' },
+            { text: 'DDD 实战', link: '/engineering/04-ddd/chapter-05-ddd-practice' },
+          ]
+        },
+        {
+          text: '系统设计',
+          items: [
+            { text: '设计方法论', link: '/engineering/05-system-design/chapter-01-design-methodology' },
+            { text: '高并发', link: '/engineering/05-system-design/chapter-02-high-concurrency' },
+            { text: '高可用', link: '/engineering/05-system-design/chapter-03-high-availability' },
+            { text: '高性能', link: '/engineering/05-system-design/chapter-04-high-performance' },
+            { text: '可扩展', link: '/engineering/05-system-design/chapter-05-scalability' },
+            { text: '分布式理论', link: '/engineering/05-system-design/chapter-06-distributed-theory' },
+          ]
+        },
+        {
+          text: '工程实践',
+          items: [
+            { text: 'Git 工作流', link: '/engineering/06-engineering-practices/chapter-01-git-workflow' },
+            { text: 'Code Review', link: '/engineering/06-engineering-practices/chapter-02-code-review' },
+            { text: '测试', link: '/engineering/06-engineering-practices/chapter-03-testing' },
+            { text: 'CI/CD', link: '/engineering/06-engineering-practices/chapter-04-cicd' },
+            { text: 'DevOps', link: '/engineering/06-engineering-practices/chapter-05-devops' },
+            { text: '可观测性', link: '/engineering/06-engineering-practices/chapter-06-observability' },
+          ]
+        },
+        {
+          text: '安全',
+          items: [
+            { text: '安全概览', link: '/engineering/07-security/chapter-01-security-overview' },
+            { text: '认证', link: '/engineering/07-security/chapter-02-authentication' },
+            { text: '授权', link: '/engineering/07-security/chapter-03-authorization' },
+            { text: '常见攻击', link: '/engineering/07-security/chapter-04-common-attacks' },
+            { text: '安全实践', link: '/engineering/07-security/chapter-05-security-practice' },
+          ]
+        },
+        {
+          text: '项目管理',
+          items: [
+            { text: '敏捷', link: '/engineering/08-project-management/chapter-01-agile' },
+            { text: '需求分析', link: '/engineering/08-project-management/chapter-02-requirements' },
+            { text: '估算', link: '/engineering/08-project-management/chapter-03-estimation' },
+            { text: '技术债务', link: '/engineering/08-project-management/chapter-04-technical-debt' },
+          ]
+        },
+        {
+          text: '实战场景',
+          items: [
+            { text: 'API 设计', link: '/engineering/09-practice/chapter-01-api-design' },
+            { text: '数据建模', link: '/engineering/09-practice/chapter-02-data-modeling' },
+            { text: '性能调优', link: '/engineering/09-practice/chapter-03-performance-tuning' },
+            { text: '案例分析', link: '/engineering/09-practice/chapter-04-case-studies' },
           ]
         }
+            { text: '概览', link: '/engineering/01-principles/chapter-01-overview' },
+            { text: 'SOLID', link: '/engineering/01-principles/chapter-02-solid' },
+            { text: '架构演进', link: '/engineering/03-architecture/chapter-01-architecture-styles' },
+            { text: 'DDD', link: '/engineering/04-ddd/chapter-01-ddd-overview' },
+            { text: 'CAP 与 BASE', link: '/engineering/05-system-design/chapter-06-distributed-theory' },
+            { text: '代码质量', link: '/engineering/01-principles/chapter-05-refactoring' },
+            { text: 'CI/CD', link: '/engineering/06-engineering-practices/chapter-04-cicd' },
+            { text: '系统设计', link: '/engineering/05-system-design/chapter-01-design-methodology' },
       ],
       '/ai/': [
         {
