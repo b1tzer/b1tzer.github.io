@@ -1,9 +1,9 @@
 ---
 doc_id: java-并发-并发集合与实战陷阱
-title: 并发集合与实战陷阱 —— ConcurrentHashMap 三种同步工具的组合运用与 ThreadLocal 泄漏排查
+title: 并发集合 —— ConcurrentHashMap 与 ThreadLocal
 ---
 
-# 并发集合与实战陷阱 —— ConcurrentHashMap 三种同步工具的组合运用与 ThreadLocal 泄漏排查
+# 并发集合 —— ConcurrentHashMap 与 ThreadLocal
 
 以下问题指向并发集合与实战陷阱的核心：
 

@@ -1,9 +1,9 @@
 ---
 doc_id: java-OS-NIO与IO模型
-title: Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内核透视
+title: Java NIO 与 I/O 模型
 ---
 
-# Java NIO 与 I/O 模型：从 epoll 红黑树到 sendfile 零拷贝的内核透视
+# Java NIO 与 I/O 模型
 
 以下问题指向 NIO 与 IO 模型的底层机制：
 

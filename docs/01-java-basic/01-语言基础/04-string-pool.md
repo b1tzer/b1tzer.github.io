@@ -1,9 +1,9 @@
 ---
 doc_id: java-字节码-字符串底层原理
-title: 字符串与 String Pool：Compact Strings、ldc 字节码与运行时内存搬迁史
+title: 字符串与 String Pool —— 字符串常量池与 Compact Strings
 ---
 
-# 字符串与 String Pool：Compact Strings、ldc 字节码与运行时内存搬迁史
+# 字符串与 String Pool —— 字符串常量池与 Compact Strings
 
 在 Java 的世界里，`java.lang.String` 是使用频率最高的对象类型之一。由于其不可变性（Immutability）与编译期优化特性，几乎所有开发者都能对“字符串常量池”说上几句。但表象上的熟悉，往往伴随着大量过时的认知。
 

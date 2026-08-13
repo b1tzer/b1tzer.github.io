@@ -1,9 +1,9 @@
 ---
 doc_id: java-字节码-反射与MethodHandle
-title: 反射（Reflection）：调用链、字节码指令与 JIT 内联的三层视角
+title: 反射（Reflection） —— Method.invoke 与 MethodHandle
 ---
 
-# 反射（Reflection）：调用链、字节码指令与 JIT 内联的三层视角
+# 反射（Reflection） —— Method.invoke 与 MethodHandle
 
 在 Java 生态里，**反射（Reflection）** 是所有主流框架的隐形地基——Spring IoC 的 Bean 实例化、MyBatis 的结果集映射、Jackson 的字段序列化、JUnit 的测试方法调度、Dubbo 的远程服务调用，都在其动态发现与调用链路上大量使用 `Class.forName` + `Method.invoke` + `Field.get/set` 这套 API（现代框架通常还会叠加 `MethodHandle` / `VarHandle` / 字节码生成 / 代理 / 缓存等组合机制）。它赋予了 Java "编译期未知、运行期动态发现"的超能力，让"配置驱动"和"插件化架构"成为可能。
 

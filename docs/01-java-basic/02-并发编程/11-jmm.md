@@ -1,9 +1,9 @@
 ---
 doc_id: java-并发-JMM与线程同步
-title: 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃迁与 LOCK CMPXCHG 的物理实现
+title: JMM 与线程同步 —— 内存屏障与锁的实现
 ---
 
-# 并发基础：JMM 与线程同步 —— 硬件屏障、Mark Word 位跃迁与 LOCK CMPXCHG 的物理实现
+# JMM 与线程同步 —— 内存屏障与锁的实现
 
 !!! info "**并发基础 · 一句话总结**"
     - **JMM 不是"内存模型"，是"重排序契约 + 内存屏障使用手册"**：JLS §17.4.5 的 8 条 happens-before 规则决定"哪些代码不能重排、哪些必须建立可见性"，编译器 / JIT 依据这份契约插入四种 JMM 屏障（`LoadLoad` / `StoreStore` / `LoadStore` / `StoreLoad`），最终在 x86 上落成 `sfence` / `lfence` / `mfence` 或 `LOCK` 前缀指令。**四种 JMM 屏障在 x86 上有三种是空指令（TSO 天然有序），只有 `StoreLoad` 需要真实 `mfence`**——这就是"x86 上 volatile 读几乎零成本、volatile 写才是唯一显著开销"的根本原因。

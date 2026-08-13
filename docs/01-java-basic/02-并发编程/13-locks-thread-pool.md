@@ -1,9 +1,9 @@
 ---
 doc_id: java-并发-并发工具Lock与线程池
-title: 并发工具：Lock 与线程池 —— AQS 应用视角、StampedLock 乐观读、LongAdder 分段计数与线程池 ctl 位编码
+title: Lock 与线程池 —— StampedLock、LongAdder 与线程池参数
 ---
 
-# 并发工具：Lock 与线程池 —— AQS 应用视角、StampedLock 乐观读、LongAdder 分段计数与线程池 ctl 位编码
+# Lock 与线程池 —— StampedLock、LongAdder 与线程池参数
 
 !!! info "**并发工具 一句话总结**"
     - **JUC 所有锁与同步器都是"AQS `state` 上定义不同语义"的产物**：`ReentrantLock` 用 `state` 存重入次数；`ReentrantReadWriteLock` 用高 16 位存读锁计数、低 16 位存写锁计数；`Semaphore` 用 `state` 存剩余许可；`CountDownLatch` 用 `state` 存倒计数。**一个 `volatile int` 撑起半个 JUC 包**——这是设计哲学的复用力：AQS 提供 CLH 排队 + `park`/`unpark` 骨架，子类只需在 `tryAcquire` / `tryRelease` / `tryAcquireShared` / `tryReleaseShared` 四个钩子里定义"`state` 是什么"和"什么时候能获取"。

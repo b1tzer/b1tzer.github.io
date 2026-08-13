@@ -1,9 +1,9 @@
 ---
 doc_id: java-字节码-异常处理
-title: 异常处理：try-catch 底层字节码与 JVM 栈轨真相
+title: 异常处理 —— try-catch-finally 与 Exception Table
 ---
 
-# 异常处理：try-catch 底层字节码与 JVM 栈轨真相
+# 异常处理 —— try-catch-finally 与 Exception Table
 
 `try-catch-finally` 是 Java 异常处理的基础语法。但它的底层实现——异常表（Exception Table）、`athrow` 指令、`fillInStackTrace()` 的 Native 栈回溯——对大多数开发者来说是陌生的，而这些机制直接影响着高并发场景下的性能表现。
 

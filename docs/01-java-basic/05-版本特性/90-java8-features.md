@@ -1,9 +1,9 @@
 ---
 doc_id: java-番外-Java8其他新特性
-title: [Java8] 其他新特性 —— java.time 不可变时间对象、default 方法冲突消解与向后兼容契约
+title: [Java8] 其他新特性
 ---
 
-# [Java8] 其他新特性 —— java.time 不可变时间对象、default 方法冲突消解与向后兼容契约
+# [Java8] 其他新特性
 
 以下问题指向 Java 8 其他新特性的核心：
 

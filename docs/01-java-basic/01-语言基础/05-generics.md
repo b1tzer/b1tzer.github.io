@@ -1,9 +1,9 @@
 ---
 doc_id: java-字节码-泛型底层原理
-title: 泛型（Generics）：Signature 属性、checkcast 指令与类型擦除的时空双重契约
+title: 泛型（Generics） —— 类型擦除、Signature 属性与桥接方法
 ---
 
-# 泛型（Generics）：Signature 属性、checkcast 指令与类型擦除的时空双重契约
+# 泛型（Generics） —— 类型擦除、Signature 属性与桥接方法
 
 在 Java 语言的兵器库里，泛型（Generics）几乎是每一个业务代码作者都会顺手抄起的工具。集合、DAO、Repository、Result 包装类——凡是想让类型多复用一次的场景，`<T>` 就会自然而然地长出来。在绝大多数开发者的心智模型中，泛型就像 C++ 模板那样"神通广大"：写下 `List<String>`，运行时就存在一个具体的、被约束住的 `List<String>`。
 

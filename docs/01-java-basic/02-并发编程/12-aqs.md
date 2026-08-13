@@ -1,9 +1,9 @@
 ---
 doc_id: java-并发-AQS设计哲学
-title: AQS 设计哲学 —— state 核心、CLH 队列、模板方法与独占共享双模式
+title: AQS —— state、CLH 队列与模板方法
 ---
 
-# AQS 设计哲学 —— state 核心、CLH 队列、模板方法与独占共享双模式
+# AQS —— state、CLH 队列与模板方法
 
 !!! info "**AQS 设计哲学一句话总结**"
     - **AQS = `state`（volatile int）+ CLH 双向队列 + 模板方法 + 独占/共享双模式** —— 四件事撑起 20+ 个 JUC 同步器。所有 `Lock` / `Semaphore` / `CountDownLatch` / `ReadWriteLock` / `ThreadPoolExecutor.Worker` 都是"在 `state` 上定义不同语义 + 复用模板方法"的产物。

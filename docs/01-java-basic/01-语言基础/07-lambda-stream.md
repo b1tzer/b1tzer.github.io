@@ -1,9 +1,9 @@
 ---
 doc_id: java-字节码-函数式编程
-title: [Java8] 函数式编程：Lambda 的 invokedynamic 优化与 Stream 并行流陷阱
+title: [Java8] 函数式编程 —— Lambda 与 Stream
 ---
 
-# [Java8] 函数式编程：Lambda 的 invokedynamic 优化与 Stream 并行流陷阱
+# [Java8] 函数式编程 —— Lambda 与 Stream
 
 在日常开发中，我们太习惯把 Lambda 和 Stream 当成提高代码颜值的“提效工具”了。直到有一天，线上由于一行看似优雅的 `list.parallelStream().map(this::rpcCall)` 导致整个 JVM 的并行计算基座瞬间卡顿，大家才意识到：**不了解底层原理的优雅，往往会带来线上问题**。
 

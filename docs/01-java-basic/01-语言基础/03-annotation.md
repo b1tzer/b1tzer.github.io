@@ -1,9 +1,9 @@
 ---
 doc_id: java-字节码-注解
-title: 注解（Annotation）：字节码属性表里的 `RuntimeVisibleAnnotations` 与 APT 编译期织入
+title: 注解（Annotation） —— 运行时注解与编译期处理
 ---
 
-# 注解（Annotation）：字节码属性表里的 `RuntimeVisibleAnnotations` 与 APT 编译期织入
+# 注解（Annotation） —— 运行时注解与编译期处理
 
 ---
 

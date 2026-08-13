@@ -1,9 +1,9 @@
 ---
 doc_id: java-JVM-现代实践与前沿技术
-title: JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟线程 Continuation、JFR 零拷贝与云原生落地
+title: JVM 现代实践与前沿技术
 ---
 
-# JVM 现代实践与前沿技术 —— 容器化 cgroup 感知、虚拟线程 Continuation、JFR 零拷贝与云原生落地
+# JVM 现代实践与前沿技术
 
 ## 1. 第一层：业务痛点 —— 从"容器 OOMKilled"到"虚拟线程 pin 载体线程"
 
