@@ -59,4 +59,39 @@ POST /_bulk
 ```
 
 ---
-*待补充：更多文档操作*
+
+## 5. 条件更新与乐观锁
+
+```bash
+# 使用 if_seq_no + if_primary_term 做乐观锁
+POST /my-index/_update/1?if_seq_no=5&if_primary_term=1
+{
+  "doc": { "age": 27 }
+}
+
+# 使用 retry_on_conflict 处理冲突
+POST /my-index/_update/1?retry_on_conflict=3
+{
+  "doc": { "views": 100 }
+}
+```
+
+## 6. Upsert（存在则更新，不存在则插入）
+
+```bash
+POST /my-index/_update/999
+{
+  "doc": { "name": "新用户", "age": 18 },
+  "doc_as_upsert": true
+}
+```
+
+## 7. 最佳实践
+
+- Bulk API 每批大小建议 5~15MB，不要超过 100MB
+- 使用 `_source` 过滤只返回需要的字段
+- 频繁更新场景使用 `doc_as_upsert` 避免先查后改
+- 删除操作建议使用逻辑删除（`is_deleted` 字段）而非物理删除
+- 自动生成 ID 适合日志类数据，业务数据建议指定 ID
+
+---

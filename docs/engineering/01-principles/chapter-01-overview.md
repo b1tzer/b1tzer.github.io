@@ -37,4 +37,66 @@
 - **响应变化** over 遵循计划
 
 ---
-*待补充：更多软件工程基础*
+
+## 6. 质量属性
+
+| 属性 | 度量方式 | 实践手段 |
+|------|---------|--------|
+| 可用性 | SLA（如 99.99%） | 冗余、故障转移、健康检查 |
+| 性能 | 响应时间、吞吐量 | 缓存、异步、索引优化 |
+| 安全性 | 漏洞数量、渗透测试 | 输入校验、加密、最小权限 |
+| 可测试性 | 测试覆盖率 | 依赖注入、接口抽象 |
+| 可扩展性 | 水平扩展能力 | 无状态设计、分片 |
+
+## 7. 工程师成长路径
+
+| 阶段 | 关注点 | 能力要求 |
+|------|--------|----------|
+| 初级 | 写好代码 | 语言基础、设计模式、单元测试 |
+| 中级 | 设计系统 | 架构设计、性能优化、技术选型 |
+| 高级 | 技术决策 | 技术战略、团队建设、业务理解 |
+| 专家 | 行业影响 | 技术布道、标准制定、创新突破 |
+
+## 8. 实践建议
+
+```java
+/**
+ * 软件工程的核心不是写代码，而是管理复杂度。
+ * 
+ * 实践建议：
+ * 1. 持续学习：每周至少花 3-5 小时学习新技术
+ * 2. 写作输出：通过博客、文档沉淀知识
+ * 3. Code Review：参与开源项目或团队互审
+ * 4. 刻意练习：在 LeetCode/HackerRank 上练习算法
+ * 5. 构建作品集：维护个人 GitHub 项目
+ */
+public class EngineeringPractice {
+    
+    /**
+     * 代码是写给人看的，顺便能被机器执行。
+     * 好的代码应该像好的散文：清晰、简洁、有表达力。
+     */
+    public void writeCleanCode() {
+        // 1. 有意义的命名
+        int elapsedDays = calculateDaysSinceCreation();
+        
+        // 2. 小方法，单一职责
+        Order order = validateAndCreateOrder(request);
+        
+        // 3. 适当的注释（解释 Why，而非 What）
+        // 使用 UTC 时间避免时区问题
+        LocalDateTime.now(ZoneId.of("UTC"));
+    }
+    
+    private int calculateDaysSinceCreation() {
+        return (int) java.time.Duration.between(
+            LocalDateTime.of(2024, 1, 1, 0, 0),
+            LocalDateTime.now()
+        ).toDays();
+    }
+    
+    private Order validateAndCreateOrder(Object request) {
+        return new Order();
+    }
+}
+```

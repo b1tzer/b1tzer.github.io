@@ -64,4 +64,70 @@ POST /_bulk
 - 支持语法高亮、自动补全
 
 ---
-*待补充：更多 API 操作*
+
+## 6. 搜索查询
+
+```bash
+# 基本搜索
+GET /my-index/_search
+{
+  "query": {
+    "match": { "name": "张三" }
+  }
+}
+
+# 布尔组合查询
+GET /my-index/_search
+{
+  "query": {
+    "bool": {
+      "must": [{ "match": { "name": "张三" } }],
+      "filter": [{ "range": { "age": { "gte": 20, "lte": 30 } } }]
+    }
+  },
+  "sort": [{ "age": "asc" }],
+  "from": 0,
+  "size": 10
+}
+```
+
+## 7. 聚合查询
+
+```bash
+GET /my-index/_search
+{
+  "size": 0,
+  "aggs": {
+    "avg_age": { "avg": { "field": "age" } },
+    "age_ranges": {
+      "range": {
+        "field": "age",
+        "ranges": [
+          { "to": 20 },
+          { "from": 20, "to": 30 },
+          { "from": 30 }
+        ]
+      }
+    }
+  }
+}
+```
+
+## 8. 常用 _cat API
+
+```bash
+GET /_cluster/health
+GET /_cat/indices?v&s=index
+GET /_cat/nodes?v
+GET /_cat/shards?v
+GET /_cat/allocation?v
+```
+
+## 9. 最佳实践
+
+- 使用 Kibana Dev Tools 进行 API 调试
+- 批量操作使用 `_bulk` API，每批建议 5~15MB
+- 使用 `_source` 过滤减少网络传输量
+- 生产环境限制 `_cat` API 的访问权限
+
+---
