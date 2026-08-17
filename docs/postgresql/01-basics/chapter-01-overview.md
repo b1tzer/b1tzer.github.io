@@ -90,7 +90,7 @@ mindmap
 | **SQL 标准** | 严格遵循 | 部分宽松 | 需要严格标准选 PG |
 | **国内生态** | 增长迅速 | 成熟完善 | 团队熟悉度优先 |
 
-> 详细对比 → [PG与MySQL对比](01-PG与MySQL对比.md)
+> 详细对比 → [PG与MySQL对比](chapter-05-pg-vs-mysql.md)
 
 ---
 
@@ -117,7 +117,7 @@ flowchart LR
 | 旧版本清理 | VACUUM 主动清理 | 事务提交后自动回收 |
 | 表膨胀风险 | **有** | 无 |
 
-> 详细原理 → [MVCC与VACUUM机制](02-MVCC与VACUUM机制.md)
+> 详细原理 → [MVCC与VACUUM机制](../03-internals/chapter-04-mvcc.md)
 
 ---
 
@@ -138,7 +138,7 @@ MySQL 主要只有 B-tree，而 PG 提供了多种索引类型。选错索引类
 
 > ⚠️ **工作中的坑**：JSONB 字段未建 GIN 索引，查询退化为全表扫描。
 
-> 详细说明 → [索引类型详解](03-索引类型详解.md)
+> 详细说明 → [索引类型详解](../04-index-optimization/chapter-01-index-types.md)
 
 ---
 
@@ -155,7 +155,7 @@ MySQL 主要只有 B-tree，而 PG 提供了多种索引类型。选错索引类
 | `DENSE_RANK()` | 1, 2, 2, 3 | 等级划分（并列后不跳过） |
 | `LAG() / LEAD()` | - | 环比计算、前后行对比 |
 
-> 详细说明 → [窗口函数](04-窗口函数.md)
+> 详细说明 → [窗口函数](../02-sql-advanced/chapter-01-window-function.md)
 
 ### 4.2 CTE 与递归查询
 
@@ -172,7 +172,7 @@ WITH RECURSIVE org_tree AS (
 SELECT * FROM org_tree ORDER BY level;
 ```
 
-> 详细说明 → [CTE与递归查询](05-CTE与递归查询.md)
+> 详细说明 → [CTE与递归查询](../02-sql-advanced/chapter-02-cte-recursive.md)
 
 ### 4.3 物化视图
 
@@ -184,7 +184,7 @@ SELECT * FROM org_tree ORDER BY level;
 | 数据新鲜度 | 实时 | 需要手动/定时刷新 |
 | 可建索引 | ❌ | ✅ |
 
-> 详细说明 → [物化视图](06-物化视图.md)
+> 详细说明 → [物化视图](../06-advanced-features/chapter-07-materialized-view.md)
 
 ---
 
@@ -204,7 +204,7 @@ SELECT * FROM org_tree ORDER BY level;
 
 > ⚠️ **工作中的坑**：长事务会阻止 VACUUM 清理旧版本，是表膨胀的主要原因。需监控 `pg_stat_activity` 及时终止长事务。
 
-> 详细说明 → [MVCC与VACUUM机制](02-MVCC与VACUUM机制.md)
+> 详细说明 → [MVCC与VACUUM机制](../03-internals/chapter-04-mvcc.md)
 
 ---
 
@@ -251,7 +251,7 @@ PG 的锁机制比 MySQL 更细粒度（8 种表锁、4 种行锁），且提供
 | 咨询锁 | ✅ 支持 | ❌ 不支持 |
 | SKIP LOCKED | ✅ 支持（任务队列利器） | MySQL 8.0+ 支持 |
 
-> 详细说明 → [事务与锁机制](07-事务与锁机制.md)
+> 详细说明 → [事务与锁机制](../05-transaction-concurrency/chapter-01-transaction.md)
 
 ---
 
@@ -270,7 +270,7 @@ PG 提供了 `pg_stat_statements`、`auto_explain`、部分索引等强大的性
 | `auto_explain` | 自动记录慢查询的执行计划 | 生产环境慢查询分析 |
 | 部分索引 | 只对部分数据建索引 | 数据分布不均匀的场景 |
 
-> 详细说明 → [性能优化与调优](08-性能优化与调优.md)
+> 详细说明 → [性能优化与调优](../09-practice/chapter-02-performance-tuning.md)
 
 ---
 
@@ -289,4 +289,4 @@ PG 的 JSONB 是二进制存储，支持 GIN 索引，查询性能远优于 MySQ
 | `@>` | 包含判断 | `attrs @> '{"brand": "Apple"}'` |
 | `\|\|` | 合并/更新 | `attrs \|\| '{"weight": "187g"}'` |
 
-> 详细说明 → [JSONB高级用法](09-JSONB高级用法.md)
+> 详细说明 → [JSONB高级用法](../02-sql-advanced/chapter-04-jsonb.md)

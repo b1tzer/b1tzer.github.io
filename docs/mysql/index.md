@@ -43,7 +43,6 @@
 - [生成列](06-advanced-features/chapter-03-generated-column) — 函数索引
 - [JSON](06-advanced-features/chapter-04-json) — JSON 类型、JSON 函数
 - [分区表](06-advanced-features/chapter-05-partition) — 范围/列表/哈希分区
-- [MySQL 8.0 新特性](06-advanced-features/chapter-06-mysql8-features) — 窗口函数/CTL/JSON
 
 ### 07-replication-ha
 - [异步复制](07-replication-ha/chapter-01-binlog-replication) — 主从配置
