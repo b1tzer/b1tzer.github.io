@@ -45,7 +45,7 @@ Redis 收到网络字节流后，需要把它解析成内部可执行的命令�
 
 解析流程：
 
-![RESP 命令解析流程](/public/redis/02-standalone-core-chapter-02-command-resp-1.svg)
+![RESP 命令解析流程](/redis/02-standalone-core-chapter-02-command-resp-1.svg)
 
 解析的关键点：
 
@@ -90,7 +90,7 @@ Redis 收到网络字节流后，需要把它解析成内部可执行的命令�
 
 找到命令后，执行过程会经过一系列钩子（Hook），这些钩子承载了 Redis 的很多附加能力。
 
-![命令执行流程](/public/redis/02-standalone-core-chapter-02-command-resp-2.svg)
+![命令执行流程](/redis/02-standalone-core-chapter-02-command-resp-2.svg)
 
 执行流程各环节：
 

@@ -518,7 +518,7 @@ service:
 
 以"接口响应变慢"为例，详细展示排查过程：
 
-<SvgDiagram src="/public/spring/observability-troubleshoot.svg" />
+![observability-troubleshoot](/spring/observability-troubleshoot.svg)
 
 ### 9.4.4 排查工具速查表
 

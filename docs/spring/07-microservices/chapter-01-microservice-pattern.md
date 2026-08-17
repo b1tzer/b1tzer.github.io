@@ -433,7 +433,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
 ### 6.3.5 网关处理流程
 
-<SvgDiagram src="/public/spring/microservice-request-flow.svg" />
+![microservice-request-flow](/spring/microservice-request-flow.svg)
 
 ---
 

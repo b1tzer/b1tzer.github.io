@@ -8,7 +8,7 @@
 
 哨兵是一个独立的进程，负责监控主从节点，并在主节点故障时自动完成切换。
 
-![哨兵集群监控架构](/public/redis/04-high-availability-chapter-02-sentinel-1.svg)
+![哨兵集群监控架构](/redis/04-high-availability-chapter-02-sentinel-1.svg)
 
 哨兵的三件职责：
 
@@ -24,7 +24,7 @@
 
 故障转移分为四个阶段：
 
-![哨兵故障转移流程](/public/redis/04-high-availability-chapter-02-sentinel-2.svg)
+![哨兵故障转移流程](/redis/04-high-availability-chapter-02-sentinel-2.svg)
 
 ### 主观下线与客观下线
 

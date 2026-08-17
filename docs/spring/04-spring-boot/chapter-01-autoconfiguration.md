@@ -171,7 +171,7 @@ Spring Boot 提供了一整套 `@Conditional` 注解，构成自动配置的"开
 
 ### 4.2.4 自动配置的核心流程图
 
-<SvgDiagram src="/public/spring/springboot-startup.svg" />
+![springboot-startup](/spring/springboot-startup.svg)
 
 关键理解：**自动配置是"兜底"而非"强制"**。当开发者自己注册了同类型的 Bean 时，`@ConditionalOnMissingBean` 确保自动配置会"让路"。这就是"用户定义优先"原则。
 
