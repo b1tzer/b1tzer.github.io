@@ -38,3 +38,10 @@ tmp/
 temp/
 *.tmp
 *.temp
+
+# 依赖预构建缓存（vitepress dev 时生成）
+.vitepress/cache/
+
+.codebuddy/
+hooks/
+tools/

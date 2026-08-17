@@ -1,4 +1,16 @@
 import { defineConfig } from 'vitepress'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { svgEditorPlugin, svgDiagramMarkdownPlugin } from 'vitepress-plugin-svg-editor'
+import { openInEditor } from 'vitepress-plugin-open-in-editor'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const docsDir = resolve(__dirname, '..')
+
+const ed = openInEditor({
+  docsDir,
+  base: '/',
+})
 
 export default defineConfig({
   title: 'The Stack',
@@ -6,85 +18,145 @@ export default defineConfig({
   lang: 'zh-CN',
   srcDir: './docs',
   outDir: './site',
+
+  vite: {
+    plugins: [
+      svgEditorPlugin({
+        storage: 'vitepress',
+      }),
+      ed.vite(),
+    ],
+  },
+  markdown: {
+    config(md) {
+      md.use(svgDiagramMarkdownPlugin)
+      ed.markdown(md)
+    },
+  },
   
   themeConfig: {
     logo: '/assets/logo.svg',
     
+    editLink: {
+      pattern: ed.editLinkPattern,
+      text: '在编辑器中打开源文件',
+    },
+    
     nav: [
       { text: '首页', link: '/' },
-      { text: 'Java', link: '/java/01-language/' },
+      { text: 'Java', link: '/java/01-java-language/' },
       { text: 'Spring', link: '/spring/' },
       { text: 'Redis', link: '/redis/' },
       { text: '更多', items: [
         { text: 'PostgreSQL', link: '/postgresql/' },
+        { text: 'MySQL', link: '/mysql/' },
         { text: 'Kafka', link: '/kafka/' },
+        { text: 'Elasticsearch', link: '/elasticsearch/' },
+        { text: '设计模式', link: '/design-pattern/' },
+        { text: '软件工程', link: '/engineering/' },
+        { text: 'AI 工程', link: '/ai/' },
+      ]
+      },
     ],
     
     sidebar: {
       '/java/': [
         {
-          text: '语言基础',
+          text: '第一卷 Java 语言',
           items: [
-            { text: '类型系统', link: '/java/01-language/chapter-01-type-system' },
-            { text: '面向对象', link: '/java/01-language/chapter-02-oop' },
-            { text: '泛型', link: '/java/01-language/chapter-03-generics' },
-            { text: '注解与 Lambda', link: '/java/01-language/chapter-04-annotation-lambda' },
+            { text: '类型系统', link: '/java/01-java-language/chapter-01-type-system' },
+            { text: '面向对象', link: '/java/01-java-language/chapter-02-oop' },
+            { text: '泛型', link: '/java/01-java-language/chapter-03-generics' },
+            { text: '注解与 Lambda', link: '/java/01-java-language/chapter-04-annotation-lambda' },
           ]
         },
         {
-          text: 'JVM',
+          text: '第二卷 JVM Runtime',
           items: [
-            { text: '字节码与类加载', link: '/java/02-jvm/chapter-01-bytecode-classloading' },
-            { text: '内存模型', link: '/java/02-jvm/chapter-02-memory-model' },
-            { text: '对象模型', link: '/java/02-jvm/chapter-03-object-model' },
-            { text: 'GC', link: '/java/02-jvm/chapter-04-gc' },
-            { text: 'JIT', link: '/java/02-jvm/chapter-05-jit' },
-            { text: '诊断实战', link: '/java/02-jvm/chapter-06-diagnostics' },
+            { text: '字节码与类加载', link: '/java/02-jvm-runtime/chapter-01-bytecode-classloading' },
+            { text: 'JVM 运行时数据区', link: '/java/02-jvm-runtime/chapter-02-memory-model' },
+            { text: '对象模型', link: '/java/02-jvm-runtime/chapter-03-object-model' },
+            { text: '垃圾回收', link: '/java/02-jvm-runtime/chapter-04-gc' },
+            { text: 'JIT 编译', link: '/java/02-jvm-runtime/chapter-05-jit' },
+            { text: '线上排查与诊断', link: '/java/02-jvm-runtime/chapter-06-diagnostics' },
+            { text: '案例集（一）：CPU 飙升与内存泄漏', link: '/java/02-jvm-runtime/chapter-06-diagnostics-cases-part1' },
+            { text: '案例集（二）：低内存低 CPU 的 GC 疑难', link: '/java/02-jvm-runtime/chapter-06-diagnostics-cases-part2' },
+            { text: '案例集（三）：低内存低 CPU 的 GC 疑难', link: '/java/02-jvm-runtime/chapter-06-diagnostics-cases-part3' },
+            { text: '案例集（四）：TCP 层与堆外内存', link: '/java/02-jvm-runtime/chapter-06-diagnostics-cases-part4' },
           ]
         },
         {
-          text: '并发编程',
+          text: '第三卷 Java 并发',
           items: [
-            { text: '为什么需要并发', link: '/java/03-concurrency/chapter-01-why-concurrency' },
-            { text: '线程模型', link: '/java/03-concurrency/chapter-02-thread-model' },
-            { text: 'ThreadLocal', link: '/java/03-concurrency/chapter-03-threadlocal' },
-            { text: 'JMM', link: '/java/03-concurrency/chapter-04-jmm' },
-            { text: 'volatile', link: '/java/03-concurrency/chapter-05-volatile' },
-            { text: 'synchronized', link: '/java/03-concurrency/chapter-06-synchronized' },
-            { text: 'CAS 与原子类', link: '/java/03-concurrency/chapter-07-cas-atomic' },
-            { text: 'LockSupport 与 AQS', link: '/java/03-concurrency/chapter-08-locksupport-aqs' },
-            { text: '并发集合', link: '/java/03-concurrency/chapter-09-concurrent-collections' },
-            { text: '线程池', link: '/java/03-concurrency/chapter-10-thread-pool' },
-            { text: '异步模型', link: '/java/03-concurrency/chapter-11-async-model' },
-            { text: '虚拟线程', link: '/java/03-concurrency/chapter-12-virtual-thread' },
-            { text: '诊断实战', link: '/java/03-concurrency/chapter-13-diagnostics' },
+            { text: '并发的本质', link: '/java/03-java-concurrency/chapter-01-why-concurrency' },
+            { text: '线程：Java 的执行单元', link: '/java/03-java-concurrency/chapter-02-thread-model' },
+            { text: '线程封闭：ThreadLocal', link: '/java/03-java-concurrency/chapter-03-threadlocal' },
+            { text: 'Java 内存模型（JMM）', link: '/java/03-java-concurrency/chapter-04-jmm' },
+            { text: 'volatile', link: '/java/03-java-concurrency/chapter-05-volatile' },
+            { text: 'synchronized', link: '/java/03-java-concurrency/chapter-06-synchronized' },
+            { text: 'CAS 与原子类', link: '/java/03-java-concurrency/chapter-07-cas-atomic' },
+            { text: 'LockSupport 与 AQS', link: '/java/03-java-concurrency/chapter-08-locksupport-aqs' },
+            { text: '并发集合', link: '/java/03-java-concurrency/chapter-09-concurrent-collections' },
+            { text: '线程池', link: '/java/03-java-concurrency/chapter-10-thread-pool' },
+            { text: '异步编程', link: '/java/03-java-concurrency/chapter-11-async-model' },
+            { text: '虚拟线程与结构化并发', link: '/java/03-java-concurrency/chapter-12-virtual-thread' },
+            { text: '诊断与优化', link: '/java/03-java-concurrency/chapter-13-diagnostics' },
+            { text: '案例集：死锁、线程池与虚拟线程', link: '/java/03-java-concurrency/chapter-13-diagnostics-cases' },
           ]
         },
         {
-          text: '网络编程',
+          text: '第四卷 网络与通信',
           items: [
-            { text: '网络基础', link: '/java/04-network/chapter-01-network-basics' },
-            { text: 'TCP/IP', link: '/java/04-network/chapter-02-tcp-ip' },
-            { text: 'Socket', link: '/java/04-network/chapter-03-socket' },
-            { text: 'NIO', link: '/java/04-network/chapter-04-nio' },
-            { text: 'Netty', link: '/java/04-network/chapter-05-netty' },
-            { text: 'HTTP', link: '/java/04-network/chapter-06-http' },
-            { text: 'Servlet 与 Spring MVC', link: '/java/04-network/chapter-07-servlet-springmvc' },
-            { text: 'RPC', link: '/java/04-network/chapter-08-rpc' },
-            { text: '长连接', link: '/java/04-network/chapter-09-long-connection' },
-            { text: '网络诊断', link: '/java/04-network/chapter-10-network-diagnostics' },
+            { text: '网络通信基础', link: '/java/04-java-network/chapter-01-network-basics' },
+            { text: 'TCP/IP', link: '/java/04-java-network/chapter-02-tcp-ip' },
+            { text: 'Socket 编程', link: '/java/04-java-network/chapter-03-socket' },
+            { text: 'Java NIO', link: '/java/04-java-network/chapter-04-nio' },
+            { text: 'Netty', link: '/java/04-java-network/chapter-05-netty' },
+            { text: 'HTTP 协议', link: '/java/04-java-network/chapter-06-http' },
+            { text: 'Servlet 到 Spring MVC', link: '/java/04-java-network/chapter-07-servlet-springmvc' },
+            { text: 'RPC 与微服务', link: '/java/04-java-network/chapter-08-rpc' },
+            { text: '长连接与实时通信', link: '/java/04-java-network/chapter-09-long-connection' },
+            { text: '网络诊断', link: '/java/04-java-network/chapter-10-network-diagnostics' },
           ]
         },
         {
-          text: '数据访问',
+          text: '第五卷 数据访问与持久化',
           items: [
-            { text: '持久化思想', link: '/java/05-data-access/chapter-01-persistence-thought' },
-            { text: 'JDBC', link: '/java/05-data-access/chapter-02-jdbc' },
-            { text: 'MyBatis', link: '/java/05-data-access/chapter-03-mybatis' },
-            { text: 'ORM 深入', link: '/java/05-data-access/chapter-04-orm-deep' },
-            { text: '数据库原理', link: '/java/05-data-access/chapter-05-db-principles' },
-            { text: 'Spring 事务', link: '/java/05-data-access/chapter-06-spring-transaction' },
-            { text: '性能优化', link: '/java/05-data-access/chapter-07-performance' },
+            { text: '持久化思想', link: '/java/05-java-data-access/chapter-01-persistence-thought' },
+            { text: 'JDBC', link: '/java/05-java-data-access/chapter-02-jdbc' },
+            { text: 'MyBatis', link: '/java/05-java-data-access/chapter-03-mybatis' },
+            { text: 'ORM 深入', link: '/java/05-java-data-access/chapter-04-orm-deep' },
+            { text: '数据库核心原理', link: '/java/05-java-data-access/chapter-05-db-principles' },
+            { text: 'Spring 事务', link: '/java/05-java-data-access/chapter-06-spring-transaction' },
+            { text: '性能优化', link: '/java/05-java-data-access/chapter-07-performance' },
+          ]
+        },
+        {
+          text: '第六卷 企业架构',
+          items: [
+            { text: 'Spring 核心思想', link: '/java/06-java-enterprise/chapter-01-spring-core' },
+            { text: '容器与 AOP', link: '/java/06-java-enterprise/chapter-02-container-aop' },
+            { text: 'Spring MVC', link: '/java/06-java-enterprise/chapter-03-spring-mvc' },
+            { text: 'Spring Boot', link: '/java/06-java-enterprise/chapter-04-spring-boot' },
+            { text: '数据访问整合', link: '/java/06-java-enterprise/chapter-05-data-integration' },
+            { text: '微服务架构', link: '/java/06-java-enterprise/chapter-06-microservices' },
+            { text: '分布式治理', link: '/java/06-java-enterprise/chapter-07-governance' },
+            { text: '安全与部署', link: '/java/06-java-enterprise/chapter-08-security-deploy' },
+            { text: '可观测性', link: '/java/06-java-enterprise/chapter-09-observability' },
+          ]
+        },
+        {
+          text: '第七卷 性能与架构',
+          items: [
+            { text: '架构思想', link: '/java/07-performance-architecture/chapter-01-architecture' },
+            { text: '领域驱动设计', link: '/java/07-performance-architecture/chapter-02-ddd' },
+            { text: '高并发设计', link: '/java/07-performance-architecture/chapter-03-high-concurrency' },
+            { text: '高可用设计', link: '/java/07-performance-architecture/chapter-04-high-availability' },
+            { text: '分布式系统', link: '/java/07-performance-architecture/chapter-05-distributed' },
+            { text: '数据架构', link: '/java/07-performance-architecture/chapter-06-data-architecture' },
+            { text: '消息驱动', link: '/java/07-performance-architecture/chapter-07-messaging' },
+            { text: '性能工程', link: '/java/07-performance-architecture/chapter-08-performance' },
+            { text: '架构案例', link: '/java/07-performance-architecture/chapter-09-case-studies' },
           ]
         }
       ],
@@ -374,7 +446,6 @@ export default defineConfig({
             { text: '生成列', link: '/mysql/06-advanced-features/chapter-03-generated-column' },
             { text: 'JSON', link: '/mysql/06-advanced-features/chapter-04-json' },
             { text: '分区表', link: '/mysql/06-advanced-features/chapter-05-partition' },
-            { text: 'MySQL 8.0', link: '/mysql/06-advanced-features/chapter-06-mysql8-features' },
           ]
         },
         {
@@ -501,20 +572,6 @@ export default defineConfig({
             { text: '性能调优', link: '/kafka/09-practice/chapter-03-performance-tuning' },
           ]
         }
-            { text: '概览', link: '/kafka/01-basics/chapter-01-overview' },
-            { text: '基础概念', link: '/kafka/01-basics/chapter-02-terminology' },
-            { text: '整体架构', link: '/kafka/01-basics/chapter-03-architecture' },
-            { text: '消息可靠性', link: '/kafka/05-reliability/chapter-01-acks-机制' },
-            { text: '消费者组与 Rebalance', link: '/kafka/03-consumer/chapter-02-consumer-group' },
-            { text: '高吞吐原理', link: '/kafka/04-storage-internals/chapter-02-page-cache' },
-            { text: '消息队列选型', link: '/kafka/01-basics/chapter-04-mq-comparison' },
-            { text: '常见问题', link: '/kafka/08-operations/chapter-05-troubleshooting' },
-            { text: '存储机制', link: '/kafka/04-storage-internals/chapter-01-log-segment' },
-            { text: '事务消息', link: '/kafka/05-reliability/chapter-02-exactly-once' },
-            { text: 'Controller 与选举', link: '/kafka/04-storage-internals/chapter-04-controller' },
-            { text: 'KRaft', link: '/kafka/04-storage-internals/chapter-05-kraft' },
-            { text: '消费语义', link: '/kafka/03-consumer/chapter-03-offset-management' },
-            { text: '分区策略', link: '/kafka/02-producer/chapter-02-partition-strategy' },
       ],
       '/elasticsearch/': [
         {
@@ -617,17 +674,6 @@ export default defineConfig({
             { text: '数据同步', link: '/elasticsearch/10-practice/chapter-04-data-sync' },
           ]
         }
-            { text: '概览', link: '/elasticsearch/01-basics/chapter-01-overview' },
-            { text: '引入与背景', link: '/elasticsearch/01-basics/chapter-02-intro' },
-            { text: '核心概念', link: '/elasticsearch/01-basics/chapter-03-core-concepts' },
-            { text: '倒排索引', link: '/elasticsearch/02-indexing/chapter-06-inverted-index' },
-            { text: 'Mapping 设计', link: '/elasticsearch/02-indexing/chapter-02-mapping' },
-            { text: '查询 DSL', link: '/elasticsearch/03-search/chapter-01-query-dsl' },
-            { text: '集群与分片', link: '/elasticsearch/05-distributed-internals/chapter-02-sharding' },
-            { text: '性能优化', link: '/elasticsearch/08-performance/chapter-01-index-optimization' },
-            { text: '数据一致性', link: '/elasticsearch/05-distributed-internals/chapter-07-data-consistency' },
-            { text: '聚合查询', link: '/elasticsearch/04-aggregation/chapter-01-metrics-agg' },
-            { text: '分词器', link: '/elasticsearch/02-indexing/chapter-04-chinese-analysis' },
       ],
       '/design-pattern/': [
         {
@@ -684,20 +730,6 @@ export default defineConfig({
             { text: '反模式', link: '/design-pattern/04-practice/chapter-04-anti-patterns' },
           ]
         }
-            { text: '总览', link: '/design-pattern/00-设计模式总览' },
-            { text: '单例', link: '/design-pattern/01-单例模式' },
-            { text: '工厂', link: '/design-pattern/02-工厂方法与抽象工厂模式' },
-            { text: '建造者', link: '/design-pattern/03-建造者模式' },
-            { text: '代理', link: '/design-pattern/04-代理模式' },
-            { text: '装饰器', link: '/design-pattern/05-装饰器模式' },
-            { text: '适配器', link: '/design-pattern/06-适配器模式' },
-            { text: '策略', link: '/design-pattern/07-策略模式' },
-            { text: '观察者', link: '/design-pattern/08-观察者模式' },
-            { text: '模板方法', link: '/design-pattern/09-模板方法模式' },
-            { text: '责任链', link: '/design-pattern/10-责任链模式' },
-            { text: '原型', link: '/design-pattern/11-创建型补充-原型模式' },
-            { text: '结构型补充', link: '/design-pattern/12-结构型补充-外观桥接组合享元' },
-            { text: '行为型补充', link: '/design-pattern/13-行为型补充-命令迭代器中介者等' },
       ],
       '/engineering/': [
         {
@@ -790,14 +822,6 @@ export default defineConfig({
             { text: '案例分析', link: '/engineering/09-practice/chapter-04-case-studies' },
           ]
         }
-            { text: '概览', link: '/engineering/01-principles/chapter-01-overview' },
-            { text: 'SOLID', link: '/engineering/01-principles/chapter-02-solid' },
-            { text: '架构演进', link: '/engineering/03-architecture/chapter-01-architecture-styles' },
-            { text: 'DDD', link: '/engineering/04-ddd/chapter-01-ddd-overview' },
-            { text: 'CAP 与 BASE', link: '/engineering/05-system-design/chapter-06-distributed-theory' },
-            { text: '代码质量', link: '/engineering/01-principles/chapter-05-refactoring' },
-            { text: 'CI/CD', link: '/engineering/06-engineering-practices/chapter-04-cicd' },
-            { text: '系统设计', link: '/engineering/05-system-design/chapter-01-design-methodology' },
       ],
       '/ai/': [
         {

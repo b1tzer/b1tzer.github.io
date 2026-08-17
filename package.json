@@ -10,6 +10,11 @@
     "preview": "vitepress preview"
   },
   "devDependencies": {
-    "vitepress": "^1.6.3"
+    "vitepress": "^1.6.3",
+    "vitepress-plugin-open-in-editor": "^0.1.0"
+  },
+  "dependencies": {
+    "fabric": "^6.9.1",
+    "vitepress-plugin-svg-editor": "^0.2.0"
   }
 }
