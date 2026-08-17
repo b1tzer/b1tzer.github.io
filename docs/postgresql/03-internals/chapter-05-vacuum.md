@@ -21,7 +21,7 @@ ANALYZE users;
 
 ## 3. Autovacuum 配置
 
-```conf
+```ini
 autovacuum = on
 autovacuum_max_workers = 3
 autovacuum_naptime = 1min
@@ -46,7 +46,7 @@ VACUUM FREEZE users;
 
 ### 5.1 Autovacuum 参数调优
 
-```conf
+```ini
 # 全局 autovacuum 配置
 autovacuum = on
 autovacuum_max_workers = 3
@@ -112,7 +112,7 @@ WHERE backend_type = 'autovacuum worker';
 
 ### 5.4 VACUUM 与 IO 控制
 
-```conf
+```ini
 # VACUUM 代价延迟（控制 VACUUM 的 IO 速度，避免影响业务）
 vacuum_cost_delay = 2ms          # 每超过 cost_limit 后暂停的时间
 vacuum_cost_limit = 200          # 累积代价达到此值后暂停

@@ -25,7 +25,7 @@ docker run -d --name pg16 \
 
 ## 2. 核心配置
 
-```conf
+```ini
 # postgresql.conf
 listen_addresses = '*'
 max_connections = 200
@@ -52,7 +52,7 @@ PGDATA/
 ---
 ## 4. 连接与认证配置
 
-```conf
+```ini
 # 监听地址（生产环境建议指定具体 IP）
 listen_addresses = '0.0.0.0'
 port = 5432
@@ -64,7 +64,7 @@ max_connections = 200
 authentication_timeout = 60s
 ```
 
-```conf
+```ini
 # pg_hba.conf 认证规则
 # TYPE  DATABASE  USER      ADDRESS         METHOD
 local   all       all                       peer
@@ -77,7 +77,7 @@ host    replication replicator 10.0.0.0/8   scram-sha-256
 
 ## 5. 内存配置详解
 
-```conf
+```ini
 # 共享缓冲区：数据页缓存，建议物理内存的 25%
 shared_buffers = '4GB'
 
@@ -99,7 +99,7 @@ wal_buffers = '64MB'
 
 ## 6. WAL 与检查点配置
 
-```conf
+```ini
 # WAL 级别：replica 支持流复制，logical 支持逻辑复制
 wal_level = replica
 
@@ -115,7 +115,7 @@ wal_compression = on
 
 ## 7. 查询优化器配置
 
-```conf
+```ini
 # 随机 IO 代价（SSD 设为 1.1，默认 4.0 适合 HDD）
 random_page_cost = 1.1
 
@@ -130,7 +130,7 @@ max_worker_processes = 16
 
 ## 8. 日志配置
 
-```conf
+```ini
 logging_collector = on
 log_directory = 'log'
 log_filename = 'postgresql-%Y-%m-%d.log'
@@ -155,7 +155,7 @@ log_statement = 'ddl'
 
 ### 8GB 内存服务器
 
-```conf
+```ini
 shared_buffers = 2GB
 effective_cache_size = 6GB
 work_mem = 32MB
@@ -169,7 +169,7 @@ effective_io_concurrency = 200
 
 ### 32GB 内存服务器
 
-```conf
+```ini
 shared_buffers = 8GB
 effective_cache_size = 24GB
 work_mem = 128MB

@@ -2,14 +2,14 @@
 
 ## 1. 主库配置
 
-```conf
+```ini
 # postgresql.conf
 wal_level = replica
 max_wal_senders = 10
 wal_keep_size = '1GB'
 ```
 
-```conf
+```ini
 # pg_hba.conf
 host replication replicator 0.0.0.0/0 scram-sha-256
 ```
@@ -40,7 +40,7 @@ SELECT * FROM pg_stat_wal_receiver;
 
 ### 4.1 同步复制
 
-```conf
+```ini
 # 主库配置（同步复制）
 synchronous_standby_names = 'FIRST 1 (standby1, standby2)'
 # FIRST 1：至少 1 个从库确认写入后才返回成功
@@ -63,7 +63,7 @@ SELECT * FROM pg_stat_replication;
 主库 → 从库1 → 从库2（级联从库）
 ```
 
-```conf
+```ini
 # 从库1 配置（作为级联复制源）
 wal_level = replica
 max_wal_senders = 10

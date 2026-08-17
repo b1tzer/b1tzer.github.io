@@ -2,7 +2,7 @@
 
 ## 1. 认证配置
 
-```conf
+```ini
 # pg_hba.conf
 # TYPE  DATABASE  USER      ADDRESS     METHOD
 host    all       all       0.0.0.0/0   scram-sha-256
@@ -11,7 +11,7 @@ host    replicator all      0.0.0.0/0   scram-sha-256
 
 ## 2. SSL 配置
 
-```conf
+```ini
 ssl = on
 ssl_cert_file = 'server.crt'
 ssl_key_file = 'server.key'
@@ -39,7 +39,7 @@ ALTER SYSTEM SET pgaudit.log = 'write';
 
 ### 5.1 加密连接
 
-```conf
+```ini
 # 生成 SSL 证书
 # openssl req -new -x509 -days 365 -nodes -text -out server.crt -keyout server.key -subj "/CN=pg-server"
 # chmod 600 server.key
@@ -53,7 +53,7 @@ ssl_min_protocol_version = 'TLSv1.2'
 ssl_ciphers = 'HIGH:!aNULL:!MD5'
 ```
 
-```conf
+```ini
 # pg_hba.conf - 强制 SSL 连接
 hostssl all all 0.0.0.0/0 scram-sha-256
 ```
@@ -90,7 +90,7 @@ WHERE name = '张三'
 
 ### 5.3 网络安全
 
-```conf
+```ini
 # pg_hba.conf - IP 白名单
 # 只允许特定 IP 段连接
 host    mydb    app_user    10.0.1.0/24    scram-sha-256

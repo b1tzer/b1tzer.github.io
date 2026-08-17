@@ -6,7 +6,7 @@ Write-Ahead Logging：数据修改前先写 WAL 日志，保证崩溃恢复。
 
 ## 2. WAL 配置
 
-```conf
+```ini
 wal_level = replica              # replica | logical
 max_wal_size = 1GB
 min_wal_size = 80MB
@@ -15,7 +15,7 @@ wal_compression = on
 
 ## 3. 检查点
 
-```conf
+```ini
 checkpoint_timeout = 5min
 checkpoint_completion_target = 0.9
 ```
@@ -91,7 +91,7 @@ SELECT * FROM pg_stat_bgwriter;
 
 ### 5.4 WAL 归档
 
-```conf
+```ini
 # 启用 WAL 归档（用于 PITR）
 archive_mode = on
 archive_command = 'cp %p /archive/%f'

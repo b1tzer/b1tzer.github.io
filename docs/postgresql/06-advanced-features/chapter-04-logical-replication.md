@@ -2,7 +2,7 @@
 
 ## 1. 发布端配置
 
-```conf
+```ini
 # postgresql.conf
 wal_level = logical
 ```

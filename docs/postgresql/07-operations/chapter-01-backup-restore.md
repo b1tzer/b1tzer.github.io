@@ -26,7 +26,7 @@ pg_basebackup -h localhost -U replicator -D /backup/base -Fp -Xs -P
 
 ## 3. PITR 时间点恢复
 
-```conf
+```ini
 # postgresql.conf
 restore_command = 'cp /archive/%f %p'
 recovery_target_time = '2024-01-01 12:00:00'
@@ -77,7 +77,7 @@ pg_basebackup -h localhost -U replicator -D /backup/base -Fp -Xs -P -R
 pg_basebackup -h localhost -U replicator -D /backup/base -Ft -z -P
 ```
 
-```conf
+```ini
 # postgresql.conf - 启用归档
 archive_mode = on
 archive_command = 'cp %p /archive/%f'

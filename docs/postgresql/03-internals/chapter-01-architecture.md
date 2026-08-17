@@ -66,7 +66,7 @@ SELECT pg_terminate_backend(pid);
 
 负责将 Shared Buffer 中的脏页（被修改但未写入磁盘的数据页）写入磁盘，减少检查点时的 IO 峰值。
 
-```conf
+```ini
 # BgWriter 配置
 bgwriter_delay = 200ms          # 每次写入间隔
 bgwriter_lru_maxpages = 100     # 每次最多写入的页数
@@ -77,7 +77,7 @@ bgwriter_lru_multiplier = 2.0   # 基于最近需求预测写入量
 
 将 WAL 缓冲区中的 WAL 记录写入磁盘，保证事务的持久性。WAL Writer 是崩溃恢复的基础。
 
-```conf
+```ini
 wal_writer_delay = 200ms        # WAL Writer 刷盘间隔
 wal_writer_flush_after = 1MB    # 累积多少 WAL 后强制刷盘
 ```
@@ -86,7 +86,7 @@ wal_writer_flush_after = 1MB    # 累积多少 WAL 后强制刷盘
 
 执行检查点（Checkpoint），将所有脏页刷入磁盘，确保数据一致性。崩溃恢复时只需从最后一个检查点开始重放 WAL。
 
-```conf
+```ini
 checkpoint_timeout = 5min       # 检查点间隔
 checkpoint_completion_target = 0.9  # 检查点完成目标（0.9 表示尽量平滑写入）
 checkpoint_warning = 30s        # 检查点间隔过短时发出警告
@@ -96,7 +96,7 @@ checkpoint_warning = 30s        # 检查点间隔过短时发出警告
 
 自动触发 VACUUM 和 ANALYZE，清理 Dead Tuple 并更新统计信息。
 
-```conf
+```ini
 autovacuum = on
 autovacuum_max_workers = 3       # 最大并行 autovacuum 工作进程数
 autovacuum_naptime = 1min        # 每次检查间隔

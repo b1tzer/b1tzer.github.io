@@ -17,7 +17,7 @@ default_pool_size = 20
 
 ## 2. Pgpool-II
 
-```conf
+```ini
 backend_hostname0 = '127.0.0.1'
 backend_port0 = 5432
 backend_weight0 = 1
@@ -127,7 +127,7 @@ spring:
 
 ### 4.4 Pgpool-II 配置
 
-```conf
+```ini
 # pgpool.conf
 backend_hostname0 = '192.168.1.101'
 backend_port0 = 5432
