@@ -2,17 +2,12 @@ import { defineConfig } from 'vitepress'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { svgEditorPlugin, svgDiagramMarkdownPlugin } from 'vitepress-plugin-svg-editor'
-import { openInEditor } from 'vitepress-plugin-open-in-editor'
+import { withOpenInEditor } from 'vitepress-plugin-open-in-editor'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const docsDir = resolve(__dirname, '..')
 
-const ed = openInEditor({
-  docsDir,
-  base: '/',
-})
-
-export default defineConfig({
+export default withOpenInEditor(defineConfig({
   title: 'The Stack',
   description: '系统化的 Java 后端技术分析',
   lang: 'zh-CN',
@@ -24,13 +19,11 @@ export default defineConfig({
       svgEditorPlugin({
         storage: 'vitepress',
       }),
-      ed.vite(),
     ],
   },
   markdown: {
     config(md) {
       md.use(svgDiagramMarkdownPlugin)
-      ed.markdown(md)
     },
   },
   
@@ -38,7 +31,6 @@ export default defineConfig({
     logo: '/assets/logo.svg',
     
     editLink: {
-      pattern: ed.editLinkPattern,
       text: '在编辑器中打开源文件',
     },
     
@@ -851,4 +843,7 @@ export default defineConfig({
       provider: 'local'
     }
   }
+}), {
+  docsDir,
+  base: '/',
 })
