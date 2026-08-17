@@ -1,11 +1,6 @@
 import { defineConfig } from 'vitepress'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { svgEditorPlugin, svgDiagramMarkdownPlugin } from 'vitepress-plugin-svg-editor'
 import { withOpenInEditor } from 'vitepress-plugin-open-in-editor'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const docsDir = resolve(__dirname, '..')
 
 export default withOpenInEditor(defineConfig({
   title: 'The Stack',
@@ -843,7 +838,4 @@ export default withOpenInEditor(defineConfig({
       provider: 'local'
     }
   }
-}), {
-  docsDir,
-  base: '/',
-})
+}))

@@ -1,6 +1,62 @@
 /* 方案 1：放宽整体布局最大宽度（VitePress 默认 1440px） */
 :root {
   --vp-layout-max-width: 1680px;
+  /* 给 sidebar 滚动条预留 15px 空间，避免章节长标题被滚动条遮挡 */
+  --vp-sidebar-width: 287px;
+}
+
+/* 修复宽屏下 sidebar 滚动条贯穿到导航栏标题区域、并遮挡章节文字的问题 */
+@media (min-width: 960px) {
+  .VPSidebar {
+    /* sidebar 从导航栏下方开始，滚动条不再延伸到 title 区域 */
+    top: var(--vp-nav-height) !important;
+    padding-top: 32px !important;
+  }
+  .VPSidebar .curtain {
+    /* sidebar 不再覆盖导航栏区域，无需背景遮罩 */
+    display: none;
+  }
+  .VPNavBar.has-sidebar .title {
+    /* 补回导航栏左侧标题区域的背景色，与下方 sidebar 保持一致 */
+    background-color: var(--vp-sidebar-bg-color) !important;
+  }
+}
+
+/* 消除 1440px 断点跳变：让 sidebar 在 1440~1679px 区间保持与 960~1439px
+   一致的固定宽度，直到 >=1680px（= --vp-layout-max-width）才启用超宽居中扩展公式 */
+@media (min-width: 1440px) and (max-width: 1679px) {
+  .VPSidebar {
+    padding-left: 32px !important;
+    width: var(--vp-sidebar-width) !important;
+  }
+  .VPNavBar.has-sidebar .title {
+    padding-left: 32px !important;
+    width: var(--vp-sidebar-width) !important;
+  }
+  .VPNavBar.has-sidebar .content {
+    padding-right: 32px !important;
+    padding-left: var(--vp-sidebar-width) !important;
+  }
+  .VPNavBar.has-sidebar .divider {
+    padding-left: var(--vp-sidebar-width) !important;
+  }
+  .VPContent.has-sidebar {
+    padding-right: 0 !important;
+    padding-left: var(--vp-sidebar-width) !important;
+  }
+}
+
+/* >=1680px 起启用超宽居中扩展，统一用 100vw（含滚动条）计算，
+   与正文区 padding 公式对齐，避免 sidebar 右边缘与正文左边缘因滚动条宽度错位 */
+@media (min-width: 1680px) {
+  .VPSidebar {
+    padding-left: max(32px, calc((100vw - (var(--vp-layout-max-width) - 64px)) / 2)) !important;
+    width: calc((100vw - (var(--vp-layout-max-width) - 64px)) / 2 + var(--vp-sidebar-width) - 32px) !important;
+  }
+  .VPNavBar.has-sidebar .title {
+    padding-left: max(32px, calc((100vw - (var(--vp-layout-max-width) - 64px)) / 2)) !important;
+    width: calc((100vw - (var(--vp-layout-max-width) - 64px)) / 2 + var(--vp-sidebar-width) - 32px) !important;
+  }
 }
 
 /* 方案 2：放宽文档正文内容区宽度 */
