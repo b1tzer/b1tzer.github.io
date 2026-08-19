@@ -1,16 +1,51 @@
-/* 方案 1：放宽整体布局最大宽度（VitePress 默认 1440px） */
+/* ============================================
+   宽屏适配
+   --vp-layout-max-width 决定正文可用宽度：1440 时正文约 754px，
+   1680 时约 954px。改大它会让正文真正变宽，但同时 VitePress 在
+   多个组件里硬编码了 1440px 断点、用 calc() 基于 layout-max-width
+   做超宽居中扩展，导致 1440~1680 区间出现负偏移跳变。
+   解法：用 max() 钳制偏移——负偏移时回落固定值，正偏移时正常扩展。
+   ============================================ */
+
 :root {
-  --vp-layout-max-width: 1680px;
+  --vp-layout-max-width: 1920px;
 }
 
-/* 方案 2：放宽文档正文内容区宽度 */
+/* 宽屏扩展：覆盖 VitePress 的 1440px 断点公式。
+   - 统一用 100vw（含滚动条），与正文区公式对齐，避免 7px 错位；
+   - 用 max() 钳制偏移，负偏移时回落固定值，消除跳变；
+   - title 用 .container > .title 精确匹配，避免误命中 logo 链接 a.title。 */
+@media (min-width: 1440px) {
+  .VPSidebar {
+    padding-left: max(32px, calc((100vw - (var(--vp-layout-max-width) - 64px)) / 2)) !important;
+    width: max(var(--vp-sidebar-width), calc((100vw - (var(--vp-layout-max-width) - 64px)) / 2 + var(--vp-sidebar-width) - 32px)) !important;
+  }
+  .VPNavBar.has-sidebar .container > .title {
+    padding-left: max(32px, calc((100vw - (var(--vp-layout-max-width) - 64px)) / 2)) !important;
+    width: max(var(--vp-sidebar-width), calc((100vw - (var(--vp-layout-max-width) - 64px)) / 2 + var(--vp-sidebar-width) - 32px)) !important;
+  }
+  .VPNavBar.has-sidebar .content {
+    padding-right: max(32px, calc((100vw - var(--vp-layout-max-width)) / 2 + 32px)) !important;
+    padding-left: max(var(--vp-sidebar-width), calc((100vw - var(--vp-layout-max-width)) / 2 + var(--vp-sidebar-width))) !important;
+  }
+  .VPNavBar.has-sidebar .divider {
+    padding-left: max(var(--vp-sidebar-width), calc((100vw - var(--vp-layout-max-width)) / 2 + var(--vp-sidebar-width))) !important;
+  }
+  .VPContent.has-sidebar {
+    padding-right: max(0px, calc((100vw - var(--vp-layout-max-width)) / 2)) !important;
+    padding-left: max(var(--vp-sidebar-width), calc((100vw - var(--vp-layout-max-width)) / 2 + var(--vp-sidebar-width))) !important;
+  }
+  .VPLocalNav.has-sidebar {
+    padding-left: max(var(--vp-sidebar-width), calc((100vw - var(--vp-layout-max-width)) / 2 + var(--vp-sidebar-width))) !important;
+  }
+}
 
-/* 有右侧目录时，正文默认被钉死在 688px */
+/* 放宽正文内容区宽度（VitePress 有右侧目录时正文默认被钉死在 688px） */
 .VPDoc.has-aside .content-container {
   max-width: none !important;
 }
 
-/* 无侧边栏页面，正文默认被限制在 752px / 784px */
+/* 无侧边栏页面正文默认被限制在 752px / 784px */
 .VPDoc:not(.has-sidebar) .content {
   max-width: none !important;
 }
