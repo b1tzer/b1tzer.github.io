@@ -1,216 +1,180 @@
 # 依赖注入
 
-## 1. DI 类型
+> 一个类要拿到它的依赖，Spring 给了三种写法：构造器、Setter、字段。三种都能让依赖在运行时被填上，但只有一种能让你三年后改代码时不踩坑。这一章不重复 DI 是什么（见 [IoC 容器](./chapter-02-ioc-container.md)），只回答一件事：三种写法怎么选，选错会付出什么代价。
 
-### 构造器注入（推荐）
-```java
-@Service
-public class UserService {
-    private final UserRepository userRepository;
-    
-    @Autowired
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
-}
-```
+---
 
-### 字段注入
-```java
-@Service
-public class UserService {
-    @Autowired
-    private UserRepository userRepository;
-}
-```
+## 1. 三种注入方式
 
-### Setter 注入
-```java
-@Service
-public class UserService {
-    private UserRepository userRepository;
-    
-    @Autowired
-    public void setUserRepository(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
-}
-```
-
-## 2. @Autowired 原理
-
-AutowiredAnnotationBeanPostProcessor 处理 @Autowired 注解：
-1. 按类型查找
-2. 找到多个按名称匹配
-3. 使用 @Qualifier 指定
-
-## 3. @Resource vs @Autowired
-
-| 特性 | @Autowired | @Resource |
-|------|-----------|-----------|
-| 来源 | Spring | JSR-250 |
-| 匹配方式 | 按类型 | 按名称 |
-| 必须存在 | required=false 可选 | 必须存在 |
-
-## 4. @Qualifier 精确匹配
-
-当同一类型有多个 Bean 时，使用 `@Qualifier` 指定注入哪一个：
+同一个依赖，三种写法：
 
 ```java
-// 定义两个同类型的 Bean
-@Configuration
-public class DataSourceConfig {
-
-    @Bean("masterDataSource")
-    public DataSource masterDataSource() {
-        HikariDataSource ds = new HikariDataSource();
-        ds.setJdbcUrl("jdbc:mysql://master:3306/db");
-        return ds;
-    }
-
-    @Bean("slaveDataSource")
-    public DataSource slaveDataSource() {
-        HikariDataSource ds = new HikariDataSource();
-        ds.setJdbcUrl("jdbc:mysql://slave:3306/db");
-        return ds;
-    }
-}
-
-// 注入时使用 @Qualifier 指定
+// 构造器注入：依赖通过构造器传入
 @Service
 public class OrderService {
-    private final DataSource masterDs;
-    private final DataSource slaveDs;
+    private final OrderRepository orderRepository;
 
+    public OrderService(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
+}
+
+// Setter 注入：依赖通过 setter 传入
+@Service
+public class OrderService {
+    private OrderRepository orderRepository;
+
+    @Autowired
+    public void setOrderRepository(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
+}
+
+// 字段注入：依赖直接塞进字段
+@Service
+public class OrderService {
+    @Autowired
+    private OrderRepository orderRepository;
+}
+```
+
+三种写法都能让 `orderRepository` 在运行时被填上，差别在填上之后。
+
+---
+
+## 2. 为什么构造器注入是默认选择
+
+把三种写法放到工程约束下对比：
+
+| 维度 | 构造器 | Setter | 字段 |
+| :-- | :-- | :-- | :-- |
+| 字段不可变 | ✅ 可声明 `final` | ❌ 可变 | ❌ 可变 |
+| 依赖必须存在 | ✅ 创建时绑定 | ❌ 可能忘调 | ❌ 运行时才暴露 |
+| 单元测试 | ✅ 直接 `new` 传参 | ✅ 调 setter | ❌ 需反射或容器 |
+| 启动期发现缺依赖 | ✅ 启动即报错 | ⚠️ 延迟 | ⚠️ 延迟 |
+
+其中「字段不可变」是决定性的。构造器注入把依赖声明成 `final`，对象创建完成后依赖就无法被改动，编译器替你守住这条底线。字段注入唯一的优势是代码短一行，代价是丢掉不可变性和测试独立性，这笔账不划算。
+
+一个常见的反驳是「字段注入写起来方便」。方便体现在写的那一刻，代价在之后每一次重构和测试里偿还——字段注入的类无法脱离容器单独 `new` 出来测，想替换一个 Mock 得靠反射。
+
+---
+
+## 3. @Autowired 与 @Resource
+
+两个注解都能注入，匹配规则不同：
+
+```java
+// @Autowired：Spring 原生，先按类型匹配
+@Autowired
+private UserService userService;
+
+// @Resource：JSR-250 标准，先按名称匹配
+@Resource(name = "userService")
+private UserService userService;
+```
+
+| 维度 | @Autowired | @Resource |
+| :-- | :-- | :-- |
+| 来源 | Spring | JSR-250 |
+| 匹配顺序 | 先类型，再名称 | 先名称，再类型 |
+| 缺省必填 | `required=true` | `required=true` |
+| 指定 Bean | 配合 `@Qualifier` | 用 `name` 属性 |
+
+工程里更倾向 `@Autowired` + `@Qualifier`：两者都是 Spring 原生，语义一致；`@Resource` 是标准注解，只在需要跨框架时才有额外价值。
+
+::: warning 版本锚点
+`@Resource` 来自 `javax.annotation`。JDK 11 起 JDK 不再内置该包，Spring 6.0 全面转向 `jakarta.annotation`，需额外引入 `jakarta.annotation-api` 依赖。
+:::
+
+---
+
+## 4. 进阶用法
+
+### 4.1 同类型多个 Bean：@Qualifier
+
+容器里有多个同类型 Bean 时，类型匹配会失败，用 `@Qualifier` 指名：
+
+```java
+@Configuration
+public class DataSourceConfig {
+    @Bean("master")
+    public DataSource master() { /* 主库 */ }
+    @Bean("slave")
+    public DataSource slave() { /* 从库 */ }
+}
+
+@Service
+public class OrderService {
     public OrderService(
-            @Qualifier("masterDataSource") DataSource masterDs,
-            @Qualifier("slaveDataSource") DataSource slaveDs) {
-        this.masterDs = masterDs;
-        this.slaveDs = slaveDs;
+            @Qualifier("master") DataSource master,
+            @Qualifier("slave") DataSource slave) {
+        // ...
     }
 }
 ```
 
-## 5. 集合注入
+### 4.2 同类型全部注入：集合注入
 
-Spring 可以自动收集同一类型的所有 Bean 注入到集合中：
+实现策略模式时，可以让 Spring 把同一接口的所有实现一次性注入：
 
 ```java
-// 定义策略接口
 public interface PaymentStrategy {
-    String getType();
-    void pay(BigDecimal amount);
+    String type();
+    void pay();
 }
 
-// 多个实现
-@Component
-public class AlipayStrategy implements PaymentStrategy {
-    @Override
-    public String getType() { return "alipay"; }
+// 假设已有多个 @Component 实现：AlipayStrategy(type="alipay")、WechatStrategy(type="wechat")
 
-    @Override
-    public void pay(BigDecimal amount) {
-        System.out.println("支付宝支付: " + amount);
-    }
-}
-
-@Component
-public class WechatPayStrategy implements PaymentStrategy {
-    @Override
-    public String getType() { return "wechat"; }
-
-    @Override
-    public void pay(BigDecimal amount) {
-        System.out.println("微信支付: " + amount);
-    }
-}
-
-// 自动注入所有实现
 @Service
 public class PaymentService {
-    private final Map<String, PaymentStrategy> strategyMap;
+    private final Map<String, PaymentStrategy> strategies;
 
-    // Spring 会自动将所有 PaymentStrategy 实现注入到 Map 中，key 为 Bean 名称
+    // Spring 自动收集所有 PaymentStrategy 实现，key 为 Bean 名
     public PaymentService(Map<String, PaymentStrategy> strategies) {
-        this.strategyMap = strategies;
+        this.strategies = strategies;
     }
 
-    // 也支持 List 注入
-    public PaymentService(List<PaymentStrategy> strategies) {
-        this.strategyMap = strategies.stream()
-            .collect(Collectors.toMap(PaymentStrategy::getType, s -> s));
-    }
-
-    public void pay(String type, BigDecimal amount) {
-        PaymentStrategy strategy = strategyMap.get(type);
-        if (strategy == null) {
-            throw new IllegalArgumentException("不支持的支付方式: " + type);
+    public void pay(String type) {
+        PaymentStrategy s = strategies.get(type);
+        if (s == null) {
+            throw new IllegalArgumentException("不支持: " + type);
         }
-        strategy.pay(amount);
+        s.pay();
     }
 }
 ```
 
-## 6. @Value 注入配置值
+`Map<String, PaymentStrategy>` 的 key 是 Bean 名，也可以注入成 `List<PaymentStrategy>` 按注册顺序排列。
 
-```java
-@Service
-public class EmailService {
+### 4.3 可选依赖：ObjectProvider
 
-    @Value("${mail.smtp.host}")
-    private String smtpHost;
-
-    @Value("${mail.smtp.port:25}")  // 默认值 25
-    private int smtpPort;
-
-    @Value("${mail.recipients}")
-    private List<String> recipients;  // 注入为 List
-
-    @Value("#{systemProperties['user.home']}")  // SpEL 表达式
-    private String userHome;
-}
-```
-
-## 7. ObjectProvider 延迟注入
-
-对于可选依赖或延迟初始化的场景，使用 `ObjectProvider` 避免启动时找不到 Bean 就报错：
+依赖可能不存在时，用 `ObjectProvider` 延迟获取，避免启动时报错：
 
 ```java
 @Service
 public class ReportService {
+    private final ObjectProvider<CacheManager> cacheManager;
 
-    private final ObjectProvider<CacheManager> cacheManagerProvider;
-
-    public ReportService(ObjectProvider<CacheManager> cacheManagerProvider) {
-        this.cacheManagerProvider = cacheManagerProvider;
+    public ReportService(ObjectProvider<CacheManager> cacheManager) {
+        this.cacheManager = cacheManager;
     }
 
-    public String generateReport() {
-        // 使用时才获取，不存在返回 null 而不是抛异常
-        CacheManager cacheManager = cacheManagerProvider.getIfAvailable();
-        if (cacheManager != null) {
-            // 尝试从缓存获取
-            Object cached = cacheManager.getCache("reports").get("report-key");
-            if (cached != null) {
-                return cached.toString();
-            }
-        }
-        return doGenerateReport();
-    }
-
-    // 如果依赖必须存在，可使用 getIfUnique 或 stream 操作
-    public List<Plugin> getPlugins() {
-        return cacheManagerProvider.stream()
-            .map(cm -> new Plugin(cm.getClass().getSimpleName()))
-            .collect(Collectors.toList());
+    public void generate() {
+        // 使用时才取，不存在返回 null 而不是抛异常
+        CacheManager cm = cacheManager.getIfAvailable();
+        // ...
     }
 }
 ```
 
-**最佳实践：**
+---
 
-1. **构造器注入 + `final` 字段**是首选方式，确保不可变性
-2. **`@Qualifier` 优于 `@Resource`**——前者是 Spring 原生注解，语义更清晰
-3. **集合注入**适合策略模式、插件机制等需要扩展点的场景
-4. **`ObjectProvider`** 适合可选依赖，避免 `@Autowired(required=false)` 导致 NPE 风险
-5. **避免循环依赖**——优先通过重构消除循环，其次才考虑 Setter 注入
+## 5. 选型清单
+
+| 场景 | 选择 |
+| :-- | :-- |
+| 依赖是必需的 | 构造器注入，声明 `final` |
+| 依赖可选或延迟初始化 | `ObjectProvider`，不要用 `@Autowired(required=false)` |
+| 同类型多个 Bean | `@Qualifier` 指名 |
+| 策略 / 插件扩展点 | 集合注入（`Map` 或 `List`） |
+| 遇到循环依赖 | 先重构消除，不换注入方式硬扛（见 [循环依赖与三级缓存](./chapter-04-bean-lifecycle.md)） |
