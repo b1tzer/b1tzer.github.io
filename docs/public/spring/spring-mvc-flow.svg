@@ -1,28 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 637 680" width="638" height="680" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="11">
 <style>
   text { text-anchor: middle; dominant-baseline: central; }
-  .title { font-size: 15px; font-weight: bold; fill: var(--diagram-text-1); }
-  .label { font-size: 12px; fill: var(--diagram-text-1); }
-  .note { font-size: 11px; fill: var(--diagram-text-2); }
-  .arrow { stroke: var(--diagram-accent-3); stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+  .title { font-size: 15px; font-weight: bold; fill: #333333; }
+  .label { font-size: 12px; fill: #333333; }
+  .note { font-size: 11px; fill: #666666; }
+  .arrow { stroke: #7b1fa2; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
   .box { rx: 8; ry: 8; }
-  .phase { fill: var(--diagram-surface-3); stroke: var(--diagram-text-2); stroke-width: 1.5; }
-  .highlight { fill: var(--diagram-accent-bg-4); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
-  .action { fill: var(--diagram-accent-bg-2); stroke: var(--diagram-accent-2); stroke-width: 1.5; }
-  .important { fill: var(--diagram-accent-bg-5); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
-  .step { fill: var(--diagram-accent-bg-3b); stroke: var(--diagram-accent-3); stroke-width: 1.5; }
-  .note-box { fill: var(--diagram-surface-2); stroke: var(--diagram-stroke-1); stroke-width: 1; }
-  .cache { fill: var(--diagram-accent-4); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
+  .phase { fill: #eceff1; stroke: #666666; stroke-width: 1.5; }
+  .highlight { fill: #fff3e0; stroke: #e65100; stroke-width: 1.5; }
+  .action { fill: #e8f5e9; stroke: #2e7d32; stroke-width: 1.5; }
+  .important { fill: #ffcdd2; stroke: #e65100; stroke-width: 1.5; }
+  .step { fill: #e1bee7; stroke: #7b1fa2; stroke-width: 1.5; }
+  .note-box { fill: #f8f9fa; stroke: #bdbdbd; stroke-width: 1; }
+  .cache { fill: #e65100; stroke: #e65100; stroke-width: 1.5; }
 </style>
 <defs>
   <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-3)"/>
+    <polygon points="0 0, 10 3.5, 0 7" fill="#7b1fa2"/>
   </marker>
   <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-2)"/>
+    <polygon points="0 0, 10 3.5, 0 7" fill="#2e7d32"/>
   </marker>
   <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-4)"/>
+    <polygon points="0 0, 10 3.5, 0 7" fill="#e65100"/>
   </marker>
 </defs>
 <text x="319" y="24" class="title">Spring MVC 请求处理流程</text>

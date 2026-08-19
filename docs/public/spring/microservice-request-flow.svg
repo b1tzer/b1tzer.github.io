@@ -1,35 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 663 892" width="663" height="892" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="11">
 <style>
   text { text-anchor: middle; dominant-baseline: central; }
-  .title { font-size: 15px; font-weight: bold; fill: var(--diagram-text-1); }
-  .label { font-size: 12px; fill: var(--diagram-text-1); }
-  .note { font-size: 11px; fill: var(--diagram-text-2); }
-  .arrow { stroke: var(--diagram-accent-3); stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+  .title { font-size: 15px; font-weight: bold; fill: #333333; }
+  .label { font-size: 12px; fill: #333333; }
+  .note { font-size: 11px; fill: #666666; }
+  .arrow { stroke: #7b1fa2; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
   .box { rx: 8; ry: 8; }
-  .phase { fill: var(--diagram-surface-3); stroke: var(--diagram-text-2); stroke-width: 1.5; }
-  .highlight { fill: var(--diagram-accent-bg-4); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
-  .action { fill: var(--diagram-accent-bg-2); stroke: var(--diagram-accent-2); stroke-width: 1.5; }
-  .important { fill: var(--diagram-accent-bg-5); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
-  .step { fill: var(--diagram-accent-bg-3b); stroke: var(--diagram-accent-3); stroke-width: 1.5; }
-  .note-box { fill: var(--diagram-surface-2); stroke: var(--diagram-stroke-1); stroke-width: 1; }
-  .cache { fill: var(--diagram-accent-4); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
+  .phase { fill: #eceff1; stroke: #666666; stroke-width: 1.5; }
+  .highlight { fill: #fff3e0; stroke: #e65100; stroke-width: 1.5; }
+  .action { fill: #e8f5e9; stroke: #2e7d32; stroke-width: 1.5; }
+  .important { fill: #ffcdd2; stroke: #e65100; stroke-width: 1.5; }
+  .step { fill: #e1bee7; stroke: #7b1fa2; stroke-width: 1.5; }
+  .note-box { fill: #f8f9fa; stroke: #bdbdbd; stroke-width: 1; }
+  .cache { fill: #e65100; stroke: #e65100; stroke-width: 1.5; }
 </style>
 <defs>
   <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-3)"/>
+    <polygon points="0 0, 10 3.5, 0 7" fill="#7b1fa2"/>
   </marker>
   <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-2)"/>
+    <polygon points="0 0, 10 3.5, 0 7" fill="#2e7d32"/>
   </marker>
   <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-4)"/>
+    <polygon points="0 0, 10 3.5, 0 7" fill="#e65100"/>
   </marker>
 </defs>
 <text x="332" y="24" class="title">微服务网关请求处理流程</text>
 <rect x="178" y="38" width="306" height="31" class="box phase"/>
 <text x="390.0" y="63.0" class="label">客户端请求 GET /api/order/123</text>
-<line x1="332" y1="69" x2="332" y2="89" class="arrow"/><rect x="42" y="89" width="578" height="442" rx="10" fill="var(--diagram-accent-bg-3)" stroke="var(--diagram-accent-3)" stroke-width="1.7"/>
-<text x="332" y="108" class="label" font-weight="bold" font-size="11" fill="var(--diagram-accent-3)">API Gateway</text>
+<line x1="332" y1="69" x2="332" y2="89" class="arrow"/><rect x="42" y="89" width="578" height="442" rx="10" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1.7"/>
+<text x="332" y="108" class="label" font-weight="bold" font-size="11" fill="#7b1fa2">API Gateway</text>
 <rect x="68" y="123" width="238" height="24" class="box step"/>
 <text x="187" y="135" class="label" font-weight="bold">1. 路由匹配</text>
 <rect x="314" y="123" width="289" height="37" class="box note-box"/>
@@ -58,8 +58,8 @@
 <text x="327" y="358" text-anchor="start" class="note">Header: X-User-Id: 1001</text>
 <line x1="332" y1="531" x2="332" y2="548" class="arrow"/><rect x="212" y="548" width="238" height="31" class="box action"/>
 <text x="390.0" y="663.0" class="label">order-service 处理并返回响应</text>
-<line x1="332" y1="579" x2="332" y2="599" class="arrow"/><rect x="85" y="599" width="493" height="102" rx="10" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.7"/>
-<text x="332" y="618" class="label" font-weight="bold" fill="var(--diagram-accent-2)">响应处理</text>
+<line x1="332" y1="579" x2="332" y2="599" class="arrow"/><rect x="85" y="599" width="493" height="102" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.7"/>
+<text x="332" y="618" class="label" font-weight="bold" fill="#2e7d32">响应处理</text>
 <text x="110" y="642" text-anchor="start" class="note">6. 响应过滤器链: LogGlobalFilter → 记录响应日志</text>
 <text x="110" y="660" text-anchor="start" class="note">7. 响应头添加: X-Response-Time: 45ms</text>
 <text x="110" y="679" text-anchor="start" class="note">8. 返回响应给客户端</text>
