@@ -1,14 +1,22 @@
 # 循环依赖与三级缓存
 
-> 两个 Bean 互相依赖，Spring 启动时抛 `BeanCurrentlyInCreationException`。更隐蔽的是加了 AOP 之后，循环依赖"看似解决"——Bean 建出来了，注解却不生效。这一章从报错追到 `DefaultSingletonBeanRegistry` 的三个 Map，说清楚 Spring 怎么解开这个结，以及哪几种结它解不开。
+> 两个 Bean 互相依赖，构造器注入直接报错，字段注入却能「建出来」——只是拿到的对象缺了一层代理，注解不报错、却已失效。解开这个结的，是 `DefaultSingletonBeanRegistry` 里的三个 Map。记住这三个 Map 的名字不难，难的是回答一个更根本的问题：为什么偏偏是三级，不是两级。
 
 ::: warning 版本锚点
-Spring Boot 2.6 起默认**禁止**循环依赖：`spring.main.allow-circular-references` 默认为 `false`，遇到循环依赖直接启动报错。本节讲的「三级缓存解决循环依赖」只有在显式开启 `allow-circular-references=true` 后才生效。
+Spring Boot 2.6 起默认禁止循环依赖，`spring.main.allow-circular-references` 默认为 `false`，遇到循环依赖直接启动报错。本文讲的「三级缓存解开循环依赖」只在显式开启 `allow-circular-references=true` 后生效。
 :::
 
-## 1. 先看两个事故现场
+## 1. Bean 的三步与循环依赖的卡点
 
-### 1.1 构造器循环依赖：启动就报错
+Spring 创建 Bean 分三步，顺序固定：
+
+```text
+1. 实例化     new 出对象，字段全是 null
+2. 属性填充   往对象里注入依赖（这一步才去容器拿别的 Bean）
+3. 初始化     回调 Aware、@PostConstruct，最后创建 AOP 代理
+```
+
+循环依赖的卡点，取决于依赖在哪个阶段被索取。构造器注入在实例化时就要依赖，此时对象尚未创建，死结在启动阶段直接暴露：
 
 ```java
 @Service
@@ -24,16 +32,76 @@ public class ServiceB {
 }
 ```
 
-启动直接报错：
-
 ```text
 BeanCurrentlyInCreationException: Error creating bean with name 'serviceA':
 Requested bean is currently in creation: Is there an unresolvable circular reference?
 ```
 
-### 1.2 @Async + 循环依赖：注解悄悄失效
+字段注入和 Setter 注入不同，它们在第 2 步才索取依赖，此时对象已经 `new` 出来，只是字段还没填。这个「对象已存在、尚未完成」的间隙，就是解开死结的窗口。
 
-字段注入能"解开"循环依赖，但注入的可能是未经代理的原始对象：
+## 2. 提前暴露：用窗口解开死结
+
+窗口在第 1 步和第 2 步之间：对象已经存在，字段还没填，引用却可以先交出去。
+
+Spring 的做法是**提前暴露**——实例化一完成，就把半成品的引用存进一个地方；别的 Bean 需要时先拿它用，等它自己走完第 2、3 步，再换成成品。
+
+这套「先交半成品、后补成品」的机制，落在 `DefaultSingletonBeanRegistry` 里，用三个 Map 实现。
+
+## 3. 三个 Map，一条流水线
+
+```java
+/** 一级缓存：成品，完整可用 */
+private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
+
+/** 二级缓存：半成品，已提前暴露的引用 */
+private final Map<String, Object> earlySingletonObjects = new ConcurrentHashMap<>(16);
+
+/** 三级缓存：对象工厂，能延迟产出半成品 */
+private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
+```
+
+三个 Map 不是平级的，是一条流水线：
+
+```text
+singletonFactories（三级）  存 ObjectFactory，等有人来取才生产半成品
+        │ getObject()
+        ▼
+earlySingletonObjects（二级）存生产出来的半成品，避免重复生产
+        │ 初始化完成
+        ▼
+singletonObjects（一级）    存最终成品
+```
+
+取 Bean 的入口 `getSingleton` 按一、二、三级的顺序依次查，查到就返回，并把三级升到二级。三个 Map 各司其职，取数顺序也不难理解。真正的问题在第三级：既然两级就能「先交半成品」，为什么要多存一个 `ObjectFactory`？
+
+## 4. 为什么是三级
+
+如果只是为了「先交半成品」，两级就够：一个 Map 存成品，一个 Map 存半成品。多出来的第三级，是为了 AOP。
+
+AOP 代理的正常时机在第 3 步初始化之后，但循环依赖要求第 2 步填充时就拿到引用。两个时机冲突：
+
+- 只用两级、在第 1 步就把半成品放进二级缓存，那么「要不要代理、代理成什么」这个决策就被钉死在第 1 步——所有 Bean 都要在实例化后立刻判断是否代理，哪怕它根本没有循环依赖，白白破坏「代理留在初始化最后」的约定。
+- 三级缓存存的是 `ObjectFactory`，不是对象本身。工厂把「要不要代理」推迟到「真的有人来取」的那一刻，只有发生循环依赖、真的有人提前来取时，才触发代理。
+
+这就是三级缓存存在的唯一原因：**把 AOP 代理的决策，推迟到不得不做的时候**。它不是性能优化，是一个时机问题。
+
+工厂里做代理决策的是 `getEarlyBeanReference`：
+
+```java
+// AbstractAutoProxyCreator#getEarlyBeanReference
+public Object getEarlyBeanReference(Object bean, String beanName) {
+    this.earlyProxyReferences.put(cacheKey, bean);
+    return wrapIfNecessary(bean, beanName, cacheKey);  // 需要代理就返回代理对象
+}
+```
+
+它不直接返回裸对象，而是先问 `wrapIfNecessary`：这个 Bean 需不需要 AOP 代理，需要就提前包一层。`@Transactional`、`@Aspect` 的处理器都实现了这一层提前代理，所以它们能安全地参与循环依赖。
+
+## 5. @Async 为什么失效
+
+不是所有处理器都做了提前代理。`@Async` 的 `AsyncAnnotationBeanPostProcessor` 就没有重写 `getEarlyBeanReference`。
+
+于是出现这样的情形：
 
 ```java
 @Service
@@ -52,136 +120,23 @@ public class UserService {
 }
 ```
 
-启动不报错，两个 Bean 都能建出来。但 `UserService` 里注入的 `orderService` 是原始对象，`sendNotification()` 的 `@Async` 不生效——调用变成同步执行。这比直接报错更危险，因为它不炸，只悄悄错。
+启动不报错，两个 Bean 都建了出来。但 `UserService` 拿到的 `orderService` 是第 2 步提前暴露时的裸对象，代理没生成，`sendNotification()` 的 `@Async` 不生效，调用变成同步执行。
 
-## 2. Bean 创建的三步
+这一条不是「还没修好的 bug」，而是设计立场的体现：Spring 认为循环依赖本身是坏味道，不值得为它把每个注解处理器都改造成支持提前代理。Boot 2.6 默认禁止循环依赖，就是这个立场的落地。
 
-理解循环依赖之前，先记住 Bean 创建分三步，顺序不能乱：
+## 6. 能解与不能解
 
-```text
-1. 实例化     new 出对象，字段还是 null
-2. 属性填充   注入依赖（这一步才去容器里拿别的 Bean）
-3. 初始化     回调 Aware、@PostConstruct，最后做 AOP 代理
-```
-
-循环依赖卡在第 2 步：`ServiceA` 填充 `serviceB` 时发现 `ServiceB` 还没好，转去创建 `ServiceB`；`ServiceB` 填充 `serviceA` 时又发现 `ServiceA` 还在创建中——死结。
-
-Spring 的解法是**提前暴露**：在第 1 步实例化完成后、第 2 步填充之前，先把半成品的引用存起来，让别的 Bean 能先拿到它。
-
-## 3. 三级缓存的数据结构
-
-提前暴露的引用存在三个 Map 里，定义在 `DefaultSingletonBeanRegistry`：
-
-```java
-/** 一级缓存：成品 Bean（完整可用） */
-private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
-
-/** 二级缓存：半成品（提前暴露、已确定引用的对象） */
-private final Map<String, Object> earlySingletonObjects = new ConcurrentHashMap<>(16);
-
-/** 三级缓存：对象工厂（能产出半成品的工厂） */
-private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
-```
-
-三者的流转关系：
-
-```text
-singletonFactories（三级）  存 ObjectFactory，延迟生产半成品
-        │ getObject() 触发
-        ▼
-earlySingletonObjects（二级）存半成品引用，避免重复生产
-        │ 初始化完成后
-        ▼
-singletonObjects（一级）    存最终成品
-```
-
-## 4. 源码链路：getSingleton 的双层检查
-
-`getSingleton(String beanName, boolean allowEarlyReference)` 是取 Bean 的入口，依次查三级缓存（注释为讲解所加）：
-
-```java
-protected Object getSingleton(String beanName, boolean allowEarlyReference) {
-    // 一级：成品，直接返回
-    Object singletonObject = this.singletonObjects.get(beanName);
-    if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
-        // 二级：半成品，已提前暴露
-        singletonObject = this.earlySingletonObjects.get(beanName);
-        if (singletonObject == null && allowEarlyReference) {
-            synchronized (this.singletonObjects) {
-                singletonObject = this.singletonObjects.get(beanName);
-                if (singletonObject == null) {
-                    singletonObject = this.earlySingletonObjects.get(beanName);
-                    if (singletonObject == null) {
-                        // 三级：拿到工厂，生产半成品，并升到二级
-                        ObjectFactory<?> singletonFactory = this.singletonFactories.get(beanName);
-                        if (singletonFactory != null) {
-                            singletonObject = singletonFactory.getObject();
-                            this.earlySingletonObjects.put(beanName, singletonObject);
-                            this.singletonFactories.remove(beanName);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return singletonObject;
-}
-```
-
-这段代码回答了一个问题：**为什么三级缓存存的是 `ObjectFactory` 而不是对象本身**。因为拿到工厂后，Spring 会调用 `getObject()` 生产半成品，并立即把它从三级升到二级——半成品只生产一次，保证单例。
-
-实例化后往三级缓存塞工厂的动作在 `doCreateBean` 里：
-
-```java
-// AbstractAutowireCapableBeanFactory#doCreateBean 节选
-protected Object doCreateBean(String beanName, RootBeanDefinition mbd, Object[] args) {
-    // 1. 实例化
-    BeanWrapper instanceWrapper = createBeanInstance(beanName, mbd, args);
-
-    // 提前暴露：把工厂放进三级缓存（仅单例才暴露）
-    boolean earlySingletonExposure = (mbd.isSingleton()
-            && this.allowCircularReferences
-            && isSingletonCurrentlyInCreation(beanName));
-    if (earlySingletonExposure) {
-        addSingletonFactory(beanName, () -> getEarlyBeanReference(beanName, mbd, bean));
-    }
-
-    // 2. 属性填充
-    populateBean(beanName, mbd, instanceWrapper);
-    // 3. 初始化（AOP 代理在这里创建）
-    Object exposedObject = initializeBean(beanName, exposedObject, mbd);
-    // ...
-}
-```
-
-## 5. 为什么是三级，不是两级
-
-关键在 `getEarlyBeanReference`。这个工厂方法不只是返回裸对象，它会判断这个 Bean 需不需要 AOP 代理，需要就提前创建代理：
-
-```java
-// AbstractAutoProxyCreator#getEarlyBeanReference
-public Object getEarlyBeanReference(Object bean, String beanName) {
-    this.earlyProxyReferences.put(cacheKey, bean);
-    return wrapIfNecessary(bean, beanName, cacheKey);  // 需要代理就返回代理对象
-}
-```
-
-AOP 代理的正常时机是第 3 步初始化之后，但循环依赖要求在第 2 步填充时就拿到引用。这两个时机冲突了：
-
-- 如果只有两级缓存、在第 1 步就把代理对象放进二级缓存，那所有 Bean 都要在实例化后立即做代理，即使没有循环依赖——违背 Spring「代理留在初始化最后」的设计。
-- 用三级缓存的 `ObjectFactory` 把「要不要代理、何时代理」推迟到「真的有人来拿」的那一刻，只有发生循环依赖时才提前触发代理。
-
-这就是三级缓存存在的真正原因：**不是为提高效率，是为了把 AOP 代理的决策推迟到不得不做的时候**。这也解释了 1.2 的 `@Async` 失效——`AsyncAnnotationBeanPostProcessor` 没有重写 `getEarlyBeanReference`，提前暴露时拿到的是裸对象，代理没提前生成。
-
-## 6. 工程红线
+各种注入方式放进循环依赖，结果如下：
 
 | 场景 | 结果 | 原因 |
 | :-- | :-- | :-- |
-| 全是构造器注入 | ❌ 启动报错 | 实例化阶段就要依赖，对象还没暴露 |
-| 字段 / Setter 注入 | ✅ 可解 | 实例化完成、提前暴露之后才填充 |
+| 构造器注入 | ❌ 报错 | 实例化阶段就要依赖，没有提前暴露的窗口 |
+| 字段 / Setter 注入 | ✅ 可解 | 实例化完成、提前暴露后才填充 |
 | prototype 作用域 | ❌ 不参与 | 三级缓存只对单例生效 |
-| `@Transactional` / `@Aspect` 循环依赖 | ✅ 可解 | `AbstractAutoProxyCreator` 会提前代理 |
-| `@Async` 循环依赖 | ❌ 代理失效 | `AsyncAnnotationBeanPostProcessor` 没重写 `getEarlyBeanReference` |
+| `@Transactional` / `@Aspect` | ✅ 可解 | 处理器重写了提前代理 |
+| `@Async` | ❌ 失效 | 处理器没做提前代理 |
 
-两条结论：循环依赖能靠三级缓存解决，但有注入方式和作用域的严格前提；**能解不等于该用**——循环依赖通常是设计坏味道，优先重构（提取公共组件、事件解耦），而不是开启 `allow-circular-references` 硬扛。
+这张表读出的不是「避开哪些坑」，而是**三级缓存的能力边界**：它只能解「字段/Setter 注入 + 单例 + 处理器支持提前代理」这一种组合下的循环依赖。
+
+即便在边界之内，能解也不等于该用。循环依赖几乎总是设计坏味道，拆出一个公共组件、用事件解耦，都比显式放开 `allow-circular-references` 更干净。构造器注入是更该坚持的默认选择——它让循环依赖在启动时就报错，而不是让一个缺了代理的对象在运行期才暴露问题。
 

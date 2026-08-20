@@ -140,7 +140,7 @@ public class PaymentService {
 
 ### 4.3 可选依赖：ObjectProvider
 
-依赖可能不存在时，用 `ObjectProvider` 延迟获取，避免启动时报错：
+依赖可能不存在时，用 `ObjectProvider` 延迟获取：
 
 ```java
 @Service
@@ -159,6 +159,10 @@ public class ReportService {
 }
 ```
 
+`ObjectProvider` 注入的是「获取器」而不是 bean 本身，真正的 bean 在首次调用 `getObject()` / `getIfAvailable()` 时才去容器里解析，时机由调用方决定。但要分清「延迟解析」和「延迟创建」：默认单例 bean 在容器启动时就被 `DefaultListableBeanFactory.preInstantiateSingletons()` 预创建了，`ObjectProvider` 拦不住这一步；只有当目标 bean 标了 `@Lazy`，首次 `getObject()` 才会真正触发实例化——这才是「等调用时才创建 bean」的成立前提。
+
+为什么不推荐 `@Autowired(required=false)`？`required=false` 只能用在字段或 Setter 注入上，用它就意味着把依赖声明成可空字段，放弃 `final` 和脱离容器的测试独立性；`ObjectProvider` 是构造器参数，这两点都不丢。`required=false` 的「不存在」表现为字段为 `null`，判空散落到每个调用点，`ObjectProvider.getIfAvailable()` 则把判断收敛在获取处。
+
 ## 5. 选型清单
 
 | 场景 | 选择 |
@@ -167,4 +171,4 @@ public class ReportService {
 | 依赖可选或延迟初始化 | `ObjectProvider`，不要用 `@Autowired(required=false)` |
 | 同类型多个 Bean | `@Qualifier` 指名 |
 | 策略 / 插件扩展点 | 集合注入（`Map` 或 `List`） |
-| 遇到循环依赖 | 先重构消除，不换注入方式硬扛（见 [循环依赖与三级缓存](./chapter-04-bean-lifecycle.md)） |
+| 遇到循环依赖 | 优先重构消除；确实拆不掉时，换字段 / Setter 注入并开启 `allow-circular-references`，这是最后兜底（见 [循环依赖与三级缓存](./chapter-04-bean-lifecycle.md)） |
