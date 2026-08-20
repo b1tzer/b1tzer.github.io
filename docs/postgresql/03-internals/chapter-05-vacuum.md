@@ -40,8 +40,6 @@ SELECT datname, age(datfrozenxid) FROM pg_database;
 -- 手动冻结
 VACUUM FREEZE users;
 ```
-
----
 ## 5. VACUUM 调优详解
 
 ### 5.1 Autovacuum 参数调优

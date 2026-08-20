@@ -38,8 +38,6 @@ CREATE INDEX idx_covering ON users(name, age) INCLUDE (email);
 -- 查询只需索引，不回表
 SELECT name, age, email FROM users WHERE name = '张三';
 ```
-
----
 ## 5. 更多索引设计场景
 
 ### 5.1 多列索引的列顺序

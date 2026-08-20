@@ -82,5 +82,3 @@ Beats → Logstash → Elasticsearch → Kibana
 - **使用别名（Alias）指向索引**，便于零停机切换
 - **批量写入使用 Bulk API**，比单条写入快 5~10 倍
 - **全文搜索用 text + match，精确匹配用 keyword + term**
-
----

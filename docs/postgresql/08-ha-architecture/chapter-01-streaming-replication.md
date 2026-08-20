@@ -34,8 +34,6 @@ SELECT * FROM pg_stat_replication;
 -- 从库
 SELECT * FROM pg_stat_wal_receiver;
 ```
-
----
 ## 4. 更多流复制场景
 
 ### 4.1 同步复制

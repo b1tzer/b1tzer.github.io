@@ -46,8 +46,6 @@ BEGIN
     CLOSE cur;
 END;
 ```
-
----
 ## 4. 更多 PL/pgSQL 用法
 
 ### 4.1 条件与循环

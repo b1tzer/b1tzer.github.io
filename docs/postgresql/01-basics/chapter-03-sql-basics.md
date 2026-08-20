@@ -29,8 +29,6 @@ CREATE ROLE app_user WITH LOGIN PASSWORD 'secret';
 GRANT SELECT, INSERT ON users TO app_user;
 REVOKE INSERT ON users FROM app_user;
 ```
-
----
 ## 4. 高级 SQL 语法
 
 ### 4.1 批量操作

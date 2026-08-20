@@ -31,8 +31,6 @@ GRANT SELECT, INSERT, UPDATE ON users TO app_user;
 -- 列级
 GRANT SELECT (name, email) ON users TO app_user;
 ```
-
----
 ## 3. 更多权限场景
 
 ### 3.1 角色继承与层级

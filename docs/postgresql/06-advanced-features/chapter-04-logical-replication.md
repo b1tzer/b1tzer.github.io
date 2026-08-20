@@ -31,8 +31,6 @@ SELECT * FROM pg_stat_subscription;
 -- 查看复制槽
 SELECT * FROM pg_replication_slots;
 ```
-
----
 ## 4. 更多逻辑复制场景
 
 ### 4.1 选择性复制

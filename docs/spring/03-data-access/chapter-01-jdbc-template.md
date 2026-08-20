@@ -89,8 +89,6 @@ Spring 整合后流程：
                     └──────────────┘  └──────────────┘
 ```
 
----
-
 ## 5.2 @MapperScan 原理
 
 ### 5.2.1 没有 @MapperScan 时的问题
@@ -203,8 +201,6 @@ public class MapperProxy<T> implements InvocationHandler {
 
 这就是为什么 Mapper 接口不需要实现类——每一次方法调用都被代理拦截，转化为 SQL 执行。
 
----
-
 ## 5.3 SqlSessionTemplate
 
 ### 5.3.1 DefaultSqlSession 的问题
@@ -308,8 +304,6 @@ Thread-2 ──→ [SqlSession B] ──→ 正常执行 → 自动关闭
 Thread-3 ──→ [SqlSession C] ──→ 正常执行 → 自动关闭
             （每次调用获取新 Session，互不干扰）
 ```
-
----
 
 ## 5.4 一级缓存"失效"的真相
 

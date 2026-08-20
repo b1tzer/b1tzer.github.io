@@ -37,8 +37,6 @@ public class User {
     RETURNING id
 </insert>
 ```
-
----
 ## 4. 更多 Spring 集成场景
 
 ### 4.1 JPA + JSONB 详解

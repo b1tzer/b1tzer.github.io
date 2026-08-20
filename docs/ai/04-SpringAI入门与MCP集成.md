@@ -10,8 +10,6 @@ title: Spring AI 入门与 MCP 集成 —— 让 LLM 变成 @Bean 的 Java 最�
 !!! warning "版本锚点"
     本篇所有代码与坐标以 **Spring AI `1.0.0-M6`**（2025 年主流里程碑版本）为基准。M6 的 API 已基本稳定，但**不是 GA**——坐标从 M6 到 1.0.0 GA 存在少量 artifactId 重命名（如 `spring-ai-mcp-client-spring-boot-starter` → `spring-ai-starter-mcp-client`），升级时需要按官方迁移指南替换。`@Tool` 注解、`ChatClient` / `Advisor` API 本身跨版本稳定。
 
----
-
 ## 1. 类比：从"手搓 HTTP 客户端"到"声明式 AI 开发"
 
 前三篇教你的是"**AI 的 JDBC**"——协议、字段、循环、自己拼；本篇要讲的 Spring AI 是"**AI 的 Spring Data**"——声明式、注解驱动、约定优于配置。
@@ -30,8 +28,6 @@ title: Spring AI 入门与 MCP 集成 —— 让 LLM 变成 @Bean 的 Java 最�
 
 !!! tip "一句话定位"
     **Spring AI 不是"Java 版 LangChain"，它是"让 LLM 变成 `@Bean`"的 Spring 风格 AI 框架。**——哲学差异见 §3，下文会反复呼应这一点。
-
----
 
 ## 2. 为什么需要 Spring AI：三个手工业痛点
 
@@ -68,8 +64,6 @@ title: Spring AI 入门与 MCP 集成 —— 让 LLM 变成 @Bean 的 Java 最�
 - **Tool**：JSON Schema + 循环调用
 
 Spring AI 用一个统一抽象 `Advisor` 把它们**全部变成对话管道上的切面**——写一个 `@Around`，管你是记忆、RAG 还是审计日志，都能插进同一条流水线。这套设计哲学就是**Spring AOP 在 AI 世界的复刻**，下面 §5 会展开。
-
----
 
 ## 3. Spring AI 定位：它是什么、不是什么
 
@@ -123,8 +117,6 @@ Spring AI 真正需要理解的抽象只有 5 个，**对应前三篇的每一�
 | **`VectorStore`** | 向量库统一 API（pgvector / Milvus / Redis / ES 一个接口） | 02 篇各家 SDK 的客户端代码 |
 | **`Advisor`** | 对话管道切面（Spring AOP 的 AI 版） | 02 篇的"手动拼 RAG Prompt"、Memory 裁剪 |
 | **`ToolCallback` / `@Tool`** | Function Calling 注解化 | 03 篇的 `tools` JSON Schema + `while` 回环 |
-
----
 
 ## 4. 最小可运行 Demo：DeepSeek + Spring AI M6
 
@@ -243,8 +235,6 @@ curl -N 'http://localhost:8080/ai/stream?q=写一个 Hello World 的 Spring Cont
 
 **对比 01 篇**：同一个功能，01 篇用 `OkHttp` + `ObjectMapper` + SSE 解析写了 80 多行；这里加上 imports 也就 30 行，**核心业务只有 4 行**（第 18~22 行）。
 
----
-
 ## 5. Advisor 机制：Spring AOP 哲学在 AI 世界的复刻
 
 !!! tip "理解 Advisor 的一把钥匙"
@@ -337,8 +327,6 @@ public class SensitiveWordAdvisor implements CallAroundAdvisor {
     **`SensitiveWordAdvisor`（最高优先）→ `MessageChatMemoryAdvisor` → `QuestionAnswerAdvisor` → `SimpleLoggerAdvisor`（最低优先）**。
     顺序错了会出诡异 bug：比如日志 Advisor 放在最前，你记录的是"裁剪前"的 prompt；敏感词 Advisor 放在 RAG 之后，已经多跑了一次向量检索。
 
----
-
 ## 6. Tool Calling：从 03 篇的手写循环到 `@Tool` 注解
 
 03 篇 §3 花了大篇幅讲 `while (response.tool_calls != null)` 回环——Spring AI 把**整段循环消灭**。
@@ -411,8 +399,6 @@ flowchart LR
 
 !!! tip "03 篇讲的工具设计 6 条硬规约依然适用"
     Spring AI 帮你省了**协议拼接**，但没帮你省**工具设计**。03 篇 §3.4 讲的 `description` 写法、参数枚举、工具数量控制、幂等性、并行调用等规约**依然是最佳实践**——写不清晰的 `@Tool(description=...)`，LLM 照样乱调。
-
----
 
 ## 7. MCP Client 集成：一行配置接入 MCP 生态
 
@@ -496,8 +482,6 @@ flowchart LR
 
 **这就是 MCP 的威力**——本地工具和远端 Server 在 LLM 眼里是一视同仁的"按钮"，你不用改任何 Prompt、不用写任何路由逻辑。
 
----
-
 ## 8. 取舍：什么时候别用 Spring AI
 
 Spring AI 是好东西，但不是银弹。按三类场景判断：
@@ -522,8 +506,6 @@ M6 不是 GA，升级到 1.0.0 时会有少量 API 重命名（`BaseAdvisor` →
 **坑 3：Advisor 顺序是个隐性配置**
 前面 §5.3 的 warning 已经强调过——`SimpleLoggerAdvisor` 放最前还是最后，打出来的内容完全不同；`MessageChatMemoryAdvisor` 放到 `QuestionAnswerAdvisor` 之后，RAG 检索的 query 就不是"压缩过的问题"而是"带历史噪音的问题"。**顺序错了很难排查，建议每个项目写一份 Advisor 链路图**。
 
----
-
 ## 9. 常见问题 Q&A
 
 **Q1：Spring AI 和 LangChain4j 最终怎么选？**
@@ -546,14 +528,10 @@ M6 不是 GA，升级到 1.0.0 时会有少量 API 重命名（`BaseAdvisor` →
 
 > **结论**：Spring AI 会自动在工具名前加 Server 前缀（如 `filesystem_read_file`、`github_read_file`），**不会撞名**。但 LLM 可能因为名字变长而选择困难——建议：① 精简 Server 数量，按业务场景动态启用；② 在 `@Tool(description=...)` 的描述里突出业务差异（"从本地磁盘读 / 从 GitHub 仓库读"），让 LLM 能清晰区分。
 
----
-
 ## 10. 一句话口诀
 
 > **💡 Spring AI 不是"Java 版 LangChain"，它是让 LLM 变成 `@Bean` 的 Spring 风格 AI 框架。**
 > **`ChatClient` + `Advisor` + `@Tool` + MCP Starter 四件套，覆盖 90% 企业 AI 场景**——记忆、知识、工具、生态，一个 `@Bean` 全搞定。
-
----
 
 ## 附录：和前后文档的关系
 

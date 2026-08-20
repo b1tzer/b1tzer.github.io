@@ -33,8 +33,6 @@ CREATE POLICY tenant_policy ON orders USING (tenant_id = current_tenant_id());
 CREATE SCHEMA tenant_1;
 CREATE TABLE tenant_1.orders (...);
 ```
-
----
 ## 4. 更多业务场景
 
 ### 4.1 乐观锁实现

@@ -31,8 +31,6 @@ pg_basebackup -h localhost -U replicator -D /backup/base -Fp -Xs -P
 restore_command = 'cp /archive/%f %p'
 recovery_target_time = '2024-01-01 12:00:00'
 ```
-
----
 ## 4. 备份策略详解
 
 ### 4.1 逻辑备份高级用法

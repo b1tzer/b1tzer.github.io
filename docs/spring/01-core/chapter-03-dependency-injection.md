@@ -2,8 +2,6 @@
 
 > 一个类要拿到它的依赖，Spring 给了三种写法：构造器、Setter、字段。三种都能让依赖在运行时被填上，但只有一种能让你三年后改代码时不踩坑。这一章不重复 DI 是什么（见 [IoC 容器](./chapter-02-ioc-container.md)），只回答一件事：三种写法怎么选，选错会付出什么代价。
 
----
-
 ## 1. 三种注入方式
 
 同一个依赖，三种写法：
@@ -40,8 +38,6 @@ public class OrderService {
 
 三种写法都能让 `orderRepository` 在运行时被填上，差别在填上之后。
 
----
-
 ## 2. 为什么构造器注入是默认选择
 
 把三种写法放到工程约束下对比：
@@ -56,8 +52,6 @@ public class OrderService {
 其中「字段不可变」是决定性的。构造器注入把依赖声明成 `final`，对象创建完成后依赖就无法被改动，编译器替你守住这条底线。字段注入唯一的优势是代码短一行，代价是丢掉不可变性和测试独立性，这笔账不划算。
 
 一个常见的反驳是「字段注入写起来方便」。方便体现在写的那一刻，代价在之后每一次重构和测试里偿还——字段注入的类无法脱离容器单独 `new` 出来测，想替换一个 Mock 得靠反射。
-
----
 
 ## 3. @Autowired 与 @Resource
 
@@ -85,8 +79,6 @@ private UserService userService;
 ::: warning 版本锚点
 `@Resource` 来自 `javax.annotation`。JDK 11 起 JDK 不再内置该包，Spring 6.0 全面转向 `jakarta.annotation`，需额外引入 `jakarta.annotation-api` 依赖。
 :::
-
----
 
 ## 4. 进阶用法
 
@@ -166,8 +158,6 @@ public class ReportService {
     }
 }
 ```
-
----
 
 ## 5. 选型清单
 

@@ -7,8 +7,6 @@ title: 代理模式（Proxy Pattern）
 
 > **一句话记忆口诀**：代理控制访问，静态代理编译期织入，JDK 动态代理基于接口，CGLIB 基于继承，Spring AOP 优先 JDK 代理。
 
----
-
 ## 1. 引入：它解决了什么问题？
 
 ### 没有代理模式时的问题
@@ -57,8 +55,6 @@ public class OrderService {
 | 远程调用 | Feign Client — JDK 动态代理 |
 | MyBatis Mapper | `@Mapper` 接口 — JDK 动态代理 |
 
----
-
 ## 2. 类比：用生活模型建立直觉
 
 ### 生活类比：明星经纪人
@@ -73,8 +69,6 @@ public class OrderService {
 ### 抽象定义
 
 > 代理模式为另一个对象提供一个替身或占位符，以控制对这个对象的访问。
-
----
 
 ## 3. 原理：逐步拆解核心机制
 
@@ -282,8 +276,6 @@ flowchart TD
     end
 ```
 
----
-
 ## 4. 特性：关键对比
 
 ### 三种代理方式对比
@@ -330,8 +322,6 @@ flowchart TD
 | Feign Client | JDK 动态代理 | 接口生成 HTTP 客户端 |
 | MyBatis `@Mapper` | JDK 动态代理 | 接口生成 SQL 执行器 |
 | `Collections.synchronizedList()` | 静态代理 | 线程安全包装 |
-
----
 
 ## 5. 边界：异常情况与常见误区
 
@@ -414,8 +404,6 @@ OrderService proxy = (OrderService) Proxy.newProxyInstance(...);
 proxy.createOrder(order); // 通过接口调用
 ```
 
----
-
 ## 6. 总结：面试标准化表达
 
 ### 高频问题
@@ -431,7 +419,5 @@ proxy.createOrder(order); // 通过接口调用
 **Q3：代理模式和装饰器模式有什么区别？**
 
 > 两者结构相似，都持有被包装对象的引用，但目的不同：代理模式的目的是**控制访问**，代理通常自己创建或持有真实对象，调用方不知道在访问代理（透明代理），典型例子是 Spring AOP、Feign Client；装饰器模式的目的是**增强功能**，被装饰对象由外部传入，调用方知道在使用装饰器，典型例子是 `BufferedInputStream` 包装 `FileInputStream`。
-
----
 
 > **一句话记忆口诀**：代理控制访问，JDK 代理基于接口（必须有接口），CGLIB 基于继承（不能 final），Spring Boot 2.x 默认 CGLIB，自调用会绕过代理导致 AOP 失效。

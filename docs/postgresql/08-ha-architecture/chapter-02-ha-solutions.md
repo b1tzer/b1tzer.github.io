@@ -36,8 +36,6 @@ repmgr cluster show
 ```bash
 pg_autoctl create postgres --pgdata /var/lib/postgresql/16/main
 ```
-
----
 ## 4. 更多 HA 方案
 
 ### 4.1 Patroni 详解

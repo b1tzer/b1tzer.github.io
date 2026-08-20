@@ -7,13 +7,9 @@ title: 事务与锁机制
 
 > **核心问题**：PostgreSQL 的事务隔离级别有哪些？与 MySQL 有什么区别？PG 的锁机制有哪些类型？咨询锁是什么？
 
----
-
 ## 它解决了什么问题？
 
 事务保证一组操作的原子性和一致性，锁机制保证并发操作的正确性。PG 的事务和锁机制与 MySQL 有显著差异——PG 真正实现了 Serializable 隔离级别（基于 SSI），且提供了独特的**咨询锁（Advisory Lock）**，理解这些差异对正确使用 PG 至关重要。
-
----
 
 # 一、事务隔离级别
 
@@ -76,8 +72,6 @@ public void transferMoney(Long fromId, Long toId, BigDecimal amount) {
 }
 ```
 
----
-
 # 二、锁的类型
 
 ## 表级锁
@@ -129,8 +123,6 @@ ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED;
 ```
 
 > **实战场景**：`SKIP LOCKED` 非常适合用 PG 实现简单的任务队列——多个消费者并发获取任务时，自动跳过已被其他消费者锁定的任务，无需额外的消息队列中间件。
-
----
 
 # 三、咨询锁（Advisory Lock）
 
@@ -202,8 +194,6 @@ public void createOrder(Long userId) {
 
 > **与 Redis 分布式锁的对比**：咨询锁不需要额外的 Redis 组件，适合单数据库场景；Redis 分布式锁适合跨数据库、跨服务的场景。
 
----
-
 # 四、死锁检测与处理
 
 PG 内置死锁检测器，默认每秒检测一次（`deadlock_timeout = 1s`）：
@@ -237,8 +227,6 @@ WHERE NOT bl.granted;
 2. **缩短事务时间**：减少锁持有时间
 3. **使用 NOWAIT**：获取不到锁时立即失败，而非等待
 4. **设置 lock_timeout**：`SET lock_timeout = '5s'`，超时自动放弃
-
----
 
 # 五、常见问题
 

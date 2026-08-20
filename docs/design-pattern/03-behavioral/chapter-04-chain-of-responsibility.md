@@ -7,8 +7,6 @@ title: 责任链模式（Chain of Responsibility Pattern）
 
 > **一句话记忆口诀**：责任链串联处理者，请求沿链传递直到被处理，Spring Security 过滤器链和 Servlet Filter 是最经典的例子。
 
----
-
 ## 1. 引入：它解决了什么问题？
 
 ### 没有责任链模式时的问题
@@ -64,8 +62,6 @@ public class RequestProcessor {
 | MyBatis 插件 | `InterceptorChain` |
 | 审批流程 | 员工→主管→经理→总监逐级审批 |
 
----
-
 ## 2. 类比：用生活模型建立直觉
 
 ### 生活类比：公司报销审批流程
@@ -81,8 +77,6 @@ public class RequestProcessor {
 ### 抽象定义
 
 > 责任链模式使多个对象都有机会处理请求，从而避免请求的发送者和接收者之间的耦合关系。将这些对象连成一条链，并沿着这条链传递请求，直到有一个对象处理它为止。
-
----
 
 ## 3. 原理：逐步拆解核心机制
 
@@ -281,8 +275,6 @@ flowchart TD
     note1["每个处理者决定是否继续传递<br/>可以在任意节点终止链"]
 ```
 
----
-
 ## 4. 特性：关键对比
 
 ### 责任链模式 vs 装饰器模式（结构相似）
@@ -310,8 +302,6 @@ flowchart TD
 | MyBatis `InterceptorChain` | SQL 执行拦截链 |
 | Netty `ChannelPipeline` | 网络请求处理链 |
 | Spring MVC `HandlerInterceptor` | 请求拦截器链 |
-
----
 
 ## 5. 边界：异常情况与常见误区
 
@@ -392,8 +382,6 @@ public final Response handle(Request request) {
 }
 ```
 
----
-
 ## 6. 总结：面试标准化表达
 
 ### 高频问题
@@ -409,7 +397,5 @@ public final Response handle(Request request) {
 **Q3：Spring Security 的过滤器链是如何工作的？**
 
 > Spring Security 通过 `SecurityFilterChain` 实现责任链模式，包含约 15 个 Filter（如 `UsernamePasswordAuthenticationFilter`、`BasicAuthenticationFilter`、`ExceptionTranslationFilter` 等）。每个请求进入时，按顺序经过所有 Filter，每个 Filter 可以处理请求（如认证）或直接传递。关键 Filter 如 `FilterSecurityInterceptor` 在链末端做权限校验，`ExceptionTranslationFilter` 捕获认证/授权异常并转换为 HTTP 响应。可以通过 `HttpSecurity` 配置添加自定义 Filter 到链中的指定位置。
-
----
 
 > **一句话记忆口诀**：责任链串联处理者，请求沿链传递，某节点可终止，Servlet `FilterChain` 和 Spring Security 过滤器链是最经典的例子，注意链末端要有默认处理者。

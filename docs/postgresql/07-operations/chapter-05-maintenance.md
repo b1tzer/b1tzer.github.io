@@ -38,8 +38,6 @@ SELECT
 FROM pg_stat_user_tables
 ORDER BY n_dead_tup DESC;
 ```
-
----
 ## 5. 更多维护场景
 
 ### 5.1 定期维护脚本

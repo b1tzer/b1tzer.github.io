@@ -9,8 +9,6 @@ title: PostgreSQL 核心特性与选型
 >
 > **检验标准**：学完每个模块后，能口述"这个技术解决了什么问题？不用它会怎样？工作中有哪些坑？"
 
----
-
 ## 版本发展
 
 ```mermaid
@@ -30,8 +28,6 @@ timeline
 ```
 
 > 📌 本站聚焦 **v14 / v15 / v16** 版本，覆盖 JSONB、窗口函数、CTE、MVCC/VACUUM 等核心特性。
-
----
 
 ## 整体知识地图
 
@@ -72,8 +68,6 @@ mindmap
             实战场景
 ```
 
----
-
 ## 一、PostgreSQL vs MySQL
 
 ### 为什么要了解选型差异？
@@ -91,8 +85,6 @@ mindmap
 | **国内生态** | 增长迅速 | 成熟完善 | 团队熟悉度优先 |
 
 > 详细对比 → [PG与MySQL对比](chapter-05-pg-vs-mysql.md)
-
----
 
 ## 二、MVCC 原理与表膨胀
 
@@ -119,8 +111,6 @@ flowchart LR
 
 > 详细原理 → [MVCC与VACUUM机制](../03-internals/chapter-04-mvcc.md)
 
----
-
 ## 三、索引类型
 
 ### 为什么要了解多种索引类型？
@@ -139,8 +129,6 @@ MySQL 主要只有 B-tree，而 PG 提供了多种索引类型。选错索引类
 > ⚠️ **工作中的坑**：JSONB 字段未建 GIN 索引，查询退化为全表扫描。
 
 > 详细说明 → [索引类型详解](../04-index-optimization/chapter-01-index-types.md)
-
----
 
 ## 四、高级特性
 
@@ -186,8 +174,6 @@ SELECT * FROM org_tree ORDER BY level;
 
 > 详细说明 → [物化视图](../06-advanced-features/chapter-07-materialized-view.md)
 
----
-
 ## 五、VACUUM 机制
 
 ### 为什么要理解 VACUUM？
@@ -206,8 +192,6 @@ SELECT * FROM org_tree ORDER BY level;
 
 > 详细说明 → [MVCC与VACUUM机制](../03-internals/chapter-04-mvcc.md)
 
----
-
 ## 高频面试速查
 
 | 问题 | 关键答案 |
@@ -220,8 +204,6 @@ SELECT * FROM org_tree ORDER BY level;
 | VACUUM 和 VACUUM FULL 的区别？ | VACUUM 不锁表，空间标记可复用；VACUUM FULL 锁表，彻底回收空间归还 OS |
 | 为什么长事务导致表膨胀？ | VACUUM 不能清理比最老活跃事务更新的 Dead Tuple，长事务期间 Dead Tuple 无法清理 |
 
----
-
 ## 常见问题速查
 
 | 问题现象 | 根本原因 | 解决方案 |
@@ -232,8 +214,6 @@ SELECT * FROM org_tree ORDER BY level;
 | 窗口函数排名不符合预期 | 混淆 RANK 和 DENSE_RANK | 明确业务需要跳跃排名还是密集排名 |
 | 递归 CTE 死循环 | 数据中存在循环引用 | 添加深度限制 `WHERE level < 10` |
 | 长事务阻塞 VACUUM | 事务未及时提交 | 监控 `pg_stat_activity`，及时终止长事务 |
-
----
 
 ## 六、事务与锁机制
 
@@ -253,8 +233,6 @@ PG 的锁机制比 MySQL 更细粒度（8 种表锁、4 种行锁），且提供
 
 > 详细说明 → [事务与锁机制](../05-transaction-concurrency/chapter-01-transaction.md)
 
----
-
 ## 七、性能优化与调优
 
 ### 为什么要掌握 PG 的性能分析工具？
@@ -271,8 +249,6 @@ PG 提供了 `pg_stat_statements`、`auto_explain`、部分索引等强大的性
 | 部分索引 | 只对部分数据建索引 | 数据分布不均匀的场景 |
 
 > 详细说明 → [性能优化与调优](../09-practice/chapter-02-performance-tuning.md)
-
----
 
 ## 八、JSONB 高级用法
 

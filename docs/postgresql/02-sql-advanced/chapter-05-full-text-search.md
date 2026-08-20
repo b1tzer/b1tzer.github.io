@@ -29,8 +29,6 @@ WHERE to_tsvector('chinese', content) @@ to_tsquery('chinese', '数据库');
 ```sql
 CREATE INDEX idx_articles_fts ON articles USING GIN (to_tsvector('english', content));
 ```
-
----
 ## 4. 实战场景
 
 ### 4.1 模糊搜索

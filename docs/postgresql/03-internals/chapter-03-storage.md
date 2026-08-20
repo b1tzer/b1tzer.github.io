@@ -50,8 +50,6 @@ PGDATA/
 │ User Data       │
 └─────────────────┘
 ```
-
----
 ## 4. TOAST 机制
 
 当单行数据超过页面大小（默认 8KB）时，PG 使用 TOAST（The Oversized-Attribute Storage Technique）将大字段压缩或存储到独立的 TOAST 表中。

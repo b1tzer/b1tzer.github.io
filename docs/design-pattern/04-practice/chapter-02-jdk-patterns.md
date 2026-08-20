@@ -2,8 +2,6 @@
 
 > **一句话记忆口诀**：JDK 是设计模式的教科书，IO 流是装饰器、Collection 是迭代器、Comparator 是策略、Runtime 是单例。
 
----
-
 ## 1. 创建型模式在 JDK 中
 
 ### 单例模式：Runtime
@@ -63,8 +61,6 @@ List<String> copy = ((ArrayList<String>) original).clone(); // 浅拷贝
 // 注意：clone 是浅拷贝，List 中的元素不会被复制
 // 如果元素是可变对象，修改 copy 中的元素会影响 original
 ```
-
----
 
 ## 2. 结构型模式在 JDK 中
 
@@ -159,8 +155,6 @@ Integer m = 128;
 Integer n = 128;
 System.out.println(m == n); // false，超出缓存范围
 ```
-
----
 
 ## 3. 行为型模式在 JDK 中
 
@@ -278,8 +272,6 @@ Action action = new AbstractAction("Click") {
 };
 ```
 
----
-
 ## 4. 速查表：JDK 类与设计模式对应
 
 | JDK 类/接口 | 设计模式 | 说明 |
@@ -301,8 +293,6 @@ Action action = new AbstractAction("Click") {
 | `Observable` | 观察者 | 状态变化通知（已废弃） |
 | `Pattern`/`Matcher` | 解释器 | 正则表达式解析 |
 
----
-
 ## 5. 面试高频问题
 
 **Q：JDK 中哪些地方用了装饰器模式？**
@@ -316,7 +306,5 @@ Action action = new AbstractAction("Click") {
 **Q：为什么 String `"abc" == "abc"` 为 true？**
 
 > 这是享元模式。JVM 维护一个字符串常量池，相同字面量的字符串只创建一个对象，后续引用直接返回池中的对象。所以 `==` 比较的是同一个引用。但 `new String("abc")` 会创建新对象，不在池中，所以 `new String("abc") == "abc"` 为 false。
-
----
 
 > **一句话记忆口诀**：JDK 处处是设计模式——IO 流是装饰器、Comparator 是策略、Iterator 是迭代器、Runtime 是单例、Proxy 是代理、Calendar 是工厂。

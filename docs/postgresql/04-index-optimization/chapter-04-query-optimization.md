@@ -36,8 +36,6 @@ SELECT * FROM pg_stats WHERE tablename = 'users';
 -- 手动分析
 ANALYZE users;
 ```
-
----
 ## 5. 更多优化场景
 
 ### 5.1 N+1 查询问题

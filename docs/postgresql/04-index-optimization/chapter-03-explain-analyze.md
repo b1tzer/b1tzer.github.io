@@ -35,8 +35,6 @@ Seq Scan on users  (cost=0.00..15.00 rows=500 width=16)
 | Nested Loop | 嵌套循环 | 小表驱动大表 |
 | Hash Join | 哈希连接 | 等值连接，大表 |
 | Merge Join | 归并连接 | 已排序数据 |
-
----
 ## 4. 执行计划详解
 
 ### 4.1 EXPLAIN 选项

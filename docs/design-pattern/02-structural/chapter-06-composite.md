@@ -2,8 +2,6 @@
 
 > **一句话记忆口诀**：组合模式统一叶子和容器的接口，递归处理树形结构，文件系统和菜单树是最经典的例子。
 
----
-
 ## 🏠 生活类比
 
 公司组织架构：公司有多个部门，每个部门有多个员工。计算"薪资总额"时：
@@ -13,8 +11,6 @@
 - 公司的薪资 = 所有部门薪资之和
 
 无论你拿到的是"员工"还是"部门"，都可以统一调用 `getSalary()` 方法。
-
----
 
 ## 💩 烂代码：到处都是 instanceof
 
@@ -38,8 +34,6 @@ public long calculateSize(Object node) {
 ```
 
 **问题根因**：叶子节点和容器节点接口不统一，客户端必须区分处理，违反开闭原则。
-
----
 
 ## ✨ 组合模式方案
 
@@ -67,8 +61,6 @@ classDiagram
     FileSystemNode <|-- DirectoryNode
     DirectoryNode o-- FileSystemNode : 包含子节点
 ```
-
----
 
 ## 💻 完整代码实现
 
@@ -287,8 +279,6 @@ System.out.println("公司总人数: " + company.headcount());     // 3
 System.out.println("公司月薪总额: " + company.calculateSalary()); // 75000
 ```
 
----
-
 ## 🔧 框架应用
 
 | 框架/类 | 说明 |
@@ -299,8 +289,6 @@ System.out.println("公司月薪总额: " + company.calculateSalary()); // 75000
 | Jackson `JsonNode` | ObjectNode 包含子节点，ValueNode 是叶子 |
 | Spring Security `AccessDecisionVoter` | 投票器组合 |
 | HTML DOM | Document → Element → Text Node 树形结构 |
-
----
 
 ## ⚠️ 适用场景
 
@@ -321,7 +309,5 @@ System.out.println("公司月薪总额: " + company.calculateSalary()); // 75000
 | **安全组合** | 只在容器中 | 接口干净 | 客户端需要区分类型 |
 
 > JDK 用的是**透明组合**：`java.awt.Component` 中有 `add()` 方法，叶子节点调用会抛异常。
-
----
 
 > **一句话记忆口诀**：组合模式让叶子和容器实现同一接口，递归处理树形结构，`java.awt.Container` 和文件系统是最经典的例子。

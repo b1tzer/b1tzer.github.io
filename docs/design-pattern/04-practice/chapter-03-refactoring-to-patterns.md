@@ -2,8 +2,6 @@
 
 > **一句话记忆口诀**：不要为了用模式而用模式，先有代码坏味道，再用模式重构。重构三步：识别问题→选择模式→逐步迁移。
 
----
-
 ## 1. 重构的基本原则
 
 ### 什么时候该重构？
@@ -26,8 +24,6 @@ flowchart LR
     A[识别代码坏味道] --> B[选择合适的模式]
     B --> C[逐步迁移，保持测试通过]
 ```
-
----
 
 ## 2. 实战案例一：if-else → 策略模式
 
@@ -129,8 +125,6 @@ paymentService.pay("alipay", new BigDecimal("100"));
 // 新增银联支付？只需新增 UnionPayStrategy 类，不修改任何现有代码！
 ```
 
----
-
 ## 3. 实战案例二：复杂构造 → 建造者模式
 
 ### 重构前：构造函数参数爆炸
@@ -220,8 +214,6 @@ HttpRequest request = HttpRequest.builder("https://api.example.com")
     .build();
 ```
 
----
-
 ## 4. 实战案例三：通知耦合 → 观察者模式
 
 ### 重构前：订单完成直接调用所有通知方
@@ -294,8 +286,6 @@ public class PointsUpdater {
 // 新增通知？只需新增一个 @EventListener 类，不修改 OrderService！
 ```
 
----
-
 ## 5. 实战案例四：重复流程 → 模板方法
 
 ### 重构前：数据导出的重复代码
@@ -349,8 +339,6 @@ public class ExcelExporter extends DataExporter {
 }
 ```
 
----
-
 ## 6. 重构检查清单
 
 在重构到设计模式之前，问自己：
@@ -360,8 +348,6 @@ public class ExcelExporter extends DataExporter {
 - [ ] **测试覆盖了吗？** 重构前确保有测试
 - [ ] **逐步迁移了吗？** 一次性大改风险高
 - [ ] **团队理解吗？** 模式是为了沟通，不是炫技
-
----
 
 ## 7. 反模式：过度使用设计模式
 
@@ -376,7 +362,5 @@ public class ExcelExporter extends DataExporter {
 // 代码有坏味道时再用模式重构
 // 模式是为了让代码更好维护，不是为了让代码更"高级"
 ```
-
----
 
 > **一句话记忆口诀**：重构到模式的三步法——识别坏味道、选择模式、逐步迁移。不要为了用模式而用模式，先有痛点再用药。

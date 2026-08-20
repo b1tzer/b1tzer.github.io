@@ -2,15 +2,11 @@
 
 > **一句话记忆口诀**：迭代器统一遍历接口，hasNext + next 是核心，for-each 语法糖底层就是迭代器。
 
----
-
 ## 🏠 生活类比
 
 **电视遥控器的"下一个频道"按钮**：无论电视内部是用数组、链表还是哈希表存储频道列表，用户只需要按"下一个"就能遍历所有频道。用户不需要知道频道是怎么存储的。
 
 **图书馆的索引卡片**：无论书架上的书怎么排列，索引卡片提供了一种统一的方式来逐本查找。
-
----
 
 ## 💩 烂代码：遍历方式与集合类型强耦合
 
@@ -42,8 +38,6 @@ void inorder(TreeNode node) {
 
 **问题根因**：不同集合有不同的内部结构和遍历方式，客户端与集合的具体实现强耦合。
 
----
-
 ## ✨ 迭代器模式方案
 
 ```mermaid
@@ -72,8 +66,6 @@ classDiagram
     Iterator <|.. BookIterator
     BookShelf ..> BookIterator : creates
 ```
-
----
 
 ## 💻 完整代码实现
 
@@ -228,8 +220,6 @@ class TreeNode<T> {
 }
 ```
 
----
-
 ## 🔧 框架应用
 
 | 框架/类 | 说明 |
@@ -242,8 +232,6 @@ class TreeNode<T> {
 | MyBatis `Cursor` | 大数据量查询的流式迭代器 |
 | `ResultSet` | JDBC 结果集遍历 |
 
----
-
 ## ⚠️ 适用场景
 
 **适合：**
@@ -255,8 +243,6 @@ class TreeNode<T> {
 **不适合：**
 - 集合结构简单，直接 for 循环即可
 - 需要随机访问（迭代器只能顺序访问）
-
----
 
 ## 🔍 迭代器的 fail-fast vs fail-safe
 
@@ -278,7 +264,5 @@ while (it.hasNext()) {
     if ("b".equals(it.next())) it.remove(); // ✅ 安全删除
 }
 ```
-
----
 
 > **一句话记忆口诀**：迭代器提供统一的遍历接口（hasNext/next），for-each 底层就是迭代器，`java.util.Iterator` 和 `Iterable` 是 JDK 中最标准的实现。

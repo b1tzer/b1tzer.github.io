@@ -48,8 +48,6 @@ CREATE TABLE logs_1 PARTITION OF logs FOR VALUES WITH (MODULUS 4, REMAINDER 1);
 EXPLAIN SELECT * FROM orders WHERE created_at = '2024-06-01';
 -- 输出：orders_2024
 ```
-
----
 ## 5. 分区管理与最佳实践
 
 ### 5.1 自动创建分区

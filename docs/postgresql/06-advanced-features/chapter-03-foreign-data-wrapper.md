@@ -30,8 +30,6 @@ CREATE SERVER csv_server FOREIGN DATA WRAPPER file_fdw;
 CREATE FOREIGN TABLE csv_data (id INT, name TEXT)
     SERVER csv_server OPTIONS (filename '/tmp/data.csv', format 'csv');
 ```
-
----
 ## 3. 更多 FDW 场景
 
 ### 3.1 跨库查询

@@ -7,8 +7,6 @@ title: RAG 架构与工程落地 —— 让大模型"有据可依"的检索增�
 
 > 📖 **本篇定位**：专题 `10-ai-engineering` 的第 2 篇，承接 [LLM 接口与提示词工程](01-LLM接口与提示词工程.md) 的三大限制——**无状态、上下文窗口有限、训练数据会过时**。本篇讲清一件事：**当你需要让 LLM 回答"我们公司内部的知识"时，为什么 RAG 是当前唯一经济可行的答案**，以及一个生产级 RAG 系统从"数据同步"到"答案引用回链"的完整工程链路应该怎么搭。
 
----
-
 ## 1. 类比：RAG ≈ 给 LLM 配了一个"开卷考试的小抄"
 
 闭卷考试 vs 开卷考试，这就是**原生 LLM** 和 **RAG** 的关系：
@@ -27,8 +25,6 @@ title: RAG 架构与工程落地 —— 让大模型"有据可依"的检索增�
 > - **LLM**：拿到"问题 + 原材料"后续写答案，答完顺带标注"这段来自哪本书第几页"（引用回链）
 
 这个类比建立后，RAG 的每一个组件——向量库、Embedding、Chunking、Rerank、Citation——都只是在优化"**图书管理员怎么更快更准地把对的书挑出来**"。
-
----
 
 ## 2. 为什么需要 RAG：原生 LLM 落地内部知识的三道死锁
 
@@ -61,8 +57,6 @@ RAG：    answer = LLM(question + retrieve(question, knowledgeBase))
 ```
 
 整个 RAG 体系所有的优化，都只是在优化 `retrieve()` 这一个函数——**怎么把最相关的几段原文从知识库里挑出来**。
-
----
 
 ## 3. RAG 架构全景：两条流水线 + 五个核心组件
 
@@ -109,8 +103,6 @@ flowchart TB
 | **向量库** | 离线写 + 在线读 | 存向量 + ANN 检索 | Milvus / Qdrant / Weaviate / **PgVector** / ES dense_vector |
 | **Rerank 模型**（可选） | 在线 | 对召回的 TopK 二次精排 | `bge-reranker` / `bce-reranker` / Cohere Rerank |
 | **Citation 组件** | 在线 | 把答案里的事实对回原文片段与 URL | 自研（Prompt 约束 + 后处理） |
-
----
 
 ## 4. 离线流水线：数据怎么进到知识库
 
@@ -232,8 +224,6 @@ public class ConfluenceSyncWorker {
     2. **数据 ≥ 1000 万 chunk 或 QPS > 100**：上 Milvus / Qdrant；
     3. **需要"向量 + 关键词混合检索"**：ES / Milvus 2.4+（支持 BM25 + dense）最省心。
 
----
-
 ## 5. 在线流水线：用户提问到 LLM 回答
 
 ### 5.1 端到端链路分解
@@ -331,8 +321,6 @@ LLM 按上面的 Prompt 生成的答案长这样：
 !!! tip "Citation 是 RAG 相比原生 LLM 的最大信任杠杆"
     企业场景里，没有 Citation 的 AI 回答 = "一个不敢签字的专家意见"。**Citation 让用户一眼就能判断这个答案能不能信**——这是 RAG 能在严肃业务场景（法务、医疗、HR、运维）落地、而原生 LLM 不能的关键差异。
 
----
-
 ## 6. 生产系统踩坑清单
 
 | 场景 | 现象 | 根因 | 解决方案 |
@@ -346,8 +334,6 @@ LLM 按上面的 Prompt 生成的答案长这样：
 | **软删除没生效** | 文档在 Wiki 删除后一周还能被查到 | 只删原文库，没同步删向量 | 同步器识别删除事件后立即 `vectorStore.markDeleted()`，在线检索加 `is_deleted=false` 过滤 |
 | **增量灌库越灌越慢** | 灌库任务 QPS 随时间下降 | 向量库没建索引 / 索引参数不当 | Milvus / PgVector / ES 初始化时即建 HNSW / IVF 索引；定期 compact |
 | **RAG 答非所问** | 召回对了，但答案跑偏 | 用户问题和检索到的 chunk 主题相关但意图不同 | 加 Query 意图识别，意图不是"知识问答"的走旁路（闲聊 / 工具调用） |
-
----
 
 ## 7. 评估体系：RAG 效果怎么量化
 
@@ -364,8 +350,6 @@ LLM 按上面的 Prompt 生成的答案长这样：
 1. **构建 `(question, 标准答案, 必含引用 chunk_id)` 的评测集**，至少 200 条覆盖主要场景
 2. **用 `Ragas` / `TruLens` / `DeepEval` 等开源框架**自动跑指标
 3. **把评测集跑进 CI**——任何对 Chunker / Embedding / Rerank / Prompt 的改动都要先过评测基线再合入
-
----
 
 ## 8. 常见问题 Q&A
 
@@ -388,8 +372,6 @@ LLM 按上面的 Prompt 生成的答案长这样：
 **Q5：RAG 上线后，知识库数据怎么做权限隔离？**
 
 > 必须在**每一层**都做：① **灌库时**每个 chunk 的 metadata 必须带 `{tenant_id, visibility, acl_tags}`；② **检索时**强制走 `filter={tenant_id: X, visibility: {$in: userRoles}}`，**不要在召回后靠应用层兜底过滤**（会有越权检索漏洞）；③ **生成后**再做一次"引用 ID 是否属于该用户"的二次校验，防止 LLM 出现引用 ID 编造或越权引用；④ **审计日志**记录"用户 X 在时间 T 检索到了 chunk Y"，合规与溯源的必需品。
-
----
 
 ## 9. 一句话口诀
 

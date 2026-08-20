@@ -7,15 +7,11 @@ title: JSONB 高级用法
 
 > **核心问题**：PG 的 JSONB 有哪些操作符？如何建索引？与 MySQL 的 JSON 有什么区别？什么场景适合用 JSONB？
 
----
-
 ## 它解决了什么问题？
 
 现代应用中，很多数据结构是半结构化的（如用户配置、商品属性、日志元数据），用传统的关系表设计需要大量的 EAV（Entity-Attribute-Value）表或频繁的 ALTER TABLE。JSONB 让你在关系型数据库中**原生存储和查询 JSON 数据**，兼具灵活性和查询性能。
 
 **与 MySQL JSON 的核心区别**：PG 的 JSONB 是**二进制存储**，支持 GIN 索引，查询性能远优于 MySQL 的文本存储 JSON。
-
----
 
 # 一、JSON vs JSONB
 
@@ -30,8 +26,6 @@ title: JSONB 高级用法
 | **推荐使用** | 仅需存储不查询时 | **绝大多数场景** |
 
 > **结论**：除非有特殊需求（如保留 JSON 原始格式），否则**一律使用 JSONB**。
-
----
 
 # 二、JSONB 操作符
 
@@ -101,8 +95,6 @@ UPDATE products SET attrs = attrs #- '{specs, ram}' WHERE name = 'iPhone 15';
 UPDATE products SET attrs = jsonb_set(attrs, '{specs, storage}', '"256GB"') WHERE name = 'iPhone 15';
 ```
 
----
-
 # 三、JSONB 索引
 
 ## GIN 索引
@@ -140,8 +132,6 @@ SELECT * FROM products WHERE (attrs ->> 'price')::numeric > 5000;
 > - 需要 `@>` 包含查询 → GIN 索引
 > - 需要特定字段的等值/范围查询 → 表达式 B-tree 索引
 > - 两者可以共存
-
----
 
 # 四、JSONB 聚合与查询技巧
 
@@ -184,8 +174,6 @@ WHERE name = 'iPhone 15';
 -- cpu  | "A17"
 -- ram  | "8GB"
 ```
-
----
 
 # 五、实战场景
 
@@ -251,8 +239,6 @@ INSERT INTO audit_logs (action, metadata) VALUES
 SELECT * FROM audit_logs WHERE metadata @> '{"ip": "192.168.1.1"}';
 ```
 
----
-
 # 六、JSONB vs 关系表：如何选择？
 
 | 考虑因素 | 用 JSONB | 用关系表 |
@@ -264,8 +250,6 @@ SELECT * FROM audit_logs WHERE metadata @> '{"ip": "192.168.1.1"}';
 | 典型场景 | 商品属性、用户配置、日志元数据 | 订单、用户、账户等核心业务表 |
 
 > **最佳实践**：核心业务数据用关系表，灵活扩展属性用 JSONB。两者可以在同一张表中共存。
-
----
 
 # 七、常见问题
 

@@ -58,8 +58,6 @@ GET /my-index/_search
   }
 }
 ```
-
----
 ## 5. match_phrase 查询
 
 短语查询要求所有词项按顺序出现在文档中：

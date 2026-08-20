@@ -814,7 +814,7 @@ export default withOpenInEditor(defineConfig({
         {
           text: 'AI 工程',
           items: [
-            { text: '概览', link: '/ai/00-AI工程概览' },
+            { text: '概览', link: '/ai/' },
             { text: 'LLM 接口与提示词', link: '/ai/01-LLM接口与提示词工程' },
             { text: 'RAG', link: '/ai/02-RAG架构与工程落地' },
             { text: 'Function Calling 与 Agent', link: '/ai/03-FunctionCalling与Agent范式' },

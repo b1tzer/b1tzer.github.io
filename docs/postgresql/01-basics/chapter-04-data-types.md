@@ -42,8 +42,6 @@ SELECT * FROM events WHERE tsrange(start_time, end_time) @> NOW();
 -- JSON/JSONB
 CREATE TABLE docs (id INT, data JSONB);
 ```
-
----
 ## 5. 更多类型用法
 
 ### 5.1 枚举类型

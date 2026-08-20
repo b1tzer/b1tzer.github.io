@@ -2,8 +2,6 @@
 
 > 某公司用户数据被拖库，原因是密码用明文存储、SQL 注入没防住、接口没有鉴权。这不是段子，是每年都在发生的真实事故。身份认证怎么选型？权限怎么设计才能既灵活又安全？敏感数据怎么保护？应用怎么打包才能在任何环境一致运行？本章从认证授权、数据安全、容器化部署三个维度，讲清楚企业级 Java 应用的安全底线。
 
----
-
 ## 8.1 身份认证
 
 ### 8.1.1 认证的本质
@@ -103,8 +101,6 @@ OAuth 2.0 是一个授权框架，定义了四种授权模式：
 ⑤ 获得 Access Token，调用微信 API 获取用户信息
    GET https://api.weixin.qq.com/sns/userinfo?access_token=xxx&openid=xxx
 ```
-
----
 
 ## 8.2 Spring Security 核心
 
@@ -210,8 +206,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 }
 ```
-
----
 
 ## 8.3 权限模型（RBAC）
 
@@ -326,8 +320,6 @@ public class OrderController {
     }
 }
 ```
-
----
 
 ## 8.4 数据安全
 
@@ -494,8 +486,6 @@ public class AuditAspect {
 public Order refundOrder(@PathVariable Long id) { ... }
 ```
 
----
-
 ## 8.5 Docker 容器化
 
 ### 8.5.1 为什么需要容器化
@@ -582,8 +572,6 @@ docker run -d \
 ```
 
 最终镜像不包含 JDK、Maven、源代码，体积大幅缩小，攻击面也更小。
-
----
 
 ## 8.6 Kubernetes 基础
 
@@ -692,8 +680,6 @@ data:
   spring.profiles.active: "prod"
   app.page-size: "20"
   app.cache-ttl: "300"
-
----
 # Secret - 敏感配置
 apiVersion: v1
 kind: Secret
@@ -707,8 +693,6 @@ data:
 ```
 
 **最佳实践**：ConfigMap 和 Secret 的值可以在 Pod 内以环境变量或文件挂载的方式使用。环境变量适合简单配置，文件挂载适合配置文件（如 `application.yml`）。
-
----
 
 ## 8.7 多环境配置
 
@@ -816,8 +800,6 @@ Spring Boot 的配置优先级从高到低：
 
 **设计原则**：公共配置放 `application.yml`，环境差异配置放 `application-{profile}.yml`，敏感信息通过环境变量或 Secret 注入，**永远不要将密码写在代码仓库中**。
 
----
-
 ## 本章小结
 
 本章从三个维度构建了企业级 Java 应用的安全与部署体系：
@@ -827,7 +809,5 @@ Spring Boot 的配置优先级从高到低：
 | **认证授权** | 身份认证 + 权限控制 | JWT / OAuth 2.0 / Spring Security / RBAC |
 | **数据安全** | 传输加密 + 存储加密 + 日志脱敏 + 审计 | HTTPS / AES / Logback / AOP |
 | **容器化部署** | 一致环境 + 快速部署 + 弹性伸缩 | Docker / Kubernetes / Spring Profiles |
-
----
 
 > 系统安全部署上线了，但你怎么知道它运行得好不好？用户说"接口很慢"，你如何定位是数据库慢、缓存穿透还是下游超时？下一章从日志、指标、链路追踪三大支柱出发，构建完整的可观测体系。

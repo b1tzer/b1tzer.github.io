@@ -123,5 +123,3 @@ SHOW VARIABLES LIKE 'innodb_log_buffer_size';  -- 默认 16MB
 3. **SSD 环境** — Redo Log 和数据文件放在同一 SSD 即可
 4. **监控 Redo Log 写入量** — `SHOW GLOBAL STATUS LIKE 'Innodb_os_log_written';`
 5. **避免长事务** — 长事务会阻止 Checkpoint，导致 Redo Log 空间紧张
-
----

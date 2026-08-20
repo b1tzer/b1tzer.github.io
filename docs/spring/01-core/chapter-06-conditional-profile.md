@@ -2,8 +2,6 @@
 
 > 一段自动配置要同时服务两种情况：用户没配，框架兜底；用户配了，框架让路。这靠的不是 if-else，是条件装配——注解在 Bean 注册前先问一句「条件满足吗」。Spring Boot 的「开箱即用」全部建立在这一套注解之上。
 
----
-
 ## 1. 什么是条件装配
 
 条件装配让 Bean 的注册依赖一个运行时条件。条件不满足，Bean 就不注册：
@@ -27,8 +25,6 @@ public class LinuxCondition implements Condition {
 
 `matches` 返回 `true` 才注册这个 Bean。判断发生在 Bean 实例化之前，不满足条件的 Bean 根本不进容器。
 
----
-
 ## 2. 常用条件注解
 
 手写 `Condition` 太啰嗦，Spring Boot 预置了一组语义化注解，覆盖绝大多数场景：
@@ -41,8 +37,6 @@ public class LinuxCondition implements Condition {
 | `@ConditionalOnMissingBean` | 容器不存在指定 Bean |
 | `@ConditionalOnProperty` | 配置属性满足条件 |
 | `@ConditionalOnResource` | 存在指定资源文件 |
-
----
 
 ## 3. @Profile：按环境切换
 
@@ -66,8 +60,6 @@ java -jar app.jar --spring.profiles.active=prod
 ```
 
 `@Profile("!dev")` 表示非开发环境生效，`@Profile("production")` 可以激活一组 Bean。
-
----
 
 ## 4. 两个典型实战场景
 
@@ -127,8 +119,6 @@ public class DataSourceAutoConfig {
 ```
 
 三个条件必须同时满足才注册，任何一个不满足，Bean 就被跳过。
-
----
 
 ## 5. 使用清单
 

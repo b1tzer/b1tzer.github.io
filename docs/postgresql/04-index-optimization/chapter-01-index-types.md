@@ -7,13 +7,9 @@ title: 索引类型详解
 
 > **核心问题**：PostgreSQL 有哪些索引类型？什么场景下选哪种索引？
 
----
-
 ## 它解决了什么问题？
 
 MySQL 主要只有 B-tree 索引，而 PostgreSQL 提供了多种索引类型，针对不同数据特征做了专项优化。选对索引类型，能让查询性能提升数十倍。
-
----
 
 ## 索引类型全景图
 
@@ -43,8 +39,6 @@ mindmap
             索引体积极小
 ```
 
----
-
 ## 各索引类型适用场景
 
 | 索引类型 | 适用场景 | 示例 | 为什么选它 |
@@ -54,8 +48,6 @@ mindmap
 | **GIN** | JSONB 字段、全文检索、数组 | `WHERE tags @> ARRAY['java']` | 多值字段，每个值单独建索引项 |
 | **GiST** | 地理位置、几何图形、范围类型 | `WHERE location <-> point < 1000` | 支持空间查询，B-tree 无法处理 |
 | **BRIN** | 超大表、数据物理有序（如时间序列） | 日志表按时间范围查询 | 索引极小（只存块范围），适合有序大表 |
-
----
 
 ## JSONB + GIN 索引详解
 
@@ -87,8 +79,6 @@ SELECT * FROM users WHERE profile->>'name' = '张三';
 CREATE INDEX idx_profile_name ON users ((profile->>'name'));
 ```
 
----
-
 ## BRIN 索引适用场景
 
 ```sql
@@ -110,8 +100,6 @@ WHERE created_at BETWEEN '2024-01-01' AND '2024-01-31';
 
 > **BRIN 的原理**：不记录每行的索引值，只记录每个数据块（Page）中的最小值和最大值。查询时跳过不在范围内的数据块，大幅减少 IO。索引体积是 B-tree 的 1/1000，但只适合数据物理有序的场景。
 
----
-
 ## 工作中的坑
 
 | 错误 | 原因 | 解决方案 |
@@ -119,8 +107,6 @@ WHERE created_at BETWEEN '2024-01-01' AND '2024-01-31';
 | JSONB 查询慢 | 未建 GIN 索引 | `CREATE INDEX USING GIN (jsonb_col)` |
 | GIN 索引写入慢 | GIN 维护成本高，每次写入都要更新倒排索引 | 批量写入，或使用 `fastupdate` 参数 |
 | BRIN 索引不生效 | 数据插入顺序不规律，物理无序 | 改用 B-tree，BRIN 只适合物理有序数据 |
-
----
 
 ## 常见问题
 

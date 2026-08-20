@@ -31,8 +31,6 @@ WITH batch AS (
 UPDATE orders SET status = 'processing' 
 WHERE id IN (SELECT id FROM batch);
 ```
-
----
 ## 4. 更多并发场景
 
 ### 4.1 防止重复下单

@@ -6,8 +6,6 @@
 Spring Boot 2.6 起默认**禁止**循环依赖：`spring.main.allow-circular-references` 默认为 `false`，遇到循环依赖直接启动报错。本节讲的「三级缓存解决循环依赖」只有在显式开启 `allow-circular-references=true` 后才生效。
 :::
 
----
-
 ## 1. 先看两个事故现场
 
 ### 1.1 构造器循环依赖：启动就报错
@@ -56,8 +54,6 @@ public class UserService {
 
 启动不报错，两个 Bean 都能建出来。但 `UserService` 里注入的 `orderService` 是原始对象，`sendNotification()` 的 `@Async` 不生效——调用变成同步执行。这比直接报错更危险，因为它不炸，只悄悄错。
 
----
-
 ## 2. Bean 创建的三步
 
 理解循环依赖之前，先记住 Bean 创建分三步，顺序不能乱：
@@ -71,8 +67,6 @@ public class UserService {
 循环依赖卡在第 2 步：`ServiceA` 填充 `serviceB` 时发现 `ServiceB` 还没好，转去创建 `ServiceB`；`ServiceB` 填充 `serviceA` 时又发现 `ServiceA` 还在创建中——死结。
 
 Spring 的解法是**提前暴露**：在第 1 步实例化完成后、第 2 步填充之前，先把半成品的引用存起来，让别的 Bean 能先拿到它。
-
----
 
 ## 3. 三级缓存的数据结构
 
@@ -100,8 +94,6 @@ earlySingletonObjects（二级）存半成品引用，避免重复生产
         ▼
 singletonObjects（一级）    存最终成品
 ```
-
----
 
 ## 4. 源码链路：getSingleton 的双层检查
 
@@ -162,8 +154,6 @@ protected Object doCreateBean(String beanName, RootBeanDefinition mbd, Object[] 
 }
 ```
 
----
-
 ## 5. 为什么是三级，不是两级
 
 关键在 `getEarlyBeanReference`。这个工厂方法不只是返回裸对象，它会判断这个 Bean 需不需要 AOP 代理，需要就提前创建代理：
@@ -182,8 +172,6 @@ AOP 代理的正常时机是第 3 步初始化之后，但循环依赖要求在�
 - 用三级缓存的 `ObjectFactory` 把「要不要代理、何时代理」推迟到「真的有人来拿」的那一刻，只有发生循环依赖时才提前触发代理。
 
 这就是三级缓存存在的真正原因：**不是为提高效率，是为了把 AOP 代理的决策推迟到不得不做的时候**。这也解释了 1.2 的 `@Async` 失效——`AsyncAnnotationBeanPostProcessor` 没有重写 `getEarlyBeanReference`，提前暴露时拿到的是裸对象，代理没提前生成。
-
----
 
 ## 6. 工程红线
 

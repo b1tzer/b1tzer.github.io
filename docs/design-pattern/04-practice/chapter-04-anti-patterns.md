@@ -2,8 +2,6 @@
 
 > **一句话记忆口诀**：反模式是看起来合理但实际有害的做法，识别反模式比学习模式更重要。
 
----
-
 ## 1. 什么是反模式？
 
 反模式是在实践中反复出现的**低效或有害**的解决方案。它们通常看起来合理，但会导致代码难以维护、性能低下或频繁出 bug。
@@ -14,8 +12,6 @@
 | 代码更清晰 | 代码更混乱 |
 | 便于扩展 | 难以修改 |
 | 经过验证 | 经常失败 |
-
----
 
 ## 2. 常见反模式一览
 
@@ -52,8 +48,6 @@ public class OrderManager {
 
 **解决方案：** 拆分为多个职责单一的类（OrderCreator、PaymentService、ShippingService 等）。
 
----
-
 ### 2.2 新手恐惧症（Fear of Adding New Code）
 
 ```java
@@ -78,8 +72,6 @@ public class UserService {
 ```
 
 **解决方案：** 大胆拆分。一个类超过 300 行就该考虑拆分。
-
----
 
 ### 2.3 面条代码（Spaghetti Code）
 
@@ -109,8 +101,6 @@ public void processOrder(Order order) {
 ```
 
 **解决方案：** 策略模式 + 状态模式 + 卫语句（early return）。
-
----
 
 ### 2.4 复制粘贴编程（Copy-Paste Programming）
 
@@ -146,8 +136,6 @@ public class OrderService {
 
 **解决方案：** 模板方法、AOP、装饰器。
 
----
-
 ### 2.5 金锤子（Golden Hammer）
 
 ```java
@@ -170,8 +158,6 @@ panelStrategies.get(user.getRole()).run();
 ```
 
 **解决方案：** 匹配问题复杂度选择合适的方案。
-
----
 
 ### 2.6 单例滥用（Singletonitis）
 
@@ -199,8 +185,6 @@ public class UserValidator {
 }
 ```
 
----
-
 ### 2.7 工厂过度（AbstractFactoryForEverything）
 
 ```java
@@ -214,8 +198,6 @@ public class StringFactory {
 // String 就是 String，不需要工厂！
 // 只有创建逻辑复杂时才需要工厂
 ```
-
----
 
 ### 2.8 观察者泄漏（Observer Leak）
 
@@ -236,8 +218,6 @@ public class OrderListener {
     public void onOrder(OrderEvent event) { /* Spring 管理，无需手动取消 */ }
 }
 ```
-
----
 
 ### 2.9 过度抽象（Over-Abstraction）
 
@@ -262,8 +242,6 @@ public interface Repository<T, ID> {
 
 // ✅ 正确：只为当前需求设计，需要时再扩展
 ```
-
----
 
 ### 2.10 配置地狱（Configuration Hell）
 
@@ -298,8 +276,6 @@ public class AppConfig {
 // 固定的常量直接写在代码里，用常量类管理
 ```
 
----
-
 ## 3. 反模式检测清单
 
 | 信号 | 可能的反模式 |
@@ -313,8 +289,6 @@ public class AppConfig {
 | "这个类太大了不敢改" | 上帝类 |
 | "这段代码谁写的？" | 缺少文档和模式 |
 
----
-
 ## 4. 如何避免反模式？
 
 1. **Code Review**：让同事帮你检查，自己很难发现自己的反模式
@@ -322,8 +296,6 @@ public class AppConfig {
 3. **30 秒规则**：如果一个类需要 30 秒以上才能理解，就该重构
 4. **Boy Scout Rule**：每次路过都让代码比来时更好一点
 5. **持续学习**：读《重构》《Clean Code》《设计模式》
-
----
 
 ## 5. 正模式 vs 反模式对照表
 
@@ -337,7 +309,5 @@ public class AppConfig {
 | 增强功能 | 装饰器 | 修改原始类 |
 | 树形结构 | 组合模式 | 到处 instanceof |
 | 大量相似对象 | 享元 | 每个都 new |
-
----
 
 > **一句话记忆口诀**：识别反模式比学习模式更重要——上帝类、复制粘贴、面条代码是三大最常见的反模式，Code Review 和测试是最好的预防手段。

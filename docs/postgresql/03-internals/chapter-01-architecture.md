@@ -25,8 +25,6 @@ Client → Postmaster → fork → Backend → 处理查询 → 返回结果
 - 共享内存（Shared Buffer、WAL Buffer）
 - 信号量（Semaphore）
 - 消息队列
-
----
 ## 4. 各进程详解
 
 ### 4.1 Postmaster 主进程

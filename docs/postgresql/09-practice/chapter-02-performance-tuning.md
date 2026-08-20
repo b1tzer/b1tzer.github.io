@@ -7,13 +7,9 @@ title: 性能优化与调优
 
 > **核心问题**：如何分析 PG 的慢查询？如何用 EXPLAIN 和 pg_stat_statements 定位性能瓶颈？有哪些常见的优化手段？
 
----
-
 ## 它解决了什么问题？
 
 数据库性能问题是后端开发中最常见的瓶颈。PG 提供了丰富的性能分析工具（EXPLAIN ANALYZE、pg_stat_statements、auto_explain 等），掌握这些工具能帮助你快速定位慢查询、优化索引设计、调整数据库配置。
-
----
 
 # 一、EXPLAIN 分析执行计划
 
@@ -69,8 +65,6 @@ WHERE o.created_at > '2024-01-01';
 3. **对比 estimated vs actual rows**：差异大需要 `ANALYZE` 更新统计信息
 4. **关注 Buffers**：`shared hit` 是缓存命中，`shared read` 是磁盘读取
 
----
-
 # 二、pg_stat_statements：慢查询统计
 
 `pg_stat_statements` 是 PG 最重要的性能分析扩展，记录所有 SQL 的执行统计信息。
@@ -125,8 +119,6 @@ FROM pg_stat_statements;
 SELECT pg_stat_statements_reset();
 ```
 
----
-
 # 三、auto_explain：自动记录慢查询执行计划
 
 ```sql
@@ -141,8 +133,6 @@ LOAD 'auto_explain';
 SET auto_explain.log_min_duration = '500ms';
 SET auto_explain.log_analyze = true;
 ```
-
----
 
 # 四、索引优化
 
@@ -204,8 +194,6 @@ WHERE status = 'active';
 EXPLAIN SELECT * FROM orders WHERE status = 'active' AND created_at > '2024-01-01';
 -- 使用 idx_active_orders，扫描行数大幅减少
 ```
-
----
 
 # 五、配置调优
 
@@ -269,8 +257,6 @@ random_page_cost = 1.1          # SSD 磁盘设为 1.1（默认 4.0 适合 HDD�
 effective_io_concurrency = 200  # SSD 磁盘设为 200
 ```
 
----
-
 # 六、常见性能问题排查
 
 ```mermaid
@@ -287,8 +273,6 @@ flowchart TD
     WorkMem -->|是| IncWM["增大 work_mem"]
     WorkMem -->|否| AppOpt["应用层优化<br>（N+1 查询、批量操作等）"]
 ```
-
----
 
 # 七、常见问题
 

@@ -27,8 +27,6 @@ DROP EXTENSION IF EXISTS "uuid-ossp";
 | postgis | 空间数据 |
 | timescaledb | 时序数据 |
 | pgvector | 向量搜索 |
-
----
 ## 3. 更多扩展用法
 
 ### 3.1 pg_stat_statements（查询统计）

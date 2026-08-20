@@ -2,8 +2,6 @@
 
 > 你在 Controller 写了个 `@GetMapping("/user")`，浏览器就拿到了 JSON。中间发生了什么？从 Tomcat 接收 TCP 连接，到 Filter 链、DispatcherServlet、HandlerMapping、参数解析、返回值处理、异常兜底——20 多个组件参与了这场接力。本章追踪一个请求从浏览器到 Java 方法再回到浏览器的完整旅程。
 
----
-
 ## 3.1 从 Servlet 到 Spring MVC
 
 ### 3.1.1 Servlet 规范：Java Web 的基石
@@ -110,8 +108,6 @@ Root WebApplicationContext
       └── ...
 ```
 
----
-
 ## 3.2 DispatcherServlet 核心流程
 
 ### 3.2.1 请求处理的九大步骤
@@ -181,8 +177,6 @@ HandlerAdapter 解决的是**调用方式适配**问题。不同的处理器有�
 | `SimpleControllerHandlerAdapter` | `Controller` 接口 | 直接调用 `handleRequest()` |
 
 这种设计体现了**适配器模式**——DispatcherServlet 不需要知道每种 Handler 的具体调用方式，统一通过 HandlerAdapter 适配。
-
----
 
 ## 3.3 参数解析与返回值处理
 
@@ -334,8 +328,6 @@ spring.mvc.contentnegotiation.parameter-name=format
   GET /api/user/1?format=json  → JSON 响应
   GET /api/user/1?format=xml   → XML 响应
 ```
-
----
 
 ## 3.4 异常处理
 
@@ -581,7 +573,5 @@ public class ExceptionHandlerFilter extends OncePerRequestFilter {
     }
 }
 ```
-
----
 
 > 从 Servlet 到 DispatcherServlet，请求处理链路已经清楚了。但配置一个 Spring MVC 项目要写一堆 XML——web.xml、spring-mvc.xml、applicationContext.xml。Spring Boot 把这些全干掉了。下一章看它是怎么做到"开箱即用"的。

@@ -25,8 +25,6 @@ SELECT
     sum(blks_hit) * 100.0 / sum(blks_hit + blks_read) AS hit_ratio
 FROM pg_stat_database;
 ```
-
----
 ## 4. 共享内存详解
 
 ### 4.1 Shared Buffer 管理

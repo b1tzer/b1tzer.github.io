@@ -7,8 +7,6 @@ title: 行为型补充 — 命令、迭代器、中介者、备忘录、状态�
 
 > **一句话记忆口诀**：命令封装请求、迭代器遍历集合、中介者解耦交互、备忘录保存快照、状态消灭 if-else、访问者双分派、解释器解析语法。
 
----
-
 ## 一、命令模式（Command Pattern）
 
 ### 1. 引入：它解决了什么问题？
@@ -93,8 +91,6 @@ remote.pressUndo(); // 撤销 → 关灯
 | Spring Batch `Step` | 每个 Step 是一个命令对象 |
 | `javax.swing.Action` | Swing 中的动作命令 |
 
----
-
 ## 二、迭代器模式（Iterator Pattern）
 
 ### 1. 引入：它解决了什么问题？
@@ -166,8 +162,6 @@ for (Book book : shelf) {
 | `Stream` | Java 8 内部迭代器，支持惰性求值 |
 | MyBatis `Cursor` | 大数据量查询的流式迭代器 |
 | `ResultSet` | JDBC 结果集遍历 |
-
----
 
 ## 三、中介者模式（Mediator Pattern）
 
@@ -248,8 +242,6 @@ public class User {
 | MQ（Kafka/RabbitMQ） | 消息队列作为中介，解耦生产者和消费者 |
 | `java.util.Timer` | 定时器作为中介，协调多个 TimerTask |
 | Spring MVC `DispatcherServlet` | 中央调度器，协调 Controller、ViewResolver 等 |
-
----
 
 ## 四、备忘录模式（Memento Pattern）
 
@@ -334,8 +326,6 @@ editor.restore(history.pop()); // 撤销 → 回到 "Hello"
 | `Serializable` | 序列化就是保存对象状态的一种方式 |
 | Spring `@Transactional` 回滚 | 事务失败时恢复到事务开始前的状态 |
 | Git 版本控制 | 每次 commit 就是一个备忘录 |
-
----
 
 ## 五、状态模式（State Pattern）
 
@@ -438,8 +428,6 @@ order.nextStep(); // 已发货 → 已完成
 | **状态感知** | 状态对象知道下一个状态是什么 | 策略对象不知道其他策略 |
 | **典型场景** | 订单状态机、TCP 连接状态 | 排序算法选择、支付方式选择 |
 
----
-
 ## 六、访问者模式（Visitor Pattern）
 
 ### 1. 引入：它解决了什么问题？
@@ -534,8 +522,6 @@ System.out.println("总面积: " + calc.getTotalArea());
 - **适用**：数据结构稳定（元素类型不常变），但操作经常变化
 - **不适用**：元素类型经常新增（每新增一种元素，所有 Visitor 都要改）
 
----
-
 ## 七、解释器模式（Interpreter Pattern）
 
 ### 1. 引入：它解决了什么问题？
@@ -613,8 +599,6 @@ System.out.println(expr.interpret()); // 输出 16
 - **适用**：语法简单、效率要求不高的场景（如配置解析、规则引擎）
 - **不适用**：复杂语法（应使用专业的解析器生成工具如 ANTLR）
 
----
-
 ## 八、七种模式对比总结
 
 | 模式 | 核心思想 | 解决的问题 | 关键词 |
@@ -626,7 +610,5 @@ System.out.println(expr.interpret()); // 输出 16
 | **状态模式** | 状态驱动 | 行为随状态变化的 if-else | 状态机、自动转换 |
 | **访问者模式** | 分离操作 | 数据结构稳定但操作多变 | 双分派 |
 | **解释器模式** | 解析语法 | 需要解释执行特定语言 | 表达式树、文法 |
-
----
 
 > **复习检验标准**：能否口述"这个模式解决了什么问题？不用它会怎样？Spring 中哪里用到了？"

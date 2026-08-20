@@ -33,8 +33,6 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 CREATE EXTENSION pgaudit;
 ALTER SYSTEM SET pgaudit.log = 'write';
 ```
-
----
 ## 5. 更多安全场景
 
 ### 5.1 加密连接

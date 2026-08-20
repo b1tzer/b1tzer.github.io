@@ -29,8 +29,6 @@ LOAD DATABASE
     FROM mysql://user:pass@mysql-host/mydb
     INTO postgresql://user:pass@pg-host/mydb;
 ```
-
----
 ## 4. 更多迁移场景
 
 ### 4.1 MySQL 迁移到 PostgreSQL

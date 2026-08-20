@@ -7,8 +7,6 @@ title: MVCC 与 VACUUM 机制
 
 > **核心问题**：PostgreSQL 的 MVCC 是如何实现的？为什么会产生表膨胀？VACUUM 如何清理？如何避免表膨胀？
 
----
-
 ## 它解决了什么问题？
 
 MVCC（多版本并发控制）让**读操作不加锁**，通过保存数据的多个历史版本，让读写操作互不阻塞，大幅提升并发性能。
@@ -16,8 +14,6 @@ MVCC（多版本并发控制）让**读操作不加锁**，通过保存数据的
 但 PG 的 MVCC 实现会在堆表中留下旧版本行（Dead Tuple），如果不清理，表空间会持续增长——这就是**表膨胀**。VACUUM 机制负责清理这些 Dead Tuple，是 PG 运维的核心知识。
 
 **生活类比**：图书馆（数据库）里的书（数据行）被借走（删除/更新）后，书架上留下空位（Dead Tuple）。如果不定期整理（VACUUM），空位越来越多，找书（查询）时需要跳过大量空位，效率越来越低。
-
----
 
 # 一、PostgreSQL MVCC 核心机制
 
@@ -64,8 +60,6 @@ flowchart LR
 
 > **为什么 PG 选择把旧版本存在堆表中**：读操作不需要去 Undo Log 中回溯旧版本，读性能更稳定。代价是需要 VACUUM 定期清理 Dead Tuple，否则表空间持续增长。
 
----
-
 # 二、表膨胀
 
 ```mermaid
@@ -95,8 +89,6 @@ FROM pg_stat_user_tables
 ORDER BY n_dead_tup DESC;
 ```
 
----
-
 # 三、VACUUM 机制
 
 ## VACUUM 的几种形式
@@ -109,8 +101,6 @@ ORDER BY n_dead_tup DESC;
 | `VACUUM ANALYZE` | 同时执行清理和统计更新 | 推荐日常使用 | 定期维护 |
 
 > **为什么 VACUUM FULL 要慎用**：VACUUM FULL 会锁表，期间所有读写操作都被阻塞。对大表执行可能持续数小时，导致业务中断。替代方案：使用 `pg_repack` 工具在线重建表（不锁表）。
-
----
 
 # 四、AUTOVACUUM 自动清理
 
@@ -136,8 +126,6 @@ ALTER TABLE hot_table SET (
     autovacuum_vacuum_threshold = 100
 );
 ```
-
----
 
 # 五、长事务阻塞 VACUUM
 
@@ -166,8 +154,6 @@ ORDER BY duration DESC;
 2. 业务层设置合理的事务超时：`SET statement_timeout = '30s'`
 3. 避免在事务中做耗时操作（如调用外部接口）
 
----
-
 # 六、避免表膨胀的最佳实践
 
 | 实践 | 说明 |
@@ -178,8 +164,6 @@ ORDER BY duration DESC;
 | **定期监控** | 监控 `pg_stat_user_tables` 中的 `n_dead_tup` |
 | **严重膨胀时用 pg_repack** | 替代 `VACUUM FULL`，在线重建表不锁表 |
 
----
-
 # 七、工作中的坑
 
 | 错误 | 原因 | 解决方案 |
@@ -188,8 +172,6 @@ ORDER BY duration DESC;
 | `VACUUM FULL` 导致业务中断 | 锁表时间过长 | 改用 `pg_repack` 工具在线重建表 |
 | autovacuum 频繁触发影响性能 | 阈值设置过低 | 适当提高阈值，或在业务低峰期手动执行 |
 | 长事务阻塞 VACUUM | 事务未及时提交 | 监控 `pg_stat_activity`，及时终止长事务 |
-
----
 
 # 八、常见问题
 

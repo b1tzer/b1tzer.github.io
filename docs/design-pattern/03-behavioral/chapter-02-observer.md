@@ -7,8 +7,6 @@ title: 观察者模式（Observer Pattern）
 
 > **一句话记忆口诀**：观察者一对多通知，发布-订阅解耦，Spring `ApplicationEvent` 和 JDK `Observable` 是最熟悉的例子。
 
----
-
 ## 1. 引入：它解决了什么问题？
 
 ### 没有观察者模式时的问题
@@ -56,8 +54,6 @@ public class OrderService {
 | 数据库变更通知 | MySQL Binlog 监听 |
 | 配置中心 | Nacos/Apollo 配置变更推送 |
 
----
-
 ## 2. 类比：用生活模型建立直觉
 
 ### 生活类比：微信公众号订阅
@@ -75,8 +71,6 @@ public class OrderService {
 ### 抽象定义
 
 > 观察者模式定义对象间的一种一对多的依赖关系，当一个对象的状态发生改变时，所有依赖于它的对象都得到通知并被自动更新。
-
----
 
 ## 3. 原理：逐步拆解核心机制
 
@@ -279,8 +273,6 @@ flowchart TD
     note1["Subject 不关心观察者的具体实现<br/>观察者之间也互不依赖"]
 ```
 
----
-
 ## 4. 特性：关键对比
 
 ### 观察者模式 vs 发布-订阅模式
@@ -301,8 +293,6 @@ flowchart TD
 | Guava `EventBus` | 基于注解的事件总线 |
 | RxJava `Observable` | 响应式编程的观察者 |
 | Kafka Consumer | 消息消费者是观察者 |
-
----
 
 ## 5. 边界：异常情况与常见误区
 
@@ -372,8 +362,6 @@ public class InventoryObserver implements OrderObserver {
 }
 ```
 
----
-
 ## 6. 总结：面试标准化表达
 
 ### 高频问题
@@ -389,7 +377,5 @@ public class InventoryObserver implements OrderObserver {
 **Q3：使用观察者模式有哪些注意事项？**
 
 > 三个主要注意点：①异常隔离——每个观察者的异常应该被捕获，避免一个观察者失败影响其他观察者；②异步处理——耗时的观察者逻辑应该异步执行（Spring `@Async`），避免阻塞主流程；③避免循环依赖——观察者不应该修改 Subject 的状态，否则可能触发再次通知形成无限循环。另外，观察者列表应使用线程安全的集合（如 `CopyOnWriteArrayList`），避免并发修改异常。
-
----
 
 > **一句话记忆口诀**：观察者一对多通知，Subject 维护列表，状态变化逐一通知，Spring `@EventListener` 是最优雅的实现，注意异常隔离和异步处理。

@@ -38,8 +38,6 @@ POST /my-index/_flush
               ↓
            Translog（持久化）
 ```
-
----
 ## 6. 写入流程详解
 
 ```

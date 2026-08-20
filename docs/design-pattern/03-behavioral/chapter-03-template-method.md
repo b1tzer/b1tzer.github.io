@@ -7,8 +7,6 @@ title: 模板方法模式（Template Method Pattern）
 
 > **一句话记忆口诀**：模板方法定骨架，子类填细节，`AbstractList` 和 `HttpServlet` 是最经典的例子，钩子方法让子类控制流程。
 
----
-
 ## 1. 引入：它解决了什么问题？
 
 ### 没有模板方法模式时的问题
@@ -61,8 +59,6 @@ public class CsvExporter {
 | Spring Bean 生命周期 | `AbstractBeanFactory` 定义 `getBean()` 骨架 |
 | MyBatis Executor | `BaseExecutor` 定义执行骨架 |
 
----
-
 ## 2. 类比：用生活模型建立直觉
 
 ### 生活类比：咖啡和茶的冲泡流程
@@ -78,8 +74,6 @@ public class CsvExporter {
 ### 抽象定义
 
 > 模板方法模式在一个方法中定义一个算法的骨架，而将一些步骤延迟到子类中。模板方法使得子类可以在不改变算法结构的情况下，重新定义算法中的某些步骤。
-
----
 
 ## 3. 原理：逐步拆解核心机制
 
@@ -244,8 +238,6 @@ flowchart TD
     note1["粉色：子类必须实现<br/>黄色：钩子方法，子类可选覆盖"]
 ```
 
----
-
 ## 4. 特性：关键对比
 
 ### 模板方法模式 vs 策略模式（最容易混淆）
@@ -275,8 +267,6 @@ flowchart TD
 | `JdbcTemplate` | `execute()` | 封装连接/关闭，回调处理 SQL |
 | `AbstractBeanFactory` | `getBean()` | Spring Bean 获取骨架 |
 | `AbstractApplicationContext` | `refresh()` | Spring 容器启动骨架（12步） |
-
----
 
 ## 5. 边界：异常情况与常见误区
 
@@ -366,8 +356,6 @@ public class Child extends Base {
 // ✅ 正确：不在构造方法中调用可覆盖方法，改用工厂方法或延迟初始化
 ```
 
----
-
 ## 6. 总结：面试标准化表达
 
 ### 高频问题
@@ -383,7 +371,5 @@ public class Child extends Base {
 **Q3：模板方法模式和策略模式如何选择？**
 
 > 选择标准：如果算法有**固定的流程骨架**，只有部分步骤不同，用模板方法（继承）；如果整个算法都可能被替换，或者需要**运行期动态切换**算法，用策略模式（组合）。模板方法的优点是代码复用好，缺点是继承关系固定，不够灵活；策略模式的优点是运行期可切换，缺点是没有代码复用。实际工作中，策略模式更常用，因为组合优于继承，且更容易测试。
-
----
 
 > **一句话记忆口诀**：模板方法定骨架（final 保护），抽象方法强制子类实现，钩子方法让子类影响流程，`HttpServlet.service()` 和 Spring `refresh()` 是最经典的例子。

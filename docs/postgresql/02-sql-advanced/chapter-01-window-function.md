@@ -7,8 +7,6 @@ title: 窗口函数
 
 > **核心问题**：窗口函数解决了什么问题？ROW_NUMBER、RANK、DENSE_RANK 有什么区别？
 
----
-
 ## 它解决了什么问题？
 
 在不改变结果行数的情况下，对每行数据进行**跨行计算**（如排名、累计、前后行对比）。
@@ -16,8 +14,6 @@ title: 窗口函数
 **没有窗口函数时**，求每个部门薪资排名需要写复杂的自连接或子查询，性能差且难以维护。
 
 > **为什么窗口函数比子查询更高效**：子查询需要多次扫描数据，窗口函数只需一次扫描，在窗口内计算。同样的排名需求，窗口函数通常比子查询快 10 倍以上。
-
----
 
 ## 基本语法
 
@@ -28,8 +24,6 @@ title: 窗口函数
     ROWS/RANGE BETWEEN ... -- 窗口帧范围（可选）
 )
 ```
-
----
 
 ## 常用窗口函数
 
@@ -48,8 +42,6 @@ SELECT
     AVG(salary)  OVER (PARTITION BY department) AS dept_avg
 FROM employees;
 ```
-
----
 
 ## ROW_NUMBER vs RANK vs DENSE_RANK
 
@@ -73,8 +65,6 @@ flowchart LR
 - 需要**体现并列**且下一名跳过（如竞赛排名）→ `RANK()`
 - 需要**体现并列**且连续编号（如等级划分）→ `DENSE_RANK()`
 
----
-
 ## LAG / LEAD：前后行对比
 
 ```sql
@@ -96,8 +86,6 @@ FROM monthly_sales;
 | `LAG(col, n, default)` | 取当前行**前** n 行的值 | 计算环比、同比 |
 | `LEAD(col, n, default)` | 取当前行**后** n 行的值 | 预测下一期、计算差值 |
 
----
-
 ## 累计聚合
 
 ```sql
@@ -110,8 +98,6 @@ SELECT
                       ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS moving_avg_7d
 FROM orders;
 ```
-
----
 
 ## 工作中的坑
 
@@ -127,8 +113,6 @@ SELECT * FROM (
     FROM employees
 ) t WHERE rk <= 3;
 ```
-
----
 
 ## 常见问题
 

@@ -209,39 +209,6 @@ mindmap
 
 ---
 
-## 6. 知识点导航：专题 5 篇文档一站直达 ⭐
-
-| # | 知识点 | 核心一句话 | 详细文档 |
-| :-- | :-- | :-- | :-- |
-| **01** | **LLM 接口与 Prompt 工程** | 调 API 的协议契约 + Prompt 设计套路 + Token 计费治理 | [LLM接口与提示词工程](01-LLM接口与提示词工程.md) |
-| **02** | **RAG 架构与工程落地** ⭐ | 从数据同步到引用溯源的完整链路，含生产系统实战 | [RAG架构与工程落地](02-RAG架构与工程落地.md) |
-| **03** | **Function Calling 与 Agent 范式** | 从 LLM"会说话"到"会做事"的跃迁路径 | [FunctionCalling与Agent范式](03-FunctionCalling与Agent范式.md) |
-| **04** | **Spring AI 入门与 MCP 集成** | Java 工程师 5 分钟接入 AI 的最短路径 | [SpringAI入门与MCP集成](04-SpringAI入门与MCP集成.md) |
-| **05** | **MCP 协议与 OpenClaw Skill 实战** | 基于 OpenClaw 写一个网易云歌单 Skill 的全流程 | [MCP协议与OpenClawSkill实战](05-MCP协议与OpenClawSkill实战.md) |
-
-> 📌 `@doc_id` 均为预登记。5 篇详细文档逐篇落地时，`tools/gen_nav.py` 会自动扫描并把它们登记到 `tools/doc_id_registry.json`。
-
----
-
-## 7. 高频问题索引（Q&A 导航）
-
-| 问题 | 详见 |
-| :-- | :-- |
-| LLM 接口都长什么样？为什么国产大模型都"像 OpenAI"？ | 01 篇 §3 |
-| Prompt 怎么写才不废话？有没有工程化的模板套路？ | 01 篇 §4 |
-| Token 成本怎么治理？长对话怎么防失控？ | 01 篇 §5 |
-| 做 RAG 时 Chunking 策略怎么选？切多大块合适？ | 02 篇 §4 |
-| 召回不准怎么调？关键词检索和向量检索怎么融合？ | 02 篇 §6 |
-| RAG 回答的引用溯源怎么做？怎么让用户点回原文？ | 02 篇 §7 |
-| Function Calling 和 Agent 是什么关系？有 FC 还需要 Agent 吗？ | 03 篇 §2 |
-| ReAct 循环里 LLM 幻觉调错 API 怎么办？怎么加兜底？ | 03 篇 §5 |
-| Spring AI 和 LangChain4j 怎么选？各自擅长什么？ | 04 篇 §3 |
-| Spring AI 的 `ChatClient` / `Advisor` / `VectorStore` 三大抽象怎么用？ | 04 篇 §4 |
-| MCP 的 Tool / Resource / Prompt 三件套有什么区别？ | 05 篇 §2 |
-| 怎么在 OpenClaw 上写并上架一个 Skill？ | 05 篇 §4 |
-
----
-
 ## 8. 学习路径建议
 
 ```mermaid

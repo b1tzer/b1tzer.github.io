@@ -38,8 +38,6 @@ SELECT * FROM pg_locks WHERE NOT granted;
 -- 杀死阻塞进程
 SELECT pg_terminate_backend(pid) FROM pg_locks WHERE NOT granted;
 ```
-
----
 ## 4. 更多锁场景与最佳实践
 
 ### 4.1 锁等待分析

@@ -2,8 +2,6 @@
 
 > 监控大屏一切正常：堆内存 40%、CPU 35%、无 Full GC。但接口 P99 从 50ms 飙到了 450ms，上游超时率 7%。`jstat -gcutil` 每秒跑一次才揭穿谎言：Young GC 每秒 3 次，单次 150ms，累积停顿超过 400ms/秒——45% 的 CPU 时间花在 GC 线程上。这种"温水煮青蛙"式的性能退化最容易被忽视：没有 OOM、没有 CPU 100%、没有 Full GC，所有常规告警全部沉默。排查这类问题的第一原则：**GC 看的是分配速率和对象寿命，不是堆使用率。**
 
----
-
 ## 案例 7：支付回调的 Young GC 风暴 —— 日志拼接每秒造 300MB 垃圾
 
 ### 事故背景
@@ -113,8 +111,6 @@ public class PaymentCallbackService {
 
 **规则：生产环境日志一律用 `{}` 占位符，永远不要在日志参数中拼接字符串。**
 
----
-
 ## 案例 8：索引热更新的 Survivor 复制风暴 —— 500MB 对象在新生代来回搬家
 
 ### 事故背景
@@ -203,8 +199,6 @@ public void switchIndex(String indexPath) {
 |---------|------|------|---------|
 | 大规模长生命对象 | 间歇性 Young GC 耗时暴增 | Object Copy 阶段过大 | `MaxTenuringThreshold=1` / 断流预热 |
 | 15 分钟周期 + P99 毛刺同步 | 毛刺与索引更新时间吻合 | 索引替换触发的复制风暴 | 灰度分批 + 断流预热 |
-
----
 
 ## 案例 9：SafePoint 同步延迟 —— GC 只花了 0.14 秒，线程却停了 2.26 秒
 
@@ -298,8 +292,6 @@ while (true) {
 | jstack 触发 ThreadDump vmop | jstack 本身需要 SafePoint | 低峰期操作，用 `jcmd Thread.dump_to_file` |
 | Native 方法长时间不返回 | Native 代码中无法响应 SafePoint | 拆分长 JNI 调用，加超时 |
 
----
-
 ## 案例 10：Log4j2 + PretenureSizeThreshold 组合技 —— 2MB 的"日志炸弹"直冲老年代
 
 ### 事故背景
@@ -384,8 +376,6 @@ Full GC 从每天 40 次降到不到 1 次，老年代使用率稳定在 35%。
 
 `PretenureSizeThreshold` 是一把双刃剑。它在"确实有大对象需要跳过新生代"时有用（如缓存的大 ByteBuffer），但如果设置过低，会误伤大量"恰好超过阈值"的短命对象——把它门直接送进老年代，制造碎片和 Full GC。**除非你精确知道自己的大对象是什么、有多大，否则不要设置这个参数。**
 
----
-
 ## 四个案例的共同诊断信号
 
 | 信号 | 工具 | 本案例编号 |
@@ -395,10 +385,6 @@ Full GC 从每天 40 次降到不到 1 次，老年代使用率稳定在 35%。
 | GC 实际耗时（user）远小于停顿耗时（real） | GC 日志对比 user/real | 案例 9 |
 | spin 时间 > 100ms | `-XX:+PrintSafepointStatistics` | 案例 9 |
 | 大量等大 `char[]` 直接出现在老年代 | MAT Histogram 按 Shallow Heap 排序 | 案例 10 |
-
----
-
----
 
 ## 案例 11：Tomcat LimitLatch —— 一条陈年配置让服务间歇性假死
 
@@ -554,8 +540,6 @@ server:
 **教训：** `jstack` 不是跑一遍就够的。排查者第一反应是看 worker 线程有没有卡在业务代码里，发现没有就转向 GC / 数据库 / 网络——全程忽略了 Acceptor 线程。线程名上的 `Acceptor` 字眼本身就暗示了它的角色，但排查时被选择性跳过。排障没有捷径：每条线程都要读，每个你不认识的类名都要追。
 
 此外：任何环境里的任何配置，你都必须知道它是怎么来的、为什么是这个值。`max-connections=10` 可能是一次压测时的临时调整、某个"最佳实践"博客里的推荐值、或者某个前辈留下的"为了防止连接数打满"的保护措施——但无论哪种，在大批量 Nginx worker 的长连接面前都是灾难。
-
----
 
 ## 案例 12：Netty 直接内存泄漏 —— 堆正常但容器被 OOMKilled
 
@@ -782,10 +766,6 @@ public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
 | RSS - Heap >> 1G | 堆外内存占据大头，需逐区域排查 | `kubectl top pod` - `jstat` 堆使用量 |
 
 **教训：** 堆内存只是 Java 进程总内存的一部分。在容器环境下，K8s 的 `limits.memory` 限制的是整个进程的 RSS——包括堆、直接内存、线程栈、元空间、Code Cache、glibc arena 碎片、JNI 本地内存等。只看 JVM 堆是远远不够的。Michal Drozd 在博客中总结了一个经验法则：**永远给容器预留 40%~50% 的内存给堆外区域**。只设 `-Xmx` 不设 `-XX:MaxDirectMemorySize`，等于把直接内存的上限交给了物理内存——而在容器里，"物理内存"就是 limit 值，超了就杀。
-
----
-
----
 
 > **上一篇：** [第六章案例集（一）：CPU 飙升、内存泄漏与 GC 调优实战](./chapter-06-diagnostics-cases-part1)
 >

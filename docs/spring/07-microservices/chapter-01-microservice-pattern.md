@@ -129,8 +129,6 @@
 └─────────────────────────────────────────────────────────────────┘
 ```
 
----
-
 ## 6.2 服务注册与发现
 
 ### 6.2.1 为什么需要服务发现
@@ -282,8 +280,6 @@ public class OrderController {
 | 社区活跃度 | 高（阿里维护） | 中（Netflix 维护减少） | 高（HashiCorp 维护） |
 | 国内使用率 | ★★★★★ | ★★★ | ★★ |
 
----
-
 ## 6.3 API Gateway
 
 ### 6.3.1 为什么需要网关
@@ -434,8 +430,6 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
 ### 6.3.5 网关处理流程
 
 ![microservice-request-flow](/spring/microservice-request-flow.svg)
-
----
 
 ## 6.4 服务调用
 
@@ -715,7 +709,5 @@ public User getUserFallback(Long id, Throwable t) {
        ▼
   正常返回 / 兜底返回
 ```
-
----
 
 > 服务拆开了，但问题也来了：配置散落各处怎么管？一个服务挂了会不会雪崩？流量突增怎么办？请求链路如同黑盒怎么排查？下一章讲分布式系统治理的四大手段：配置中心、服务容错、限流降级、链路追踪。

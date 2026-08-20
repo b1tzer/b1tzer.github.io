@@ -7,15 +7,11 @@ title: CTE 与递归查询
 
 > **核心问题**：CTE 解决了什么问题？如何用递归 CTE 查询树形结构？
 
----
-
 ## 它解决了什么问题？
 
 **CTE（公共表表达式）** 将复杂查询拆分为可读的命名子查询，解决两个问题：
 1. **可读性**：将多层嵌套子查询改写为线性结构，易于理解和维护
 2. **递归查询**：支持查询树形结构（组织架构、分类层级、评论回复等），这是普通 SQL 无法做到的
-
----
 
 ## 普通 CTE：提高可读性
 
@@ -45,8 +41,6 @@ SELECT * FROM dept_stats WHERE cnt > 5;
 - 可以被多次引用（避免重复写相同子查询）
 - 便于调试（可以单独查询某个 CTE）
 
----
-
 ## 递归 CTE：查询树形结构
 
 **语法结构**：
@@ -63,8 +57,6 @@ WITH RECURSIVE cte_name AS (
 )
 SELECT * FROM cte_name;
 ```
-
----
 
 ## 实战：查询组织架构树
 
@@ -107,8 +99,6 @@ flowchart TD
     D --> E["合并所有结果返回"]
 ```
 
----
-
 ## 实战：查询分类层级
 
 ```sql
@@ -126,8 +116,6 @@ WITH RECURSIVE category_tree AS (
 )
 SELECT * FROM category_tree ORDER BY depth, id;
 ```
-
----
 
 ## 工作中的坑
 
@@ -161,8 +149,6 @@ SELECT * FROM org_tree;
 WITH MATERIALIZED cte AS (...)  -- 强制物化
 WITH NOT MATERIALIZED cte AS (...) -- 允许内联优化
 ```
-
----
 
 ## 常见问题
 

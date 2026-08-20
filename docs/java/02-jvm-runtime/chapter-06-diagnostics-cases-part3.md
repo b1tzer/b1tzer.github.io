@@ -2,8 +2,6 @@
 
 > 监控大屏一切正常：堆内存 40%、CPU 35%、无 Full GC。但接口 P99 从 50ms 飙到了 450ms，上游超时率 7%。`jstat -gcutil` 每秒跑一次才揭穿谎言：Young GC 每秒 3 次，单次 150ms，累积停顿超过 400ms/秒——45% 的 CPU 时间花在 GC 线程上。这种"温水煮青蛙"式的性能退化最容易被忽视：没有 OOM、没有 CPU 100%、没有 Full GC，所有常规告警全部沉默。排查这类问题的第一原则：**GC 看的是分配速率和对象寿命，不是堆使用率。**
 
----
-
 ## 案例 7：支付回调的 Young GC 风暴 —— 日志拼接每秒造 300MB 垃圾
 
 ### 事故背景
@@ -113,8 +111,6 @@ public class PaymentCallbackService {
 
 **规则：生产环境日志一律用 `{}` 占位符，永远不要在日志参数中拼接字符串。**
 
----
-
 ## 案例 8：索引热更新的 Survivor 复制风暴 —— 500MB 对象在新生代来回搬家
 
 ### 事故背景
@@ -203,8 +199,6 @@ public void switchIndex(String indexPath) {
 |---------|------|------|---------|
 | 大规模长生命对象 | 间歇性 Young GC 耗时暴增 | Object Copy 阶段过大 | `MaxTenuringThreshold=1` / 断流预热 |
 | 15 分钟周期 + P99 毛刺同步 | 毛刺与索引更新时间吻合 | 索引替换触发的复制风暴 | 灰度分批 + 断流预热 |
-
----
 
 ## 案例 9：SafePoint 同步延迟 —— GC 只花了 0.14 秒，线程却停了 2.26 秒
 
@@ -298,8 +292,6 @@ while (true) {
 | jstack 触发 ThreadDump vmop | jstack 本身需要 SafePoint | 低峰期操作，用 `jcmd Thread.dump_to_file` |
 | Native 方法长时间不返回 | Native 代码中无法响应 SafePoint | 拆分长 JNI 调用，加超时 |
 
----
-
 ## 案例 10：Log4j2 + PretenureSizeThreshold 组合技 —— 2MB 的"日志炸弹"直冲老年代
 
 ### 事故背景
@@ -384,8 +376,6 @@ Full GC 从每天 40 次降到不到 1 次，老年代使用率稳定在 35%。
 
 `PretenureSizeThreshold` 是一把双刃剑。它在"确实有大对象需要跳过新生代"时有用（如缓存的大 ByteBuffer），但如果设置过低，会误伤大量"恰好超过阈值"的短命对象——把它门直接送进老年代，制造碎片和 Full GC。**除非你精确知道自己的大对象是什么、有多大，否则不要设置这个参数。**
 
----
-
 ## 四个案例的共同诊断信号
 
 | 信号 | 工具 | 本案例编号 |
@@ -395,8 +385,6 @@ Full GC 从每天 40 次降到不到 1 次，老年代使用率稳定在 35%。
 | GC 实际耗时（user）远小于停顿耗时（real） | GC 日志对比 user/real | 案例 9 |
 | spin 时间 > 100ms | `-XX:+PrintSafepointStatistics` | 案例 9 |
 | 大量等大 `char[]` 直接出现在老年代 | MAT Histogram 按 Shallow Heap 排序 | 案例 10 |
-
----
 
 > **上一篇：** [第六章案例集（二）：GC 调优与综合诊断实战](./chapter-06-diagnostics-cases-part2)
 >

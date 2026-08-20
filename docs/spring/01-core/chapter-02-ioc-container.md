@@ -2,8 +2,6 @@
 
 > 你的 `OrderService` 依赖 `OrderRepository`。传统写法是在构造器里 `new OrderRepository()`，IoC 写法是把它声明成构造器参数。两段代码只差一行 `new`，差别却根本性：前者写死了「用这个具体实现」，后者把决定权交了出去。这一章讲清楚这个「交出去」的过程，以及接管这件事的容器长什么样。
 
----
-
 ## 1. 为什么需要 IoC
 
 对象自己创建依赖，代码长这样：
@@ -50,8 +48,6 @@ public class OrderService {
 
 `OrderService` 不再 `new` 任何东西，只声明「我需要这两个依赖」。创建和组装的工作交给了容器。
 
----
-
 ## 2. IoC 的本质
 
 控制反转（Inversion of Control）这个名字容易想复杂，其实只描述了一件事：**「谁来创建依赖」这个决定权，从业务代码手里，反转到容器手里。**
@@ -64,8 +60,6 @@ public class OrderService {
 | 可测试性 | 需要真实环境 | 注入 Mock 对象 |
 
 一个常见误解是「IoC 和 DI 是两回事」。准确说，**IoC 是思想，DI（依赖注入）是它最常见的实现手段**。Spring 早期还支持依赖查找（Dependency Lookup），后来因为用得少被移除，所以现在提到 IoC，基本就是在说 DI。
-
----
 
 ## 3. 容器：BeanFactory 与 ApplicationContext
 
@@ -90,8 +84,6 @@ ApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class)
 | AOP 集成 | 手动配置 | 自动检测并集成 |
 
 结论直接：**实际项目用 `ApplicationContext`，`BeanFactory` 只在内存受限或需要完全控制加载顺序的底层框架里出现。** Spring Boot 启动时创建的容器是 `AnnotationConfigServletWebServerApplicationContext`，它继承自 `ApplicationContext`。
-
----
 
 ## 4. 容器启动做了什么
 
@@ -127,8 +119,6 @@ public void refresh() {
 ```
 
 这 12 步里，对理解 IoC 最要紧的是第 2 步和第 11 步：第 2 步把配置读成 `BeanDefinition`（描述 Bean 的元数据），第 11 步才真正 `new` 出 Bean。中间的第 5、6 步留了两个扩展点——`BeanFactoryPostProcessor` 在 Bean 创建前改定义，`BeanPostProcessor` 在 Bean 创建时拦截。AOP、`@Autowired` 都靠它们实现，具体见 [AOP](./chapter-05-aop.md) 和 [循环依赖与三级缓存](./chapter-04-bean-lifecycle.md)。
-
----
 
 ## 5. 小结
 

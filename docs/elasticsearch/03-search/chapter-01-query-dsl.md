@@ -5,8 +5,6 @@ title: ES 查询 DSL：核心查询类型
 
 # ES 查询 DSL：核心查询类型
 
----
-
 ## query context vs filter context
 
 ```mermaid
@@ -28,15 +26,11 @@ flowchart TD
     Filter --> FC
 ```
 
----
-
 ## 为什么 filter 比 must 性能更好
 
 > 1. filter 不计算相关性得分，省去了 TF-IDF/BM25 的计算开销
 > 2. filter 结果可以被缓存（Filter Cache），相同过滤条件第二次查询直接走缓存
 > 3. 纯过滤场景（如按状态筛选）应优先使用 filter，而非 must
-
----
 
 ## 常用查询示例
 
@@ -56,8 +50,6 @@ flowchart TD
   }
 }
 ```
-
----
 
 ## 问题：ES 的 query 和 filter 有什么区别？
 

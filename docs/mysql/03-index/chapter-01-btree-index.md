@@ -112,5 +112,3 @@ WHERE table_name = 'users' AND stat_name = 'size';
 3. **定期清理无用索引** — 使用 `sys.schema_unused_indexes` 检查
 4. **理解回表成本** — 尽量使用覆盖索引
 5. **避免在频繁更新的列上建索引** — 维护成本高
-
----

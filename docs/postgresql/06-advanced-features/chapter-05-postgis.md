@@ -30,8 +30,6 @@ WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint(116.4, 39.9), 4326), 1000);
 ```sql
 CREATE INDEX idx_places_geom ON places USING GIST (geom);
 ```
-
----
 ## 4. 更多 PostGIS 用法
 
 ### 4.1 空间数据类型

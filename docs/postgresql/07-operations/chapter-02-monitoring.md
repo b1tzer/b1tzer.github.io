@@ -34,8 +34,6 @@ ORDER BY mean_exec_time DESC LIMIT 10;
 ```bash
 pgBadger /var/log/postgresql/postgresql-*.log -o report.html
 ```
-
----
 ## 4. 更多监控场景
 
 ### 4.1 连接监控

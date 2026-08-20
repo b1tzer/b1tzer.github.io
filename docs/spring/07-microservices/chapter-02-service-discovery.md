@@ -2,8 +2,6 @@
 
 > 当单体应用拆分为数十个微服务后，配置散落各处、一个服务故障引发雪崩、流量突增时系统瘫痪、请求链路如同黑盒——这些是分布式系统必须直面的治理难题。本章将系统讲解配置中心、服务容错、限流降级和链路追踪四大核心治理手段，让你的微服务集群从"能跑"走向"可控"。
 
----
-
 ## 7.1 配置中心（Nacos Config + @RefreshScope 热更新）
 
 ### 7.1.1 为什么需要配置中心
@@ -153,8 +151,6 @@ Namespace（命名空间）── 通常按环境划分：dev / test / prod
             └── Data ID: common-datasource.yml
 ```
 
----
-
 ## 7.2 服务容错（超时 / 重试 / 熔断）
 
 ### 7.2.1 分布式系统中的级联故障
@@ -292,8 +288,6 @@ public class RetryConfig {
 | OPEN | 直接拒绝所有请求，返回降级响应 | 失败率超过阈值（如 50%） |
 | HALF-OPEN | 放行少量探测请求，检验下游是否恢复 | OPEN 状态持续一段时间后自动进入 |
 
----
-
 ## 7.3 限流与降级（Sentinel）
 
 ### 7.3.1 Sentinel 核心概念
@@ -413,8 +407,6 @@ public void initSystemRules() {
     SystemRuleManager.loadRules(Collections.singletonList(rule));
 }
 ```
-
----
 
 ## 7.4 分布式链路追踪
 
@@ -557,8 +549,6 @@ SkyWalking Agent 会自动将 TraceID 注入 MDC（Mapped Diagnostic Context）�
 
 三条日志通过 `TID:abc-123-def` 关联起来，即使它们分散在不同服务器上，也能通过 TraceID 一键检索。
 
----
-
 ## 本章小结
 
 | 治理手段 | 核心目标 | 代表技术 |
@@ -569,7 +559,5 @@ SkyWalking Agent 会自动将 TraceID 注入 MDC（Mapped Diagnostic Context）�
 | 链路追踪 | 让请求链路可见 | SkyWalking |
 
 这四大手段共同构成了分布式系统的治理底座。配置中心解决"管理"问题，容错和限流解决"稳定性"问题，链路追踪解决"可观测"问题。
-
----
 
 > 治理解决了稳定性和可观测性，但企业应用还差两块：安全和部署。身份认证怎么选型？密码怎么存储才不会被拖库？应用怎么打包才能在任何环境一致运行？下一章覆盖认证授权、数据安全和容器化部署。

@@ -48,8 +48,6 @@ PGDATA/
 ├── pg_stat_tmp/   # 统计信息
 └── postgresql.conf
 ```
-
----
 ## 4. 连接与认证配置
 
 ```ini
