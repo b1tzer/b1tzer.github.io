@@ -13,7 +13,7 @@
 
 理解这一层，关键是抓住一条链路，而不是背表名：
 
-```
+```txt
 元数据（有什么）──→ 观测（正在发生什么）──→ 诊断（为什么慢/为什么锁）
 information_schema ──→ performance_schema ──→ sys + EXPLAIN
 ```
@@ -190,7 +190,7 @@ ORDER BY pages DESC LIMIT 10;
 
 遇到问题时按这个顺序走，能少走弯路：
 
-```
+```txt
 1. SHOW 摸全局刻度（快、便宜）
      └─ SHOW STATUS / SHOW PROCESSLIST / SHOW ENGINE INNODB STATUS
 2. sys 看现成结论（能直接定位，就不进 P_S 裸表）

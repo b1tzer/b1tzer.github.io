@@ -263,7 +263,7 @@ SELECT * FROM accounts WHERE id = 1 LOCK IN SHARE MODE;
 当前读绕过 Read View，直接读最新版本，并加上行锁。原因在于：**写操作必须基于「最新的真实状态」来写**，否则两个事务基于同一份旧快照做 `balance = balance - 100`，就会互相覆盖对方的修改。锁在这里负责的，正是 MVCC 不负责的「写-写冲突」。
 
 ::: tip 一句区分
-快照读回答「我该看到哪个历史版本」，靠 Read View 判定；当前读回答「我能不能动这行数据」，靠行锁。行锁的三种算法（Record / Gap / Next-Key Lock）见 [锁机制](./chapter-02-lock.md)。
+快照读回答「我该看到哪个历史版本」，靠 Read View 判定；当前读回答「我能不能动这行数据」，靠行锁。行锁的三种算法（Record / Gap / Next-Key Lock）见 [锁机制](./chapter-03-lock.md)。
 :::
 
 ### 4.2 幻读：RR 下真的解决了吗 {#phantom-read}
@@ -271,7 +271,7 @@ SELECT * FROM accounts WHERE id = 1 LOCK IN SHARE MODE;
 `REPEATABLE READ` 号称解决了幻读，实际是**分两条路径**解决的：
 
 - **快照读路径**：整个事务复用同一个 Read View，后插入的行 `trx_id >= max_trx_id`，天然不可见，所以读不到幻影行；
-- **当前读路径**：靠 `Next-Key Lock` 锁住「记录 + 间隙」，阻止别的并发事务往查询范围内插入新行。间隙锁细节见 [锁机制 §2.2](./chapter-02-lock.md#gap-lock)。
+- **当前读路径**：靠 `Next-Key Lock` 锁住「记录 + 间隙」，阻止别的并发事务往查询范围内插入新行。间隙锁细节见 [锁机制 §2.2](./chapter-03-lock.md#gap-lock)。
 
 但 RR 并未 100% 消灭幻读。一个经典残留场景是：事务先做一次快照读，再对同一范围做当前读。快照读没锁任何东西，别的会话可以在这中间插入新行；随后的 `SELECT ... FOR UPDATE` 走当前读，会读到那条新插入的行——于是「快照读没看到、当前读看到了」，从结果集行数变化的角度看，幻读仍在。
 
@@ -318,7 +318,7 @@ ORDER BY trx_started ASC;
 ## 5. 最佳实践 {#best-practices}
 
 1. **默认用 `REPEATABLE READ`**：InnoDB 的默认值，兼顾一致性与并发。
-2. **高并发读场景可考虑 `READ COMMITTED`**：Read View 每次重建，Purge 更及时，且 RC 下行锁更少（无间隙锁），见 [锁机制](./chapter-02-lock.md)。
+2. **高并发读场景可考虑 `READ COMMITTED`**：Read View 每次重建，Purge 更及时，且 RC 下行锁更少（无间隙锁），见 [锁机制](./chapter-03-lock.md)。
 3. **避免长事务**：事务里不做 RPC、HTTP、人工等待等外部调用；配合 `innodb_lock_wait_timeout` 兜底。
 4. **事务尽量小**：只包裹真正需要原子性的 DML，缩短 Read View 与锁的存活时间。
 5. **写操作用当前读、只读用快照读**：明确两者的边界，避免混用导致幻读。
