@@ -21,6 +21,9 @@ export default withOpenInEditor(withMermaid(defineConfig({
     },
   },
   markdown: {
+    languageAlias: {
+      conf: 'ini',
+    },
     config(md) {
       md.use(svgDiagramMarkdownPlugin)
     },

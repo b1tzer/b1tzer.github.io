@@ -251,7 +251,7 @@ scrape_configs:
 
 ### 3.3 PromQL 常用查询
 
-```promql
+```txt
 # 1. 请求速率（QPS）
 rate(http_server_requests_seconds_count{app="myapp"}[5m])
 

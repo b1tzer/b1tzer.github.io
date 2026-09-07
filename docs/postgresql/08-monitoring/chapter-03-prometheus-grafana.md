@@ -83,7 +83,7 @@ curl http://localhost:9187/metrics | grep pg_stat_database
 
 ### 缓存命中率
 
-```promql
+```txt
 # 数据库级缓存命中率
 pg_stat_database_blks_hit{datname="your_db"} 
   / (pg_stat_database_blks_hit{datname="your_db"} + pg_stat_database_blks_read{datname="your_db"}) 
@@ -92,7 +92,7 @@ pg_stat_database_blks_hit{datname="your_db"}
 
 ### 事务统计
 
-```promql
+```txt
 # TPS（每秒事务提交数）
 rate(pg_stat_database_xact_commit{datname="your_db"}[5m])
 
@@ -107,7 +107,7 @@ pg_stat_database_deadlocks{datname="your_db"}
 
 ### 复制延迟
 
-```promql
+```txt
 # 复制延迟（字节）
 pg_stat_replication_pg_wal_lsn_diff{state="streaming"}
 
@@ -117,7 +117,7 @@ pg_stat_replication_replay_lag
 
 ### 表膨胀率
 
-```promql
+```txt
 # 死元组占比
 pg_stat_user_tables_n_dead_tup 
   / (pg_stat_user_tables_n_live_tup + pg_stat_user_tables_n_dead_tup) 
@@ -126,7 +126,7 @@ pg_stat_user_tables_n_dead_tup
 
 ### 事务 ID 年龄
 
-```promql
+```txt
 # 事务 ID 年龄（接近 2^31 = 2147483647 需要紧急处理）
 pg_database_xid_age{datname="your_db"}
 # 使用率百分比
@@ -152,7 +152,7 @@ pg_database_xid_age{datname="your_db"} / 2147483647 * 100
 
 ### 关键面板自定义 PromQL
 
-```promql
+```txt
 # 1. 连接使用率仪表盘
 100 * sum(pg_stat_activity_count) by (instance) / on(instance) pg_settings_max_connections
 
