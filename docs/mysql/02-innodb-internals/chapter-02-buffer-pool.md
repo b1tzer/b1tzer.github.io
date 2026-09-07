@@ -73,9 +73,12 @@ innodb_old_blocks_time = 1000   # old 区停留阈值，单位毫秒
 ```
 
 ::: tip 两个参数怎么调
+
 - `innodb_old_blocks_pct` 调大，old 区变大，抗全表扫描污染的能力更强，但热数据能占的空间变小。默认 37 对大多数 OLTP 是合理的。
 - 如果业务有定期的批量扫描（报表、备份），可以临时把 `innodb_old_blocks_time` 调大（如 5000），让扫描进来的页更难晋升，进一步保护热数据；扫描结束再调回。
 :::
+
+![Buffer Pool 分区 LRU：新页落入 old 区，停留超过 1 秒再访问才晋升 young 区](/mysql/02-innodb-internals-chapter-02-buffer-pool.svg)
 
 ## 3. 容量评估与配置运维
 

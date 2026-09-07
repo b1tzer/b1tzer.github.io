@@ -109,7 +109,7 @@ InnoDB 默认使用 **Next-Key Lock**。为什么默认用最「重」的这一�
 
 ### 2.2 为什么需要 Gap Lock：幻读的代价 {#gap-lock}
 
-回忆 [事务与 MVCC §4.2](./chapter-01-transaction.md#phantom-read) 的结论：快照读靠 Read View 解决幻读，而**当前读**（`FOR UPDATE` / `LOCK IN SHARE MODE` / DML）靠锁解决幻读。
+回忆 [事务与 MVCC §4.2](./chapter-02-transaction.md#phantom-read) 的结论：快照读靠 Read View 解决幻读，而**当前读**（`FOR UPDATE` / `LOCK IN SHARE MODE` / DML）靠锁解决幻读。
 
 只锁已存在的记录（Record Lock）挡不住幻读：事务 A `SELECT * FROM t WHERE id > 8 FOR UPDATE` 锁住了 10、15，但没锁住 `(15, +∞)` 这个间隙，事务 B 仍可 `INSERT id=16`。A 再查一次，多出一行——幻读。
 
@@ -183,7 +183,7 @@ Gap Lock 禁止往间隙插入，但多个事务都想往**同一个间隙**插�
 | `READ COMMITTED` | **不加** | 当前读可能出现幻读 |
 | `REPEATABLE READ` | 加 | 当前读也防幻读 |
 
-`READ COMMITTED` 下没有 Gap Lock（有例外：外键约束检查等场景仍会短暂加），锁的范围更小，并发更高，但代价是当前读无法防幻读。这就是 [事务与 MVCC §5](./chapter-01-transaction.md#best-practices) 提到「高并发读场景可考虑 RC」的锁层面的依据——**RC 牺牲幻读防护，换来更小的锁范围和更高的并发。**
+`READ COMMITTED` 下没有 Gap Lock（有例外：外键约束检查等场景仍会短暂加），锁的范围更小，并发更高，但代价是当前读无法防幻读。这就是 [事务与 MVCC §5](./chapter-02-transaction.md#best-practices) 提到「高并发读场景可考虑 RC」的锁层面的依据——**RC 牺牲幻读防护，换来更小的锁范围和更高的并发。**
 
 ## 3. 表级锁与锁监控
 

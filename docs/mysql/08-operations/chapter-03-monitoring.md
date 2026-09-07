@@ -4,6 +4,8 @@
 
 ### 1.1 Performance Schema
 
+> 本节只给出最常用的几条查询作速查。performance_schema / information_schema / sys 三者的定位、事件模型与完整排查方法，见同目录「内省与可观测性」一篇（[chapter-02-observability](./chapter-02-observability)）。
+
 ```sql
 -- 查看连接
 SELECT * FROM performance_schema.threads WHERE PROCESSLIST_ID = <pid>;
