@@ -460,7 +460,8 @@ export default withOpenInEditor(withMermaid(defineConfig({
             { text: '类型系统', link: '/java/01-java-language/chapter-01-type-system' },
             { text: '面向对象', link: '/java/01-java-language/chapter-02-oop' },
             { text: '泛型', link: '/java/01-java-language/chapter-03-generics' },
-            { text: '注解与 Lambda', link: '/java/01-java-language/chapter-04-annotation-lambda' },
+            { text: '注解', link: '/java/01-java-language/chapter-04-annotation' },
+            { text: 'Lambda 与函数式编程', link: '/java/01-java-language/chapter-05-lambda' },
           ],
         },
         {
