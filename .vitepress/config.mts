@@ -468,7 +468,7 @@ export default withOpenInEditor(withMermaid(defineConfig({
           text: 'JVM Runtime',
           collapsed: true,
           items: [
-            { text: '字节码与类加载', link: '/java/02-jvm-runtime/chapter-01-bytecode-classloading' },
+            { text: '字节码到 ClassLoader', link: '/java/02-jvm-runtime/chapter-01-bytecode-classloading' },
             { text: 'JVM 运行时数据区', link: '/java/02-jvm-runtime/chapter-02-memory-model' },
             { text: '对象模型', link: '/java/02-jvm-runtime/chapter-03-object-model' },
             { text: '垃圾回收', link: '/java/02-jvm-runtime/chapter-04-gc' },
