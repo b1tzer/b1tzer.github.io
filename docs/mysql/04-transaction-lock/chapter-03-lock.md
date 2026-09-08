@@ -2,6 +2,8 @@
 
 > 一条 `SELECT * FROM t WHERE id = 7 FOR UPDATE`，表里根本没有 `id=7` 这一行，却能阻塞住别人 `INSERT id=8`。锁住的不是一条存在的记录，而是记录之间的「空隙」。InnoDB 的行锁，锁的其实是**索引**，而不是行。
 
+![MySQL 锁全景：MDL 与 InnoDB 锁的关联，及行锁判断路线](/mysql/04-transaction-lock-chapter-03-lock-algorithms.svg)
+
 ## 1. 锁的层次与加锁对象
 
 ### 1.1 从一个「查不存在的行却锁住了」的现象说起
@@ -35,14 +37,14 @@ SELECT * FROM t WHERE id = 7 FOR UPDATE;
 
 MySQL 的锁按作用范围从大到小分四层：
 
-| 锁 | 粒度 | 说明 |
-| :-- | :-- | :-- |
-| **全局锁** | 整个库 | `FLUSH TABLES WITH READ LOCK`，全库只读，用于全库备份 |
-| **表锁** | 单表 | `LOCK TABLES t WRITE`，粒度粗，并发差 |
-| **元数据锁**（MDL） | 单表 | DML 自动加读锁，DDL 加写锁，防止表结构并发变更 |
-| **行锁** | 单行 | InnoDB 特有，粒度最细，并发最高 |
+| 锁 | 粒度 | 归属 | 说明 |
+| :-- | :-- | :-- | :-- |
+| **全局锁** | 整个库 | Server 层 | `FLUSH TABLES WITH READ LOCK`，全库只读，用于全库备份 |
+| **表锁** | 单表 | Server 层 | `LOCK TABLES t WRITE`，粒度粗，并发差 |
+| **元数据锁**（MDL） | 单表 | Server 层 | DML 自动加读锁，DDL 加写锁，防止表结构并发变更 |
+| **行锁** | 单行 | InnoDB 引擎层 | InnoDB 特有，粒度最细，并发最高 |
 
-粒度越细，并发越高，但实现越复杂、开销越大。InnoDB 选择了行锁，这是它比 MyISAM 更适合高并发的根本原因之一。前两层（全局锁、表锁）是 Server 层提供的，行锁才是 InnoDB 存储引擎自己的能力。
+粒度越细，并发越高，但实现越复杂、开销越大。InnoDB 选择了行锁，这是它比 MyISAM 更适合高并发的根本原因之一。这四类锁分属两层：**全局锁、表锁、元数据锁（MDL）是 Server 层提供的**，与存储引擎无关，任何引擎的表都会被它们约束；**行锁是 InnoDB 存储引擎自己的实现**。InnoDB 引擎层除了行锁，还有表级的两类锁——意向锁（IS/IX）和自增锁（AUTO-INC），分别见 [§3.1](#mdl-intention-lock) 和 [§3.2](#auto-inc-lock)。
 
 ### 1.3 行锁锁的不是「行」，是「索引记录」
 
@@ -59,11 +61,11 @@ MySQL 的锁按作用范围从大到小分四层：
 所以「锁住一行」不是给数据行本身加锁，而是给这一行对应的索引记录加锁。InnoDB 按 SQL 实际走过的路径，对命中的索引记录加锁。
 
 ```sql
--- 走主键：锁 `PRIMARY` 中 `id = 1` 的索引记录
-SELECT * FROM users WHERE id = 1 FOR UPDATE;
+-- 走主键：锁 `PRIMARY` 中 `id = 5` 的索引记录
+SELECT * FROM t WHERE id = 5 FOR UPDATE;
 
--- 走二级索引：先锁 `idx_name` 中 `name = '张三'` 的记录，再回溯聚簇索引加锁
-SELECT * FROM users WHERE name = '张三' FOR UPDATE;
+-- 走二级索引：先锁 `idx_age` 中 `age = 20` 的记录，再回溯聚簇索引加锁
+SELECT * FROM t WHERE age = 20 FOR UPDATE;
 ```
 
 这条认知引出一个高频踩坑结论：**查询若走不上任何索引，InnoDB 只能全表扫描，锁住主键索引上的所有记录——效果等同于锁全表。**
@@ -101,9 +103,9 @@ InnoDB 的行锁分三种算法，粒度依次扩大：
       Record    Record    Record    Record
 ```
 
-- **Record Lock** 锁住 `5` 这一个点：别的会话不能再改 `id=5`，但可以在它前后插入。
-- **Gap Lock** 锁住 `(5, 10)` 这个开区间：别的会话不能往这个区间插入任何值，但已有的 5 和 10 仍可修改。
-- **Next-Key Lock** 是 `(5, 10]`——锁住间隙 `(5,10)` 加记录 `10` 本身。它是 Record 和 Gap 的合体。
+- **Record Lock** 锁住 `5` 这一个点（查 `id=5` 命中唯一索引）：别的会话不能再改 `id=5`，但可以在它前后插入。
+- **Gap Lock** 锁住 `(5, 10)` 这个开区间（查 `id=7` 未命中）：别的会话不能往这个区间插入任何值，但已有的 5 和 10 仍可修改。
+- **Next-Key Lock** 是 `(5, 10]`——锁住间隙 `(5,10)` 加记录 `10` 本身，右端 10 才是被锁的记录。它是 Record 和 Gap 的合体。
 
 InnoDB 默认使用 **Next-Key Lock**。为什么默认用最「重」的这一种？因为它能同时解决两个问题：Record Lock 解决「不可重复读」，Gap Lock 解决「幻读」。下一节展开。
 
@@ -111,7 +113,7 @@ InnoDB 默认使用 **Next-Key Lock**。为什么默认用最「重」的这一�
 
 回忆 [事务与 MVCC §4.2](./chapter-02-transaction.md#phantom-read) 的结论：快照读靠 Read View 解决幻读，而**当前读**（`FOR UPDATE` / `LOCK IN SHARE MODE` / DML）靠锁解决幻读。
 
-只锁已存在的记录（Record Lock）挡不住幻读：事务 A `SELECT * FROM t WHERE id > 8 FOR UPDATE` 锁住了 10、15，但没锁住 `(15, +∞)` 这个间隙，事务 B 仍可 `INSERT id=16`。A 再查一次，多出一行——幻读。
+只锁已存在的记录（Record Lock）挡不住幻读。假设 InnoDB 没有 Gap Lock——这正是 `READ COMMITTED` 下当前读的真实行为（见 §2.6）：事务 A `SELECT * FROM t WHERE id > 8 FOR UPDATE` 只会锁住扫描到的 10、15 两条记录，锁不住 `(15, +∞)` 这个间隙，事务 B 仍可 `INSERT id=16`。A 再查一次，多出一行——幻读。
 
 Gap Lock 就是为此而生：**锁住间隙，禁止插入，从源头上掐断「多出新的行」。**
 
@@ -131,7 +133,7 @@ Gap Lock 就是为此而生：**锁住间隙，禁止插入，从源头上掐断
 │   ├── 走唯一索引
 │   │   ├── 命中    → Record Lock（锁该条记录）
 │   │   └── 未命中  → Gap Lock（锁所在间隙）
-│   └── 走非唯一索引 → 命中的每条记录加 Next-Key Lock，并锁下一个间隙
+│   └── 走非唯一索引 → 命中的每条记录加 Next-Key Lock，并在最后一条命中记录之后锁一个间隙
 ├── 范围查询        → Next-Key Lock（锁住扫描经过的每个区间）
 └── 无索引（全表扫描）→ 锁主键索引所有记录（等效锁全表）
 ```
@@ -178,7 +180,7 @@ Gap Lock 禁止往间隙插入，但多个事务都想往**同一个间隙**插�
 
 锁的行为与隔离级别强相关，最关键的一条：
 
-| 隔离级别 | Gap Lock | 幻读 |
+| 隔离级别 | Gap Lock | 当前读防幻读 |
 | :-- | :-- | :-- |
 | `READ COMMITTED` | **不加** | 当前读可能出现幻读 |
 | `REPEATABLE READ` | 加 | 当前读也防幻读 |
@@ -187,7 +189,7 @@ Gap Lock 禁止往间隙插入，但多个事务都想往**同一个间隙**插�
 
 ## 3. 表级锁与锁监控
 
-### 3.1 元数据锁（MDL）与意向锁
+### 3.1 元数据锁（MDL）与意向锁 {#mdl-intention-lock}
 
 行锁之外，还有两类表级锁与它配合。
 
@@ -201,10 +203,16 @@ Gap Lock 禁止往间隙插入，但多个事务都想往**同一个间隙**插�
 -- 解决：kill 长查询，或用 pt-online-schema-change
 ```
 
-**意向锁（Intention Lock）**：表级锁，解决「加表锁前要不要遍历所有行检查有没有行锁」的效率问题。事务要对某行加 X 锁前，先在表上加 IX 锁；这样别人要加表锁时，看一眼表上有没有 IX 就知道「表里有行锁」，无需逐行扫描。
+**意向锁（Intention Lock）**：表级锁，解决「加表锁前要不要遍历所有行检查有没有行锁」的效率问题。它分两种：
+
+- **意向共享锁（IS）**：事务「打算」给表中的行加共享锁，`SELECT ... FOR SHARE` 会先加 IS。
+- **意向排他锁（IX）**：事务「打算」给表中的行加排他锁，`SELECT ... FOR UPDATE`、`UPDATE`、`DELETE` 会先加 IX。
+
+加锁协议是：要获取行上的 S 锁，必须先获取表上的 IS 或更强锁；要获取行上的 X 锁，必须先获取表上的 IX 锁。于是别人想加表锁时，只需看表上有没有 IX / IS，就知道「表里有没有行锁」，无需逐行扫描。
+
+意向锁之间互不阻塞，它们只和表级 `S` / `X` 锁冲突，不影响普通 DML 获取行级锁。兼容矩阵中，行是「已持有的锁」，列是「请求的锁」：
 
 ```txt
-兼容矩阵（行 × 列）：
         IS    IX    S     X
 IS      ✅    ✅    ✅    ❌
 IX      ✅    ✅    ❌    ❌
@@ -212,7 +220,26 @@ S       ✅    ❌    ✅    ❌
 X       ❌    ❌    ❌    ❌
 ```
 
-### 3.2 锁监控实战
+### 3.2 自增锁（AUTO-INC） {#auto-inc-lock}
+
+`AUTO_INCREMENT` 列的值由 InnoDB 统一分配，分配过程也要加锁，防止两个事务拿到同一个值。这个锁叫**自增锁（AUTO-INC Lock）**，是 InnoDB 引擎层的表级锁。它的行为由 `innodb_autoinc_lock_mode` 控制，分三种模式：
+
+| 模式 | 取值 | 加锁方式 | 自增值 |
+| :-- | :--: | :-- | :-- |
+| 传统（traditional） | `0` | 所有 INSERT 类语句都持表级 AUTO-INC 锁，直到语句结束 | 语句内连续 |
+| 连续（consecutive） | `1` | 简单插入用轻量 mutex（取完即释放）；批量插入用表级锁（语句结束释放） | 语句内连续 |
+| 交错（interleaved） | `2` | 统一用轻量 mutex（取完即释放） | 只保证唯一、单调，不保证连续 |
+
+「简单插入」指插入行数预先可知的语句，普通 `INSERT` 即使带多个 `VALUES` 也算；「批量插入」指行数预先未知的 `INSERT ... SELECT`、`LOAD DATA` 等。
+
+MySQL 8.0.3 起默认是 `2`（交错模式），此前默认是 `1`。模式 `2` 并发最高，但自增值只保证「唯一且单调递增」，不保证连续——多条 INSERT 并发分配时号码会交错，事务回滚、插入失败也会留下空洞。因此业务上**不应假设自增 ID 连续**；且模式 `2` 下 binlog 应设为 `ROW` 格式。
+
+```sql
+-- 查看当前自增锁模式
+SHOW VARIABLES LIKE 'innodb_autoinc_lock_mode';
+```
+
+### 3.3 锁监控实战
 
 发生锁等待时，用 `performance_schema` 定位阻塞链：
 

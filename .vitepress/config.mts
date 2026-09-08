@@ -7,6 +7,9 @@ export default withOpenInEditor(withMermaid(defineConfig({
   title: 'The Stack',
   description: '系统化的 Java 后端技术分析',
   lang: 'zh-CN',
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+  ],
   srcDir: './docs',
   outDir: './site',
 
@@ -21,6 +24,9 @@ export default withOpenInEditor(withMermaid(defineConfig({
     },
   },
   markdown: {
+    languageAlias: {
+      conf: 'ini',
+    },
     config(md) {
       md.use(svgDiagramMarkdownPlugin)
     },
