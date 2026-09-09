@@ -460,14 +460,15 @@ export default withOpenInEditor(withMermaid(defineConfig({
             { text: '类型系统', link: '/java/01-java-language/chapter-01-type-system' },
             { text: '面向对象', link: '/java/01-java-language/chapter-02-oop' },
             { text: '泛型', link: '/java/01-java-language/chapter-03-generics' },
-            { text: '注解与 Lambda', link: '/java/01-java-language/chapter-04-annotation-lambda' },
+            { text: '注解', link: '/java/01-java-language/chapter-04-annotation' },
+            { text: 'Lambda 与函数式编程', link: '/java/01-java-language/chapter-05-lambda' },
           ],
         },
         {
           text: 'JVM Runtime',
           collapsed: true,
           items: [
-            { text: '字节码与类加载', link: '/java/02-jvm-runtime/chapter-01-bytecode-classloading' },
+            { text: '字节码到 ClassLoader', link: '/java/02-jvm-runtime/chapter-01-bytecode-classloading' },
             { text: 'JVM 运行时数据区', link: '/java/02-jvm-runtime/chapter-02-memory-model' },
             { text: '对象模型', link: '/java/02-jvm-runtime/chapter-03-object-model' },
             { text: '垃圾回收', link: '/java/02-jvm-runtime/chapter-04-gc' },
